@@ -450,12 +450,6 @@
 <!-- 1. オープニング動画スプラッシュ画面 -->
 <div id="video-overlay">
   <button class="skip-btn" onclick="closeVideo()">Skip ▶</button>
-  <div class="intro-card" id="intro-card">
-    <div class="icon">🎺</div>
-    <h2>なめがわブラス・ラボ</h2>
-    <p>音と想いを届ける、トランペットの世界へようこそ。</p>
-    <div class="intro-bar"><span></span></div>
-  </div>
   <video id="intro-video" playsinline autoplay muted onended="closeVideo()" onerror="closeVideo()">
     <source src="video/intro.mp4" type="video/mp4">
     お使いのブラウザは動画再生に対応していません。
@@ -481,9 +475,12 @@
   
   <div class="price-section-card">
     <div class="price-header">
-      <span class="price-title">個人レッスン（小学生）1回30分・月2回3,000円</span>
-      <span class="price-title">個人レッスン（中学生）1回45分・月2回5,000円</span>
-      <span class="price-title">個人レッスン（高校生以上）1回60分・1回7,000円</span>
+      <span class="price-title">個人レッスン（小学生）1回30分</span>
+      <p>月2回3,000円</p>
+      <span class="price-title">個人レッスン（中学生）1回45分</span>
+      <p>月2回5,000円</p>
+      <span class="price-title">個人レッスン（高校生以上）1回60分</span>
+      <p>基本1回7,000円</p>
       <span class="price-title">その他（グループレッスン、部活動指導など、お問合わせください）</span>
     </div>
     <div class="price-desc">マンツーマンで基礎から応用まで自分のペースでじっくり学べます。</div>
@@ -580,7 +577,6 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('intro-video');
-    const introCard = document.getElementById('intro-card');
 
     if (!video) {
       closeVideo();
@@ -591,9 +587,6 @@
     const hasSource = Boolean(source && source.src);
 
     if (!hasSource) {
-      if (introCard) {
-        introCard.style.display = 'block';
-      }
       window.setTimeout(closeVideo, 2200);
       return;
     }
@@ -602,25 +595,17 @@
 
     video.addEventListener('loadeddata', () => {
       video.play().catch(() => {
-        if (introCard) {
-          introCard.style.display = 'block';
-        }
+        // 自動再生ができない場合はそのまま進める
       });
       window.setTimeout(closeVideo, 2200);
     });
 
     video.addEventListener('error', () => {
-      if (introCard) {
-        introCard.style.display = 'block';
-      }
       window.setTimeout(closeVideo, 2200);
     });
 
     window.setTimeout(() => {
       if (video.readyState < 2) {
-        if (introCard) {
-          introCard.style.display = 'block';
-        }
         closeVideo();
       }
     }, 1200);
