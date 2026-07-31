@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>なめがわブラス・ラボ | トランペット奏者・佐々木久和</title>
+  <style>
+    :root {
+      --primary-color: #0b2545;
+      --primary-light: #134074;
+      --accent-color: #d4af37;
+      --accent-hover: #b59226;
+      --bg-color: #f4f6f9;
+      --card-bg: #ffffff;
+      --text-main: #1d2a44;
+      --text-muted: #6c757d;
+      --shadow-sm: 0 4px 14px rgba(11, 37, 69, 0.06);
+      --shadow-md: 0 12px 28px rgba(11, 37, 69, 0.14);
+      --radius: 18px;
+      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+      color: var(--text-main);
+      line-height: 1.7;
+      min-height: 100vh;
+      overflow-x: hidden;
+      padding: 24px 16px 48px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+
+    #video-overlay {
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at top, #163a5d 0%, #071628 55%, #02070d 100%);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
+      padding: 24px;
+    }
+
+    #video-overlay.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    #intro-video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+
+    .intro-card {
+      position: relative;
+      z-index: 1;
+      max-width: 360px;
+      width: 100%;
+      text-align: center;
+      color: #ffffff;
+      padding: 28px 24px;
+      border-radius: 24px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
+      backdrop-filter: blur(12px);
+      animation: introFadeIn 0.8s ease both;
+    }
+
+    .intro-card .icon {
+      font-size: 2.8rem;
+      margin-bottom: 12px;
+      display: inline-block;
+      animation: float 2.4s ease-in-out infinite;
+    }
+
+    .intro-card h2 {
+      font-size: 1.35rem;
+      margin-bottom: 8px;
+      letter-spacing: 0.04em;
+    }
+
+    .intro-card p {
+      font-size: 0.95rem;
+      line-height: 1.7;
+      color: rgba(255, 255, 255, 0.86);
+      margin-bottom: 16px;
+    }
+
+    .intro-bar {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.2);
+      overflow: hidden;
+      margin-top: 12px;
+    }
+
+    .intro-bar span {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: linear-gradient(90deg, #d4af37, #f7d97a);
+      animation: introProgress 2.2s ease-in-out forwards;
+    }
+
+    @keyframes introFadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
+
+    @keyframes introProgress {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    .skip-btn {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: rgba(0, 0, 0, 0.55);
+      color: #ffffff;
+      border: 1px solid rgba(255, 255, 255, 0.35);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: var(--transition);
+      z-index: 10000;
+    }
+
+    .skip-btn:hover {
+      background: rgba(255, 255, 255, 0.18);
+      border-color: #ffffff;
+    }
+
+    .video-fallback {
+      color: #ffffff;
+      text-align: center;
+      font-size: 0.95rem;
+      line-height: 1.8;
+      padding: 0 24px;
+      max-width: 340px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      padding: 30px 20px 36px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(16px);
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(11, 37, 69, 0.06);
+      border-radius: 28px;
+      box-shadow: 0 24px 60px rgba(11, 37, 69, 0.12);
+      backdrop-filter: blur(10px);
+    }
+
+    .container.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .profile-header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+
+    .profile-avatar {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: var(--accent-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.6rem;
+      margin: 0 auto 16px;
+      border: 3px solid var(--accent-color);
+      box-shadow: var(--shadow-md);
+    }
+
+    .main-title {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      letter-spacing: 0.02em;
+    }
+
+    .sub-title {
+      font-size: 0.96rem;
+      font-weight: 700;
+      color: var(--accent-color);
+      margin-top: 4px;
+      margin-bottom: 10px;
+    }
+
+    .tagline {
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      background: rgba(11, 37, 69, 0.06);
+      display: inline-block;
+      padding: 5px 14px;
+      border-radius: 999px;
+      margin-bottom: 14px;
+    }
+
+    .bio-card {
+      font-size: 0.9rem;
+      color: var(--text-main);
+      text-align: left;
+      background: var(--card-bg);
+      padding: 16px 18px;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      line-height: 1.7;
+      border-left: 4px solid var(--accent-color);
+    }
+
+    .section-title {
+      font-size: 1.06rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 30px 0 14px;
+    }
+
+    .section-title::before {
+      content: "";
+      display: inline-block;
+      width: 4px;
+      height: 18px;
+      background-color: var(--accent-color);
+      border-radius: 2px;
+    }
+
+    .price-section-card,
+    .youtube-section-card {
+      background: var(--card-bg);
+      border: 1px solid rgba(11, 37, 69, 0.06);
+      border-radius: var(--radius);
+      padding: 18px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 18px;
+    }
+
+    .price-section-card .price-header {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .price-section-card .price-title {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: var(--primary-color);
+      line-height: 1.5;
+      white-space: normal;
+      overflow: visible;
+      text-overflow: clip;
+    }
+
+    .price-section-card .price-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-top: 10px;
+      line-height: 1.7;
+    }
+
+    .youtube-section-card .btn-desc {
+      margin-top: 6px;
+    }
+
+    .btn-link {
+      display: block;
+      background: var(--card-bg);
+      color: var(--text-main);
+      text-decoration: none;
+      padding: 16px 18px;
+      border-radius: var(--radius);
+      margin-bottom: 12px;
+      box-shadow: var(--shadow-sm);
+      border: 1px solid rgba(0,0,0,0.04);
+      transition: var(--transition);
+    }
+
+    .btn-link:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(212, 175, 55, 0.35);
+    }
+
+    .btn-link:active {
+      transform: translateY(0);
+    }
+
+    .btn-link.disabled {
+      opacity: 0.85;
+      pointer-events: none;
+      background: #f8fafc;
+      border: 1px solid rgba(11, 37, 69, 0.06);
+    }
+
+    .btn-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 4px;
+    }
+
+    .btn-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .pdf-badge {
+      font-size: 0.7rem;
+      font-weight: 700;
+      background-color: #e74c3c;
+      color: #ffffff;
+      padding: 2px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.05em;
+    }
+
+    .duration-badge {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--accent-color);
+      white-space: nowrap;
+    }
+
+    .btn-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin-top: 36px;
+      padding-top: 18px;
+      border-top: 1px solid #e0e6ed;
+    }
+
+    .contact-card {
+      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
+      border: 1px solid rgba(11, 37, 69, 0.08);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin: 18px 0 12px;
+      text-align: left;
+    }
+
+    .contact-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      margin-bottom: 8px;
+    }
+
+    .contact-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 10px;
+      padding: 10px 16px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: #ffffff;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 20px rgba(11, 37, 69, 0.16);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .contact-link:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(11, 37, 69, 0.22);
+      color: #ffffff;
+      text-decoration: none;
+    }
+
+    .contact-detail {
+      display: block;
+      margin: 6px 0;
+      font-size: 0.9rem;
+      color: var(--text-main);
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 14px 12px 28px;
+      }
+
+      .container {
+        padding: 24px 16px 28px;
+        border-radius: 22px;
+      }
+
+      .main-title {
+        font-size: 1.38rem;
+      }
+
+      .btn-header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .duration-badge {
+        margin-top: 2px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- 1. オープニング動画スプラッシュ画面 -->
+<div id="video-overlay">
+  <button class="skip-btn" onclick="closeVideo()">Skip ▶</button>
+  <div class="intro-card" id="intro-card">
+    <div class="icon">🎺</div>
+    <h2>なめがわブラス・ラボ</h2>
+    <p>音と想いを届ける、トランペットの世界へようこそ。</p>
+    <div class="intro-bar"><span></span></div>
+  </div>
+  <video id="intro-video" playsinline autoplay muted onended="closeVideo()" onerror="closeVideo()">
+    <source src="video/intro.mp4" type="video/mp4">
+    お使いのブラウザは動画再生に対応していません。
+  </video>
+</div>
+
+<!-- 2. メインコンテンツ -->
+<div class="container" id="main-container">
+
+  <!-- プロフィールヘッダー -->
+  <header class="profile-header">
+    <div class="profile-avatar">🎺</div>
+    <h1 class="main-title">なめがわブラス・ラボ</h1>
+    <div class="sub-title">代表・トランペット奏者 佐々木 久和</div>
+    <div class="tagline">音を運び、夢を響かせる</div>
+    
+    <div class="bio-card">
+      トランペット歴30年以上のプロ奏者が届ける、出張演奏＆レッスン！<br>
+      「力を抜いてリラックスして吹く独自メソッド」で、初心者から上達を目指す方まで丁寧にサポートします。
+    </div>
+    <!-- トランペットレッスン料金表 -->
+  <h2 class="section-title">🎺 トランペットレッスン料金</h2>
+  
+  <div class="price-section-card">
+    <div class="price-header">
+      <span class="price-title">個人レッスン（小学生）1回30分・月2回3,000円</span>
+      <span class="price-title">個人レッスン（中学生）1回45分・月2回5,000円</span>
+      <span class="price-title">個人レッスン（高校生以上）1回60分・1回7,000円</span>
+      <span class="price-title">その他（グループレッスン、部活動指導など、お問合わせください）</span>
+    </div>
+    <div class="price-desc">マンツーマンで基礎から応用まで自分のペースでじっくり学べます。</div>
+  </header>
+
+  <h2 class="section-title">🎬 演奏動画・YouTube</h2>
+  <div class="youtube-section-card">
+    <a href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer" class="btn-link btn-youtube">
+      <div class="btn-header">
+        <span class="btn-title">▶ 公式YouTubeチャンネル</span>
+      </div>
+      <div class="btn-desc">演奏動画などのコンテンツをご覧いただけます</div>
+    </a>
+  </div>
+
+  <div class="tagline" style="margin-top: 4px;">資料は順次公開予定です</div>
+
+  <!-- 出張演奏・企画提案書（PDFリンク集） -->
+  <h2 class="section-title">出張演奏・企画提案書（PDF）</h2>
+
+  <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <div class="btn-header">
+      <span class="btn-title">👴👵 デイサービス・シニア向け音楽会 <span class="pdf-badge">PDF</span></span>
+      <span class="duration-badge">45分</span>
+    </div>
+    <div class="btn-desc">PDF を新しいタブで開きます。</div>
+  </a>
+
+  <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <div class="btn-header">
+      <span class="btn-title">☕ 終活相談会 アコースティックライブ <span class="pdf-badge">PDF</span></span>
+      <span class="duration-badge">45分</span>
+    </div>
+    <div class="btn-desc">PDF を新しいタブで開きます。</div>
+  </a>
+
+  <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <div class="btn-header">
+      <span class="btn-title">🎒 学童保育向け 体験ワークショップ <span class="pdf-badge">PDF</span></span>
+      <span class="duration-badge">60分</span>
+    </div>
+    <div class="btn-desc">PDF を新しいタブで開きます。</div>
+  </a>
+
+  <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <div class="btn-header">
+      <span class="btn-title">👶 保育園・幼稚園向け 出張ワークショップ <span class="pdf-badge">PDF</span></span>
+      <span class="duration-badge">45分</span>
+    </div>
+    <div class="btn-desc">PDF を新しいタブで開きます。</div>
+  </a>
+
+  <!-- フッター -->
+  <footer class="footer">
+    <div class="contact-card">
+      <div class="contact-title">お問い合わせ・ご依頼</div>
+      <p>演奏依頼</p>
+      <p>演奏指導（レッスン）</p>
+      <p>音楽イベント立案</p>
+      <p>楽器修理・購入相談</p>
+      <p>楽器運搬及び一般的な運送荷物</p>
+      <p>その他</p>
+      <p>ご質問・相談など、こちらからお送りください。</p>
+      <span class="contact-detail">Gmail: <a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a></span>
+      <span class="contact-detail">TEL: 090-5769-0830（ご対応時間：10:00-18:00）</span>
+      <p style="color: #d9534f; font-weight: 700; margin-top: 8px;">電話勧誘・セールスは一切お断り！！</p>
+      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener noreferrer" class="contact-link">Googleフォームで問い合わせる</a>
+    </div>
+    <p>&copy; Namegawa Brass Lab. All Rights Reserved.</p>
+  </footer>
+
+</div>
+
+<script>
+  function closeVideo() {
+    const overlay = document.getElementById('video-overlay');
+    const container = document.getElementById('main-container');
+    const video = document.getElementById('intro-video');
+
+    if (video) {
+      try {
+        video.pause();
+        video.currentTime = 0;
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (!overlay || !container) return;
+
+    overlay.classList.add('hidden');
+    container.classList.add('visible');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const video = document.getElementById('intro-video');
+    const introCard = document.getElementById('intro-card');
+
+    if (!video) {
+      closeVideo();
+      return;
+    }
+
+    const source = video.querySelector('source');
+    const hasSource = Boolean(source && source.src);
+
+    if (!hasSource) {
+      if (introCard) {
+        introCard.style.display = 'block';
+      }
+      window.setTimeout(closeVideo, 2200);
+      return;
+    }
+
+    video.style.display = 'block';
+
+    video.addEventListener('loadeddata', () => {
+      video.play().catch(() => {
+        if (introCard) {
+          introCard.style.display = 'block';
+        }
+      });
+      window.setTimeout(closeVideo, 2200);
+    });
+
+    video.addEventListener('error', () => {
+      if (introCard) {
+        introCard.style.display = 'block';
+      }
+      window.setTimeout(closeVideo, 2200);
+    });
+
+    window.setTimeout(() => {
+      if (video.readyState < 2) {
+        if (introCard) {
+          introCard.style.display = 'block';
+        }
+        closeVideo();
+      }
+    }, 1200);
+  });
+</script>
+
+</body>
+</html>
