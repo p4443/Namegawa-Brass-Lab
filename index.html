@@ -238,6 +238,11 @@
       box-shadow: var(--shadow-sm);
       line-height: 1.7;
       border-left: 4px solid var(--accent-color);
+      margin-top: 12px;
+    }
+
+    .section-block {
+      margin-top: 8px;
     }
 
     .section-title {
@@ -247,7 +252,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      margin: 30px 0 14px;
+      margin: 26px 0 12px;
     }
 
     .section-title::before {
@@ -257,6 +262,26 @@
       height: 18px;
       background-color: var(--accent-color);
       border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .pdf-links-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .pdf-links-list .btn-link {
+      margin-bottom: 0;
+      padding: 14px 15px;
+    }
+
+    .pdf-links-list .btn-header {
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .pdf-links-list .btn-title {
+      line-height: 1.45;
     }
 
     .price-section-card,
@@ -264,9 +289,9 @@
       background: var(--card-bg);
       border: 1px solid rgba(11, 37, 69, 0.06);
       border-radius: var(--radius);
-      padding: 18px;
+      padding: 16px 16px 15px;
       box-shadow: var(--shadow-sm);
-      margin-bottom: 18px;
+      margin-bottom: 14px;
     }
 
     .price-section-card .price-header {
@@ -301,9 +326,9 @@
       background: var(--card-bg);
       color: var(--text-main);
       text-decoration: none;
-      padding: 16px 18px;
-      border-radius: var(--radius);
-      margin-bottom: 12px;
+      padding: 14px 15px;
+      border-radius: 16px;
+      margin-bottom: 0;
       box-shadow: var(--shadow-sm);
       border: 1px solid rgba(0,0,0,0.04);
       transition: var(--transition);
@@ -336,7 +361,7 @@
 
     .btn-title {
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 0.94rem;
       color: var(--primary-color);
       display: flex;
       align-items: center;
@@ -384,6 +409,10 @@
       text-align: left;
     }
 
+    .contact-card p {
+      margin-bottom: 2px;
+    }
+
     .contact-title {
       font-size: 0.95rem;
       font-weight: 700;
@@ -404,6 +433,7 @@
       text-decoration: none;
       box-shadow: 0 8px 20px rgba(11, 37, 69, 0.16);
       transition: transform 0.2s ease, box-shadow 0.2s ease;
+      text-align: center;
     }
 
     .contact-link:hover {
@@ -426,12 +456,54 @@
       }
 
       .container {
-        padding: 24px 16px 28px;
-        border-radius: 22px;
+        padding: 22px 14px 28px;
+        border-radius: 20px;
+      }
+
+      .profile-header {
+        margin-bottom: 18px;
+      }
+
+      .profile-avatar {
+        width: 96px;
+        height: 96px;
+        font-size: 2.2rem;
       }
 
       .main-title {
         font-size: 1.38rem;
+      }
+
+      .sub-title {
+        font-size: 0.9rem;
+      }
+
+      .tagline {
+        font-size: 0.8rem;
+        padding: 5px 12px;
+      }
+
+      .bio-card {
+        padding: 14px 15px;
+        font-size: 0.88rem;
+      }
+
+      .section-title {
+        font-size: 0.98rem;
+        line-height: 1.45;
+        margin: 22px 0 10px;
+        align-items: flex-start;
+      }
+
+      .section-title::before {
+        height: 16px;
+        margin-top: 3px;
+      }
+
+      .price-section-card,
+      .youtube-section-card,
+      .contact-card {
+        padding: 14px;
       }
 
       .btn-header {
@@ -439,8 +511,28 @@
         align-items: flex-start;
       }
 
+      .btn-title {
+        font-size: 0.9rem;
+      }
+
+      .pdf-links-list {
+        gap: 10px;
+      }
+
+      .pdf-links-list .btn-link {
+        padding: 12px 13px;
+      }
+
+      .pdf-links-list .btn-desc {
+        margin-top: 4px;
+      }
+
       .duration-badge {
         margin-top: 2px;
+      }
+
+      .contact-link {
+        width: 100%;
       }
     }
   </style>
@@ -501,37 +593,39 @@
   <!-- 出張演奏・企画提案書（PDFリンク集） -->
   <h2 class="section-title">出張演奏・企画提案書（PDF）</h2>
 
-  <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
-    <div class="btn-header">
-      <span class="btn-title">👴👵デイサービス・シニア向け音楽会<span class="pdf-badge">PDF</span></span>
-      <span class="duration-badge">45分</span>
-    </div>
-    <div class="btn-desc">PDF を新しいタブで開きます。</div>
-  </a>
+  <div class="pdf-links-list">
+    <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">👴👵デイサービス・シニア向け音楽会<span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">45分</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
 
-  <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
-    <div class="btn-header">
-      <span class="btn-title">☕終活相談会cafeライブ <span class="pdf-badge">PDF</span></span>
-      <span class="duration-badge">45分</span>
-    </div>
-    <div class="btn-desc">PDF を新しいタブで開きます。</div>
-  </a>
+    <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">☕終活相談会cafeライブ <span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">45分</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
 
-  <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
-    <div class="btn-header">
-      <span class="btn-title">🎒学童保育向け体験ワークショップ<span class="pdf-badge">PDF</span></span>
-      <span class="duration-badge">60分</span>
-    </div>
-    <div class="btn-desc">PDF を新しいタブで開きます。</div>
-  </a>
+    <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">🎒学童保育向け体験ワークショップ<span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">60分</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
 
-  <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
-    <div class="btn-header">
-      <span class="btn-title">👶保育園・幼稚園向け出張ワークショップ<span class="pdf-badge">PDF</span></span>
-      <span class="duration-badge">45分</span>
-    </div>
-    <div class="btn-desc">PDF を新しいタブで開きます。</div>
-  </a>
+    <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">👶保育園・幼稚園向け出張ワークショップ<span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">45分</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
+  </div>
 
   <!-- フッター -->
   <footer class="footer">
@@ -541,7 +635,7 @@
       <p>演奏指導（レッスン）</p>
       <p>音楽イベント立案</p>
       <p>楽器修理・購入相談</p>
-      <p>楽器運搬及び一般的な運送荷物</p>
+      <p>楽器運搬及び一般的な運送荷物の運搬</p>
       <p>その他</p>
       <p>ご質問・相談など、こちらからお送りください。</p>
       <span class="contact-detail">Gmail: <a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a></span>
