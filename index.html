@@ -18,6 +18,8 @@
       --shadow-md: 0 12px 28px rgba(11, 37, 69, 0.14);
       --radius: 18px;
       --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+      --highlight-bg: #fff9c4;
+      --highlight-bg-hover: #fff59d;
     }
 
     * {
@@ -534,6 +536,33 @@
       .contact-link {
         width: 100%;
       }
+
+      /* ハイライト用スタイル（強調） */
+      .highlight {
+        background-color: var(--highlight-bg);
+        padding: 0.18em 0.6em;
+        border-radius: 8px;
+        display: inline-block;
+        transition: background-color 0.25s ease, transform 0.18s ease, box-shadow 0.25s ease;
+        border-left: 6px solid var(--accent-color);
+        box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12);
+        font-weight: 700;
+        color: var(--text-main);
+        transform: translateZ(0);
+        animation: highlight-pulse 1.6s ease-in-out 0s 1;
+      }
+
+      .highlight:hover {
+        background-color: var(--highlight-bg-hover);
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 18px 40px rgba(11, 37, 69, 0.22);
+      }
+
+      @keyframes highlight-pulse {
+        0% { box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12); }
+        50% { box-shadow: 0 20px 45px rgba(11, 37, 69, 0.20); }
+        100% { box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12); }
+      }
     }
   </style>
 </head>
@@ -563,7 +592,8 @@
       「力を抜いてリラックスして吹く独自メソッド」で、初心者から上達を目指す方まで丁寧にサポートします。
     </div>
     <!-- トランペットレッスン料金表 -->
-  <h2 class="section-title">🎺 トランペットレッスン料金</h2>
+  <h2 class="section-title">🎺 kazooささきトランペット教室</h2>
+      <p class="highlight">レッスン料金</p>
   
   <div class="price-section-card">
     <div class="price-header">
@@ -594,6 +624,17 @@
   <h2 class="section-title">出張演奏・企画提案書（PDF）</h2>
 
   <div class="pdf-links-list">
+
+    <!-- 新着PDF（自動更新: 最新3件） -->
+    <div class="pdf-new">
+      <h3 style="margin-bottom:8px;">📢 新着資料</h3>
+      <ul style="list-style:none; padding-left:0; margin-bottom:12px;">
+        <li style="margin-bottom:6px;"><a href="pdf/トランペット・カフェライブ企画案①.pdf" target="_blank" rel="noopener noreferrer">① トランペット・カフェライブ企画案① <span class="pdf-badge">PDF</span></a></li>
+        <li style="margin-bottom:6px;"><a href="pdf/トランペット・カフェライブ企画案②.pdf" target="_blank" rel="noopener noreferrer">② トランペット・カフェライブ企画案② <span class="pdf-badge">PDF</span></a></li>
+        <li style="margin-bottom:6px;"><a href="pdf/トランペット・カフェライブ企画案③.pdf" target="_blank" rel="noopener noreferrer">③ トランペット・カフェライブ企画案③ <span class="pdf-badge">PDF</span></a></li>
+      </ul>
+    </div>
+
     <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
       <div class="btn-header">
         <span class="btn-title">👴👵デイサービス・シニア向け音楽会<span class="pdf-badge">PDF</span></span>
@@ -631,17 +672,18 @@
   <footer class="footer">
     <div class="contact-card">
       <div class="contact-title">お問い合わせ・ご依頼</div>
+      <p style="font-weight: 700; color: #000;">【お客様専用窓口です】</p>
       <p>演奏依頼</p>
       <p>演奏指導（レッスン）</p>
       <p>音楽イベント立案</p>
       <p>楽器修理・購入相談</p>
       <p>楽器運搬及び一般的な運送荷物の運搬</p>
       <p>その他</p>
-      <p>ご質問・相談など、こちらからお送りください。</p>
+      <p>＊ご質問・相談など、こちらからお送りください。</p>
       <span class="contact-detail">Gmail: <a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a></span>
       <span class="contact-detail">TEL: 090-5769-0830（ご対応時間：10:00-18:00）</span>
-      <p style="color: #d9534f; font-weight: 700; margin-top: 8px;">電話勧誘・セールスは一切お断り！！</p>
       <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener noreferrer" class="contact-link">Googleフォームで問い合わせる</a>
+      <p style="color: #d9534f; font-size: 0.9em; margin-top: 8px;">＊営業目的の連絡、送信はお断りしております。</p>
     </div>
     <p>&copy; Namegawa Brass Lab. All Rights Reserved.</p>
   </footer>
