@@ -230,6 +230,7 @@
       margin-bottom: 14px;
     }
 
+    .profile-card,
     .bio-card {
       font-size: 0.9rem;
       color: var(--text-main);
@@ -241,6 +242,30 @@
       line-height: 1.7;
       border-left: 4px solid var(--accent-color);
       margin-top: 12px;
+    }
+
+    .profile-header {
+      text-align: center;
+    }
+
+    @media (min-width: 760px) {
+      .profile-header > .profile-card,
+      .profile-header > .bio-card {
+        display: inline-block;
+        width: calc(50% - 12px);
+        vertical-align: top;
+        margin: 12px 6px 0;
+        text-align: left;
+      }
+    }
+
+    @media (max-width: 759px) {
+      .profile-header > .profile-card,
+      .profile-header > .bio-card {
+        display: block;
+        width: 100%;
+        margin: 12px auto 0;
+      }
     }
 
     .section-block {
@@ -587,13 +612,18 @@
     <div class="sub-title">代表・トランペット奏者 佐々木 久和</div>
     <div class="tagline">音を運び、夢を響かせる</div>
     
+    <div class="profile-card">
+      <h2 class="section-title">プロフィール</h2>
+      <p>1969 年生まれ、茨城県牛久市出身。小学校 4 年鼓笛隊のトランペットを始める。東京コンセルヴァトワール尚美専門コース、トランペット専攻、杉木峯夫(東京藝術大学名誉教授)に師事 1991 年卒業。同年陸上自衛隊に入隊、第 11 音楽隊(札幌市)、東北方面音楽隊(仙台市)、第 1 音楽隊（東京都）、東部方面音楽隊(朝霞市)などで勤務。2023年 9 月、自衛隊を退職。現在、フリーランス、kazoo ささきトランペット教室、アンサンブルNEST 主宰。また、EYS 音楽教室インストラクター、熊谷・深谷カルチャーで演奏指導などをしている。</p>
+    </div>
+
     <div class="bio-card">
       トランペット歴30年以上のプロ奏者が届ける、出張演奏＆レッスン！<br>
       「力を抜いてリラックスして吹く独自メソッド」で、初心者から上達を目指す方まで丁寧にサポートします。
     </div>
     <!-- トランペットレッスン料金表 -->
   <h2 class="section-title">🎺 kazooささきトランペット教室</h2>
-      <p class="highlight">レッスン料金</p>
+      <div class="tagline">レッスン料金</div>
   
   <div class="price-section-card">
     <div class="price-header">
