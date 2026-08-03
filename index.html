@@ -115,7 +115,7 @@
       height: 100%;
       width: 0;
       background: linear-gradient(90deg, #d4af37, #f7d97a);
-      animation: introProgress 2.2s ease-in-out forwards;
+      animation: introProgress 4.2s ease-in-out forwards;
     }
 
     @keyframes introFadeIn {
@@ -919,11 +919,11 @@
       video.play().catch(() => {
         // 自動再生ができない場合はそのまま進める
       });
-      window.setTimeout(closeVideo, 2200);
+      window.setTimeout(closeVideo, 4200);
     });
 
     video.addEventListener('error', () => {
-      window.setTimeout(closeVideo, 2200);
+      window.setTimeout(closeVideo, 4200);
     });
 
     window.setTimeout(() => {

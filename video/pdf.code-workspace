@@ -1,0 +1,13 @@
+{
+	"folders": [
+		{
+			"path": "../pdf"
+		},
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "pdf"
+	}
+}
