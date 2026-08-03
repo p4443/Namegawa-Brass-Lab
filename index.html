@@ -244,6 +244,41 @@
       margin-top: 12px;
     }
 
+    .bio-card .bio-intro {
+      margin-bottom: 8px;
+    }
+
+    .bio-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+      justify-content: center;
+    }
+
+    .bio-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #1b4d8f 0%, #0b2545 100%);
+      color: #ffffff;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 8px 18px rgba(11, 37, 69, 0.22);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transition: var(--transition);
+    }
+
+    .bio-link:hover {
+      background: linear-gradient(135deg, #d4af37 0%, #b59226 100%);
+      color: #fffdf2;
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 12px 24px rgba(212, 175, 55, 0.28);
+    }
+
     .profile-header {
       text-align: center;
     }
@@ -270,6 +305,33 @@
 
     .section-block {
       margin-top: 8px;
+    }
+
+    .profile-intro-card {
+      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
+      border: 1px solid rgba(11, 37, 69, 0.08);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      margin: 10px 0 12px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .profile-intro-card p,
+    .profile-intro-card li {
+      font-size: 0.9rem;
+      line-height: 1.8;
+      color: var(--text-main);
+      margin-bottom: 0;
+    }
+
+    .profile-intro-card ul {
+      padding-left: 1.15rem;
+      margin-top: 8px;
+      margin-bottom: 4px;
+    }
+
+    .profile-intro-card li {
+      margin-bottom: 6px;
     }
 
     .section-title {
@@ -324,7 +386,17 @@
     .price-section-card .price-header {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
+    }
+
+    .price-section-card .price-item {
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(11, 37, 69, 0.08);
+    }
+
+    .price-section-card .price-item:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
     }
 
     .price-section-card .price-title {
@@ -335,6 +407,15 @@
       white-space: normal;
       overflow: visible;
       text-overflow: clip;
+      display: block;
+    }
+
+    .price-section-card .price-value {
+      margin-top: 4px;
+      font-size: 0.9rem;
+      color: var(--primary-light);
+      font-weight: 700;
+      line-height: 1.5;
     }
 
     .price-section-card .price-desc {
@@ -611,34 +692,81 @@
     <h1 class="main-title">なめがわブラス・ラボ</h1>
     <div class="sub-title">代表・トランペット奏者 佐々木 久和</div>
     <div class="tagline">音を運び、夢を響かせる</div>
+
+    <div class="bio-links" style="margin-bottom: 12px;">
+      <a href="#lesson-section" class="bio-link">レッスン料金を見る</a>
+      <a href="#video-section" class="bio-link">演奏動画を見る</a>
+      <a href="#pdf-section" class="bio-link">PDF資料を見る</a>
+      <a href="#contact-section" class="bio-link">お問い合わせ</a>
+    </div>
     
+    <h2 class="section-title" style="margin-top: 8px; margin-bottom: 4px;">プロフィール・代表ご挨拶</h2>
+    <div class="profile-intro-card">
+      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 0 0 10px;">代表者</h3>
+      <p style="margin-bottom: 10px; text-align: left;"><strong>佐々木 久和（ささき ひさかず）</strong></p>
+      <p style="text-align: left;">33年間にわたる自衛隊音楽隊員としてのキャリアを通じて、子どもから大人まで幅広い世代への演奏・指導に従事してきました。独立後は滑川町や比企地域を中心に、小・中学校の吹奏楽部指導や、個人レッスンを行っています。</p>
+      <p style="margin-top: 10px; text-align: left;">また、事業用車両（黒ナンバー）を活用し、専門知識を持つ奏者自らが大切な楽器を安全に運搬し、現地での技術指導まで一括でサポートする独自のサービスも展開しています。</p>
+
+      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">なめがわブラス・ラボ誕生への想い</h3>
+      <p>2010年にこの滑川町に拠点を構え、年末のボランティア演奏活動や自治会活動に関わる中で、この街の温かさと、少しずつ変わりゆく地域の姿を感じてきました。地域を支えてきたシニア世代と、これからの若い世代の間に生まれつつある心の距離を埋め、世代を超えて笑顔でつながる場所をつくりたいという想いから、<span style="font-weight: 700; color: var(--primary-color);">「なめがわブラス・ラボ」</span>を立ち上げました。</p>
+
+      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">音楽と文化で育む、広がる3つの輪</h3>
+      <ul>
+        <li><strong>みんなの居場所づくり：</strong>子どもからシニアまで、音楽を通して気軽に集まり、一緒に楽しめる時間と居場所を提供します。</li>
+        <li><strong>健康と笑顔の支援：</strong>楽器演奏や歌、音楽に合わせた身体運動を通して、心と体の健康を支えます。</li>
+        <li><strong>世代を超えた交流：</strong>子どもたちの弾ける演奏と、大人の温かな視線が交わる場をつくります。</li>
+      </ul>
+
+      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px; text-align: left;">主な事業内容</h3>
+      <ul style="text-align: left; padding-left: 1.1rem;">
+        <li>音楽教育・吹奏楽指導</li>
+        <li>個人レッスン（2026.8現在、40名以上指導中）</li>
+        <li>公演企画・プロデュース</li>
+        <li>楽器輸送＆指導のワンストップサポート</li>
+      </ul>
+    </div>
+
     <div class="profile-card">
-      <h2 class="section-title">プロフィール</h2>
+      <h2 class="section-title">音楽歴</h2>
       <p>1969 年生まれ、茨城県牛久市出身。小学校 4 年鼓笛隊のトランペットを始める。東京コンセルヴァトワール尚美専門コース、トランペット専攻、杉木峯夫(東京藝術大学名誉教授)に師事 1991 年卒業。同年陸上自衛隊に入隊、第 11 音楽隊(札幌市)、東北方面音楽隊(仙台市)、第 1 音楽隊（東京都）、東部方面音楽隊(朝霞市)などで勤務。2023年 9 月、自衛隊を退職。現在、フリーランス、kazoo ささきトランペット教室、アンサンブルNEST 主宰。また、EYS 音楽教室インストラクター、熊谷・深谷カルチャーで演奏指導などをしている。</p>
     </div>
 
     <div class="bio-card">
-      トランペット歴30年以上のプロ奏者が届ける、出張演奏＆レッスン！<br>
-      「力を抜いてリラックスして吹く独自メソッド」で、初心者から上達を目指す方まで丁寧にサポートします。
+      <p class="bio-intro">トランペット歴30年以上のプロ奏者として、出張演奏・レッスン・企画支援まで幅広く対応しています。</p>
+      <p class="bio-intro">「力を抜いてリラックスして吹く」独自メソッドで、初心者から上達を目指す方まで丁寧にサポートします。</p>
+      <div class="bio-links">
+        <a href="#lesson-section" class="bio-link">レッスン料金を見る</a>
+        <a href="#video-section" class="bio-link">演奏動画を見る</a>
+        <a href="#pdf-section" class="bio-link">PDF資料を見る</a>
+        <a href="#contact-section" class="bio-link">お問い合わせ</a>
+      </div>
     </div>
     <!-- トランペットレッスン料金表 -->
-  <h2 class="section-title">🎺 kazooささきトランペット教室</h2>
+  <h2 class="section-title" id="lesson-section">🎺 kazooささきトランペット教室</h2>
       <div class="tagline">レッスン料金</div>
   
   <div class="price-section-card">
     <div class="price-header">
-      <span class="price-title">個人レッスン（小学生）1回30分</span>
-      <p>月2回3,000円</p>
-      <span class="price-title">個人レッスン（中学生）1回45分</span>
-      <p>月2回5,000円</p>
-      <span class="price-title">個人レッスン（高校生以上）1回60分</span>
-      <p>基本1回7,000円</p>
-      <span class="price-title">その他（グループレッスン、部活動指導など、お問合わせください）</span>
+      <div class="price-item">
+        <span class="price-title">個人レッスン（小学生）1回30分</span>
+        <p class="price-value">月2回3,000円</p>
+      </div>
+      <div class="price-item">
+        <span class="price-title">個人レッスン（中学生）1回45分</span>
+        <p class="price-value">月2回5,000円</p>
+      </div>
+      <div class="price-item">
+        <span class="price-title">個人レッスン（高校生以上）1回60分</span>
+        <p class="price-value">基本1回7,000円</p>
+      </div>
+      <div class="price-item">
+        <span class="price-title">その他（グループレッスン、部活動指導など、お問合わせください）</span>
+      </div>
     </div>
     <div class="price-desc">マンツーマンで基礎から応用まで自分のペースでじっくり学べます。</div>
   </header>
 
-  <h2 class="section-title">🎬 演奏動画・YouTube</h2>
+  <h2 class="section-title" id="video-section">🎬 演奏動画・YouTube</h2>
   <div class="youtube-section-card">
     <a href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer" class="btn-link btn-youtube">
       <div class="btn-header">
@@ -651,7 +779,7 @@
   <div class="tagline" style="margin-top: 4px;">資料は順次公開予定です</div>
 
   <!-- 出張演奏・企画提案書（PDFリンク集） -->
-  <h2 class="section-title">出張演奏・企画提案書（PDF）</h2>
+  <h2 class="section-title" id="pdf-section">出張演奏・企画提案書（PDF）</h2>
 
   <div class="pdf-links-list">
 
@@ -700,7 +828,7 @@
 
   <!-- フッター -->
   <footer class="footer">
-    <div class="contact-card">
+    <div class="contact-card" id="contact-section">
       <div class="contact-title">お問い合わせ・ご依頼</div>
       <p style="font-weight: 700; color: #000;">【お客様専用窓口です】</p>
       <p>演奏依頼</p>
