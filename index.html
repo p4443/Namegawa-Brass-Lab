@@ -334,6 +334,114 @@
       margin-bottom: 6px;
     }
 
+    .updates-section {
+      margin: 16px 0 12px;
+    }
+
+    .updates-card {
+      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
+      border: 1px solid rgba(11, 37, 69, 0.08);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .updates-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .updates-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--primary-color);
+    }
+
+    .updates-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .updates-item {
+      border-left: 3px solid var(--accent-color);
+      background: rgba(255, 255, 255, 0.86);
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+
+    .updates-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .updates-date {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .updates-tag {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--primary-light);
+      background: rgba(212, 175, 55, 0.16);
+      padding: 2px 7px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .updates-content {
+      font-size: 0.86rem;
+      line-height: 1.7;
+      color: var(--text-main);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .updates-media {
+      margin-top: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .updates-media img,
+    .updates-media video,
+    .updates-media iframe {
+      width: 100%;
+      border-radius: 10px;
+      display: block;
+      background: #f8fafc;
+    }
+
+    .updates-media video {
+      max-height: 260px;
+      object-fit: cover;
+    }
+
+    .updates-media iframe {
+      aspect-ratio: 16 / 9;
+      border: 0;
+    }
+
+    .updates-loading,
+    .updates-empty {
+      text-align: center;
+      padding: 12px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      line-height: 1.7;
+    }
+
     .section-title {
       font-size: 1.06rem;
       font-weight: 700;
@@ -745,6 +853,17 @@
       </ul>
     </div>
 
+    <section class="updates-section">
+      <div class="updates-card">
+        <div class="updates-header">
+          <div class="updates-title">💬 つぶやき・お役立ち情報</div>
+        </div>
+        <div id="updates-list">
+          <div class="updates-loading">読み込み中...</div>
+        </div>
+      </div>
+    </section>
+
     <div class="profile-card">
       <h2 class="section-title">音楽歴</h2>
       <p>1969 年生まれ、茨城県牛久市出身。小学校 4 年鼓笛隊のトランペットを始める。東京コンセルヴァトワール尚美専門コース、トランペット専攻、杉木峯夫(東京藝術大学名誉教授)に師事 1991 年卒業。同年陸上自衛隊に入隊、第 11 音楽隊(札幌市)、東北方面音楽隊(仙台市)、第 1 音楽隊（東京都）、東部方面音楽隊(朝霞市)などで勤務。2023年 9 月、自衛隊を退職。現在、フリーランス、kazoo ささきトランペット教室、アンサンブルNEST 主宰。また、EYS 音楽教室インストラクター、熊谷・深谷カルチャーで演奏指導などをしている。</p>
@@ -753,12 +872,6 @@
     <div class="bio-card">
       <p class="bio-intro">トランペット歴30年以上のプロ奏者として、出張演奏・レッスン・企画支援まで幅広く対応しています。</p>
       <p class="bio-intro">「力を抜いてリラックスして吹く」独自メソッドで、初心者から上達を目指す方まで丁寧にサポートします。</p>
-      <div class="bio-links">
-        <a href="#lesson-section" class="bio-link">レッスン料金を見る</a>
-        <a href="#video-section" class="bio-link">演奏動画を見る</a>
-        <a href="#pdf-section" class="bio-link">PDF資料を見る</a>
-        <a href="#contact-section" class="bio-link">お問い合わせ</a>
-      </div>
     </div>
     <!-- トランペットレッスン料金表 -->
   <h2 class="section-title" id="lesson-section">🎺 kazooささきトランペット教室</h2>
@@ -877,6 +990,119 @@
 </div>
 
 <script>
+  async function loadUpdates() {
+    const container = document.getElementById('updates-list');
+    if (!container) return;
+
+    const fallbackItems = [
+      {
+        date: '2026-08-04',
+        category: 'お役立ち',
+        content: '更新内容は data/updates.json から管理できます。'
+      }
+    ];
+
+    try {
+      const response = await fetch('data/updates.txt', { cache: 'no-store' });
+      if (!response.ok) throw new Error('更新データの取得に失敗しました');
+
+      const text = await response.text();
+      const items = parseUpdatesText(text);
+      renderUpdates(container, items.length > 0 ? items : fallbackItems);
+    } catch (error) {
+      console.warn('更新情報の読み込みに失敗したため、初期表示を使用します。', error);
+      renderUpdates(container, fallbackItems);
+    }
+  }
+
+  function parseUpdatesText(text) {
+    return text
+      .split(/\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const [date, category, ...contentParts] = line.split('|');
+        const contentText = contentParts.join('|').trim();
+        const mediaMatch = contentText.match(/\[(image|video):([^\]]+)\]/i);
+
+        return {
+          date: (date || '').trim(),
+          category: (category || 'つぶやき').trim(),
+          content: contentText.replace(/\[(image|video):([^\]]+)\]/gi, '').trim(),
+          mediaType: mediaMatch ? mediaMatch[1].toLowerCase() : '',
+          mediaUrl: mediaMatch ? mediaMatch[2].trim() : ''
+        };
+      });
+  }
+
+  function renderUpdates(container, items) {
+    if (!container) return;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      container.innerHTML = '<div class="updates-empty">表示する内容がありません。</div>';
+      return;
+    }
+
+    const html = items.map((item) => {
+      const date = item.date || '';
+      const category = item.category || 'つぶやき';
+      const content = item.content || '';
+      const mediaType = item.mediaType || '';
+      const mediaUrl = item.mediaUrl || '';
+
+      let mediaHtml = '';
+      if (mediaType === 'image' && mediaUrl) {
+        mediaHtml = `<div class="updates-media"><img src="${escapeHtml(mediaUrl)}" alt="更新画像"></div>`;
+      } else if (mediaType === 'video' && mediaUrl) {
+        const embedHtml = buildVideoEmbed(mediaUrl);
+        mediaHtml = embedHtml;
+      }
+
+      return `
+        <div class="updates-item">
+          <div class="updates-meta">
+            <span class="updates-date">${escapeHtml(date)}</span>
+            <span class="updates-tag">${escapeHtml(category)}</span>
+          </div>
+          <div class="updates-content">${escapeHtml(content)}</div>
+          ${mediaHtml}
+        </div>
+      `;
+    }).join('');
+
+    container.innerHTML = `<div class="updates-list">${html}</div>`;
+  }
+
+  function buildVideoEmbed(url) {
+    const youtubeEmbedUrl = getYouTubeEmbedUrl(url);
+    if (youtubeEmbedUrl) {
+      return `<div class="updates-media"><iframe src="${escapeHtml(youtubeEmbedUrl)}" title="YouTube動画" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+    }
+
+    return `<div class="updates-media"><video controls playsinline preload="metadata" src="${escapeHtml(url)}"></video></div>`;
+  }
+
+  function getYouTubeEmbedUrl(url) {
+    if (!url) return '';
+
+    const trimmedUrl = url.trim();
+    const watchMatch = trimmedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
+    if (!watchMatch) return '';
+
+    const videoId = watchMatch[1];
+    return `https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0`;
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function closeVideo() {
     const overlay = document.getElementById('video-overlay');
     const container = document.getElementById('main-container');
@@ -898,6 +1124,8 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    loadUpdates();
+
     const video = document.getElementById('intro-video');
 
     if (!video) {

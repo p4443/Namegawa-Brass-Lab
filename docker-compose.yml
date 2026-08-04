@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: hp-site
+    ports:
+      - "8080:80"
+      - "8443:443"
+    volumes:
+      - .:/usr/share/nginx/html:ro
+      - ./certs:/etc/nginx/certs:ro
+    restart: unless-stopped
+    environment:
+      - NGINX_ENVSUBST_TEMPLATE_DIR=/etc/nginx/templates
