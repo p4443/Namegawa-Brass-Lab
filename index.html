@@ -930,12 +930,12 @@
           <button type="button" id="updates-toggle-editor" class="updates-action-btn">編集を開く</button>
         </div>
         <div id="updates-editor" class="updates-editor" hidden>
-          <p class="updates-editor-help">ここで入力した内容はその場で即反映されます（アップロード不要）。形式: 日付 | カテゴリ | 本文 [image:URL] または [video:URL]</p>
+          <p class="updates-editor-help">ここで保存した内容はこの端末のブラウザに即反映されます。形式: 日付 | カテゴリ | 本文 [image:URL] または [video:URL]</p>
           <textarea id="updates-editor-text" aria-label="更新内容エディタ"></textarea>
           <div class="updates-actions">
             <button type="button" id="updates-save" class="updates-action-btn primary">保存して反映</button>
             <button type="button" id="updates-reload" class="updates-action-btn">ファイル内容を再読込</button>
-            <button type="button" id="updates-clear-local" class="updates-action-btn">入力欄をクリア</button>
+            <button type="button" id="updates-clear-local" class="updates-action-btn">端末保存を解除</button>
           </div>
           <div id="updates-editor-status" class="updates-editor-status"></div>
         </div>
@@ -1083,6 +1083,7 @@
 </div>
 
 <script>
+  const UPDATES_STORAGE_KEY = 'namegawa-updates-local-text-v1';
   let latestUpdatesText = '';
 
   async function loadUpdates() {
@@ -1096,6 +1097,16 @@
         content: '更新内容は data/updates.txt から管理できます。'
       }
     ];
+
+    const localText = getLocalUpdatesText();
+    if (localText) {
+      latestUpdatesText = localText;
+      const localItems = parseUpdatesText(localText);
+      renderUpdates(container, localItems.length > 0 ? localItems : fallbackItems);
+      syncEditorText(localText);
+      setEditorStatus('端末保存データを表示中です。', false);
+      return;
+    }
 
     try {
       const response = await fetch('data/updates.txt', { cache: 'no-store' });
@@ -1115,10 +1126,38 @@
     }
   }
 
+  function getLocalUpdatesText() {
+    try {
+      return localStorage.getItem(UPDATES_STORAGE_KEY) || '';
+    } catch (e) {
+      return '';
+    }
+  }
+
+  function setLocalUpdatesText(text) {
+    try {
+      localStorage.setItem(UPDATES_STORAGE_KEY, text);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function clearLocalUpdatesText() {
+    try {
+      localStorage.removeItem(UPDATES_STORAGE_KEY);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   function syncEditorText(text) {
     const textarea = document.getElementById('updates-editor-text');
     if (!textarea) return;
-    textarea.value = text || '';
+    if (!textarea.value.trim()) {
+      textarea.value = text || '';
+    }
   }
 
   function setEditorStatus(message, isError) {
@@ -1161,20 +1200,32 @@
         }
       ];
 
+      const ok = setLocalUpdatesText(rawText);
+      if (!ok) {
+        setEditorStatus('端末への保存に失敗しました。ブラウザ設定をご確認ください。', true);
+        return;
+      }
+
       latestUpdatesText = rawText;
       renderUpdates(container, items.length > 0 ? items : fallbackItems);
-      setEditorStatus('反映しました。ページ再読込でファイル内容に戻ります。', false);
+      setEditorStatus('保存して反映しました。アップロードは不要です。', false);
     });
 
     reloadBtn.addEventListener('click', async () => {
-      textarea.value = '';
       await loadUpdates();
       setEditorStatus('最新内容を再読込しました。', false);
     });
 
-    clearBtn.addEventListener('click', () => {
+    clearBtn.addEventListener('click', async () => {
+      const ok = clearLocalUpdatesText();
+      if (!ok) {
+        setEditorStatus('端末保存の解除に失敗しました。', true);
+        return;
+      }
+
       textarea.value = '';
-      setEditorStatus('入力欄をクリアしました。', false);
+      await loadUpdates();
+      setEditorStatus('端末保存を解除しました。ファイル内容に戻しています。', false);
     });
 
     if (latestUpdatesText) {
