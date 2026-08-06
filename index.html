@@ -442,71 +442,6 @@
       line-height: 1.7;
     }
 
-    .updates-actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    .updates-action-btn {
-      appearance: none;
-      border: 1px solid rgba(11, 37, 69, 0.15);
-      background: #ffffff;
-      color: var(--primary-color);
-      border-radius: 999px;
-      padding: 7px 12px;
-      font-size: 0.78rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .updates-action-btn.primary {
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-      color: #ffffff;
-      border-color: transparent;
-    }
-
-    .updates-editor {
-      margin-top: 12px;
-      background: rgba(255, 255, 255, 0.88);
-      border: 1px solid rgba(11, 37, 69, 0.1);
-      border-radius: 12px;
-      padding: 10px;
-    }
-
-    .updates-editor[hidden] {
-      display: none;
-    }
-
-    .updates-editor-help {
-      font-size: 0.76rem;
-      color: var(--text-muted);
-      line-height: 1.6;
-      margin-bottom: 8px;
-    }
-
-    .updates-editor textarea {
-      width: 100%;
-      min-height: 140px;
-      border: 1px solid rgba(11, 37, 69, 0.15);
-      border-radius: 10px;
-      padding: 10px;
-      font-size: 0.84rem;
-      line-height: 1.6;
-      resize: vertical;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      color: var(--text-main);
-      background: #ffffff;
-    }
-
-    .updates-editor-status {
-      margin-top: 8px;
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      min-height: 1.2em;
-    }
-
     .section-title {
       font-size: 1.06rem;
       font-weight: 700;
@@ -926,19 +861,7 @@
         <div id="updates-list">
           <div class="updates-loading">読み込み中...</div>
         </div>
-        <div class="updates-actions">
-          <button type="button" id="updates-toggle-editor" class="updates-action-btn">編集を開く</button>
-        </div>
-        <div id="updates-editor" class="updates-editor" hidden>
-          <p class="updates-editor-help">ここで保存した内容はこの端末のブラウザに即反映されます。形式: 日付 | カテゴリ | 本文 [image:URL] または [video:URL]</p>
-          <textarea id="updates-editor-text" aria-label="更新内容エディタ"></textarea>
-          <div class="updates-actions">
-            <button type="button" id="updates-save" class="updates-action-btn primary">保存して反映</button>
-            <button type="button" id="updates-reload" class="updates-action-btn">ファイル内容を再読込</button>
-            <button type="button" id="updates-clear-local" class="updates-action-btn">端末保存を解除</button>
-          </div>
-          <div id="updates-editor-status" class="updates-editor-status"></div>
-        </div>
+        <p style="margin-top: 10px; font-size: 0.78rem; color: var(--text-muted);">更新は VS Code の data/updates.txt を編集してください。</p>
       </div>
     </section>
 
@@ -1083,9 +1006,6 @@
 </div>
 
 <script>
-  const UPDATES_STORAGE_KEY = 'namegawa-updates-local-text-v1';
-  let latestUpdatesText = '';
-
   async function loadUpdates() {
     const container = document.getElementById('updates-list');
     if (!container) return;
@@ -1098,138 +1018,16 @@
       }
     ];
 
-    const localText = getLocalUpdatesText();
-    if (localText) {
-      latestUpdatesText = localText;
-      const localItems = parseUpdatesText(localText);
-      renderUpdates(container, localItems.length > 0 ? localItems : fallbackItems);
-      syncEditorText(localText);
-      setEditorStatus('端末保存データを表示中です。', false);
-      return;
-    }
-
     try {
       const response = await fetch('data/updates.txt', { cache: 'no-store' });
       if (!response.ok) throw new Error('更新データの取得に失敗しました');
 
       const text = await response.text();
-      latestUpdatesText = text;
       const items = parseUpdatesText(text);
       renderUpdates(container, items.length > 0 ? items : fallbackItems);
-      syncEditorText(text);
-      setEditorStatus('ファイル内容を表示中です。', false);
     } catch (error) {
       console.warn('更新情報の読み込みに失敗したため、初期表示を使用します。', error);
       renderUpdates(container, fallbackItems);
-      syncEditorText('');
-      setEditorStatus('読み込みに失敗しました。保存して反映を使用してください。', true);
-    }
-  }
-
-  function getLocalUpdatesText() {
-    try {
-      return localStorage.getItem(UPDATES_STORAGE_KEY) || '';
-    } catch (e) {
-      return '';
-    }
-  }
-
-  function setLocalUpdatesText(text) {
-    try {
-      localStorage.setItem(UPDATES_STORAGE_KEY, text);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function clearLocalUpdatesText() {
-    try {
-      localStorage.removeItem(UPDATES_STORAGE_KEY);
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  function syncEditorText(text) {
-    const textarea = document.getElementById('updates-editor-text');
-    if (!textarea) return;
-    if (!textarea.value.trim()) {
-      textarea.value = text || '';
-    }
-  }
-
-  function setEditorStatus(message, isError) {
-    const status = document.getElementById('updates-editor-status');
-    if (!status) return;
-    status.textContent = message || '';
-    status.style.color = isError ? '#b91c1c' : 'var(--text-muted)';
-  }
-
-  function initUpdatesEditor() {
-    const toggleBtn = document.getElementById('updates-toggle-editor');
-    const editor = document.getElementById('updates-editor');
-    const textarea = document.getElementById('updates-editor-text');
-    const saveBtn = document.getElementById('updates-save');
-    const reloadBtn = document.getElementById('updates-reload');
-    const clearBtn = document.getElementById('updates-clear-local');
-    const container = document.getElementById('updates-list');
-
-    if (!toggleBtn || !editor || !textarea || !saveBtn || !reloadBtn || !clearBtn || !container) return;
-
-    toggleBtn.addEventListener('click', () => {
-      const isHidden = editor.hasAttribute('hidden');
-      if (isHidden) {
-        editor.removeAttribute('hidden');
-        toggleBtn.textContent = '編集を閉じる';
-      } else {
-        editor.setAttribute('hidden', '');
-        toggleBtn.textContent = '編集を開く';
-      }
-    });
-
-    saveBtn.addEventListener('click', () => {
-      const rawText = textarea.value || '';
-      const items = parseUpdatesText(rawText);
-      const fallbackItems = [
-        {
-          date: '2026-08-04',
-          category: 'お役立ち',
-          content: '更新内容を入力してください。'
-        }
-      ];
-
-      const ok = setLocalUpdatesText(rawText);
-      if (!ok) {
-        setEditorStatus('端末への保存に失敗しました。ブラウザ設定をご確認ください。', true);
-        return;
-      }
-
-      latestUpdatesText = rawText;
-      renderUpdates(container, items.length > 0 ? items : fallbackItems);
-      setEditorStatus('保存して反映しました。アップロードは不要です。', false);
-    });
-
-    reloadBtn.addEventListener('click', async () => {
-      await loadUpdates();
-      setEditorStatus('最新内容を再読込しました。', false);
-    });
-
-    clearBtn.addEventListener('click', async () => {
-      const ok = clearLocalUpdatesText();
-      if (!ok) {
-        setEditorStatus('端末保存の解除に失敗しました。', true);
-        return;
-      }
-
-      textarea.value = '';
-      await loadUpdates();
-      setEditorStatus('端末保存を解除しました。ファイル内容に戻しています。', false);
-    });
-
-    if (latestUpdatesText) {
-      textarea.value = latestUpdatesText;
     }
   }
 
@@ -1387,7 +1185,6 @@
 
   document.addEventListener('DOMContentLoaded', async () => {
     await loadUpdates();
-    initUpdatesEditor();
 
     const video = document.getElementById('intro-video');
 
