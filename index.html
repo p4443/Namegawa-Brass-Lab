@@ -442,6 +442,71 @@
       line-height: 1.7;
     }
 
+    .updates-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .updates-action-btn {
+      appearance: none;
+      border: 1px solid rgba(11, 37, 69, 0.15);
+      background: #ffffff;
+      color: var(--primary-color);
+      border-radius: 999px;
+      padding: 7px 12px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .updates-action-btn.primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: #ffffff;
+      border-color: transparent;
+    }
+
+    .updates-editor {
+      margin-top: 12px;
+      background: rgba(255, 255, 255, 0.88);
+      border: 1px solid rgba(11, 37, 69, 0.1);
+      border-radius: 12px;
+      padding: 10px;
+    }
+
+    .updates-editor[hidden] {
+      display: none;
+    }
+
+    .updates-editor-help {
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 8px;
+    }
+
+    .updates-editor textarea {
+      width: 100%;
+      min-height: 140px;
+      border: 1px solid rgba(11, 37, 69, 0.15);
+      border-radius: 10px;
+      padding: 10px;
+      font-size: 0.84rem;
+      line-height: 1.6;
+      resize: vertical;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      color: var(--text-main);
+      background: #ffffff;
+    }
+
+    .updates-editor-status {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      min-height: 1.2em;
+    }
+
     .section-title {
       font-size: 1.06rem;
       font-weight: 700;
@@ -861,6 +926,19 @@
         <div id="updates-list">
           <div class="updates-loading">読み込み中...</div>
         </div>
+        <div class="updates-actions">
+          <button type="button" id="updates-toggle-editor" class="updates-action-btn">編集を開く</button>
+        </div>
+        <div id="updates-editor" class="updates-editor" hidden>
+          <p class="updates-editor-help">ここで入力した内容はその場で即反映されます（アップロード不要）。形式: 日付 | カテゴリ | 本文 [image:URL] または [video:URL]</p>
+          <textarea id="updates-editor-text" aria-label="更新内容エディタ"></textarea>
+          <div class="updates-actions">
+            <button type="button" id="updates-save" class="updates-action-btn primary">保存して反映</button>
+            <button type="button" id="updates-reload" class="updates-action-btn">ファイル内容を再読込</button>
+            <button type="button" id="updates-clear-local" class="updates-action-btn">入力欄をクリア</button>
+          </div>
+          <div id="updates-editor-status" class="updates-editor-status"></div>
+        </div>
       </div>
     </section>
 
@@ -915,15 +993,30 @@
 
   <div class="pdf-links-list">
 
-    <!-- 新着PDF（自動更新: 最新3件） -->
-    <div class="pdf-new">
-      <h3 style="margin-bottom:8px;">📢 新着資料</h3>
-      <ul style="list-style:none; padding-left:0; margin-bottom:12px;">
-        <li style="margin-bottom:6px;"><a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案①.pdf'), '_blank')" rel="noopener noreferrer">① トランペット・カフェライブ企画案① <span class="pdf-badge">PDF</span></a></li>
-        <li style="margin-bottom:6px;"><a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案②.pdf'), '_blank')" rel="noopener noreferrer">② トランペット・カフェライブ企画案② <span class="pdf-badge">PDF</span></a></li>
-        <li style="margin-bottom:6px;"><a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案③.pdf'), '_blank')" rel="noopener noreferrer">③ トランペット・カフェライブ企画案③ <span class="pdf-badge">PDF</span></a></li>
-      </ul>
-    </div>
+    <!-- 新着PDF -->
+    <a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案①.pdf'), '_blank'); return false;" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">📢 新着資料 ① トランペット・カフェライブ企画案① <span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">新着</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
+
+    <a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案②.pdf'), '_blank'); return false;" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">📢 新着資料 ② トランペット・カフェライブ企画案② <span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">新着</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
+
+    <a href="#" onclick="window.open(encodeURI('pdf/トランペット・カフェライブ企画案③.pdf'), '_blank'); return false;" rel="noopener noreferrer" class="btn-link">
+      <div class="btn-header">
+        <span class="btn-title">📢 新着資料 ③ トランペット・カフェライブ企画案③ <span class="pdf-badge">PDF</span></span>
+        <span class="duration-badge">新着</span>
+      </div>
+      <div class="btn-desc">PDF を新しいタブで開きます。</div>
+    </a>
 
     <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
       <div class="btn-header">
@@ -990,6 +1083,8 @@
 </div>
 
 <script>
+  let latestUpdatesText = '';
+
   async function loadUpdates() {
     const container = document.getElementById('updates-list');
     if (!container) return;
@@ -998,7 +1093,7 @@
       {
         date: '2026-08-04',
         category: 'お役立ち',
-        content: '更新内容は data/updates.json から管理できます。'
+        content: '更新内容は data/updates.txt から管理できます。'
       }
     ];
 
@@ -1007,11 +1102,83 @@
       if (!response.ok) throw new Error('更新データの取得に失敗しました');
 
       const text = await response.text();
+      latestUpdatesText = text;
       const items = parseUpdatesText(text);
       renderUpdates(container, items.length > 0 ? items : fallbackItems);
+      syncEditorText(text);
+      setEditorStatus('ファイル内容を表示中です。', false);
     } catch (error) {
       console.warn('更新情報の読み込みに失敗したため、初期表示を使用します。', error);
       renderUpdates(container, fallbackItems);
+      syncEditorText('');
+      setEditorStatus('読み込みに失敗しました。保存して反映を使用してください。', true);
+    }
+  }
+
+  function syncEditorText(text) {
+    const textarea = document.getElementById('updates-editor-text');
+    if (!textarea) return;
+    textarea.value = text || '';
+  }
+
+  function setEditorStatus(message, isError) {
+    const status = document.getElementById('updates-editor-status');
+    if (!status) return;
+    status.textContent = message || '';
+    status.style.color = isError ? '#b91c1c' : 'var(--text-muted)';
+  }
+
+  function initUpdatesEditor() {
+    const toggleBtn = document.getElementById('updates-toggle-editor');
+    const editor = document.getElementById('updates-editor');
+    const textarea = document.getElementById('updates-editor-text');
+    const saveBtn = document.getElementById('updates-save');
+    const reloadBtn = document.getElementById('updates-reload');
+    const clearBtn = document.getElementById('updates-clear-local');
+    const container = document.getElementById('updates-list');
+
+    if (!toggleBtn || !editor || !textarea || !saveBtn || !reloadBtn || !clearBtn || !container) return;
+
+    toggleBtn.addEventListener('click', () => {
+      const isHidden = editor.hasAttribute('hidden');
+      if (isHidden) {
+        editor.removeAttribute('hidden');
+        toggleBtn.textContent = '編集を閉じる';
+      } else {
+        editor.setAttribute('hidden', '');
+        toggleBtn.textContent = '編集を開く';
+      }
+    });
+
+    saveBtn.addEventListener('click', () => {
+      const rawText = textarea.value || '';
+      const items = parseUpdatesText(rawText);
+      const fallbackItems = [
+        {
+          date: '2026-08-04',
+          category: 'お役立ち',
+          content: '更新内容を入力してください。'
+        }
+      ];
+
+      latestUpdatesText = rawText;
+      renderUpdates(container, items.length > 0 ? items : fallbackItems);
+      setEditorStatus('反映しました。ページ再読込でファイル内容に戻ります。', false);
+    });
+
+    reloadBtn.addEventListener('click', async () => {
+      textarea.value = '';
+      await loadUpdates();
+      setEditorStatus('最新内容を再読込しました。', false);
+    });
+
+    clearBtn.addEventListener('click', () => {
+      textarea.value = '';
+      setEditorStatus('入力欄をクリアしました。', false);
+    });
+
+    if (latestUpdatesText) {
+      textarea.value = latestUpdatesText;
     }
   }
 
@@ -1019,20 +1186,64 @@
     return text
       .split(/\n/)
       .map((line) => line.trim())
-      .filter(Boolean)
+      .filter((line) => Boolean(line) && !line.startsWith('#'))
       .map((line) => {
         const [date, category, ...contentParts] = line.split('|');
         const contentText = contentParts.join('|').trim();
-        const mediaMatch = contentText.match(/\[(image|video):([^\]]+)\]/i);
+        const mediaInfo = extractMediaInfo(contentText);
 
         return {
           date: (date || '').trim(),
           category: (category || 'つぶやき').trim(),
-          content: contentText.replace(/\[(image|video):([^\]]+)\]/gi, '').trim(),
-          mediaType: mediaMatch ? mediaMatch[1].toLowerCase() : '',
-          mediaUrl: mediaMatch ? mediaMatch[2].trim() : ''
+          content: mediaInfo.content,
+          mediaType: mediaInfo.mediaType,
+          mediaUrl: mediaInfo.mediaUrl
         };
       });
+  }
+
+  function extractMediaInfo(contentText) {
+    const mediaTagRegex = /\[(image|video|写真|動画)\s*[:：]\s*([^\]]+)\]/i;
+    const match = contentText.match(mediaTagRegex);
+
+    if (!match) {
+      return {
+        content: contentText,
+        mediaType: '',
+        mediaUrl: ''
+      };
+    }
+
+    const rawType = (match[1] || '').toLowerCase();
+    const mediaType = rawType === '写真' ? 'image' : rawType === '動画' ? 'video' : rawType;
+    const mediaUrl = normalizeMediaUrl((match[2] || '').trim(), mediaType);
+    const content = contentText.replace(mediaTagRegex, '').trim();
+
+    return {
+      content,
+      mediaType,
+      mediaUrl
+    };
+  }
+
+  function normalizeMediaUrl(rawUrl, mediaType) {
+    if (!rawUrl) return '';
+
+    // Accept absolute URLs and root-relative paths as-is.
+    if (/^(https?:\/\/|\/|data:|blob:)/i.test(rawUrl)) {
+      return rawUrl;
+    }
+
+    // If only a file name is provided, resolve it under data/media.
+    if (!rawUrl.includes('/')) {
+      return `data/media/${rawUrl}`;
+    }
+
+    if (mediaType === 'image' || mediaType === 'video') {
+      return rawUrl;
+    }
+
+    return rawUrl;
   }
 
   function renderUpdates(container, items) {
@@ -1123,8 +1334,9 @@
     container.classList.add('visible');
   }
 
-  document.addEventListener('DOMContentLoaded', () => {
-    loadUpdates();
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadUpdates();
+    initUpdatesEditor();
 
     const video = document.getElementById('intro-video');
 
