@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "certs"
+		},
+		{
+			"path": "data"
+		},
+		{
+			"path": "pdf"
+		},
+		{
+			"path": "video"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "certs"
+	}
+}

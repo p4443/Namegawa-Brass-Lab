@@ -364,6 +364,7 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
+      scroll-snap-type: y proximity;
     }
 
     .updates-item {
@@ -371,6 +372,7 @@
       background: rgba(255, 255, 255, 0.86);
       padding: 10px 12px;
       border-radius: 12px;
+      scroll-snap-align: start;
     }
 
     .updates-meta {
@@ -442,6 +444,30 @@
       line-height: 1.7;
     }
 
+    #updates-list {
+      max-height: 300px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      padding-right: 4px;
+    }
+
+    #updates-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #updates-list::-webkit-scrollbar-thumb {
+      background: rgba(11, 37, 69, 0.24);
+      border-radius: 999px;
+    }
+
+    .section-scroll-hint {
+      margin-top: 8px;
+      font-size: 0.76rem;
+      color: var(--text-muted);
+      text-align: right;
+    }
+
     .section-title {
       font-size: 1.06rem;
       font-weight: 700;
@@ -465,11 +491,27 @@
     .pdf-links-list {
       display: grid;
       gap: 12px;
+      max-height: 330px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+      padding-right: 4px;
+      scroll-snap-type: y proximity;
+    }
+
+    .pdf-links-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .pdf-links-list::-webkit-scrollbar-thumb {
+      background: rgba(11, 37, 69, 0.24);
+      border-radius: 999px;
     }
 
     .pdf-links-list .btn-link {
       margin-bottom: 0;
       padding: 14px 15px;
+      scroll-snap-align: start;
     }
 
     .pdf-links-list .btn-header {
@@ -751,6 +793,7 @@
 
       .pdf-links-list {
         gap: 10px;
+        max-height: 320px;
       }
 
       .pdf-links-list .btn-link {
@@ -861,6 +904,7 @@
         <div id="updates-list">
           <div class="updates-loading">読み込み中...</div>
         </div>
+        <p class="section-scroll-hint">スクロールで全て表示できます</p>
       </div>
     </section>
 
@@ -896,6 +940,7 @@
       </div>
     </div>
     <div class="price-desc">マンツーマンで基礎から応用まで自分のペースでじっくり学べます。</div>
+  </div>
   </header>
 
   <h2 class="section-title" id="video-section">🎬 演奏動画・YouTube</h2>
@@ -916,7 +961,7 @@
   <div class="pdf-links-list">
 
     <!-- 新着PDF -->
-    <a href="pdf/トランペット・カフェライブ企画案①.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/cafe-live-plan-1.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案① <span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">新着</span>
@@ -924,7 +969,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/トランペット・カフェライブ企画案②.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/cafe-live-plan-2.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案② <span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">新着</span>
@@ -932,7 +977,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/トランペット・カフェライブ企画案③.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/cafe-live-plan-3.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案③ <span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">新着</span>
@@ -940,7 +985,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">👴👵デイサービス・シニア向け音楽会<span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">45分</span>
@@ -948,7 +993,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">☕終活相談会cafeライブ <span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">45分</span>
@@ -956,7 +1001,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">🎒学童保育向け体験ワークショップ<span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">60分</span>
@@ -964,7 +1009,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
 
-    <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link">
+    <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
       <div class="btn-header">
         <span class="btn-title">👶保育園・幼稚園向け出張ワークショップ<span class="pdf-badge">PDF</span></span>
         <span class="duration-badge">45分</span>
@@ -972,6 +1017,7 @@
       <div class="btn-desc">PDF を新しいタブで開きます。</div>
     </a>
   </div>
+  <p class="section-scroll-hint">スクロールで全て表示できます</p>
 
   <!-- フッター -->
   <footer class="footer">
@@ -1031,16 +1077,17 @@
   }
 
   function parseUpdatesText(text) {
-    return text
+    const items = text
       .split(/\n/)
       .map((line) => line.trim())
       .filter((line) => Boolean(line) && !line.startsWith('#'))
-      .map((line) => {
+      .map((line, index) => {
         const [date, category, ...contentParts] = line.split('|');
         const contentText = contentParts.join('|').trim();
         const mediaInfo = extractMediaInfo(contentText);
 
         return {
+          index,
           date: (date || '').trim(),
           category: (category || 'つぶやき').trim(),
           content: mediaInfo.content,
@@ -1048,10 +1095,32 @@
           mediaUrl: mediaInfo.mediaUrl
         };
       });
+
+    return items.sort((a, b) => {
+      const timeA = toDateValue(a.date);
+      const timeB = toDateValue(b.date);
+
+      if (timeA !== timeB) {
+        return timeB - timeA;
+      }
+
+      // Keep later written items first when dates are equal.
+      return b.index - a.index;
+    });
+  }
+
+  function toDateValue(dateText) {
+    if (!dateText) return 0;
+
+    const normalized = dateText.trim().replace(/\./g, '-').replace(/\//g, '-');
+    const parsed = new Date(normalized);
+    const time = parsed.getTime();
+
+    return Number.isNaN(time) ? 0 : time;
   }
 
   function extractMediaInfo(contentText) {
-    const mediaTagRegex = /\[(image|video|写真|動画)\s*[:：]\s*([^\]]+)\]/i;
+    const mediaTagRegex = /\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]/i;
     const match = contentText.match(mediaTagRegex);
 
     if (!match) {
@@ -1063,7 +1132,7 @@
     }
 
     const rawType = (match[1] || '').toLowerCase();
-    const mediaType = rawType === '写真' ? 'image' : rawType === '動画' ? 'video' : rawType;
+    const mediaType = rawType === '写真' ? 'image' : rawType === '動画' ? 'video' : rawType === '資料' ? 'pdf' : rawType;
     const mediaUrl = normalizeMediaUrl((match[2] || '').trim(), mediaType);
     const content = contentText.replace(mediaTagRegex, '').trim();
 
@@ -1115,6 +1184,8 @@
       } else if (mediaType === 'video' && mediaUrl) {
         const embedHtml = buildVideoEmbed(mediaUrl);
         mediaHtml = embedHtml;
+      } else if (mediaType === 'pdf' && mediaUrl) {
+        mediaHtml = `<div class="updates-media"><a href="${escapeHtml(mediaUrl)}" target="_blank" rel="noopener noreferrer">資料を開く</a></div>`;
       }
 
       return `
