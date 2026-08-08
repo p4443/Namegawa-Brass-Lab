@@ -902,7 +902,30 @@
           <div class="updates-title">💬 つぶやき・お役立ち情報</div>
         </div>
         <div id="updates-list">
-          <div class="updates-loading">読み込み中...</div>
+          {% if updates %}
+            <div class="updates-list">
+              {% for item in updates %}
+                <div class="updates-item">
+                  <div class="updates-meta">
+                    <span class="updates-date">{{ item.date }}</span>
+                    <span class="updates-tag">{{ item.category }}</span>
+                  </div>
+                  <div class="updates-content">{{ item.content }}</div>
+                  {% if item.media_type == "image" and item.media_url %}
+                    <div class="updates-media"><img src="{{ item.media_url }}" alt="更新画像"></div>
+                  {% elif item.media_type == "video" and item.youtube_embed_url %}
+                    <div class="updates-media"><iframe src="{{ item.youtube_embed_url }}" title="YouTube動画" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
+                  {% elif item.media_type == "video" and item.media_url %}
+                    <div class="updates-media"><video controls playsinline preload="metadata" src="{{ item.media_url }}"></video></div>
+                  {% elif item.media_type == "pdf" and item.media_url %}
+                    <div class="updates-media"><a href="{{ item.media_url }}" target="_blank" rel="noopener noreferrer">資料を開く</a></div>
+                  {% endif %}
+                </div>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="updates-empty">表示する内容がありません。</div>
+          {% endif %}
         </div>
         <p class="section-scroll-hint">スクロールで全て表示できます</p>
       </div>
@@ -1051,188 +1074,6 @@
 </div>
 
 <script>
-  async function loadUpdates() {
-    const container = document.getElementById('updates-list');
-    if (!container) return;
-
-    const fallbackItems = [
-      {
-        date: '2026-08-04',
-        category: 'お役立ち',
-        content: '更新内容は data/updates.txt から管理できます。'
-      }
-    ];
-
-    try {
-      const response = await fetch('data/updates.txt', { cache: 'no-store' });
-      if (!response.ok) throw new Error('更新データの取得に失敗しました');
-
-      const text = await response.text();
-      const items = parseUpdatesText(text);
-      renderUpdates(container, items.length > 0 ? items : fallbackItems);
-    } catch (error) {
-      console.warn('更新情報の読み込みに失敗したため、初期表示を使用します。', error);
-      renderUpdates(container, fallbackItems);
-    }
-  }
-
-  function parseUpdatesText(text) {
-    const items = text
-      .split(/\n/)
-      .map((line) => line.trim())
-      .filter((line) => Boolean(line) && !line.startsWith('#'))
-      .map((line, index) => {
-        const [date, category, ...contentParts] = line.split('|');
-        const contentText = contentParts.join('|').trim();
-        const mediaInfo = extractMediaInfo(contentText);
-
-        return {
-          index,
-          date: (date || '').trim(),
-          category: (category || 'つぶやき').trim(),
-          content: mediaInfo.content,
-          mediaType: mediaInfo.mediaType,
-          mediaUrl: mediaInfo.mediaUrl
-        };
-      });
-
-    return items.sort((a, b) => {
-      const timeA = toDateValue(a.date);
-      const timeB = toDateValue(b.date);
-
-      if (timeA !== timeB) {
-        return timeB - timeA;
-      }
-
-      // Keep later written items first when dates are equal.
-      return b.index - a.index;
-    });
-  }
-
-  function toDateValue(dateText) {
-    if (!dateText) return 0;
-
-    const normalized = dateText.trim().replace(/\./g, '-').replace(/\//g, '-');
-    const parsed = new Date(normalized);
-    const time = parsed.getTime();
-
-    return Number.isNaN(time) ? 0 : time;
-  }
-
-  function extractMediaInfo(contentText) {
-    const mediaTagRegex = /\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]/i;
-    const match = contentText.match(mediaTagRegex);
-
-    if (!match) {
-      return {
-        content: contentText,
-        mediaType: '',
-        mediaUrl: ''
-      };
-    }
-
-    const rawType = (match[1] || '').toLowerCase();
-    const mediaType = rawType === '写真' ? 'image' : rawType === '動画' ? 'video' : rawType === '資料' ? 'pdf' : rawType;
-    const mediaUrl = normalizeMediaUrl((match[2] || '').trim(), mediaType);
-    const content = contentText.replace(mediaTagRegex, '').trim();
-
-    return {
-      content,
-      mediaType,
-      mediaUrl
-    };
-  }
-
-  function normalizeMediaUrl(rawUrl, mediaType) {
-    if (!rawUrl) return '';
-
-    // Accept absolute URLs and root-relative paths as-is.
-    if (/^(https?:\/\/|\/|data:|blob:)/i.test(rawUrl)) {
-      return rawUrl;
-    }
-
-    // If only a file name is provided, resolve it under data/media.
-    if (!rawUrl.includes('/')) {
-      return `data/media/${rawUrl}`;
-    }
-
-    if (mediaType === 'image' || mediaType === 'video') {
-      return rawUrl;
-    }
-
-    return rawUrl;
-  }
-
-  function renderUpdates(container, items) {
-    if (!container) return;
-
-    if (!Array.isArray(items) || items.length === 0) {
-      container.innerHTML = '<div class="updates-empty">表示する内容がありません。</div>';
-      return;
-    }
-
-    const html = items.map((item) => {
-      const date = item.date || '';
-      const category = item.category || 'つぶやき';
-      const content = item.content || '';
-      const mediaType = item.mediaType || '';
-      const mediaUrl = item.mediaUrl || '';
-
-      let mediaHtml = '';
-      if (mediaType === 'image' && mediaUrl) {
-        mediaHtml = `<div class="updates-media"><img src="${escapeHtml(mediaUrl)}" alt="更新画像"></div>`;
-      } else if (mediaType === 'video' && mediaUrl) {
-        const embedHtml = buildVideoEmbed(mediaUrl);
-        mediaHtml = embedHtml;
-      } else if (mediaType === 'pdf' && mediaUrl) {
-        mediaHtml = `<div class="updates-media"><a href="${escapeHtml(mediaUrl)}" target="_blank" rel="noopener noreferrer">資料を開く</a></div>`;
-      }
-
-      return `
-        <div class="updates-item">
-          <div class="updates-meta">
-            <span class="updates-date">${escapeHtml(date)}</span>
-            <span class="updates-tag">${escapeHtml(category)}</span>
-          </div>
-          <div class="updates-content">${escapeHtml(content)}</div>
-          ${mediaHtml}
-        </div>
-      `;
-    }).join('');
-
-    container.innerHTML = `<div class="updates-list">${html}</div>`;
-  }
-
-  function buildVideoEmbed(url) {
-    const youtubeEmbedUrl = getYouTubeEmbedUrl(url);
-    if (youtubeEmbedUrl) {
-      return `<div class="updates-media"><iframe src="${escapeHtml(youtubeEmbedUrl)}" title="YouTube動画" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
-    }
-
-    return `<div class="updates-media"><video controls playsinline preload="metadata" src="${escapeHtml(url)}"></video></div>`;
-  }
-
-  function getYouTubeEmbedUrl(url) {
-    if (!url) return '';
-
-    const trimmedUrl = url.trim();
-    const watchMatch = trimmedUrl.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([a-zA-Z0-9_-]+)/i);
-    if (!watchMatch) return '';
-
-    const videoId = watchMatch[1];
-    return `https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0`;
-  }
-
-  function escapeHtml(str) {
-    if (!str) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
   function closeVideo() {
     const overlay = document.getElementById('video-overlay');
     const container = document.getElementById('main-container');
@@ -1253,9 +1094,7 @@
     container.classList.add('visible');
   }
 
-  document.addEventListener('DOMContentLoaded', async () => {
-    await loadUpdates();
-
+  document.addEventListener('DOMContentLoaded', () => {
     const video = document.getElementById('intro-video');
 
     if (!video) {

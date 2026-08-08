@@ -1,15 +1,20 @@
 services:
-  web:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: hp-app
+    restart: unless-stopped
+
+  web:
+    image: nginx:alpine
     container_name: hp-site
+    depends_on:
+      - app
     ports:
       - "8080:80"
       - "8443:443"
     volumes:
-      - .:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./certs:/etc/nginx/certs:ro
     restart: unless-stopped
-    environment:
-      - NGINX_ENVSUBST_TEMPLATE_DIR=/etc/nginx/templates

@@ -1,8 +1,18 @@
-FROM nginx:alpine
+FROM python:3.13-slim
 
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-COPY . /usr/share/nginx/html/
+WORKDIR /app
 
-EXPOSE 80
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["nginx", "-g", "daemon off;"]
+COPY app.py index.html ./
+COPY data ./data
+COPY pdf ./pdf
+COPY video ./video
+
+RUN useradd --create-home appuser && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8000
+
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--access-logfile", "-", "app:app"]
