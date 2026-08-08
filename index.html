@@ -902,30 +902,7 @@
           <div class="updates-title">💬 つぶやき・お役立ち情報</div>
         </div>
         <div id="updates-list">
-          {% if updates %}
-            <div class="updates-list">
-              {% for item in updates %}
-                <div class="updates-item">
-                  <div class="updates-meta">
-                    <span class="updates-date">{{ item.date }}</span>
-                    <span class="updates-tag">{{ item.category }}</span>
-                  </div>
-                  <div class="updates-content">{{ item.content }}</div>
-                  {% if item.media_type == "image" and item.media_url %}
-                    <div class="updates-media"><img src="{{ item.media_url }}" alt="更新画像"></div>
-                  {% elif item.media_type == "video" and item.youtube_embed_url %}
-                    <div class="updates-media"><iframe src="{{ item.youtube_embed_url }}" title="YouTube動画" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>
-                  {% elif item.media_type == "video" and item.media_url %}
-                    <div class="updates-media"><video controls playsinline preload="metadata" src="{{ item.media_url }}"></video></div>
-                  {% elif item.media_type == "pdf" and item.media_url %}
-                    <div class="updates-media"><a href="{{ item.media_url }}" target="_blank" rel="noopener noreferrer">資料を開く</a></div>
-                  {% endif %}
-                </div>
-              {% endfor %}
-            </div>
-          {% else %}
-            <div class="updates-empty">表示する内容がありません。</div>
-          {% endif %}
+          <div class="updates-loading">読み込み中...</div>
         </div>
         <p class="section-scroll-hint">スクロールで全て表示できます</p>
       </div>
@@ -1074,6 +1051,140 @@
 </div>
 
 <script>
+  const bundledUpdates = [
+    {
+      date: '2026-08-07',
+      category: 'お役立ち',
+      content: 'トランペットミニコンサート&自由研究【詳しい資料】　　　　　　　　　　　　　↓こちら↓',
+      media_type: 'pdf',
+      media_url: 'data/media/trumpet-mini-concert-research.pdf',
+      youtube_embed_url: ''
+    },
+    {
+      date: '2026-08-05',
+      category: 'つぶやき',
+      content: 'ツバ抜きシートに最適？！。うさぎ用トイレシーツの使用サイズ感はこんな感じ。↓写真↓',
+      media_type: 'image',
+      media_url: 'data/media/usagi-toilet-sheet.jpg',
+      youtube_embed_url: ''
+    },
+    {
+      date: '2026-08-05',
+      category: 'つぶやき',
+      content: 'トランペットを吹く時に大活躍の口輪筋。どうやって鍛えたら効果的かな？オススメ動画です。',
+      media_type: 'video',
+      media_url: 'https://youtu.be/WoGHpX4c9ec?si=Q1cI2TxnZC8TbKqa',
+      youtube_embed_url: 'https://www.youtube.com/embed/WoGHpX4c9ec?playsinline=1&rel=0'
+    },
+    {
+      date: '2026-08-04',
+      category: 'お役立ち',
+      content: '夏のレッスンは早めの予約をおすすめしています。',
+      media_type: '',
+      media_url: '',
+      youtube_embed_url: ''
+    }
+  ];
+
+  function createUpdateMedia(item) {
+    if (!item.media_url) return null;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'updates-media';
+
+    if (item.media_type === 'image') {
+      const image = document.createElement('img');
+      image.src = item.media_url;
+      image.alt = '更新画像';
+      wrapper.appendChild(image);
+    } else if (item.media_type === 'video' && item.youtube_embed_url) {
+      const iframe = document.createElement('iframe');
+      iframe.src = item.youtube_embed_url;
+      iframe.title = 'YouTube動画';
+      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+      iframe.allowFullscreen = true;
+      wrapper.appendChild(iframe);
+    } else if (item.media_type === 'video') {
+      const video = document.createElement('video');
+      video.src = item.media_url;
+      video.controls = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      wrapper.appendChild(video);
+    } else if (item.media_type === 'pdf') {
+      const link = document.createElement('a');
+      link.href = item.media_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = '資料を開く';
+      wrapper.appendChild(link);
+    } else {
+      return null;
+    }
+
+    return wrapper;
+  }
+
+  function renderUpdates(updates) {
+    const container = document.getElementById('updates-list');
+    if (!container) return;
+
+    container.replaceChildren();
+    if (!updates.length) {
+      const empty = document.createElement('div');
+      empty.className = 'updates-empty';
+      empty.textContent = '表示する内容がありません。';
+      container.appendChild(empty);
+      return;
+    }
+
+    const list = document.createElement('div');
+    list.className = 'updates-list';
+    updates.forEach((item) => {
+      const update = document.createElement('div');
+      update.className = 'updates-item';
+
+      const meta = document.createElement('div');
+      meta.className = 'updates-meta';
+      const date = document.createElement('span');
+      date.className = 'updates-date';
+      date.textContent = item.date;
+      const category = document.createElement('span');
+      category.className = 'updates-tag';
+      category.textContent = item.category;
+      meta.append(date, category);
+
+      const content = document.createElement('div');
+      content.className = 'updates-content';
+      content.textContent = item.content;
+      update.append(meta, content);
+
+      const media = createUpdateMedia(item);
+      if (media) update.appendChild(media);
+      list.appendChild(update);
+    });
+    container.appendChild(list);
+  }
+
+  async function loadUpdates() {
+    renderUpdates(bundledUpdates);
+    if (location.protocol === 'file:') return;
+
+    for (const url of ['/api/updates', 'data/updates.json']) {
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) continue;
+        const updates = await response.json();
+        if (Array.isArray(updates)) {
+          renderUpdates(updates);
+          return;
+        }
+      } catch (error) {
+        // 次の取得元を試す
+      }
+    }
+  }
+
   function closeVideo() {
     const overlay = document.getElementById('video-overlay');
     const container = document.getElementById('main-container');
@@ -1095,6 +1206,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    loadUpdates();
     const video = document.getElementById('intro-video');
 
     if (!video) {

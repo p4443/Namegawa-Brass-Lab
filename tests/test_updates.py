@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from app import load_updates, normalize_media_url, parse_update_line
+from app import create_app, load_updates, normalize_media_url, parse_update_line
 
 
 class UpdatesTest(unittest.TestCase):
@@ -35,6 +35,17 @@ class UpdatesTest(unittest.TestCase):
 
     def test_bare_media_filename_uses_media_directory(self):
         self.assertEqual(normalize_media_url("photo.jpg"), "data/media/photo.jpg")
+
+    def test_updates_api_returns_public_fields_without_cache(self):
+        client = create_app().test_client()
+
+        response = client.get("/api/updates")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertGreater(len(response.json), 0)
+        self.assertNotIn("sort_date", response.json[0])
+        self.assertNotIn("index", response.json[0])
 
 
 if __name__ == "__main__":

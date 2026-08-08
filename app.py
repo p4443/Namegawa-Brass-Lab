@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, render_template, send_from_directory
+from flask import Flask, jsonify, render_template, send_from_directory
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -92,6 +92,16 @@ def create_app():
     @app.get("/")
     def index():
         return render_template("index.html", updates=load_updates())
+
+    @app.get("/api/updates")
+    def updates_api():
+        public_updates = [
+            {key: value for key, value in item.items() if key not in {"index", "sort_date"}}
+            for item in load_updates()
+        ]
+        response = jsonify(public_updates)
+        response.headers["Cache-Control"] = "no-store"
+        return response
 
     @app.get("/<any(data,pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):

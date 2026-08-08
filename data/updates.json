@@ -1,12 +1,34 @@
 [
   {
-    "date": "2026-08-04",
+    "date": "2026-08-07",
     "category": "お役立ち",
-    "content": "夏のレッスンは早めの予約をおすすめしています。"
+    "content": "トランペットミニコンサート&自由研究【詳しい資料】　　　　　　　　　　　　　↓こちら↓",
+    "media_type": "pdf",
+    "media_url": "data/media/trumpet-mini-concert-research.pdf",
+    "youtube_embed_url": ""
   },
   {
-    "date": "2026-08-03",
+    "date": "2026-08-05",
     "category": "つぶやき",
-    "content": "地域の皆さまと音楽を通じてつながる時間を大切にしています。"
+    "content": "ツバ抜きシートに最適？！。うさぎ用トイレシーツの使用サイズ感はこんな感じ。↓写真↓",
+    "media_type": "image",
+    "media_url": "data/media/usagi-toilet-sheet.jpg",
+    "youtube_embed_url": ""
+  },
+  {
+    "date": "2026-08-05",
+    "category": "つぶやき",
+    "content": "トランペットを吹く時に大活躍の口輪筋。どうやって鍛えたら効果的かな？オススメ動画です。",
+    "media_type": "video",
+    "media_url": "https://youtu.be/WoGHpX4c9ec?si=Q1cI2TxnZC8TbKqa",
+    "youtube_embed_url": "https://www.youtube.com/embed/WoGHpX4c9ec?playsinline=1&rel=0"
+  },
+  {
+    "date": "2026-08-04",
+    "category": "お役立ち",
+    "content": "夏のレッスンは早めの予約をおすすめしています。",
+    "media_type": "",
+    "media_url": "",
+    "youtube_embed_url": ""
   }
 ]
