@@ -5,7 +5,13 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
-from app import create_app, load_updates, normalize_media_url, parse_update_line
+from app import (
+    LessonReservationDeliveryError,
+    create_app,
+    load_updates,
+    normalize_media_url,
+    parse_update_line,
+)
 
 
 class UpdatesTest(unittest.TestCase):
@@ -191,6 +197,33 @@ class UpdatesTest(unittest.TestCase):
             response.json["missing_settings"],
             ["GOOGLE_APPS_SCRIPT_URL", "GOOGLE_APPS_SCRIPT_SECRET"],
         )
+
+    def test_lesson_reservation_reports_apps_script_rejection(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-11",
+            "preferred_time": "06:45",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 10)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            side_effect=LessonReservationDeliveryError("Unauthorized"),
+        ):
+            response = client.post("/api/lesson-reservations", json=payload)
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json["delivery_error"], "Unauthorized")
 
     def test_lesson_reservation_enforces_date_range_and_weekday_hours(self):
         client = create_app().test_client()

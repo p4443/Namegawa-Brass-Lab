@@ -62,6 +62,10 @@ WEEKDAY_RESERVATION_TIMES = {
 }
 
 
+class LessonReservationDeliveryError(Exception):
+    pass
+
+
 def parse_date(date_text):
     normalized = date_text.strip().replace(".", "-").replace("/", "-")
     try:
@@ -325,7 +329,8 @@ def send_lesson_reservation(script_url, secret, values):
     with urllib_request.urlopen(script_request, timeout=10) as response:
         result = json.loads(response.read().decode("utf-8"))
     if not result.get("ok"):
-        raise ValueError("予約を受け付けられませんでした。")
+        error_code = result.get("error", "Apps Script rejected the reservation")
+        raise LessonReservationDeliveryError(error_code)
     return result
 
 
@@ -420,7 +425,23 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
             ), 503
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
-        except (OSError, ValueError, json.JSONDecodeError, urllib_error.URLError):
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script rejected lesson reservation")
+            return jsonify(
+                {
+                    "error": "予約の送信に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": str(exc),
+                }
+            ), 502
+        except json.JSONDecodeError:
+            app.logger.exception("Apps Script returned an invalid response")
+            return jsonify(
+                {
+                    "error": "予約の送信に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": "INVALID_APPS_SCRIPT_RESPONSE",
+                }
+            ), 502
+        except (OSError, ValueError, urllib_error.URLError):
             app.logger.exception("Failed to send lesson reservation")
             return jsonify({"error": "予約の送信に失敗しました。時間をおいて再度お試しください。"}), 502
         return jsonify({"saved": True, "reservation_id": result.get("reservationId", "")}), 201
