@@ -93,6 +93,10 @@ def create_app():
     def index():
         return render_template("index.html", updates=load_updates())
 
+    @app.get("/lesson/")
+    def lesson():
+        return render_template("lesson/index.html")
+
     @app.get("/api/updates")
     def updates_api():
         public_updates = [

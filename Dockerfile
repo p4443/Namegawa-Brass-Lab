@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py index.html ./
 COPY data ./data
+COPY lesson ./lesson
 COPY pdf ./pdf
 COPY video ./video
 

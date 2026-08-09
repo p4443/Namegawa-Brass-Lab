@@ -10,10 +10,10 @@
 			"path": "pdf"
 		},
 		{
+			"path": "tests"
+		},
+		{
 			"path": "video"
 		}
-	],
-	"settings": {
-		"liveServer.settings.multiRootWorkspaceName": "certs"
-	}
+	]
 }
