@@ -59,7 +59,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("佐々木 久和", page)
         self.assertIn("グループレッスン・部活動指導", page)
         self.assertIn("別途相談", page)
-        self.assertIn('href="/#main-container"', page)
+        self.assertIn('href="../#main-container"', page)
+
+    def test_index_uses_site_relative_lesson_links(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertEqual(page.count('href="lesson/"'), 3)
+        self.assertNotIn('href="/lesson/"', page)
 
 
 if __name__ == "__main__":
