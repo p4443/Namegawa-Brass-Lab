@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: hp-app
     environment:
+      DATABASE_URL: ${DATABASE_URL:-}
       EDITOR_PASSWORD: ${EDITOR_PASSWORD:-}
     volumes:
       - ./data:/app/data
