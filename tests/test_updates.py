@@ -45,6 +45,7 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertGreater(len(response.json), 0)
         self.assertNotIn("sort_date", response.json[0])
         self.assertIn("index", response.json[0])
@@ -135,6 +136,7 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertEqual(page.count('href="lesson/"'), 3)
         self.assertNotIn('href="/lesson/"', page)
+        self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
 
 
 if __name__ == "__main__":

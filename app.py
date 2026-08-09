@@ -300,6 +300,7 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
     def updates_api():
         response = jsonify([public_update(item) for item in get_updates()])
         response.headers["Cache-Control"] = "no-store"
+        response.headers["Access-Control-Allow-Origin"] = "*"
         return response
 
     @app.get("/api/editor")

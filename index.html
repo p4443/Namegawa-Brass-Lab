@@ -1208,6 +1208,7 @@
 <script>
   let currentUpdates = [];
   let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
+  const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
 
   const bundledUpdates = [
     {
@@ -1348,7 +1349,7 @@
     renderUpdates(bundledUpdates);
     if (location.protocol === 'file:') return;
 
-    for (const url of ['/api/updates', 'data/updates.json']) {
+    for (const url of ['/api/updates', renderUpdatesApi, 'data/updates.json']) {
       try {
         const response = await fetch(url, { cache: 'no-store' });
         if (!response.ok) continue;
