@@ -158,7 +158,9 @@ def create_app(updates_file=UPDATES_FILE):
         supplied_password = request.headers.get("X-Editor-Password", "")
         if not configured_password:
             return jsonify({"error": "編集用パスワードが設定されていません。"}), 503
-        if not hmac.compare_digest(supplied_password, configured_password):
+        if not hmac.compare_digest(
+            supplied_password.encode("utf-8"), configured_password.encode("utf-8")
+        ):
             return jsonify({"error": "パスワードが違います。"}), 401
         return None
 

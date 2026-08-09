@@ -98,6 +98,20 @@ class UpdatesTest(unittest.TestCase):
 
             self.assertEqual(path.read_text(encoding="utf-8"), "2026-08-09 | お役立ち | 変更後の本文\n")
 
+    def test_editor_password_accepts_non_ascii_characters(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text("2026-08-01 | つぶやき | 投稿\n", encoding="utf-8")
+            client = create_app(path).test_client()
+
+            with patch.dict(os.environ, {"EDITOR_PASSWORD": "編集用パスワード"}):
+                response = client.get(
+                    "/api/editor",
+                    headers={"X-Editor-Password": "編集用パスワード"},
+                )
+
+            self.assertEqual(response.status_code, 200)
+
     def test_lesson_page_is_available(self):
         client = create_app().test_client()
 
