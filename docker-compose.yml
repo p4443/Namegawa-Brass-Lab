@@ -4,6 +4,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: hp-app
+    environment:
+      EDITOR_PASSWORD: ${EDITOR_PASSWORD:-}
+    volumes:
+      - ./data:/app/data
     restart: unless-stopped
 
   web:

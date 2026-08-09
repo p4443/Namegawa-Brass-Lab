@@ -1,6 +1,8 @@
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from app import create_app, load_updates, normalize_media_url, parse_update_line
 
@@ -45,7 +47,56 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertGreater(len(response.json), 0)
         self.assertNotIn("sort_date", response.json[0])
-        self.assertNotIn("index", response.json[0])
+        self.assertIn("index", response.json[0])
+
+    def test_editor_api_requires_password_for_all_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text("2026-08-01 | つぶやき | 最初の投稿\n", encoding="utf-8")
+            client = create_app(path).test_client()
+            payload = {
+                "date": "2026-08-09",
+                "category": "お役立ち",
+                "content": "スマートフォンから追加",
+                "media_type": "",
+                "media_url": "",
+            }
+
+            with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+                self.assertEqual(client.post("/api/updates", json=payload).status_code, 401)
+                self.assertEqual(
+                    client.post(
+                        "/api/updates",
+                        json=payload,
+                        headers={"X-Editor-Password": "wrong-password"},
+                    ).status_code,
+                    401,
+                )
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "2026-08-01 | つぶやき | 最初の投稿\n")
+
+    def test_editor_can_create_edit_and_delete_update(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text("2026-08-01 | つぶやき | 最初の投稿\n", encoding="utf-8")
+            client = create_app(path).test_client()
+            headers = {"X-Editor-Password": "correct-password"}
+            created = {
+                "date": "2026-08-09",
+                "category": "お役立ち",
+                "content": "スマートフォンから追加",
+                "media_type": "image",
+                "media_url": "photo.jpg",
+            }
+            edited = {**created, "content": "変更後の本文", "media_type": "", "media_url": ""}
+
+            with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+                self.assertEqual(client.get("/api/editor", headers=headers).status_code, 200)
+                self.assertEqual(client.post("/api/updates", json=created, headers=headers).status_code, 201)
+                self.assertEqual(client.put("/api/updates/1", json=edited, headers=headers).status_code, 200)
+                self.assertEqual(client.delete("/api/updates/0", headers=headers).status_code, 200)
+
+            self.assertEqual(path.read_text(encoding="utf-8"), "2026-08-09 | お役立ち | 変更後の本文\n")
 
     def test_lesson_page_is_available(self):
         client = create_app().test_client()

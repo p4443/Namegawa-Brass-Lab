@@ -368,6 +368,106 @@
       color: var(--primary-color);
     }
 
+    .editor-toggle,
+    .editor-button,
+    .update-action {
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .editor-toggle,
+    .editor-button.primary {
+      padding: 8px 14px;
+      background: var(--primary-color);
+      color: #ffffff;
+    }
+
+    .editor-panel {
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid rgba(11, 37, 69, 0.14);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.92);
+      text-align: left;
+    }
+
+    .editor-panel[hidden] {
+      display: none;
+    }
+
+    .editor-fields {
+      display: grid;
+      gap: 10px;
+    }
+
+    .editor-field {
+      display: grid;
+      gap: 4px;
+      color: var(--primary-color);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .editor-field[hidden] {
+      display: none;
+    }
+
+    .editor-field input,
+    .editor-field select,
+    .editor-field textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 9px 10px;
+      border: 1px solid #aeb8c5;
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--text-main);
+      font: inherit;
+      font-size: 16px;
+    }
+
+    .editor-field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .editor-buttons,
+    .update-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .editor-button {
+      padding: 8px 14px;
+      background: #e6ebf1;
+      color: var(--primary-color);
+    }
+
+    .editor-status {
+      min-height: 1.5em;
+      margin-top: 8px;
+      color: #9b2c2c;
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .update-action {
+      min-width: 44px;
+      padding: 6px 11px;
+      background: #e8edf3;
+      color: var(--primary-color);
+    }
+
+    .update-action.delete {
+      color: #9b2c2c;
+    }
+
     .updates-list {
       display: flex;
       flex-direction: column;
@@ -910,6 +1010,57 @@
       <div class="updates-card">
         <div class="updates-header">
           <div class="updates-title">💬 つぶやき・お役立ち情報</div>
+          <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">🔒 編集</button>
+        </div>
+        <div class="editor-panel" id="editor-panel" hidden>
+          <form id="editor-login-form">
+            <label class="editor-field">
+              編集用パスワード
+              <input type="password" id="editor-password" autocomplete="current-password" required>
+            </label>
+            <div class="editor-buttons">
+              <button type="submit" class="editor-button primary">ログイン</button>
+            </div>
+          </form>
+          <form id="update-form" hidden>
+            <input type="hidden" id="update-index">
+            <div class="editor-fields">
+              <label class="editor-field">
+                日付
+                <input type="date" id="update-date" required>
+              </label>
+              <label class="editor-field">
+                種類
+                <select id="update-category" required>
+                  <option value="つぶやき">つぶやき</option>
+                  <option value="お役立ち">お役立ち</option>
+                </select>
+              </label>
+              <label class="editor-field">
+                本文
+                <textarea id="update-content" required></textarea>
+              </label>
+              <label class="editor-field">
+                添付の種類
+                <select id="update-media-type">
+                  <option value="">添付なし</option>
+                  <option value="image">画像</option>
+                  <option value="video">動画・YouTube</option>
+                  <option value="pdf">PDF</option>
+                </select>
+              </label>
+              <label class="editor-field" id="media-url-field" hidden>
+                添付URLまたはファイル名
+                <input type="text" id="update-media-url" inputmode="url" placeholder="https://... または photo.jpg">
+              </label>
+            </div>
+            <div class="editor-buttons">
+              <button type="submit" class="editor-button primary" id="update-submit">追加する</button>
+              <button type="button" class="editor-button" id="update-cancel" hidden>変更をやめる</button>
+              <button type="button" class="editor-button" id="editor-logout">ログアウト</button>
+            </div>
+          </form>
+          <p class="editor-status" id="editor-status" role="status"></p>
         </div>
         <div id="updates-list">
           <div class="updates-loading">読み込み中...</div>
@@ -1036,6 +1187,9 @@
 </div>
 
 <script>
+  let currentUpdates = [];
+  let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
+
   const bundledUpdates = [
     {
       date: '2026-08-07',
@@ -1114,6 +1268,8 @@
     const container = document.getElementById('updates-list');
     if (!container) return;
 
+    currentUpdates = updates;
+
     container.replaceChildren();
     if (!updates.length) {
       const empty = document.createElement('div');
@@ -1146,6 +1302,24 @@
 
       const media = createUpdateMedia(item);
       if (media) update.appendChild(media);
+      if (editorPassword && Number.isInteger(item.index)) {
+        const actions = document.createElement('div');
+        actions.className = 'update-actions';
+        const editButton = document.createElement('button');
+        editButton.type = 'button';
+        editButton.className = 'update-action';
+        editButton.textContent = '✎ 変更';
+        editButton.title = 'この情報を変更';
+        editButton.addEventListener('click', () => beginEdit(item));
+        const deleteButton = document.createElement('button');
+        deleteButton.type = 'button';
+        deleteButton.className = 'update-action delete';
+        deleteButton.textContent = '削除';
+        deleteButton.title = 'この情報を削除';
+        deleteButton.addEventListener('click', () => deleteUpdate(item));
+        actions.append(editButton, deleteButton);
+        update.appendChild(actions);
+      }
       list.appendChild(update);
     });
     container.appendChild(list);
@@ -1167,6 +1341,74 @@
       } catch (error) {
         // 次の取得元を試す
       }
+    }
+  }
+
+  function editorHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'X-Editor-Password': editorPassword
+    };
+  }
+
+  function setEditorStatus(message) {
+    document.getElementById('editor-status').textContent = message;
+  }
+
+  function resetUpdateForm() {
+    const form = document.getElementById('update-form');
+    form.reset();
+    document.getElementById('update-index').value = '';
+    document.getElementById('update-date').value = new Date().toISOString().slice(0, 10);
+    document.getElementById('update-submit').textContent = '追加する';
+    document.getElementById('update-cancel').hidden = true;
+    document.getElementById('media-url-field').hidden = true;
+    document.getElementById('update-media-url').required = false;
+  }
+
+  function showEditorForm() {
+    document.getElementById('editor-login-form').hidden = true;
+    document.getElementById('update-form').hidden = false;
+    resetUpdateForm();
+    renderUpdates(currentUpdates);
+  }
+
+  function beginEdit(item) {
+    document.getElementById('update-index').value = item.index;
+    document.getElementById('update-date').value = item.date;
+    document.getElementById('update-category').value = item.category;
+    document.getElementById('update-content').value = item.content;
+    document.getElementById('update-media-type').value = item.media_type || '';
+    document.getElementById('update-media-url').value = item.media_url || '';
+    document.getElementById('media-url-field').hidden = !item.media_type;
+    document.getElementById('update-submit').textContent = '変更を保存';
+    document.getElementById('update-cancel').hidden = false;
+    document.getElementById('update-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  async function deleteUpdate(item) {
+    if (!confirm(`${item.date} の情報を削除しますか？`)) return;
+    const response = await fetch(`/api/updates/${item.index}`, {
+      method: 'DELETE',
+      headers: editorHeaders()
+    });
+    const result = await response.json();
+    if (!response.ok) {
+      setEditorStatus(result.error || '削除できませんでした。');
+      return;
+    }
+    setEditorStatus('削除しました。');
+    await loadUpdates();
+  }
+
+  async function restoreEditorSession() {
+    if (!editorPassword) return;
+    const response = await fetch('/api/editor', { headers: editorHeaders() });
+    if (response.ok) {
+      showEditorForm();
+    } else {
+      editorPassword = '';
+      sessionStorage.removeItem('updatesEditorPassword');
     }
   }
 
@@ -1192,6 +1434,65 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     loadUpdates();
+    restoreEditorSession();
+    const editorPanel = document.getElementById('editor-panel');
+    const editorToggle = document.getElementById('editor-toggle');
+    editorToggle.addEventListener('click', () => {
+      editorPanel.hidden = !editorPanel.hidden;
+      editorToggle.setAttribute('aria-expanded', String(!editorPanel.hidden));
+    });
+    document.getElementById('editor-login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      editorPassword = document.getElementById('editor-password').value;
+      const response = await fetch('/api/editor', { headers: editorHeaders() });
+      if (!response.ok) {
+        const result = await response.json();
+        editorPassword = '';
+        setEditorStatus(result.error || 'ログインできませんでした。');
+        return;
+      }
+      sessionStorage.setItem('updatesEditorPassword', editorPassword);
+      setEditorStatus('編集できます。');
+      showEditorForm();
+    });
+    document.getElementById('update-media-type').addEventListener('change', (event) => {
+      document.getElementById('media-url-field').hidden = !event.target.value;
+      document.getElementById('update-media-url').required = Boolean(event.target.value);
+    });
+    document.getElementById('update-cancel').addEventListener('click', resetUpdateForm);
+    document.getElementById('editor-logout').addEventListener('click', () => {
+      editorPassword = '';
+      sessionStorage.removeItem('updatesEditorPassword');
+      document.getElementById('update-form').hidden = true;
+      document.getElementById('editor-login-form').hidden = false;
+      document.getElementById('editor-password').value = '';
+      setEditorStatus('ログアウトしました。');
+      renderUpdates(currentUpdates);
+    });
+    document.getElementById('update-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const updateIndex = document.getElementById('update-index').value;
+      const payload = {
+        date: document.getElementById('update-date').value,
+        category: document.getElementById('update-category').value,
+        content: document.getElementById('update-content').value,
+        media_type: document.getElementById('update-media-type').value,
+        media_url: document.getElementById('update-media-url').value
+      };
+      const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
+        method: updateIndex ? 'PUT' : 'POST',
+        headers: editorHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setEditorStatus(result.error || '保存できませんでした。');
+        return;
+      }
+      setEditorStatus(updateIndex ? '変更を保存しました。' : '追加しました。');
+      resetUpdateForm();
+      await loadUpdates();
+    });
     const video = document.getElementById('intro-video');
 
     if (window.location.hash === '#main-container') {

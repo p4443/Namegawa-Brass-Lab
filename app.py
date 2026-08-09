@@ -1,9 +1,13 @@
+import fcntl
+import hmac
+import os
 import re
+import tempfile
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, jsonify, render_template, send_from_directory
+from flask import Flask, jsonify, render_template, request, send_from_directory
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -17,6 +21,7 @@ YOUTUBE_PATTERN = re.compile(
     re.IGNORECASE,
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
+ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
 
 
 def parse_date(date_text):
@@ -86,12 +91,80 @@ def load_updates(path=UPDATES_FILE):
     return sorted(updates, key=lambda item: (item["sort_date"], item["index"]), reverse=True)
 
 
-def create_app():
+def public_update(item):
+    return {key: value for key, value in item.items() if key != "sort_date"}
+
+
+def validate_update(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    values = {
+        "date": str(payload.get("date", "")).strip(),
+        "category": str(payload.get("category", "")).strip(),
+        "content": str(payload.get("content", "")).strip(),
+        "media_type": str(payload.get("media_type", "")).strip().lower(),
+        "media_url": str(payload.get("media_url", "")).strip(),
+    }
+    if not values["date"] or parse_date(values["date"]) == datetime.min:
+        raise ValueError("日付を正しく入力してください。")
+    if not values["category"] or not values["content"]:
+        raise ValueError("種類と本文を入力してください。")
+    if values["media_type"] not in ALLOWED_MEDIA_TYPES:
+        raise ValueError("メディア種別が正しくありません。")
+    if values["media_type"] and not values["media_url"]:
+        raise ValueError("メディアのURLを入力してください。")
+    if not values["media_type"]:
+        values["media_url"] = ""
+    if any("|" in value or "\n" in value or "\r" in value for value in values.values()):
+        raise ValueError("入力欄に改行または | は使用できません。")
+    return values
+
+
+def format_update(values):
+    content = values["content"]
+    if values["media_type"]:
+        content += f' [{values["media_type"]}:{values["media_url"]}]'
+    return f'{values["date"]} | {values["category"]} | {content}'
+
+
+def update_file(mutator, path=UPDATES_FILE):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(f".{path.name}.lock")
+    with lock_path.open("a", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+            except FileNotFoundError:
+                lines = []
+            mutator(lines)
+            with tempfile.NamedTemporaryFile(
+                "w", encoding="utf-8", dir=path.parent, delete=False
+            ) as temporary_file:
+                temporary_file.write("\n".join(lines) + "\n")
+                temporary_path = Path(temporary_file.name)
+            os.replace(temporary_path, path)
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def create_app(updates_file=UPDATES_FILE):
     app = Flask(__name__, template_folder=".", static_folder=None)
+
+    def require_editor():
+        configured_password = os.environ.get("EDITOR_PASSWORD", "")
+        supplied_password = request.headers.get("X-Editor-Password", "")
+        if not configured_password:
+            return jsonify({"error": "編集用パスワードが設定されていません。"}), 503
+        if not hmac.compare_digest(supplied_password, configured_password):
+            return jsonify({"error": "パスワードが違います。"}), 401
+        return None
 
     @app.get("/")
     def index():
-        return render_template("index.html", updates=load_updates())
+        return render_template("index.html", updates=load_updates(updates_file))
 
     @app.get("/lesson/")
     def lesson():
@@ -99,13 +172,67 @@ def create_app():
 
     @app.get("/api/updates")
     def updates_api():
-        public_updates = [
-            {key: value for key, value in item.items() if key not in {"index", "sort_date"}}
-            for item in load_updates()
-        ]
-        response = jsonify(public_updates)
+        response = jsonify([public_update(item) for item in load_updates(updates_file)])
         response.headers["Cache-Control"] = "no-store"
         return response
+
+    @app.get("/api/editor")
+    def editor_status():
+        error = require_editor()
+        if error:
+            return error
+        return jsonify({"authenticated": True})
+
+    @app.post("/api/updates")
+    def create_update():
+        error = require_editor()
+        if error:
+            return error
+        try:
+            values = validate_update(request.get_json(silent=True))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        update_file(lambda lines: lines.append(format_update(values)), updates_file)
+        return jsonify({"saved": True}), 201
+
+    @app.put("/api/updates/<int:update_index>")
+    def edit_update(update_index):
+        error = require_editor()
+        if error:
+            return error
+        try:
+            values = validate_update(request.get_json(silent=True))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        def replace_line(lines):
+            if update_index >= len(lines) or not lines[update_index].strip().startswith(tuple("0123456789")):
+                raise IndexError
+            lines[update_index] = format_update(values)
+
+        try:
+            update_file(replace_line, updates_file)
+        except IndexError:
+            return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        return jsonify({"saved": True})
+
+    @app.delete("/api/updates/<int:update_index>")
+    def delete_update(update_index):
+        error = require_editor()
+        if error:
+            return error
+
+        def remove_line(lines):
+            if update_index >= len(lines) or not lines[update_index].strip().startswith(tuple("0123456789")):
+                raise IndexError
+            lines.pop(update_index)
+
+        try:
+            update_file(remove_line, updates_file)
+        except IndexError:
+            return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        return jsonify({"deleted": True})
 
     @app.get("/<any(data,pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):

@@ -12,13 +12,18 @@ Flaskで配信するWebサイトです。`data/updates.txt`の解析、日付順
 
 ## 起動
 
+編集用パスワードを設定して起動します。パスワードはHTMLやリポジトリには保存されません。
+
 ```bash
-./manage-site.sh start
-```
+EDITOR_PASSWORD='自分で決めたパスワード' ./manage-site.sh start
+
+同じWi-Fi内のスマートフォンから `https://MacのIPアドレス:8443` を開き、「つぶやき・お役立ち情報」の「編集」ボタンからログインすると、情報の追加・変更・削除ができます。パスワードを送信するため、スマートフォンからの編集にはHTTPSを使用してください。
+
+更新内容はホストの `data/updates.txt` に保存され、コンテナを作り直しても残ります。
 
 ## 停止
 
-```bash
+```b
 ./manage-site.sh stop
 ```
 
