@@ -91,6 +91,122 @@ def load_updates(path=UPDATES_FILE):
     return sorted(updates, key=lambda item: (item["sort_date"], item["index"]), reverse=True)
 
 
+def database_connection(database_url):
+    import psycopg
+
+    return psycopg.connect(database_url)
+
+
+def initialize_database(database_url, seed_path=UPDATES_FILE):
+    seed_updates = list(reversed(load_updates(seed_path)))
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_advisory_xact_lock(72496521)")
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS updates (
+                    id BIGSERIAL PRIMARY KEY,
+                    update_date DATE NOT NULL,
+                    category TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    media_type TEXT NOT NULL DEFAULT '',
+                    media_url TEXT NOT NULL DEFAULT ''
+                )
+                """
+            )
+            cursor.execute("SELECT COUNT(*) FROM updates")
+            if cursor.fetchone()[0] == 0:
+                cursor.executemany(
+                    """
+                    INSERT INTO updates
+                        (update_date, category, content, media_type, media_url)
+                    VALUES (%s, %s, %s, %s, %s)
+                    """,
+                    [
+                        (
+                            item["date"],
+                            item["category"],
+                            item["content"],
+                            item["media_type"],
+                            item["media_url"],
+                        )
+                        for item in seed_updates
+                    ],
+                )
+
+
+def load_database_updates(database_url):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT id, update_date, category, content, media_type, media_url
+                FROM updates
+                ORDER BY update_date DESC, id DESC
+                """
+            )
+            rows = cursor.fetchall()
+
+    updates = []
+    for update_id, update_date, category, content, media_type, media_url in rows:
+        media_marker = f" [{media_type}:{media_url}]" if media_type else ""
+        updates.append(
+            parse_update_line(
+                f"{update_date.isoformat()} | {category} | {content}{media_marker}",
+                update_id,
+            )
+        )
+    return updates
+
+
+def create_database_update(database_url, values):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO updates
+                    (update_date, category, content, media_type, media_url)
+                VALUES (%s, %s, %s, %s, %s)
+                """,
+                (
+                    values["date"],
+                    values["category"],
+                    values["content"],
+                    values["media_type"],
+                    values["media_url"],
+                ),
+            )
+
+
+def edit_database_update(database_url, update_id, values):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                UPDATE updates
+                SET update_date = %s, category = %s, content = %s,
+                    media_type = %s, media_url = %s
+                WHERE id = %s
+                """,
+                (
+                    values["date"],
+                    values["category"],
+                    values["content"],
+                    values["media_type"],
+                    values["media_url"],
+                    update_id,
+                ),
+            )
+            return cursor.rowcount > 0
+
+
+def delete_database_update(database_url, update_id):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute("DELETE FROM updates WHERE id = %s", (update_id,))
+            return cursor.rowcount > 0
+
+
 def public_update(item):
     return {key: value for key, value in item.items() if key != "sort_date"}
 
@@ -150,8 +266,16 @@ def update_file(mutator, path=UPDATES_FILE):
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def create_app(updates_file=UPDATES_FILE):
+def create_app(updates_file=UPDATES_FILE, database_url=None):
     app = Flask(__name__, template_folder=".", static_folder=None)
+    configured_database_url = database_url or os.environ.get("DATABASE_URL", "")
+    if configured_database_url:
+        initialize_database(configured_database_url, updates_file)
+
+    def get_updates():
+        if configured_database_url:
+            return load_database_updates(configured_database_url)
+        return load_updates(updates_file)
 
     def require_editor():
         configured_password = os.environ.get("EDITOR_PASSWORD", "")
@@ -166,7 +290,7 @@ def create_app(updates_file=UPDATES_FILE):
 
     @app.get("/")
     def index():
-        return render_template("index.html", updates=load_updates(updates_file))
+        return render_template("index.html", updates=get_updates())
 
     @app.get("/lesson/")
     def lesson():
@@ -174,7 +298,7 @@ def create_app(updates_file=UPDATES_FILE):
 
     @app.get("/api/updates")
     def updates_api():
-        response = jsonify([public_update(item) for item in load_updates(updates_file)])
+        response = jsonify([public_update(item) for item in get_updates()])
         response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -195,7 +319,10 @@ def create_app(updates_file=UPDATES_FILE):
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-        update_file(lambda lines: lines.append(format_update(values)), updates_file)
+        if configured_database_url:
+            create_database_update(configured_database_url, values)
+        else:
+            update_file(lambda lines: lines.append(format_update(values)), updates_file)
         return jsonify({"saved": True}), 201
 
     @app.put("/api/updates/<int:update_index>")
@@ -213,10 +340,14 @@ def create_app(updates_file=UPDATES_FILE):
                 raise IndexError
             lines[update_index] = format_update(values)
 
-        try:
-            update_file(replace_line, updates_file)
-        except IndexError:
-            return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        if configured_database_url:
+            if not edit_database_update(configured_database_url, update_index, values):
+                return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        else:
+            try:
+                update_file(replace_line, updates_file)
+            except IndexError:
+                return jsonify({"error": "対象の情報が見つかりません。"}), 404
         return jsonify({"saved": True})
 
     @app.delete("/api/updates/<int:update_index>")
@@ -230,10 +361,14 @@ def create_app(updates_file=UPDATES_FILE):
                 raise IndexError
             lines.pop(update_index)
 
-        try:
-            update_file(remove_line, updates_file)
-        except IndexError:
-            return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        if configured_database_url:
+            if not delete_database_update(configured_database_url, update_index):
+                return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        else:
+            try:
+                update_file(remove_line, updates_file)
+            except IndexError:
+                return jsonify({"error": "対象の情報が見つかりません。"}), 404
         return jsonify({"deleted": True})
 
     @app.get("/<any(data,pdf,video):directory>/<path:filename>")

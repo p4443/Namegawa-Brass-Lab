@@ -16,14 +16,27 @@ Flaskで配信するWebサイトです。`data/updates.txt`の解析、日付順
 
 ```bash
 EDITOR_PASSWORD='自分で決めたパスワード' ./manage-site.sh start
+```
 
 同じWi-Fi内のスマートフォンから `https://MacのIPアドレス:8443` を開き、「つぶやき・お役立ち情報」の「編集」ボタンからログインすると、情報の追加・変更・削除ができます。パスワードを送信するため、スマートフォンからの編集にはHTTPSを使用してください。
 
 更新内容はホストの `data/updates.txt` に保存され、コンテナを作り直しても残ります。
 
+## Renderで投稿を永続保存する
+
+RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化されるため、公開サイトではPostgreSQLを使用します。
+
+1. Render Dashboardの「New +」から「PostgreSQL」を作成します。
+2. 作成したデータベースの「Internal Database URL」をコピーします。
+3. `namegawa-brass-lab` Web Serviceの「Environment」を開きます。
+4. Keyを`DATABASE_URL`、ValueをコピーしたURLとして追加します。
+5. 「Save, rebuild, and deploy」を実行します。
+
+初回接続時にテーブルが自動作成され、`data/updates.txt`の既存情報が取り込まれます。以後の追加・変更・削除はデータベースへ保存されます。
+
 ## 停止
 
-```b
+```bash
 ./manage-site.sh stop
 ```
 
