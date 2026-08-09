@@ -29,6 +29,7 @@ MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
 LESSON_TYPES = {"体験レッスン", "小学生", "中学生", "高校生以上", "グループ・部活動指導"}
 CONSULTATION_TIME = "要相談"
+RESERVATION_STATUS_VALUES = {"受付", "確認中", "確定", "キャンセル"}
 
 
 def current_japan_date():
@@ -318,8 +319,71 @@ def validate_lesson_reservation(payload):
     return values
 
 
-def send_lesson_reservation(script_url, secret, values):
-    payload = json.dumps({**values, "secret": secret}, ensure_ascii=False).encode("utf-8")
+def validate_lesson_reservation_update(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    values = {}
+
+    if "status" in payload:
+        status = str(payload.get("status", "")).strip()
+        if status not in RESERVATION_STATUS_VALUES:
+            raise ValueError("状態は 受付・確認中・確定・キャンセル から選択してください。")
+        values["status"] = status
+    if "name" in payload:
+        name = str(payload.get("name", "")).strip()
+        if not name or len(name) > 80:
+            raise ValueError("お名前を80文字以内で入力してください。")
+        values["name"] = name
+    if "email" in payload:
+        email = str(payload.get("email", "")).strip()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+            raise ValueError("メールアドレスを正しく入力してください。")
+        values["email"] = email
+    if "phone" in payload:
+        phone = str(payload.get("phone", "")).strip()
+        if phone and not re.fullmatch(r"[0-9+()\-\s]{8,20}", phone):
+            raise ValueError("電話番号を正しく入力してください。")
+        values["phone"] = phone
+    if "lesson_type" in payload:
+        lesson_type = str(payload.get("lesson_type", "")).strip()
+        if lesson_type not in LESSON_TYPES:
+            raise ValueError("レッスン種別を選択してください。")
+        values["lesson_type"] = lesson_type
+    if "preferred_date" in payload:
+        preferred_date = str(payload.get("preferred_date", "")).strip()
+        try:
+            datetime.strptime(preferred_date, "%Y-%m-%d")
+        except ValueError as exc:
+            raise ValueError("希望日を正しく入力してください。") from exc
+        values["preferred_date"] = preferred_date
+    if "preferred_time" in payload:
+        preferred_time = str(payload.get("preferred_time", "")).strip()
+        if not preferred_time or len(preferred_time) > 20:
+            raise ValueError("希望時間を正しく入力してください。")
+        values["preferred_time"] = preferred_time
+    if "message" in payload:
+        message = str(payload.get("message", "")).strip()
+        if len(message) > 500:
+            raise ValueError("ご要望は500文字以内で入力してください。")
+        values["message"] = message
+
+    if not values:
+        raise ValueError("更新する項目を指定してください。")
+    return values
+
+
+def validate_reservation_id(value):
+    reservation_id = str(value).strip()
+    if not re.fullmatch(r"R-\d{8}-\d{3,}", reservation_id):
+        raise ValueError("予約番号の形式が正しくありません。")
+    return reservation_id
+
+
+def send_lesson_reservation(script_url, secret, values, action="create"):
+    payload = json.dumps(
+        {**values, "secret": secret, "action": action}, ensure_ascii=False
+    ).encode("utf-8")
     script_request = urllib_request.Request(
         script_url,
         data=payload,
@@ -369,10 +433,14 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
-    def with_lesson_reservation_cors(response):
+    def with_lesson_reservation_cors(
+        response,
+        methods="POST, OPTIONS",
+        headers="Content-Type",
+    ):
         response.headers["Access-Control-Allow-Origin"] = "*"
-        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
-        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Allow-Methods"] = methods
+        response.headers["Access-Control-Allow-Headers"] = headers
         response.headers["Access-Control-Max-Age"] = "600"
         return response
 
@@ -468,6 +536,88 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
             {"saved": True, "reservation_id": result.get("reservationId", "")},
             201,
         )
+
+    @app.route("/api/lesson-reservations/<reservation_id>", methods=["PUT", "DELETE", "OPTIONS"])
+    def manage_lesson_reservation(reservation_id):
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        error = require_editor()
+        if error:
+            return error
+        try:
+            valid_reservation_id = validate_reservation_id(reservation_id)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            missing_settings = []
+            if not script_url:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_URL")
+            if not script_secret:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_SECRET")
+            return jsonify(
+                {
+                    "error": "現在、予約管理を利用できません。",
+                    "missing_settings": missing_settings,
+                }
+            ), 503
+
+        try:
+            if request.method == "DELETE":
+                result = send_lesson_reservation(
+                    script_url,
+                    script_secret,
+                    {"reservation_id": valid_reservation_id},
+                    action="delete",
+                )
+                return jsonify({"deleted": True, "reservation_id": result.get("reservationId", "")})
+
+            values = validate_lesson_reservation_update(request.get_json(silent=True))
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": valid_reservation_id, **values},
+                action="update",
+            )
+            return jsonify(
+                {
+                    "saved": True,
+                    "reservation_id": result.get("reservationId", ""),
+                    "updated_fields": result.get("updatedFields", []),
+                }
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except LessonReservationDeliveryError as exc:
+            if str(exc) == "NOT_FOUND":
+                return jsonify({"error": "対象の予約が見つかりません。"}), 404
+            app.logger.exception("Apps Script rejected reservation management action")
+            return jsonify(
+                {
+                    "error": "予約管理に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": str(exc),
+                }
+            ), 502
+        except json.JSONDecodeError:
+            app.logger.exception("Apps Script returned an invalid response")
+            return jsonify(
+                {
+                    "error": "予約管理に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": "INVALID_APPS_SCRIPT_RESPONSE",
+                }
+            ), 502
+        except (OSError, urllib_error.URLError):
+            app.logger.exception("Failed to manage lesson reservation")
+            return jsonify(
+                {"error": "予約管理に失敗しました。時間をおいて再度お試しください。"}
+            ), 502
 
     @app.get("/api/editor")
     def editor_status():

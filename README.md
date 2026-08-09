@@ -54,6 +54,33 @@ export GOOGLE_APPS_SCRIPT_SECRET='API_SECRETと同じ文字列'
 
 初回の予約送信時に`レッスン予約`シートと見出しが自動作成されます。予約は即時確定ではなく、シートには状態`受付`として保存されます。
 
+### 予約の更新・削除（管理API）
+
+予約番号（例: `R-20260810-004`）を指定して、状態更新や削除ができます。
+
+- 認証ヘッダー: `X-Editor-Password`（`EDITOR_PASSWORD`と同じ値）
+- 必要な環境変数: `GOOGLE_APPS_SCRIPT_URL`, `GOOGLE_APPS_SCRIPT_SECRET`
+
+更新（PUT）の例:
+
+```bash
+curl -X PUT 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/R-20260810-004' \
+	-H 'Content-Type: application/json' \
+	-H 'X-Editor-Password: ここに編集用パスワード' \
+	-d '{"status":"確認中","message":"日程確認中です"}'
+```
+
+削除（DELETE）の例:
+
+```bash
+curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/R-20260810-004' \
+	-H 'X-Editor-Password: ここに編集用パスワード'
+```
+
+状態に指定できる値は `受付` / `確認中` / `確定` / `キャンセル` です。
+
+Apps Scriptを更新した場合は、ウェブアプリを再デプロイして最新コードを反映してください。
+
 ## 停止
 
 ```bash

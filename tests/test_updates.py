@@ -146,6 +146,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
         self.assertEqual(response.headers["Access-Control-Allow-Headers"], "Content-Type")
 
+    def test_lesson_reservation_manage_options_supports_cors_preflight(self):
+        client = create_app().test_client()
+
+        response = client.options("/api/lesson-reservations/R-20260810-001")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Methods"], "PUT, DELETE, OPTIONS"
+        )
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Headers"],
+            "Content-Type, X-Editor-Password",
+        )
+
     def test_lesson_reservation_is_validated_and_forwarded(self):
         client = create_app().test_client()
         payload = {
@@ -274,6 +289,111 @@ class UpdatesTest(unittest.TestCase):
                 ).status_code,
                 201,
             )
+
+    def test_lesson_reservation_manage_requires_editor_password(self):
+        client = create_app().test_client()
+        payload = {"status": "確認中"}
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            self.assertEqual(
+                client.put("/api/lesson-reservations/R-20260810-001", json=payload).status_code,
+                401,
+            )
+            self.assertEqual(
+                client.delete(
+                    "/api/lesson-reservations/R-20260810-001",
+                    headers={"X-Editor-Password": "wrong-password"},
+                ).status_code,
+                401,
+            )
+
+    def test_lesson_reservation_manage_can_update_and_delete(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.side_effect = [
+                {
+                    "ok": True,
+                    "reservationId": "R-20260810-001",
+                    "updatedFields": ["status", "message"],
+                },
+                {"ok": True, "reservationId": "R-20260810-001"},
+            ]
+
+            update_response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "確認中", "message": "折り返し予定"},
+                headers=headers,
+            )
+            delete_response = client.delete(
+                "/api/lesson-reservations/R-20260810-001",
+                headers=headers,
+            )
+
+        self.assertEqual(update_response.status_code, 200)
+        self.assertTrue(update_response.json["saved"])
+        self.assertEqual(update_response.json["updated_fields"], ["status", "message"])
+        self.assertEqual(delete_response.status_code, 200)
+        self.assertTrue(delete_response.json["deleted"])
+        self.assertEqual(send_reservation.call_count, 2)
+        self.assertEqual(
+            send_reservation.call_args_list[0].kwargs["action"],
+            "update",
+        )
+        self.assertEqual(
+            send_reservation.call_args_list[1].kwargs["action"],
+            "delete",
+        )
+
+    def test_lesson_reservation_manage_reports_not_found(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            side_effect=LessonReservationDeliveryError("NOT_FOUND"),
+        ):
+            response = client.delete(
+                "/api/lesson-reservations/R-20260810-999",
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 404)
+
+    def test_lesson_reservation_manage_rejects_invalid_update_payload(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ):
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "不正状態"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 400)
 
     def test_index_uses_site_relative_lesson_links(self):
         client = create_app().test_client()
