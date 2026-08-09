@@ -136,6 +136,7 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertEqual(page.count('href="lesson/"'), 3)
         self.assertNotIn('href="/lesson/"', page)
+        self.assertIn('<option value="お知らせ">お知らせ</option>', page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
 
 
