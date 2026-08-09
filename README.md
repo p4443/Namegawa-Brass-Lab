@@ -34,6 +34,26 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 初回接続時にテーブルが自動作成され、`data/updates.txt`の既存情報が取り込まれます。以後の追加・変更・削除はデータベースへ保存されます。
 
+## レッスン予約をGoogleスプレッドシートへ保存する
+
+教室ページのフッターから送信された予約は、Flaskを経由してGoogle Apps Scriptへ送られます。
+
+1. Googleスプレッドシートを新規作成し、URL内の`/d/`と`/edit`の間にあるスプレッドシートIDを控えます。
+2. スプレッドシートの「拡張機能」から「Apps Script」を開き、[google-apps-script/Code.gs](google-apps-script/Code.gs)の内容を貼り付けます。
+3. Apps Scriptの「プロジェクトの設定」→「スクリプト プロパティ」に`SPREADSHEET_ID`と`API_SECRET`を追加します。`API_SECRET`には十分に長いランダム文字列を指定します。
+4. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選び、実行ユーザーを「自分」、アクセスできるユーザーを「全員」にしてデプロイします。
+5. 発行された`/exec`のURLを`GOOGLE_APPS_SCRIPT_URL`、同じ秘密文字列を`GOOGLE_APPS_SCRIPT_SECRET`としてRenderのEnvironmentへ登録し、再デプロイします。
+
+ローカルでは次の環境変数を設定して起動します。
+
+```bash
+export GOOGLE_APPS_SCRIPT_URL='https://script.google.com/macros/s/デプロイID/exec'
+export GOOGLE_APPS_SCRIPT_SECRET='API_SECRETと同じ文字列'
+./manage-site.sh start
+```
+
+初回の予約送信時に`レッスン予約`シートと見出しが自動作成されます。予約は即時確定ではなく、シートには状態`受付`として保存されます。
+
 ## 停止
 
 ```bash

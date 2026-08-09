@@ -7,6 +7,8 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL:-}
       EDITOR_PASSWORD: ${EDITOR_PASSWORD:-}
+      GOOGLE_APPS_SCRIPT_URL: ${GOOGLE_APPS_SCRIPT_URL:-}
+      GOOGLE_APPS_SCRIPT_SECRET: ${GOOGLE_APPS_SCRIPT_SECRET:-}
     volumes:
       - ./data:/app/data
     restart: unless-stopped

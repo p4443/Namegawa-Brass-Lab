@@ -1,11 +1,16 @@
 import fcntl
 import hmac
+import json
 import os
 import re
 import tempfile
-from datetime import datetime
+from calendar import monthrange
+from datetime import date, datetime, timedelta
 from pathlib import Path
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 from urllib.parse import urlparse
+from zoneinfo import ZoneInfo
 
 from flask import Flask, jsonify, render_template, request, send_from_directory
 
@@ -22,6 +27,39 @@ YOUTUBE_PATTERN = re.compile(
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
+LESSON_TYPES = {"体験レッスン", "小学生", "中学生", "高校生以上", "グループ・部活動指導"}
+CONSULTATION_TIME = "要相談"
+
+
+def current_japan_date():
+    return datetime.now(ZoneInfo("Asia/Tokyo")).date()
+
+
+def add_one_month(value):
+    year = value.year + (value.month == 12)
+    month = 1 if value.month == 12 else value.month + 1
+    return date(year, month, min(value.day, monthrange(year, month)[1]))
+
+
+def time_range(start, end):
+    current = datetime.strptime(start, "%H:%M")
+    finish = datetime.strptime(end, "%H:%M")
+    times = set()
+    while current <= finish:
+        times.add(current.strftime("%H:%M"))
+        current += timedelta(minutes=15)
+    return times
+
+
+WEEKDAY_RESERVATION_TIMES = {
+    0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    2: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    3: time_range("06:45", "12:00"),
+    4: time_range("15:00", "17:00") | {CONSULTATION_TIME},
+    5: set(),
+    6: {CONSULTATION_TIME},
+}
 
 
 def parse_date(date_text):
@@ -237,6 +275,60 @@ def validate_update(payload):
     return values
 
 
+def validate_lesson_reservation(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    values = {
+        "name": str(payload.get("name", "")).strip(),
+        "email": str(payload.get("email", "")).strip(),
+        "phone": str(payload.get("phone", "")).strip(),
+        "lesson_type": str(payload.get("lesson_type", "")).strip(),
+        "preferred_date": str(payload.get("preferred_date", "")).strip(),
+        "preferred_time": str(payload.get("preferred_time", "")).strip(),
+        "message": str(payload.get("message", "")).strip(),
+    }
+    if not values["name"] or len(values["name"]) > 80:
+        raise ValueError("お名前を80文字以内で入力してください。")
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", values["email"]):
+        raise ValueError("メールアドレスを正しく入力してください。")
+    if values["phone"] and not re.fullmatch(r"[0-9+()\-\s]{8,20}", values["phone"]):
+        raise ValueError("電話番号を正しく入力してください。")
+    if values["lesson_type"] not in LESSON_TYPES:
+        raise ValueError("レッスン種別を選択してください。")
+    try:
+        preferred_date = datetime.strptime(values["preferred_date"], "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError("希望日時を正しく入力してください。") from exc
+    first_available_date = current_japan_date() + timedelta(days=1)
+    last_available_date = add_one_month(current_japan_date())
+    if not first_available_date <= preferred_date <= last_available_date:
+        raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
+    available_times = WEEKDAY_RESERVATION_TIMES[preferred_date.weekday()]
+    if not available_times:
+        raise ValueError("土曜日は予約を受け付けていません。")
+    if values["preferred_time"] not in available_times:
+        raise ValueError("選択した曜日の予約可能時間を指定してください。")
+    if len(values["message"]) > 500:
+        raise ValueError("ご要望は500文字以内で入力してください。")
+    return values
+
+
+def send_lesson_reservation(script_url, secret, values):
+    payload = json.dumps({**values, "secret": secret}, ensure_ascii=False).encode("utf-8")
+    script_request = urllib_request.Request(
+        script_url,
+        data=payload,
+        headers={"Content-Type": "application/json; charset=utf-8"},
+        method="POST",
+    )
+    with urllib_request.urlopen(script_request, timeout=10) as response:
+        result = json.loads(response.read().decode("utf-8"))
+    if not result.get("ok"):
+        raise ValueError("予約を受け付けられませんでした。")
+    return result
+
+
 def format_update(values):
     content = values["content"]
     if values["media_type"]:
@@ -302,6 +394,26 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
+
+    @app.post("/api/lesson-reservations")
+    def create_lesson_reservation():
+        if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
+            return jsonify({"saved": True}), 201
+        try:
+            values = validate_lesson_reservation(request.get_json(silent=True))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return jsonify({"error": "現在、Web予約を利用できません。メールまたは電話でお問い合わせください。"}), 503
+        try:
+            result = send_lesson_reservation(script_url, script_secret, values)
+        except (OSError, ValueError, json.JSONDecodeError, urllib_error.URLError):
+            app.logger.exception("Failed to send lesson reservation")
+            return jsonify({"error": "予約の送信に失敗しました。時間をおいて再度お試しください。"}), 502
+        return jsonify({"saved": True, "reservation_id": result.get("reservationId", "")}), 201
 
     @app.get("/api/editor")
     def editor_status():

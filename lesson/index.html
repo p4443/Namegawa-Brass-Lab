@@ -316,8 +316,161 @@
     }
 
     .footer {
-      padding: 20px 16px 30px;
-      color: var(--muted);
+      padding: 44px 16px 26px;
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .reservation {
+      display: grid;
+      width: min(100%, 760px);
+      margin: 0 auto 36px;
+      grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+      gap: 34px;
+      text-align: left;
+    }
+
+    .reservation-copy h2 {
+      margin: 0 0 10px;
+      color: #ffffff;
+      font-size: 1.35rem;
+      line-height: 1.4;
+    }
+
+    .reservation-copy p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.9rem;
+      line-height: 1.75;
+    }
+
+    .reservation-hours {
+      margin-top: 16px;
+      padding: 10px 14px;
+      border-top: 1px solid rgba(212, 175, 55, 0.7);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.7);
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.07);
+      font-size: 0.82rem;
+    }
+
+    .reservation-hours div {
+      display: grid;
+      grid-template-columns: 58px 1fr;
+      gap: 10px;
+      padding: 5px 0;
+    }
+
+    .reservation-hours dt {
+      color: #f1d46d;
+      font-weight: 800;
+    }
+
+    .reservation-hours dd {
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .reservation-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .form-field-wide,
+    .form-actions {
+      grid-column: 1 / -1;
+    }
+
+    .form-field label {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .required {
+      margin-left: 4px;
+      color: #f1d46d;
+      font-size: 0.7rem;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 5px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      font-size: 0.88rem;
+    }
+
+    .form-field textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--gold);
+      outline: 3px solid rgba(212, 175, 55, 0.25);
+    }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .reservation-submit {
+      min-height: 46px;
+      padding: 10px 20px;
+      border: 1px solid var(--gold);
+      border-radius: 5px;
+      color: var(--navy);
+      background: var(--gold);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reservation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .form-status {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.8rem;
+    }
+
+    .form-status[data-state="success"] {
+      color: #b8f3cc;
+    }
+
+    .form-status[data-state="error"] {
+      color: #ffd0ca;
+    }
+
+    .form-trap {
+      position: absolute;
+      left: -10000px;
+    }
+
+    .copyright {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.58);
       text-align: center;
       font-size: 0.76rem;
     }
@@ -351,6 +504,25 @@
 
       .button {
         width: 100%;
+      }
+
+      .reservation {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+
+      .reservation-form {
+        grid-template-columns: 1fr;
+      }
+
+      .form-field-wide,
+      .form-actions {
+        grid-column: auto;
+      }
+
+      .form-actions {
+        align-items: stretch;
+        flex-direction: column;
       }
     }
 
@@ -465,6 +637,170 @@
     </section>
   </main>
 
-  <footer class="footer">© なめがわブラス・ラボ</footer>
+  <footer class="footer">
+    <section class="reservation" aria-labelledby="reservation-title">
+      <div class="reservation-copy">
+        <h2 id="reservation-title">レッスン予約</h2>
+        <p>予約できる期間は、明日から1か月先までです。送信後、日程を確認して予約確定をご連絡します。</p>
+        <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
+          <div><dt>月〜水</dt><dd>6:45〜9:00<br>20:30〜22:00</dd></div>
+          <div><dt>木曜日</dt><dd>6:45〜12:00</dd></div>
+          <div><dt>金曜日</dt><dd>15:00〜17:00、または要相談</dd></div>
+          <div><dt>土／日</dt><dd>土：予約不可 ／ 日：要相談</dd></div>
+        </dl>
+      </div>
+      <form class="reservation-form" id="reservation-form">
+        <div class="form-field">
+          <label for="reservation-name">お名前<span class="required">必須</span></label>
+          <input id="reservation-name" name="name" type="text" autocomplete="name" maxlength="80" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-email">メールアドレス<span class="required">必須</span></label>
+          <input id="reservation-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-phone">電話番号</label>
+          <input id="reservation-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
+        </div>
+        <div class="form-field">
+          <label for="reservation-type">レッスン種別<span class="required">必須</span></label>
+          <select id="reservation-type" name="lesson_type" required>
+            <option value="">選択してください</option>
+            <option>体験レッスン</option>
+            <option>小学生</option>
+            <option>中学生</option>
+            <option>高校生以上</option>
+            <option>グループ・部活動指導</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="reservation-date">希望日<span class="required">必須</span></label>
+          <input id="reservation-date" name="preferred_date" type="date" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-time">希望時間<span class="required">必須</span></label>
+          <select id="reservation-time" name="preferred_time" disabled required>
+            <option value="">先に希望日を選択してください</option>
+          </select>
+        </div>
+        <div class="form-field form-field-wide">
+          <label for="reservation-message">ご要望・経験年数など</label>
+          <textarea id="reservation-message" name="message" maxlength="500"></textarea>
+        </div>
+        <div class="form-trap" aria-hidden="true">
+          <label for="reservation-website">ウェブサイト</label>
+          <input id="reservation-website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <div class="form-actions">
+          <button class="reservation-submit" type="submit">予約希望を送信</button>
+          <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+    </section>
+    <p class="copyright">© なめがわブラス・ラボ</p>
+  </footer>
+  <script>
+    const reservationForm = document.getElementById("reservation-form");
+    const reservationDate = document.getElementById("reservation-date");
+    const reservationTime = document.getElementById("reservation-time");
+    const reservationStatus = document.getElementById("reservation-status");
+    const reservationSubmit = reservationForm.querySelector("button[type='submit']");
+
+    const japanDateText = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const today = new Date(`${japanDateText}T00:00:00`);
+    const firstAvailableDate = new Date(today);
+    firstAvailableDate.setDate(firstAvailableDate.getDate() + 1);
+    const lastAvailableDate = new Date(today);
+    const targetMonth = lastAvailableDate.getMonth() + 1;
+    lastAvailableDate.setDate(1);
+    lastAvailableDate.setMonth(targetMonth + 1);
+    lastAvailableDate.setDate(0);
+    lastAvailableDate.setDate(Math.min(today.getDate(), lastAvailableDate.getDate()));
+
+    const dateValue = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    reservationDate.min = dateValue(firstAvailableDate);
+    reservationDate.max = dateValue(lastAvailableDate);
+
+    const makeTimeRange = (startHour, startMinute, endHour, endMinute) => {
+      const times = [];
+      let minutes = startHour * 60 + startMinute;
+      const end = endHour * 60 + endMinute;
+      while (minutes <= end) {
+        times.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+        minutes += 15;
+      }
+      return times;
+    };
+
+    const timesByDay = {
+      0: ["要相談"],
+      1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      2: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      3: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      4: makeTimeRange(6, 45, 12, 0),
+      5: [...makeTimeRange(15, 0, 17, 0), "要相談"],
+      6: [],
+    };
+
+    reservationDate.addEventListener("change", () => {
+      const selectedDate = new Date(`${reservationDate.value}T00:00:00`);
+      const availableTimes = timesByDay[selectedDate.getDay()] || [];
+      reservationTime.replaceChildren();
+
+      if (!availableTimes.length) {
+        reservationTime.add(new Option("土曜日は予約できません", ""));
+        reservationTime.disabled = true;
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = "土曜日以外の日を選択してください。";
+        return;
+      }
+
+      reservationTime.add(new Option("時間を選択してください", ""));
+      availableTimes.forEach((time) => reservationTime.add(new Option(time, time)));
+      reservationTime.disabled = false;
+      reservationStatus.dataset.state = "";
+      reservationStatus.textContent = "";
+    });
+
+    reservationForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      reservationSubmit.disabled = true;
+      reservationStatus.dataset.state = "";
+      reservationStatus.textContent = "送信しています…";
+
+      try {
+        const response = await fetch("../api/lesson-reservations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(Object.fromEntries(new FormData(reservationForm))),
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || "送信に失敗しました。");
+
+        reservationForm.reset();
+        reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
+        reservationTime.disabled = true;
+        reservationStatus.dataset.state = "success";
+        reservationStatus.textContent = result.reservation_id
+          ? `受け付けました。受付番号: ${result.reservation_id}`
+          : "予約希望を受け付けました。";
+      } catch (error) {
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = error.message;
+      } finally {
+        reservationSubmit.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>

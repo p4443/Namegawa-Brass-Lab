@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
@@ -126,6 +127,85 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("グループレッスン・部活動指導", page)
         self.assertIn("別途相談", page)
         self.assertIn('href="../#main-container"', page)
+        self.assertIn('id="reservation-form"', page)
+        self.assertIn('fetch("../api/lesson-reservations"', page)
+
+    def test_lesson_reservation_is_validated_and_forwarded(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "初心者です。",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {"ok": True, "reservationId": "R-20260820-001"}
+            response = client.post("/api/lesson-reservations", json=payload)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["reservation_id"], "R-20260820-001")
+        send_reservation.assert_called_once_with(
+            "https://script.google.com/example", "test-secret", payload
+        )
+
+    def test_lesson_reservation_rejects_invalid_input(self):
+        client = create_app().test_client()
+
+        response = client.post(
+            "/api/lesson-reservations",
+            json={"name": "予約 太郎", "email": "invalid"},
+        )
+
+        self.assertEqual(response.status_code, 400)
+
+    def test_lesson_reservation_enforces_date_range_and_weekday_hours(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-10",
+            "preferred_time": "06:45",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={"ok": True}):
+            self.assertEqual(client.post("/api/lesson-reservations", json=payload).status_code, 201)
+            invalid_reservations = [
+                {**payload, "preferred_date": "2026-08-09"},
+                {**payload, "preferred_date": "2026-09-10"},
+                {**payload, "preferred_date": "2026-08-15", "preferred_time": "09:00"},
+                {**payload, "preferred_date": "2026-08-14", "preferred_time": "09:00"},
+            ]
+            for reservation in invalid_reservations:
+                self.assertEqual(
+                    client.post("/api/lesson-reservations", json=reservation).status_code,
+                    400,
+                )
+            self.assertEqual(
+                client.post(
+                    "/api/lesson-reservations",
+                    json={**payload, "preferred_date": "2026-08-16", "preferred_time": "要相談"},
+                ).status_code,
+                201,
+            )
 
     def test_index_uses_site_relative_lesson_links(self):
         client = create_app().test_client()
