@@ -990,7 +990,7 @@
     <div class="tagline" style="margin: 10px 0 18px;">音を運び、夢を響かせる</div>
 
     <div class="bio-links" style="margin-bottom: 12px;">
-      <a href="#updates-section" class="bio-link">つぶやき・お役立ち情報</a>
+      <a href="#updates-section" class="bio-link">お知らせ</a>
       <a href="lesson/" class="bio-link">トランペット教室を見る</a>
       <a href="#video-section" class="bio-link">演奏動画を見る</a>
       <a href="#pdf-section" class="bio-link">PDF資料を見る</a>
@@ -1028,7 +1028,7 @@
     <section class="updates-section" id="updates-section">
       <div class="updates-card">
         <div class="updates-header">
-          <div class="updates-title">💬 つぶやき・お役立ち情報</div>
+          <div class="updates-title">📢 お知らせ</div>
           <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
         </div>
         <div class="editor-panel" id="editor-panel" hidden>
@@ -1209,6 +1209,7 @@
 <script>
   let currentUpdates = [];
   let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
+  let failedLoginAttempts = 0;
   const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
 
   const bundledUpdates = [
@@ -1376,6 +1377,18 @@
     document.getElementById('editor-status').textContent = message;
   }
 
+  function closeEditorPanel() {
+    const editorPanel = document.getElementById('editor-panel');
+    const editorToggle = document.getElementById('editor-toggle');
+    editorPanel.hidden = true;
+    editorToggle.setAttribute('aria-expanded', 'false');
+    document.getElementById('editor-login-form').hidden = Boolean(editorPassword);
+    document.getElementById('update-form').hidden = !editorPassword;
+    document.getElementById('editor-password').value = '';
+    setEditorStatus('');
+    failedLoginAttempts = 0;
+  }
+
   function resetUpdateForm() {
     const form = document.getElementById('update-form');
     form.reset();
@@ -1459,8 +1472,15 @@
     const editorPanel = document.getElementById('editor-panel');
     const editorToggle = document.getElementById('editor-toggle');
     editorToggle.addEventListener('click', () => {
-      editorPanel.hidden = !editorPanel.hidden;
-      editorToggle.setAttribute('aria-expanded', String(!editorPanel.hidden));
+      if (!editorPanel.hidden) {
+        closeEditorPanel();
+        return;
+      }
+      editorPanel.hidden = false;
+      editorToggle.setAttribute('aria-expanded', 'true');
+      document.getElementById('editor-login-form').hidden = Boolean(editorPassword);
+      document.getElementById('update-form').hidden = !editorPassword;
+      if (!editorPassword) document.getElementById('editor-password').focus();
     });
     document.getElementById('editor-login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -1469,9 +1489,16 @@
       if (!response.ok) {
         const result = await response.json();
         editorPassword = '';
-        setEditorStatus(result.error || 'ログインできませんでした。');
+        failedLoginAttempts += 1;
+        if (failedLoginAttempts >= 3) {
+          closeEditorPanel();
+          return;
+        }
+        setEditorStatus(`${result.error || 'ログインできませんでした。'} あと${3 - failedLoginAttempts}回入力できます。`);
+        document.getElementById('editor-password').select();
         return;
       }
+      failedLoginAttempts = 0;
       sessionStorage.setItem('updatesEditorPassword', editorPassword);
       setEditorStatus('編集できます。');
       showEditorForm();
@@ -1484,10 +1511,7 @@
     document.getElementById('editor-logout').addEventListener('click', () => {
       editorPassword = '';
       sessionStorage.removeItem('updatesEditorPassword');
-      document.getElementById('update-form').hidden = true;
-      document.getElementById('editor-login-form').hidden = false;
-      document.getElementById('editor-password').value = '';
-      setEditorStatus('ログアウトしました。');
+      closeEditorPanel();
       renderUpdates(currentUpdates);
     });
     document.getElementById('update-form').addEventListener('submit', async (event) => {

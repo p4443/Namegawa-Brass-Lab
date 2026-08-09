@@ -136,7 +136,11 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertEqual(page.count('href="lesson/"'), 3)
         self.assertNotIn('href="/lesson/"', page)
+        self.assertNotIn("つぶやき・お役立ち情報", page)
+        self.assertIn('<div class="updates-title">📢 お知らせ</div>', page)
         self.assertIn('<option value="お知らせ">お知らせ</option>', page)
+        self.assertIn("failedLoginAttempts >= 3", page)
+        self.assertIn("closeEditorPanel();", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
 
 
