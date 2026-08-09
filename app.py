@@ -407,7 +407,17 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
         if not script_url or not script_secret:
-            return jsonify({"error": "現在、Web予約を利用できません。メールまたは電話でお問い合わせください。"}), 503
+            missing_settings = []
+            if not script_url:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_URL")
+            if not script_secret:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_SECRET")
+            return jsonify(
+                {
+                    "error": "現在、Web予約を利用できません。メールまたは電話でお問い合わせください。",
+                    "missing_settings": missing_settings,
+                }
+            ), 503
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
         except (OSError, ValueError, json.JSONDecodeError, urllib_error.URLError):

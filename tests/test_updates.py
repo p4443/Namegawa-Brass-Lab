@@ -168,6 +168,30 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
 
+    def test_lesson_reservation_reports_missing_server_settings(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-11",
+            "preferred_time": "06:45",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 10)), patch.dict(
+            os.environ,
+            {"GOOGLE_APPS_SCRIPT_URL": "", "GOOGLE_APPS_SCRIPT_SECRET": ""},
+        ):
+            response = client.post("/api/lesson-reservations", json=payload)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.json["missing_settings"],
+            ["GOOGLE_APPS_SCRIPT_URL", "GOOGLE_APPS_SCRIPT_SECRET"],
+        )
+
     def test_lesson_reservation_enforces_date_range_and_weekday_hours(self):
         client = create_app().test_client()
         payload = {
