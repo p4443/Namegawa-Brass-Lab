@@ -368,7 +368,6 @@
       color: var(--primary-color);
     }
 
-    .editor-toggle,
     .editor-button,
     .update-action {
       min-height: 44px;
@@ -379,11 +378,31 @@
       cursor: pointer;
     }
 
-    .editor-toggle,
     .editor-button.primary {
       padding: 8px 14px;
       background: var(--primary-color);
       color: #ffffff;
+    }
+
+    .editor-toggle {
+      min-height: 32px;
+      padding: 4px 9px;
+      border: 1px solid rgba(11, 37, 69, 0.2);
+      border-radius: 6px;
+      background: transparent;
+      color: var(--text-muted);
+      font: inherit;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .editor-toggle:hover,
+    .editor-toggle:focus-visible,
+    .editor-toggle[aria-expanded="true"] {
+      border-color: rgba(11, 37, 69, 0.38);
+      background: rgba(11, 37, 69, 0.05);
+      color: var(--primary-color);
     }
 
     .editor-panel {
@@ -1010,7 +1029,7 @@
       <div class="updates-card">
         <div class="updates-header">
           <div class="updates-title">💬 つぶやき・お役立ち情報</div>
-          <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">🔒 編集</button>
+          <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
         </div>
         <div class="editor-panel" id="editor-panel" hidden>
           <form id="editor-login-form">
