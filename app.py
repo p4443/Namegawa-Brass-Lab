@@ -52,11 +52,11 @@ def time_range(start, end):
 
 
 WEEKDAY_RESERVATION_TIMES = {
-    0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
-    1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
-    2: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
-    3: time_range("06:45", "12:00"),
-    4: time_range("15:00", "17:00") | {CONSULTATION_TIME},
+    0: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
+    1: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
+    2: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
+    3: time_range("06:45", "11:00"),
+    4: time_range("15:00", "16:00") | {CONSULTATION_TIME},
     5: set(),
     6: {CONSULTATION_TIME},
 }
