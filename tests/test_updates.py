@@ -134,7 +134,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("別途相談", page)
         self.assertIn('href="../#main-container"', page)
         self.assertIn('id="reservation-form"', page)
-        self.assertIn('fetch("../api/lesson-reservations"', page)
+        self.assertIn("const renderReservationApi =", page)
+
+    def test_lesson_reservation_options_supports_cors_preflight(self):
+        client = create_app().test_client()
+
+        response = client.options("/api/lesson-reservations")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
+        self.assertEqual(response.headers["Access-Control-Allow-Headers"], "Content-Type")
 
     def test_lesson_reservation_is_validated_and_forwarded(self):
         client = create_app().test_client()
@@ -159,6 +169,7 @@ class UpdatesTest(unittest.TestCase):
             response = client.post("/api/lesson-reservations", json=payload)
 
         self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
         send_reservation.assert_called_once_with(
             "https://script.google.com/example", "test-secret", payload

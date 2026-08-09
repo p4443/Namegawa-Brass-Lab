@@ -705,6 +705,14 @@
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
     const reservationSubmit = reservationForm.querySelector("button[type='submit']");
+    const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
+
+    const reservationApiCandidates = (() => {
+      const urls = location.hostname.endsWith("github.io")
+        ? [renderReservationApi, "../api/lesson-reservations", "/api/lesson-reservations"]
+        : ["../api/lesson-reservations", "/api/lesson-reservations", renderReservationApi];
+      return [...new Set(urls)];
+    })();
 
     const japanDateText = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Asia/Tokyo",
@@ -772,6 +780,43 @@
       reservationStatus.textContent = "";
     });
 
+    async function submitReservation(payload) {
+      let lastError = null;
+      for (const endpoint of reservationApiCandidates) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          let result = {};
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          try {
+            if (contentType.includes("application/json")) {
+              result = await response.json();
+            }
+          } catch (error) {
+            result = {};
+          }
+
+          if (response.ok) {
+            return result;
+          }
+          if (response.status === 404 || response.status === 405 || !contentType.includes("application/json")) {
+            continue;
+          }
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          continue;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("送信先サーバーに接続できませんでした。");
+    }
+
     reservationForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       reservationSubmit.disabled = true;
@@ -779,13 +824,7 @@
       reservationStatus.textContent = "送信しています…";
 
       try {
-        const response = await fetch("../api/lesson-reservations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(Object.fromEntries(new FormData(reservationForm))),
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || "送信に失敗しました。");
+        const result = await submitReservation(Object.fromEntries(new FormData(reservationForm)));
 
         reservationForm.reset();
         reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));

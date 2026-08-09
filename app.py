@@ -369,6 +369,18 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
+    def with_lesson_reservation_cors(response):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "POST, OPTIONS"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        response.headers["Access-Control-Max-Age"] = "600"
+        return response
+
+    def lesson_reservation_json(payload, status_code):
+        response = jsonify(payload)
+        response.status_code = status_code
+        return with_lesson_reservation_cors(response)
+
     def get_updates():
         if configured_database_url:
             return load_database_updates(configured_database_url)
@@ -400,14 +412,16 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
 
-    @app.post("/api/lesson-reservations")
+    @app.route("/api/lesson-reservations", methods=["POST", "OPTIONS"])
     def create_lesson_reservation():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(app.response_class(status=204))
         if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
-            return jsonify({"saved": True}), 201
+            return lesson_reservation_json({"saved": True}, 201)
         try:
             values = validate_lesson_reservation(request.get_json(silent=True))
         except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+            return lesson_reservation_json({"error": str(exc)}, 400)
 
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
@@ -417,34 +431,43 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 missing_settings.append("GOOGLE_APPS_SCRIPT_URL")
             if not script_secret:
                 missing_settings.append("GOOGLE_APPS_SCRIPT_SECRET")
-            return jsonify(
+            return lesson_reservation_json(
                 {
                     "error": "現在、Web予約を利用できません。メールまたは電話でお問い合わせください。",
                     "missing_settings": missing_settings,
-                }
-            ), 503
+                },
+                503,
+            )
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
         except LessonReservationDeliveryError as exc:
             app.logger.exception("Apps Script rejected lesson reservation")
-            return jsonify(
+            return lesson_reservation_json(
                 {
                     "error": "予約の送信に失敗しました。時間をおいて再度お試しください。",
                     "delivery_error": str(exc),
-                }
-            ), 502
+                },
+                502,
+            )
         except json.JSONDecodeError:
             app.logger.exception("Apps Script returned an invalid response")
-            return jsonify(
+            return lesson_reservation_json(
                 {
                     "error": "予約の送信に失敗しました。時間をおいて再度お試しください。",
                     "delivery_error": "INVALID_APPS_SCRIPT_RESPONSE",
-                }
-            ), 502
+                },
+                502,
+            )
         except (OSError, ValueError, urllib_error.URLError):
             app.logger.exception("Failed to send lesson reservation")
-            return jsonify({"error": "予約の送信に失敗しました。時間をおいて再度お試しください。"}), 502
-        return jsonify({"saved": True, "reservation_id": result.get("reservationId", "")}), 201
+            return lesson_reservation_json(
+                {"error": "予約の送信に失敗しました。時間をおいて再度お試しください。"},
+                502,
+            )
+        return lesson_reservation_json(
+            {"saved": True, "reservation_id": result.get("reservationId", "")},
+            201,
+        )
 
     @app.get("/api/editor")
     def editor_status():
