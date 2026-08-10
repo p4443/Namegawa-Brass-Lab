@@ -48,7 +48,7 @@
     .nav,
     .hero,
     .content {
-      width: min(100% - 32px, 760px);
+      width: min(100% - 24px, 860px);
       margin: 0 auto;
     }
 
@@ -75,6 +75,51 @@
     .back-link:hover {
       color: #ffffff;
       text-decoration: underline;
+    }
+
+    .section {
+      scroll-margin-top: 90px;
+    }
+
+    .page-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: min(100% - 24px, 860px);
+      margin: 0 auto;
+      padding: 12px 0 0;
+    }
+
+    .page-nav-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .page-nav-list a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 11px;
+      border: 1px solid rgba(11, 37, 69, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--navy);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 6px 16px rgba(11, 37, 69, 0.08);
+    }
+
+    .page-nav-list a:hover,
+    .page-nav-list a:focus-visible {
+      color: #ffffff;
+      background: var(--navy);
+      border-color: var(--navy);
+      text-decoration: none;
     }
 
     .hero {
@@ -481,6 +526,21 @@
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
+    @media (max-width: 760px) {
+      .hero {
+        padding: 48px 0 54px;
+      }
+
+      .page-nav-list {
+        gap: 6px;
+      }
+
+      .reservation {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+    }
+
     @media (max-width: 600px) {
       .hero {
         padding: 42px 0 48px;
@@ -505,11 +565,6 @@
 
       .button {
         width: 100%;
-      }
-
-      .reservation {
-        grid-template-columns: 1fr;
-        gap: 22px;
       }
 
       .reservation-form {
@@ -555,6 +610,16 @@
       <p class="hero-copy">力を抜いて、もっと自由に。初心者から経験者まで、一人ひとりの音と目標に合わせて丁寧にレッスンします。</p>
     </div>
   </header>
+
+  <nav class="page-nav" aria-label="教室内ページナビ">
+    <ul class="page-nav-list">
+      <li><a href="#instructor-title">講師プロフィール</a></li>
+      <li><a href="#method-title">レッスン内容</a></li>
+      <li><a href="#features-title">特徴</a></li>
+      <li><a href="#price-title">料金</a></li>
+      <li><a href="#contact-title">お問い合わせ</a></li>
+    </ul>
+  </nav>
 
   <main class="content">
     <section class="section" aria-labelledby="instructor-title">
@@ -647,7 +712,7 @@
           <div><dt>月〜水</dt><dd>6:45〜8:00<br>20:30〜21:00</dd></div>
           <div><dt>木曜日</dt><dd>6:45〜11:00</dd></div>
           <div><dt>金曜日</dt><dd>15:00〜16:00、または要相談</dd></div>
-          <div><dt>土／日</dt><dd>土：予約不可 ／ 日：要相談</dd></div>
+          <div><dt>土／日</dt><dd>土：要相談 ／ 日：要相談</dd></div>
         </dl>
       </div>
       <form class="reservation-form" id="reservation-form">
@@ -811,7 +876,7 @@
       reservationTime.replaceChildren();
 
       if (!availableTimes.length) {
-        reservationTime.add(new Option("土曜日は予約できません", ""));
+        reservationTime.add(new Option("土曜日は要相談です", ""));
         reservationTime.disabled = true;
         reservationStatus.dataset.state = "error";
         reservationStatus.textContent = "土曜日以外の日を選択してください。";
