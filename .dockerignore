@@ -1,0 +1,7 @@
+.git
+.venv
+.docker-config
+certs
+tests
+__pycache__
+*.code-workspace
