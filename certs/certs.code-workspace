@@ -7,7 +7,19 @@
 			"path": "../data"
 		},
 		{
+			"path": "../google-apps-script"
+		},
+		{
+			"path": "../lesson"
+		},
+		{
+			"path": "../logs"
+		},
+		{
 			"path": "../pdf"
+		},
+		{
+			"path": "../tests"
 		},
 		{
 			"path": "../video"

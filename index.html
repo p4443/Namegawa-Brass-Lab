@@ -1437,12 +1437,16 @@
 
   async function restoreEditorSession() {
     if (!editorPassword) return;
-    const response = await fetch('/api/editor', { headers: editorHeaders() });
-    if (response.ok) {
-      showEditorForm();
-    } else {
-      editorPassword = '';
-      sessionStorage.removeItem('updatesEditorPassword');
+    try {
+      const response = await fetch('/api/editor', { headers: editorHeaders() });
+      if (response.ok) {
+        showEditorForm();
+      } else if (response.status === 401) {
+        editorPassword = '';
+        sessionStorage.removeItem('updatesEditorPassword');
+      }
+    } catch {
+      // ネットワークエラー時は保存パスワードを維持
     }
   }
 

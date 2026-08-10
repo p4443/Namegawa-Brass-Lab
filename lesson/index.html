@@ -1034,9 +1034,16 @@
           if (result.delivery_error) {
             errorParts.push(`詳細: ${result.delivery_error}`);
           }
-          throw new Error(errorParts.join(" "));
+          const err = new Error(errorParts.join(" "));
+          // 401(認証失敗)またはmissing_settings(認証済み・設定不備)は確定エラー
+          if (response.status === 401 || (Array.isArray(result.missing_settings) && result.missing_settings.length)) throw err;
+          lastError = err;
         } catch (error) {
-          lastError = error;
+          if (error instanceof TypeError) {
+            lastError = error;
+          } else {
+            throw error;
+          }
         }
       }
       throw lastError || new Error("送信先サーバーに接続できませんでした。");
