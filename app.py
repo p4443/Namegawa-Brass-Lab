@@ -381,6 +381,14 @@ def validate_reservation_id(value):
     return reservation_id
 
 
+def parse_updated_count(result):
+    updated_count = result.get("updatedCount", result.get("updated_count", 0))
+    try:
+        return max(0, int(updated_count))
+    except (TypeError, ValueError):
+        return 0
+
+
 def validate_slot_status_request(payload):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
@@ -515,7 +523,10 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
 
     def require_editor():
         configured_password = os.environ.get("EDITOR_PASSWORD", "")
+        payload = request.get_json(silent=True)
         supplied_password = request.headers.get("X-Editor-Password", "")
+        if not supplied_password and isinstance(payload, dict):
+            supplied_password = str(payload.get("editor_password", ""))
         if not configured_password:
             return jsonify({"error": "編集用パスワードが設定されていません。"}), 503
         if not hmac.compare_digest(
@@ -696,7 +707,7 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
             response = jsonify(
                 {
                     "saved": True,
-                    "updated_count": int(result.get("updatedCount", 0)),
+                    "updated_count": parse_updated_count(result),
                 }
             )
             return with_lesson_reservation_cors(

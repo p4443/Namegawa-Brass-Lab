@@ -1012,7 +1012,7 @@
               "Content-Type": "application/json",
               "X-Editor-Password": editorPassword,
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ ...payload, editor_password: editorPassword }),
           });
 
           let result = {};
@@ -1027,7 +1027,14 @@
           if (response.status === 404 || response.status === 405 || !contentType.includes("application/json")) {
             continue;
           }
-          throw new Error(result.error || "枠状態の反映に失敗しました。");
+          const errorParts = [result.error || "枠状態の反映に失敗しました。"];
+          if (Array.isArray(result.missing_settings) && result.missing_settings.length) {
+            errorParts.push(`不足設定: ${result.missing_settings.join(", ")}`);
+          }
+          if (result.delivery_error) {
+            errorParts.push(`詳細: ${result.delivery_error}`);
+          }
+          throw new Error(errorParts.join(" "));
         } catch (error) {
           lastError = error;
         }
