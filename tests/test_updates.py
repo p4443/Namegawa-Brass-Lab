@@ -219,6 +219,38 @@ class UpdatesTest(unittest.TestCase):
             "https://script.google.com/example", "test-secret", payload
         )
 
+    def test_lesson_reservation_duplicate_is_reported(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "初心者です。",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260820-001",
+                "status": "調整中",
+                "autoReplySent": False,
+                "duplicate": True,
+            }
+            response = client.post("/api/lesson-reservations", json=payload)
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.json["duplicate"])
+        self.assertFalse(response.json["auto_reply_sent"])
+
     def test_lesson_slot_statuses_returns_slots(self):
         client = create_app().test_client()
 

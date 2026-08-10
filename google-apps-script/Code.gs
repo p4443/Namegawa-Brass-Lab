@@ -14,6 +14,7 @@ const HEADERS = [
 ];
 const SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 const SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
+const DUPLICATE_WINDOW_MINUTES = 10;
 
 function doPost(event) {
   const lock = LockService.getScriptLock();
@@ -30,6 +31,17 @@ function doPost(event) {
     const action = String(data.action || "create").toLowerCase();
     if (action === "create") {
       const now = new Date();
+      const duplicate = findDuplicateReservation(sheet, data, now);
+      if (duplicate) {
+        return jsonResponse({
+          ok: true,
+          reservationId: duplicate.reservationId,
+          status: duplicate.status || "調整中",
+          autoReplySent: false,
+          duplicate: true,
+        });
+      }
+
       const reservationId = createReservationId(now, sheet.getLastRow());
       sheet.appendRow([
         now,
@@ -59,6 +71,7 @@ function doPost(event) {
         reservationId: reservationId,
         status: "調整中",
         autoReplySent: autoReplySent,
+        duplicate: false,
       });
     }
 
@@ -220,6 +233,48 @@ function updateReservationRow(sheet, row, data) {
   });
 
   return updatedFields;
+}
+
+function findDuplicateReservation(sheet, data, now) {
+  const email = String(data.email || "").trim().toLowerCase();
+  const preferredDate = String(data.preferred_date || "").trim();
+  const preferredTime = String(data.preferred_time || "").trim();
+  if (!email || !preferredDate || !preferredTime) {
+    return null;
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return null;
+  }
+
+  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  const duplicateThresholdMs = DUPLICATE_WINDOW_MINUTES * 60 * 1000;
+  for (let index = values.length - 1; index >= 0; index -= 1) {
+    const row = values[index];
+    const createdAt = row[0] instanceof Date ? row[0] : null;
+    const reservationId = String(row[1] || "").trim();
+    const status = String(row[2] || "").trim();
+    const rowEmail = String(row[4] || "").trim().toLowerCase();
+    const rowPreferredDate = String(row[7] || "").trim();
+    const rowPreferredTime = String(row[8] || "").trim();
+
+    if (status === "キャンセル") {
+      continue;
+    }
+    if (rowEmail !== email || rowPreferredDate !== preferredDate || rowPreferredTime !== preferredTime) {
+      continue;
+    }
+    if (!createdAt || Math.abs(now.getTime() - createdAt.getTime()) > duplicateThresholdMs) {
+      continue;
+    }
+
+    return {
+      reservationId: reservationId,
+      status: status,
+    };
+  }
+  return null;
 }
 
 function listSlotStatuses(sheet, fromDateText, toDateText) {

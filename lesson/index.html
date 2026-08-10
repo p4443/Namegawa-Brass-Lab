@@ -1118,6 +1118,12 @@
         reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
         reservationTime.disabled = true;
         reservationStatus.dataset.state = "success";
+        if (result.duplicate) {
+          reservationStatus.textContent = result.reservation_id
+            ? `同一内容の予約はすでに受け付けています。受付番号: ${result.reservation_id}`
+            : "同一内容の予約はすでに受け付けています。";
+          return;
+        }
         const baseMessage = result.reservation_id
           ? `受け付けました（状態: ${result.status || "調整中"}）。受付番号: ${result.reservation_id}`
           : "予約希望を受け付けました（状態: 調整中）。";

@@ -597,6 +597,7 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 "reservation_id": result.get("reservationId", ""),
                 "status": result.get("status", "調整中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
+                "duplicate": bool(result.get("duplicate", False)),
             },
             201,
         )
