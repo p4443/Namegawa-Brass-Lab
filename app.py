@@ -30,6 +30,7 @@ ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
 LESSON_TYPES = {"体験レッスン", "小学生", "中学生", "高校生以上", "グループ・部活動指導"}
 CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "確認中", "確定", "キャンセル"}
+SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
 
 
 def current_japan_date():
@@ -380,6 +381,64 @@ def validate_reservation_id(value):
     return reservation_id
 
 
+def validate_slot_status_request(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    values = {
+        "start_date": str(payload.get("start_date", "")).strip(),
+        "end_date": str(payload.get("end_date", "")).strip(),
+        "start_time": str(payload.get("start_time", "")).strip(),
+        "end_time": str(payload.get("end_time", "")).strip(),
+        "status": str(payload.get("status", "")).strip(),
+        "note": str(payload.get("note", "")).strip(),
+    }
+
+    try:
+        start_date = datetime.strptime(values["start_date"], "%Y-%m-%d").date()
+        end_date = datetime.strptime(values["end_date"], "%Y-%m-%d").date()
+    except ValueError as exc:
+        raise ValueError("開始日と終了日を正しく入力してください。") from exc
+
+    if end_date < start_date:
+        raise ValueError("終了日は開始日以降の日付を指定してください。")
+
+    if values["status"] not in SLOT_STATUS_VALUES - {"空き", "調整中"}:
+        raise ValueError("状態は 予約済 または お休み を指定してください。")
+
+    def validate_time(field_name, value):
+        if value == CONSULTATION_TIME:
+            return value
+        if not re.fullmatch(r"(?:[01]\d|2[0-3]):[0-5]\d", value):
+            raise ValueError(f"{field_name}を正しく入力してください。")
+        return value
+
+    start_time = validate_time("開始時間", values["start_time"])
+    end_time = validate_time("終了時間", values["end_time"])
+
+    if start_time != CONSULTATION_TIME and end_time != CONSULTATION_TIME:
+        start_minutes = int(start_time[:2]) * 60 + int(start_time[3:])
+        end_minutes = int(end_time[:2]) * 60 + int(end_time[3:])
+        if end_minutes < start_minutes:
+            raise ValueError("終了時間は開始時間以降を指定してください。")
+        if start_minutes % 15 or end_minutes % 15:
+            raise ValueError("時間は15分単位で指定してください。")
+    elif start_time != end_time:
+        raise ValueError("要相談を指定する場合は開始時間と終了時間を同じにしてください。")
+
+    if len(values["note"]) > 200:
+        raise ValueError("メモは200文字以内で入力してください。")
+
+    return {
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "start_time": start_time,
+        "end_time": end_time,
+        "status": values["status"],
+        "note": values["note"],
+    }
+
+
 def send_lesson_reservation(script_url, secret, values, action="create"):
     payload = json.dumps(
         {**values, "secret": secret, "action": action}, ensure_ascii=False
@@ -533,9 +592,154 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 502,
             )
         return lesson_reservation_json(
-            {"saved": True, "reservation_id": result.get("reservationId", "")},
+            {
+                "saved": True,
+                "reservation_id": result.get("reservationId", ""),
+                "status": result.get("status", "調整中"),
+                "auto_reply_sent": bool(result.get("autoReplySent", False)),
+            },
             201,
         )
+
+    @app.route("/api/lesson-slot-statuses", methods=["GET", "OPTIONS"])
+    def list_lesson_slot_statuses():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(app.response_class(status=204), methods="GET, OPTIONS")
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json({"slots": []}, 200)
+
+        from_date = str(request.args.get("from", "")).strip()
+        to_date = str(request.args.get("to", "")).strip()
+        payload = {}
+        if from_date:
+            payload["from"] = from_date
+        if to_date:
+            payload["to"] = to_date
+
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                payload,
+                action="get_slot_statuses",
+            )
+            return lesson_reservation_json(
+                {"slots": result.get("slots", [])},
+                200,
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Failed to get slot statuses")
+            return lesson_reservation_json({"slots": []}, 200)
+
+    @app.route("/api/lesson-slot-statuses/admin", methods=["POST", "OPTIONS"])
+    def update_lesson_slot_statuses():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        try:
+            values = validate_slot_status_request(request.get_json(silent=True))
+        except ValueError as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 400
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            missing_settings = []
+            if not script_url:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_URL")
+            if not script_secret:
+                missing_settings.append("GOOGLE_APPS_SCRIPT_SECRET")
+            response = jsonify(
+                {
+                    "error": "現在、枠状態管理を利用できません。",
+                    "missing_settings": missing_settings,
+                }
+            )
+            response.status_code = 503
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                values,
+                action="upsert_slot_status_range",
+            )
+            response = jsonify(
+                {
+                    "saved": True,
+                    "updated_count": int(result.get("updatedCount", 0)),
+                }
+            )
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script rejected slot status update")
+            response = jsonify(
+                {
+                    "error": "枠状態の更新に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": str(exc),
+                }
+            )
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except json.JSONDecodeError:
+            app.logger.exception("Apps Script returned an invalid response")
+            response = jsonify(
+                {
+                    "error": "枠状態の更新に失敗しました。時間をおいて再度お試しください。",
+                    "delivery_error": "INVALID_APPS_SCRIPT_RESPONSE",
+                }
+            )
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except (OSError, urllib_error.URLError):
+            app.logger.exception("Failed to update slot statuses")
+            response = jsonify({"error": "枠状態の更新に失敗しました。時間をおいて再度お試しください。"})
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
 
     @app.route("/api/lesson-reservations/<reservation_id>", methods=["PUT", "DELETE", "OPTIONS"])
     def manage_lesson_reservation(reservation_id):
@@ -548,11 +752,23 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
 
         error = require_editor()
         if error:
-            return error
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         try:
             valid_reservation_id = validate_reservation_id(reservation_id)
         except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+            response = jsonify({"error": str(exc)})
+            response.status_code = 400
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
 
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
@@ -562,12 +778,18 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 missing_settings.append("GOOGLE_APPS_SCRIPT_URL")
             if not script_secret:
                 missing_settings.append("GOOGLE_APPS_SCRIPT_SECRET")
-            return jsonify(
+            response = jsonify(
                 {
                     "error": "現在、予約管理を利用できません。",
                     "missing_settings": missing_settings,
                 }
-            ), 503
+            )
+            response.status_code = 503
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
 
         try:
             if request.method == "DELETE":
@@ -577,7 +799,12 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                     {"reservation_id": valid_reservation_id},
                     action="delete",
                 )
-                return jsonify({"deleted": True, "reservation_id": result.get("reservationId", "")})
+                response = jsonify({"deleted": True, "reservation_id": result.get("reservationId", "")})
+                return with_lesson_reservation_cors(
+                    response,
+                    methods="PUT, DELETE, OPTIONS",
+                    headers="Content-Type, X-Editor-Password",
+                )
 
             values = validate_lesson_reservation_update(request.get_json(silent=True))
             result = send_lesson_reservation(
@@ -586,38 +813,71 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 {"reservation_id": valid_reservation_id, **values},
                 action="update",
             )
-            return jsonify(
+            response = jsonify(
                 {
                     "saved": True,
                     "reservation_id": result.get("reservationId", ""),
                     "updated_fields": result.get("updatedFields", []),
                 }
             )
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
+            response = jsonify({"error": str(exc)})
+            response.status_code = 400
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         except LessonReservationDeliveryError as exc:
             if str(exc) == "NOT_FOUND":
-                return jsonify({"error": "対象の予約が見つかりません。"}), 404
+                response = jsonify({"error": "対象の予約が見つかりません。"})
+                response.status_code = 404
+                return with_lesson_reservation_cors(
+                    response,
+                    methods="PUT, DELETE, OPTIONS",
+                    headers="Content-Type, X-Editor-Password",
+                )
             app.logger.exception("Apps Script rejected reservation management action")
-            return jsonify(
+            response = jsonify(
                 {
                     "error": "予約管理に失敗しました。時間をおいて再度お試しください。",
                     "delivery_error": str(exc),
                 }
-            ), 502
+            )
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         except json.JSONDecodeError:
             app.logger.exception("Apps Script returned an invalid response")
-            return jsonify(
+            response = jsonify(
                 {
                     "error": "予約管理に失敗しました。時間をおいて再度お試しください。",
                     "delivery_error": "INVALID_APPS_SCRIPT_RESPONSE",
                 }
-            ), 502
+            )
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         except (OSError, urllib_error.URLError):
             app.logger.exception("Failed to manage lesson reservation")
-            return jsonify(
-                {"error": "予約管理に失敗しました。時間をおいて再度お試しください。"}
-            ), 502
+            response = jsonify({"error": "予約管理に失敗しました。時間をおいて再度お試しください。"})
+            response.status_code = 502
+            return with_lesson_reservation_cors(
+                response,
+                methods="PUT, DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
 
     @app.get("/api/editor")
     def editor_status():

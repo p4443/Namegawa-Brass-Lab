@@ -1,4 +1,5 @@
 const SHEET_NAME = "レッスン予約";
+const SLOT_SHEET_NAME = "予約枠状態";
 const HEADERS = [
   "受付日時",
   "受付番号",
@@ -11,6 +12,8 @@ const HEADERS = [
   "希望時間",
   "ご要望",
 ];
+const SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
+const SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 
 function doPost(event) {
   const lock = LockService.getScriptLock();
@@ -23,6 +26,7 @@ function doPost(event) {
 
     lock.waitLock(10000);
     const sheet = getReservationSheet();
+    const slotSheet = getSlotStatusSheet();
     const action = String(data.action || "create").toLowerCase();
     if (action === "create") {
       const now = new Date();
@@ -30,7 +34,7 @@ function doPost(event) {
       sheet.appendRow([
         now,
         reservationId,
-        "受付",
+        "調整中",
         safeCell(data.name),
         safeCell(data.email),
         safeCell(data.phone),
@@ -39,7 +43,56 @@ function doPost(event) {
         safeCell(data.preferred_time),
         safeCell(data.message),
       ]);
-      return jsonResponse({ ok: true, reservationId: reservationId });
+
+      upsertSlotStatus(
+        slotSheet,
+        String(data.preferred_date || "").trim(),
+        String(data.preferred_time || "").trim(),
+        "調整中",
+        "受付自動設定",
+        reservationId,
+      );
+
+      const autoReplySent = sendReservationAutoReply(data, reservationId);
+      return jsonResponse({
+        ok: true,
+        reservationId: reservationId,
+        status: "調整中",
+        autoReplySent: autoReplySent,
+      });
+    }
+
+    if (action === "get_slot_statuses") {
+      const from = String(data.from || "").trim();
+      const to = String(data.to || "").trim();
+      const slots = listSlotStatuses(slotSheet, from, to);
+      return jsonResponse({ ok: true, slots: slots });
+    }
+
+    if (action === "upsert_slot_status_range") {
+      const startDate = String(data.start_date || "").trim();
+      const endDate = String(data.end_date || "").trim();
+      const startTime = String(data.start_time || "").trim();
+      const endTime = String(data.end_time || "").trim();
+      const status = String(data.status || "").trim();
+      const note = String(data.note || "").trim();
+      if (!startDate || !endDate || !startTime || !endTime || !status) {
+        return jsonResponse({ ok: false, error: "Missing range parameters" });
+      }
+      if (SLOT_STATUS_VALUES.indexOf(status) === -1) {
+        return jsonResponse({ ok: false, error: "Invalid slot status" });
+      }
+      const updatedCount = upsertSlotStatusRange(
+        slotSheet,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        status,
+        note,
+        "admin",
+      );
+      return jsonResponse({ ok: true, updatedCount: updatedCount });
     }
 
     if (action === "update") {
@@ -104,6 +157,27 @@ function getReservationSheet() {
   return sheet;
 }
 
+function getSlotStatusSheet() {
+  const spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
+  const spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  let sheet = spreadsheet.getSheetByName(SLOT_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(SLOT_SHEET_NAME);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(SLOT_HEADERS);
+    sheet.setFrozenRows(1);
+    sheet.getRange(1, 1, 1, SLOT_HEADERS.length)
+      .setBackground("#1f5f8b")
+      .setFontColor("#ffffff")
+      .setFontWeight("bold");
+    sheet.getRange("A:A").setNumberFormat("yyyy-mm-dd");
+    sheet.getRange("E:E").setNumberFormat("yyyy/mm/dd hh:mm:ss");
+    sheet.autoResizeColumns(1, SLOT_HEADERS.length);
+  }
+  return sheet;
+}
+
 function createReservationId(date, lastRow) {
   const timeZone = Session.getScriptTimeZone();
   const datePart = Utilities.formatDate(date, timeZone, "yyyyMMdd");
@@ -146,6 +220,177 @@ function updateReservationRow(sheet, row, data) {
   });
 
   return updatedFields;
+}
+
+function listSlotStatuses(sheet, fromDateText, toDateText) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return [];
+  }
+
+  const fromDate = parseIsoDate(fromDateText);
+  const toDate = parseIsoDate(toDateText);
+  const values = sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues();
+  const slots = [];
+
+  values.forEach((row) => {
+    const dateText = toDateText_(row[0]);
+    if (!dateText) {
+      return;
+    }
+    if (fromDate && dateText < fromDateText) {
+      return;
+    }
+    if (toDate && dateText > toDateText) {
+      return;
+    }
+    slots.push({
+      date: dateText,
+      time: String(row[1] || "").trim(),
+      status: String(row[2] || "").trim(),
+      note: String(row[3] || "").trim(),
+    });
+  });
+
+  return slots;
+}
+
+function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {
+  const start = parseIsoDate(startDate);
+  const end = parseIsoDate(endDate);
+  if (!start || !end || end.getTime() < start.getTime()) {
+    throw new Error("Invalid date range");
+  }
+
+  let count = 0;
+  const oneDay = 24 * 60 * 60 * 1000;
+  for (let current = new Date(start.getTime()); current.getTime() <= end.getTime(); current = new Date(current.getTime() + oneDay)) {
+    const dateText = Utilities.formatDate(current, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    const times = expandTimes(startTime, endTime);
+    times.forEach((time) => {
+      upsertSlotStatus(sheet, dateText, time, status, note, source);
+      count += 1;
+    });
+  }
+  return count;
+}
+
+function upsertSlotStatus(sheet, dateText, timeText, status, note, source) {
+  if (!dateText || !timeText) {
+    return;
+  }
+  const row = findSlotRow(sheet, dateText, timeText);
+  const now = new Date();
+  const values = [dateText, timeText, status, safeCell(note), now, safeCell(source || "")];
+  if (row > 0) {
+    sheet.getRange(row, 1, 1, SLOT_HEADERS.length).setValues([values]);
+  } else {
+    sheet.appendRow(values);
+  }
+}
+
+function findSlotRow(sheet, dateText, timeText) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return 0;
+  }
+  const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  for (let index = 0; index < values.length; index += 1) {
+    if (toDateText_(values[index][0]) === dateText && String(values[index][1] || "").trim() === timeText) {
+      return index + 2;
+    }
+  }
+  return 0;
+}
+
+function expandTimes(startTime, endTime) {
+  if (startTime === "要相談" && endTime === "要相談") {
+    return ["要相談"];
+  }
+  const start = toMinutes(startTime);
+  const end = toMinutes(endTime);
+  if (start < 0 || end < 0 || end < start) {
+    throw new Error("Invalid time range");
+  }
+  const times = [];
+  for (let minutes = start; minutes <= end; minutes += 15) {
+    const hour = Math.floor(minutes / 60);
+    const minute = minutes % 60;
+    times.push(`${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`);
+  }
+  return times;
+}
+
+function toMinutes(timeText) {
+  const match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(timeText || "").trim());
+  if (!match) {
+    return -1;
+  }
+  return Number(match[1]) * 60 + Number(match[2]);
+}
+
+function parseIsoDate(dateText) {
+  if (!dateText) {
+    return null;
+  }
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateText);
+  if (!match) {
+    return null;
+  }
+  return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+}
+
+function toDateText_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  const text = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+    return text;
+  }
+  const parsed = parseIsoDate(text);
+  if (!parsed) {
+    return "";
+  }
+  return Utilities.formatDate(parsed, Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function sendReservationAutoReply(data, reservationId) {
+  const email = String(data.email || "").trim();
+  if (!email || email.indexOf("@") <= 0) {
+    return false;
+  }
+
+  const name = String(data.name || "").trim() || "お客様";
+  const lessonType = String(data.lesson_type || "").trim();
+  const preferredDate = String(data.preferred_date || "").trim();
+  const preferredTime = String(data.preferred_time || "").trim();
+  const body = [
+    `${name} 様`,
+    "",
+    "レッスン予約のお申し込みありがとうございます。",
+    "以下の内容で確かに受け付けました。",
+    "",
+    `受付番号: ${reservationId}`,
+    `レッスン種別: ${lessonType}`,
+    `希望日: ${preferredDate}`,
+    `希望時間: ${preferredTime}`,
+    "現在の状態: 調整中",
+    "",
+    "担当より日程確定のご連絡を差し上げます。",
+    "このメールは自動送信です。",
+  ].join("\n");
+
+  try {
+    GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
+      name: "なめがわブラス・ラボ",
+      replyTo: "zuomuj924@gmail.com",
+    });
+    return true;
+  } catch (error) {
+    console.error(error);
+    return false;
+  }
 }
 
 function safeCell(value) {

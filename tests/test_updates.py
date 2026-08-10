@@ -146,6 +146,28 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
         self.assertEqual(response.headers["Access-Control-Allow-Headers"], "Content-Type")
 
+    def test_lesson_slot_statuses_options_supports_cors_preflight(self):
+        client = create_app().test_client()
+
+        response = client.options("/api/lesson-slot-statuses")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
+
+    def test_lesson_slot_statuses_admin_options_supports_cors_preflight(self):
+        client = create_app().test_client()
+
+        response = client.options("/api/lesson-slot-statuses/admin")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Headers"],
+            "Content-Type, X-Editor-Password",
+        )
+
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
@@ -180,15 +202,93 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
-            send_reservation.return_value = {"ok": True, "reservationId": "R-20260820-001"}
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260820-001",
+                "status": "調整中",
+                "autoReplySent": True,
+            }
             response = client.post("/api/lesson-reservations", json=payload)
 
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
+        self.assertEqual(response.json["status"], "調整中")
+        self.assertTrue(response.json["auto_reply_sent"])
         send_reservation.assert_called_once_with(
             "https://script.google.com/example", "test-secret", payload
         )
+
+    def test_lesson_slot_statuses_returns_slots(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "slots": [{"date": "2026-08-20", "time": "09:00", "status": "予約済"}],
+            }
+            response = client.get("/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(len(response.json["slots"]), 1)
+        self.assertEqual(response.json["slots"][0]["status"], "予約済")
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "get_slot_statuses")
+
+    def test_lesson_slot_status_admin_requires_editor_password(self):
+        client = create_app().test_client()
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-20",
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "status": "予約済",
+            "note": "テスト",
+        }
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = client.post("/api/lesson-slot-statuses/admin", json=payload)
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_lesson_slot_status_admin_can_update_range(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-21",
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "status": "お休み",
+            "note": "学校行事",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {"ok": True, "updatedCount": 10}
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["saved"])
+        self.assertEqual(response.json["updated_count"], 10)
+        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "upsert_slot_status_range")
 
     def test_lesson_reservation_rejects_invalid_input(self):
         client = create_app().test_client()

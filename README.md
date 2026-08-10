@@ -52,7 +52,11 @@ export GOOGLE_APPS_SCRIPT_SECRET='API_SECRETと同じ文字列'
 ./manage-site.sh start
 ```
 
-初回の予約送信時に`レッスン予約`シートと見出しが自動作成されます。予約は即時確定ではなく、シートには状態`受付`として保存されます。
+初回の予約送信時に`レッスン予約`シートと`予約枠状態`シートが自動作成されます。
+
+- 予約受付時の状態は`調整中`として保存されます。
+- 同時に、該当する希望日時の枠へ`調整中`が自動反映されます。
+- 受付完了メール（自動返信）が送信されます。
 
 ### 予約の更新・削除（管理API）
 
@@ -79,7 +83,159 @@ curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/
 
 状態に指定できる値は `受付` / `確認中` / `確定` / `キャンセル` です。
 
+### 予約枠状態の管理API（管理者）
+
+期間と時間帯を指定して、`予約済`または`お休み`を一括反映できます。
+
+- エンドポイント: `POST /api/lesson-slot-statuses/admin`
+- 認証ヘッダー: `X-Editor-Password`（`EDITOR_PASSWORD`と同じ値）
+
+```bash
+curl -X POST 'https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses/admin' \
+	-H 'Content-Type: application/json' \
+	-H 'X-Editor-Password: ここに編集用パスワード' \
+	-d '{"start_date":"2026-08-20","end_date":"2026-08-22","start_time":"09:00","end_time":"10:00","status":"予約済","note":"本番前リハ"}'
+```
+
+公開用の枠状態取得API:
+
+- エンドポイント: `GET /api/lesson-slot-statuses?from=YYYY-MM-DD&to=YYYY-MM-DD`
+- 予約フォームはこのAPIを参照して、`調整中` / `予約済` / `お休み`の枠を選択不可として表示します。
+
 Apps Scriptを更新した場合は、ウェブアプリを再デプロイして最新コードを反映してください。
+
+### 本番反映クイック手順（最短）
+
+1. [google-apps-script/Code.gs](google-apps-script/Code.gs) を Apps Script に貼り付けて保存
+2. Apps Script を「既存ウェブアプリの新バージョン」で再デプロイ
+3. Render の Environment を確認
+	- `GOOGLE_APPS_SCRIPT_URL`
+	- `GOOGLE_APPS_SCRIPT_SECRET`
+	- `EDITOR_PASSWORD`
+4. Render を再デプロイ
+5. 公開ページ [lesson/index.html](lesson/index.html) で予約1件を送信して確認
+	- 受付状態が「調整中」
+	- 自動返信メールが届く
+	- 該当時間枠が選択不可表示になる
+
+### 動作確認コマンド集（順番実行）
+
+事前に環境変数を設定してください。
+
+```bash
+export BASE_URL='https://namegawa-brass-lab.onrender.com'
+export EDITOR_PASSWORD='ここに編集用パスワード'
+```
+
+1. 予約枠状態の取得（公開API）
+
+```bash
+curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20" | cat
+```
+
+2. 予約枠を「予約済」に一括反映（管理API）
+
+```bash
+curl -sS -X POST "${BASE_URL}/api/lesson-slot-statuses/admin" \
+  -H 'Content-Type: application/json' \
+  -H "X-Editor-Password: ${EDITOR_PASSWORD}" \
+  -d '{"start_date":"2026-08-20","end_date":"2026-08-20","start_time":"09:00","end_time":"10:00","status":"予約済","note":"動作確認"}' | cat
+```
+
+3. 反映確認（公開API）
+
+```bash
+curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20" | cat
+```
+
+4. 予約状態更新（既存予約番号がある場合）
+
+```bash
+curl -sS -X PUT "${BASE_URL}/api/lesson-reservations/R-20260810-004" \
+  -H 'Content-Type: application/json' \
+  -H "X-Editor-Password: ${EDITOR_PASSWORD}" \
+  -d '{"status":"確認中","message":"動作確認のため更新"}' | cat
+```
+
+5. ローカル単体テスト
+
+```bash
+.venv/bin/python -m unittest discover -s tests -v
+```
+
+### 段階別の実装ガイド（順番に確認しながら進める用）
+
+ここでは、今回追加した機能を同じ順番で再実装できるように分解しています。
+
+1. Flaskの入力検証とAPIを追加
+
+- 変更ファイル: [app.py](app.py)
+- 追加内容:
+	- 枠状態更新用の入力検証を追加
+	- 予約作成APIのレスポンスへ以下を追加
+		- 予約状態
+		- 自動返信送信結果
+	- 枠状態取得APIを追加
+		- GET /api/lesson-slot-statuses
+	- 枠状態管理APIを追加
+		- POST /api/lesson-slot-statuses/admin
+- 確認ポイント:
+	- 予約APIが 201 を返す
+	- 枠状態取得APIが slots 配列を返す
+	- 管理APIが更新件数を返す
+
+2. Apps Scriptの保存処理とメール自動返信を追加
+
+- 変更ファイル: [google-apps-script/Code.gs](google-apps-script/Code.gs)
+- 追加内容:
+	- 予約枠状態シートを自動作成
+	- 予約作成時の状態を調整中で保存
+	- 希望日時へ調整中を自動反映
+	- 受付確認メールを自動送信
+	- 枠状態の取得アクションを追加
+	- 枠状態の期間一括更新アクションを追加
+- 確認ポイント:
+	- スプレッドシートに レッスン予約 と 予約枠状態 が作成される
+	- 予約送信後に状態が調整中になる
+	- 返信メールが届く
+
+3. 教室ページで枠状態反映と管理者UIを追加
+
+- 変更ファイル: [lesson/index.html](lesson/index.html)
+- 追加内容:
+	- 予約日時選択時に枠状態APIを参照
+	- 調整中 / 予約済 / お休み を選択不可に設定
+	- 管理者パネルを追加
+		- 期間
+		- 時間帯
+		- 状態（予約済 / お休み）
+	- 入力補助ボタンとクライアント側の事前バリデーションを追加
+- 確認ポイント:
+	- 状態付きの時間ラベルが表示される
+	- 利用不可枠が選べない
+	- 管理者パネルから一括反映できる
+
+4. テストを追加して回帰を防ぐ
+
+- 変更ファイル: [tests/test_updates.py](tests/test_updates.py)
+- 追加内容:
+	- 枠状態APIのOPTIONS確認
+	- 枠状態管理APIの認証確認
+	- 枠状態管理APIの更新成功確認
+	- 予約APIレスポンス（状態と自動返信フラグ）の確認
+- 実行コマンド:
+	- .venv/bin/python -m unittest discover -s tests -v
+
+5. 本番反映
+
+- 手順:
+	1. [google-apps-script/Code.gs](google-apps-script/Code.gs) を保存
+	2. Apps Script を再デプロイ
+	3. Render の環境変数を確認
+	4. Render を再デプロイ
+	5. 予約送信と管理API更新を実地確認
+
+この順番で進めると、どこで問題が起きたかを切り分けしやすくなります。
 
 ## 停止
 
