@@ -279,6 +279,88 @@ curl -sS -X PUT "${BASE_URL}/api/lesson-reservations/R-20260810-004" \
 
 - [ ] `.venv/bin/python -m unittest discover -s tests -v` が成功
 
+### 本番実予約1件の最終確認フロー
+
+運用開始前に、実際の予約を1件だけ流して全経路を確認します。
+
+1. 事前変数を設定
+
+```bash
+export BASE_URL='https://namegawa-brass-lab.onrender.com'
+export CHECK_DATE='2026-08-20'
+export EDITOR_PASSWORD='ここに編集用パスワード'
+```
+
+2. 枠状態の反映前を取得
+
+```bash
+curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DATE}" | cat
+```
+
+3. 管理APIで任意の時間帯を予約済へ反映
+
+```bash
+curl -sS -X POST "${BASE_URL}/api/lesson-slot-statuses/admin" \
+  -H 'Content-Type: application/json' \
+  -H "X-Editor-Password: ${EDITOR_PASSWORD}" \
+  -d "{\"start_date\":\"${CHECK_DATE}\",\"end_date\":\"${CHECK_DATE}\",\"start_time\":\"09:00\",\"end_time\":\"10:00\",\"status\":\"予約済\",\"note\":\"最終確認\"}" | cat
+```
+
+4. 枠状態の反映後を再取得
+
+```bash
+curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DATE}" | cat
+```
+
+5. 画面で確認
+
+- [lesson/index.html](lesson/index.html) 相当の本番ページで `CHECK_DATE` を選択
+- `09:00-10:00` の時間帯が `予約済` 表示かつ選択不可であることを確認
+
+6. 実予約を1件送信
+
+- 本番の予約フォームから1件送信
+- 送信後に以下を確認
+	- 受付状態が `調整中`
+	- 自動返信メールを受信
+	- スプレッドシート `レッスン予約` に行追加
+	- スプレッドシート `予約枠状態` に該当枠が反映
+
+7. 必要に応じて後片付け
+
+- 最終確認用に追加した `予約済` 枠を戻す場合は、同じ管理APIで `status` を `お休み` または運用状態に合わせて再反映
+
+### 障害時の即応メモ（対応順）
+
+障害時は下記の順で切り分けると復旧が早くなります。
+
+1. Apps Script 側の確認
+
+- [google-apps-script/Code.gs](google-apps-script/Code.gs) が最新か
+- スクリプトプロパティ `SPREADSHEET_ID` / `API_SECRET` があるか
+- ウェブアプリ再デプロイ漏れがないか
+- `doPost` の Gmail 権限承認が完了しているか
+
+2. Render 側の確認
+
+- `GOOGLE_APPS_SCRIPT_URL` が最新URLか
+- `GOOGLE_APPS_SCRIPT_SECRET` が `API_SECRET` と一致しているか
+- `EDITOR_PASSWORD` が期待値か
+- 再デプロイ済みか
+
+3. API 疎通確認
+
+- `GET /api/lesson-slot-statuses` を実行して 200 を確認
+- `POST /api/lesson-slot-statuses/admin` を実行して 200 を確認
+- エラー時はレスポンス本文の `error` / `delivery_error` を確認
+
+4. 典型エラーと対処
+
+- `401`: 管理APIの `X-Editor-Password` 不一致
+- `503`: 環境変数不足（URL/SECRET未設定）
+- `502`: Apps Script 側で拒否、またはレスポンス不正
+- メール未着: Gmail 権限未承認、または送信先アドレス不正
+
 ## 停止
 
 ```bash
