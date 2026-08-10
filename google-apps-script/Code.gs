@@ -249,10 +249,8 @@ function findDuplicateReservation(sheet, data, now) {
   }
 
   const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  const duplicateThresholdMs = DUPLICATE_WINDOW_MINUTES * 60 * 1000;
   for (let index = values.length - 1; index >= 0; index -= 1) {
     const row = values[index];
-    const createdAt = row[0] instanceof Date ? row[0] : null;
     const reservationId = String(row[1] || "").trim();
     const status = String(row[2] || "").trim();
     const rowEmail = String(row[4] || "").trim().toLowerCase();
@@ -263,9 +261,6 @@ function findDuplicateReservation(sheet, data, now) {
       continue;
     }
     if (rowEmail !== email || rowPreferredDate !== preferredDate || rowPreferredTime !== preferredTime) {
-      continue;
-    }
-    if (!createdAt || Math.abs(now.getTime() - createdAt.getTime()) > duplicateThresholdMs) {
       continue;
     }
 
