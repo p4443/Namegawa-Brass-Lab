@@ -384,6 +384,26 @@ curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DAT
 BASE_URL='https://namegawa-brass-lab.onrender.com' CHECK_DATE='2026-08-10' ./healthcheck-prod.sh
 ```
 
+自動実行（macOS launchd）:
+
+```bash
+chmod +x ./manage-healthcheck-launchd.sh
+./manage-healthcheck-launchd.sh install
+./manage-healthcheck-launchd.sh status
+```
+
+時刻を変える例（毎日 07:30 実行）:
+
+```bash
+HEALTHCHECK_HOUR=7 HEALTHCHECK_MINUTE=30 ./manage-healthcheck-launchd.sh install
+```
+
+停止・削除:
+
+```bash
+./manage-healthcheck-launchd.sh uninstall
+```
+
 ## 停止
 
 ```bash
