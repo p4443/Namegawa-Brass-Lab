@@ -3,6 +3,35 @@ set -euo pipefail
 
 BASE_URL="${BASE_URL:-https://namegawa-brass-lab.onrender.com}"
 CHECK_DATE="${CHECK_DATE:-$(date +%F)}"
+HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
+HEALTHCHECK_NOTIFY_MENTION="${HEALTHCHECK_NOTIFY_MENTION:-}"
+
+json_escape() {
+  local text="$1"
+  text=${text//\\/\\\\}
+  text=${text//\"/\\\"}
+  text=${text//$'\n'/\\n}
+  printf '%s' "$text"
+}
+
+notify_failure() {
+  local message="$1"
+  if [[ -z "$HEALTHCHECK_NOTIFY_WEBHOOK" ]]; then
+    return
+  fi
+
+  local prefix=""
+  if [[ -n "$HEALTHCHECK_NOTIFY_MENTION" ]]; then
+    prefix="${HEALTHCHECK_NOTIFY_MENTION} "
+  fi
+
+  local payload
+  payload=$(printf '{"text":"%s"}' "$(json_escape "${prefix}[HP Healthcheck] ${message}")")
+
+  curl -sS -X POST "$HEALTHCHECK_NOTIFY_WEBHOOK" \
+    -H 'Content-Type: application/json' \
+    -d "$payload" >/dev/null || true
+}
 
 pass() {
   printf '[PASS] %s\n' "$1"
@@ -10,6 +39,7 @@ pass() {
 
 fail() {
   printf '[FAIL] %s\n' "$1" >&2
+  notify_failure "$1"
   exit 1
 }
 
@@ -21,9 +51,13 @@ request() {
   local body_file="${TMPDIR:-/tmp}/hp-healthcheck-$$.json"
 
   if [[ -n "$data" ]]; then
-    status_code=$(curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$url" -H 'Content-Type: application/json' -d "$data")
+    if ! status_code=$(curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$url" -H 'Content-Type: application/json' -d "$data"); then
+      fail "Network error on ${method} ${url}"
+    fi
   else
-    status_code=$(curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$url")
+    if ! status_code=$(curl -sS -o "$body_file" -w '%{http_code}' -X "$method" "$url"); then
+      fail "Network error on ${method} ${url}"
+    fi
   fi
 
   response_body=$(cat "$body_file")

@@ -13,8 +13,23 @@ ERR_LOG="${LOG_DIR}/healthcheck.err.log"
 BASE_URL="${BASE_URL:-https://namegawa-brass-lab.onrender.com}"
 HEALTHCHECK_HOUR="${HEALTHCHECK_HOUR:-8}"
 HEALTHCHECK_MINUTE="${HEALTHCHECK_MINUTE:-0}"
+HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
+HEALTHCHECK_NOTIFY_MENTION="${HEALTHCHECK_NOTIFY_MENTION:-}"
+
+sq() {
+  local value="$1"
+  printf "%s" "$value" | sed "s/'/'\\\\''/g"
+}
 
 render_plist() {
+  local env_args="BASE_URL='$(sq "${BASE_URL}")'"
+  if [[ -n "${HEALTHCHECK_NOTIFY_WEBHOOK}" ]]; then
+    env_args+=" HEALTHCHECK_NOTIFY_WEBHOOK='$(sq "${HEALTHCHECK_NOTIFY_WEBHOOK}")'"
+  fi
+  if [[ -n "${HEALTHCHECK_NOTIFY_MENTION}" ]]; then
+    env_args+=" HEALTHCHECK_NOTIFY_MENTION='$(sq "${HEALTHCHECK_NOTIFY_MENTION}")'"
+  fi
+
   cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -26,7 +41,7 @@ render_plist() {
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>BASE_URL='${BASE_URL}' '${REPO_DIR}/healthcheck-prod.sh'</string>
+    <string>${env_args} '${REPO_DIR}/healthcheck-prod.sh'</string>
   </array>
   <key>WorkingDirectory</key>
   <string>${REPO_DIR}</string>
@@ -93,6 +108,8 @@ Environment variables:
   BASE_URL             default: https://namegawa-brass-lab.onrender.com
   HEALTHCHECK_HOUR     default: 8
   HEALTHCHECK_MINUTE   default: 0
+  HEALTHCHECK_NOTIFY_WEBHOOK   optional: webhook URL for failure alerts
+  HEALTHCHECK_NOTIFY_MENTION   optional: text prefix like @channel
 EOF
 }
 

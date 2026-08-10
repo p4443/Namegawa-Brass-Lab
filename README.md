@@ -377,11 +377,20 @@ curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DAT
 
 - `GET /api/lesson-slot-statuses` が `200` を返す
 - `POST /api/lesson-reservations` をハニーポット項目付きで送信し、`saved=true` を返す
+- 失敗時は任意でWebhook通知（Slack/Discord等）を送信できる
 
 `BASE_URL` と `CHECK_DATE` は必要に応じて上書きできます。
 
 ```bash
 BASE_URL='https://namegawa-brass-lab.onrender.com' CHECK_DATE='2026-08-10' ./healthcheck-prod.sh
+```
+
+失敗通知（任意）:
+
+```bash
+HEALTHCHECK_NOTIFY_WEBHOOK='https://hooks.slack.com/services/XXX/YYY/ZZZ' \
+HEALTHCHECK_NOTIFY_MENTION='@channel' \
+./healthcheck-prod.sh
 ```
 
 自動実行（macOS launchd）:
@@ -396,6 +405,14 @@ chmod +x ./manage-healthcheck-launchd.sh
 
 ```bash
 HEALTHCHECK_HOUR=7 HEALTHCHECK_MINUTE=30 ./manage-healthcheck-launchd.sh install
+```
+
+失敗通知付きで登録する例:
+
+```bash
+HEALTHCHECK_NOTIFY_WEBHOOK='https://hooks.slack.com/services/XXX/YYY/ZZZ' \
+HEALTHCHECK_NOTIFY_MENTION='@channel' \
+./manage-healthcheck-launchd.sh install
 ```
 
 停止・削除:
