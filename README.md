@@ -275,6 +275,7 @@ curl -sS -X PUT "${BASE_URL}/api/lesson-reservations/R-20260810-004" \
 - [ ] 自動返信メールが届く
 - [ ] スプレッドシートへ予約行が追加される
 - [ ] `予約枠状態` シートへ該当枠が反映される
+- [x] 同一内容の2回目予約で `duplicate: true` と同一 `reservation_id` が返る（本番確認済み）
 
 6. ローカル回帰テスト
 
@@ -361,6 +362,27 @@ curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DAT
 - `503`: 環境変数不足（URL/SECRET未設定）
 - `502`: Apps Script 側で拒否、またはレスポンス不正
 - メール未着: Gmail 権限未承認、または送信先アドレス不正
+
+### 本番の毎朝1分チェック
+
+本番APIの最低限の生存確認を、データを汚さずに実行できます。
+
+手動実行:
+
+```bash
+./healthcheck-prod.sh
+```
+
+チェック内容:
+
+- `GET /api/lesson-slot-statuses` が `200` を返す
+- `POST /api/lesson-reservations` をハニーポット項目付きで送信し、`saved=true` を返す
+
+`BASE_URL` と `CHECK_DATE` は必要に応じて上書きできます。
+
+```bash
+BASE_URL='https://namegawa-brass-lab.onrender.com' CHECK_DATE='2026-08-10' ./healthcheck-prod.sh
+```
 
 ## 停止
 
