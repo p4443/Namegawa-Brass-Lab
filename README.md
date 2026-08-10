@@ -237,6 +237,48 @@ curl -sS -X PUT "${BASE_URL}/api/lesson-reservations/R-20260810-004" \
 
 この順番で進めると、どこで問題が起きたかを切り分けしやすくなります。
 
+### 運用開始前の最終チェック表
+
+以下を上から順に確認してください。すべてOKなら運用開始できます。
+
+1. Apps Script
+
+- [ ] [google-apps-script/Code.gs](google-apps-script/Code.gs) が最新内容
+- [ ] スクリプトプロパティ `SPREADSHEET_ID` が設定済み
+- [ ] スクリプトプロパティ `API_SECRET` が設定済み
+- [ ] ウェブアプリを再デプロイ済み
+- [ ] `doPost` 実行時の権限承認（Gmail送信権限含む）を完了
+
+2. Render
+
+- [ ] `GOOGLE_APPS_SCRIPT_URL` が最新デプロイURL
+- [ ] `GOOGLE_APPS_SCRIPT_SECRET` が `API_SECRET` と一致
+- [ ] `EDITOR_PASSWORD` が設定済み
+- [ ] 再デプロイ成功（サービスが起動している）
+
+3. API動作
+
+- [ ] `GET /api/lesson-slot-statuses` が200を返す
+- [ ] `POST /api/lesson-slot-statuses/admin` が200を返す
+- [ ] 反映後の再取得で `予約済` または `お休み` が確認できる
+
+4. 画面動作
+
+- [ ] [lesson/index.html](lesson/index.html) で該当日を選ぶと状態付き時間が表示される
+- [ ] `調整中` / `予約済` / `お休み` が選択不可になる
+- [ ] 管理者パネルで更新件数が表示される
+
+5. 予約フロー
+
+- [ ] 予約送信で受付状態が `調整中` になる
+- [ ] 自動返信メールが届く
+- [ ] スプレッドシートへ予約行が追加される
+- [ ] `予約枠状態` シートへ該当枠が反映される
+
+6. ローカル回帰テスト
+
+- [ ] `.venv/bin/python -m unittest discover -s tests -v` が成功
+
 ## 停止
 
 ```bash
