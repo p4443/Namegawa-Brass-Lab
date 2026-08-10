@@ -281,7 +281,19 @@ function normalizeReservationDate(value) {
   if (value instanceof Date) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
   }
-  return String(value || "").trim();
+  const text = String(value || "").trim();
+  if (!text) {
+    return "";
+  }
+  const directMatch = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/.exec(text);
+  if (directMatch) {
+    return `${directMatch[1]}-${String(Number(directMatch[2])).padStart(2, "0")}-${String(Number(directMatch[3])).padStart(2, "0")}`;
+  }
+  const parsed = new Date(text);
+  if (!Number.isNaN(parsed.getTime())) {
+    return Utilities.formatDate(parsed, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return text;
 }
 
 function normalizeReservationTime(value) {
@@ -289,8 +301,12 @@ function normalizeReservationTime(value) {
     return Utilities.formatDate(value, Session.getScriptTimeZone(), "HH:mm");
   }
   const text = String(value || "").trim();
-  const match = /^(\d{1,2}):([0-5]\d)$/.exec(text);
+  const match = /^(\d{1,2}):([0-5]\d)(?::([0-5]\d))?$/.exec(text);
   if (!match) {
+    const parsed = new Date(text);
+    if (!Number.isNaN(parsed.getTime())) {
+      return Utilities.formatDate(parsed, Session.getScriptTimeZone(), "HH:mm");
+    }
     return text;
   }
   return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`;
