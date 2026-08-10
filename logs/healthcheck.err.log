@@ -1,0 +1,6 @@
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-11&to=2026-08-11
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-11&to=2026-08-11
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
