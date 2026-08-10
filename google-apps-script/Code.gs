@@ -237,8 +237,8 @@ function updateReservationRow(sheet, row, data) {
 
 function findDuplicateReservation(sheet, data, now) {
   const email = String(data.email || "").trim().toLowerCase();
-  const preferredDate = String(data.preferred_date || "").trim();
-  const preferredTime = String(data.preferred_time || "").trim();
+  const preferredDate = normalizeReservationDate(data.preferred_date);
+  const preferredTime = normalizeReservationTime(data.preferred_time);
   if (!email || !preferredDate || !preferredTime) {
     return null;
   }
@@ -256,8 +256,8 @@ function findDuplicateReservation(sheet, data, now) {
     const reservationId = String(row[1] || "").trim();
     const status = String(row[2] || "").trim();
     const rowEmail = String(row[4] || "").trim().toLowerCase();
-    const rowPreferredDate = String(row[7] || "").trim();
-    const rowPreferredTime = String(row[8] || "").trim();
+    const rowPreferredDate = normalizeReservationDate(row[7]);
+    const rowPreferredTime = normalizeReservationTime(row[8]);
 
     if (status === "キャンセル") {
       continue;
@@ -275,6 +275,25 @@ function findDuplicateReservation(sheet, data, now) {
     };
   }
   return null;
+}
+
+function normalizeReservationDate(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  return String(value || "").trim();
+}
+
+function normalizeReservationTime(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "HH:mm");
+  }
+  const text = String(value || "").trim();
+  const match = /^(\d{1,2}):([0-5]\d)$/.exec(text);
+  if (!match) {
+    return text;
+  }
+  return `${String(Number(match[1])).padStart(2, "0")}:${match[2]}`;
 }
 
 function listSlotStatuses(sheet, fromDateText, toDateText) {
