@@ -12,7 +12,7 @@ from urllib import request as urllib_request
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
-from flask import Flask, jsonify, render_template, request, send_from_directory
+from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -541,7 +541,11 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
 
     @app.get("/lesson/")
     def lesson():
-        return render_template("lesson/index.html")
+        response = make_response(render_template("lesson/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.get("/api/updates")
     def updates_api():

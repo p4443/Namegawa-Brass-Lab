@@ -126,6 +126,10 @@ class UpdatesTest(unittest.TestCase):
         response = client.get("/lesson/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["Cache-Control"],
+            "no-store, no-cache, must-revalidate, max-age=0",
+        )
         page = response.get_data(as_text=True)
         self.assertIn("kazooささきトランペット教室", page)
         self.assertIn("講師プロフィール", page)
