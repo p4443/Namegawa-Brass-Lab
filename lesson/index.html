@@ -521,6 +521,107 @@
       font-size: 0.76rem;
     }
 
+    .slot-admin {
+      width: min(100%, 760px);
+      margin: 0 auto 28px;
+      padding: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .slot-admin h3 {
+      margin: 0 0 6px;
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .slot-admin p {
+      margin: 0 0 12px;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.8rem;
+    }
+
+    .slot-admin-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .slot-admin-field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .slot-admin-field label {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.76rem;
+      font-weight: 700;
+    }
+
+    .slot-admin-field input,
+    .slot-admin-field select,
+    .slot-admin-field textarea {
+      width: 100%;
+      min-height: 42px;
+      padding: 9px 10px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 5px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      font-size: 0.86rem;
+    }
+
+    .slot-admin-field textarea {
+      min-height: 70px;
+      resize: vertical;
+    }
+
+    .slot-admin-field-wide,
+    .slot-admin-actions {
+      grid-column: 1 / -1;
+    }
+
+    .slot-admin-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .slot-admin-submit {
+      min-height: 42px;
+      padding: 9px 16px;
+      border: 1px solid var(--gold);
+      border-radius: 5px;
+      color: var(--navy);
+      background: var(--gold);
+      font: inherit;
+      font-size: 0.84rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .slot-admin-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .slot-admin-status {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.8rem;
+    }
+
+    .slot-admin-status[data-state="success"] {
+      color: #b8f3cc;
+    }
+
+    .slot-admin-status[data-state="error"] {
+      color: #ffd0ca;
+    }
+
     @keyframes heroReveal {
       from { opacity: 0; transform: translateY(10px) scale(0.94); }
       to { opacity: 1; transform: translateY(0) scale(1); }
@@ -568,6 +669,10 @@
       }
 
       .reservation-form {
+        grid-template-columns: 1fr;
+      }
+
+      .slot-admin-form {
         grid-template-columns: 1fr;
       }
 
@@ -732,7 +837,7 @@
           <label for="reservation-type">レッスン種別<span class="required">必須</span></label>
           <select id="reservation-type" name="lesson_type" required>
             <option value="">選択してください</option>
-            <option>無料体験レッスン</option>
+            <option value="体験レッスン">無料体験レッスン</option>
             <option>小学生</option>
             <option>中学生</option>
             <option>高校生以上</option>
@@ -763,6 +868,47 @@
         </div>
       </form>
     </section>
+    <section class="slot-admin" aria-labelledby="slot-admin-title">
+      <h3 id="slot-admin-title">管理者用: 予約時間枠の調整</h3>
+      <p>開始時間〜終了時間は15分単位で指定してください。状態は「予約済」または「お休み」を反映できます。</p>
+      <form class="slot-admin-form" id="slot-admin-form">
+        <div class="slot-admin-field">
+          <label for="slot-start-date">開始日</label>
+          <input id="slot-start-date" name="start_date" type="date" required>
+        </div>
+        <div class="slot-admin-field">
+          <label for="slot-end-date">終了日</label>
+          <input id="slot-end-date" name="end_date" type="date" required>
+        </div>
+        <div class="slot-admin-field">
+          <label for="slot-start-time">開始時間（15分単位）</label>
+          <input id="slot-start-time" name="start_time" type="time" step="900" required>
+        </div>
+        <div class="slot-admin-field">
+          <label for="slot-end-time">終了時間（15分単位）</label>
+          <input id="slot-end-time" name="end_time" type="time" step="900" required>
+        </div>
+        <div class="slot-admin-field">
+          <label for="slot-status">状態</label>
+          <select id="slot-status" name="status" required>
+            <option value="予約済">予約済</option>
+            <option value="お休み">お休み</option>
+          </select>
+        </div>
+        <div class="slot-admin-field">
+          <label for="slot-password">管理パスワード</label>
+          <input id="slot-password" name="editor_password" type="password" autocomplete="current-password" required>
+        </div>
+        <div class="slot-admin-field slot-admin-field-wide">
+          <label for="slot-note">メモ（任意）</label>
+          <textarea id="slot-note" name="note" maxlength="200" placeholder="例: 発表会リハーサルのため"></textarea>
+        </div>
+        <div class="slot-admin-actions">
+          <button class="slot-admin-submit" id="slot-admin-submit" type="submit">時間枠を更新する</button>
+          <p class="slot-admin-status" id="slot-admin-status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+    </section>
     <p class="copyright">© なめがわブラス・ラボ</p>
   </footer>
   <script>
@@ -771,8 +917,16 @@
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
     const reservationSubmit = reservationForm.querySelector("button[type='submit']");
+    const slotAdminForm = document.getElementById("slot-admin-form");
+    const slotAdminStatus = document.getElementById("slot-admin-status");
+    const slotAdminSubmit = document.getElementById("slot-admin-submit");
+    const slotStartDateInput = document.getElementById("slot-start-date");
+    const slotEndDateInput = document.getElementById("slot-end-date");
+    const slotStartTimeInput = document.getElementById("slot-start-time");
+    const slotEndTimeInput = document.getElementById("slot-end-time");
     const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
     const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
+    const renderSlotStatusAdminApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses/admin";
 
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
@@ -783,6 +937,7 @@
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
+    const slotStatusAdminApiCandidates = buildApiCandidates(renderSlotStatusAdminApi, "api/lesson-slot-statuses/admin");
 
     const japanDateText = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Asia/Tokyo",
@@ -808,6 +963,14 @@
     };
     reservationDate.min = dateValue(firstAvailableDate);
     reservationDate.max = dateValue(lastAvailableDate);
+    if (slotStartDateInput && slotEndDateInput) {
+      slotStartDateInput.value = reservationDate.min;
+      slotEndDateInput.value = reservationDate.min;
+    }
+    if (slotStartTimeInput && slotEndTimeInput) {
+      slotStartTimeInput.value = "06:45";
+      slotEndTimeInput.value = "07:00";
+    }
 
     const makeTimeRange = (startHour, startMinute, endHour, endMinute) => {
       const times = [];
@@ -948,6 +1111,59 @@
       throw lastError || new Error("送信先サーバーに接続できませんでした。");
     }
 
+    function isQuarterHour(timeText) {
+      const match = /^(?:[01]\d|2[0-3]):[0-5]\d$/.exec(timeText);
+      if (!match) {
+        return false;
+      }
+      const minutes = Number(timeText.slice(3, 5));
+      return minutes % 15 === 0;
+    }
+
+    function toMinutes(timeText) {
+      return Number(timeText.slice(0, 2)) * 60 + Number(timeText.slice(3, 5));
+    }
+
+    async function submitSlotStatusUpdate(payload, password) {
+      let lastError = null;
+      for (const endpoint of slotStatusAdminApiCandidates) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Editor-Password": password,
+            },
+            body: JSON.stringify(payload),
+          });
+
+          let result = {};
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          try {
+            if (contentType.includes("application/json")) {
+              result = await response.json();
+            }
+          } catch (error) {
+            result = {};
+          }
+
+          if (response.ok) {
+            return result;
+          }
+          if (response.status === 404 || response.status === 405 || !contentType.includes("application/json")) {
+            continue;
+          }
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          throw new Error("時間枠の更新に失敗しました。");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("送信先サーバーに接続できませんでした。");
+    }
+
 
     reservationForm.addEventListener("submit", async (event) => {
       event.preventDefault();
@@ -978,7 +1194,7 @@
           : "予約希望を受け付けました（状態: 調整中）。";
         reservationStatus.textContent = result.auto_reply_sent
           ? `${baseMessage} 確認メールを送信しました。`
-          : `${baseMessage} 確認メールは送信できなかったため、必要に応じてお問い合わせください。";
+          : `${baseMessage} 確認メールは送信できなかったため、必要に応じてお問い合わせください。`;
       } catch (error) {
         reservationStatus.dataset.state = "error";
         reservationStatus.textContent = error.message;
@@ -986,6 +1202,62 @@
         reservationSubmit.disabled = false;
       }
     });
+
+    if (slotAdminForm) {
+      slotAdminForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        slotAdminSubmit.disabled = true;
+        slotAdminStatus.dataset.state = "";
+        slotAdminStatus.textContent = "更新しています…";
+
+        try {
+          const formData = new FormData(slotAdminForm);
+          const payload = {
+            start_date: String(formData.get("start_date") || "").trim(),
+            end_date: String(formData.get("end_date") || "").trim(),
+            start_time: String(formData.get("start_time") || "").trim(),
+            end_time: String(formData.get("end_time") || "").trim(),
+            status: String(formData.get("status") || "").trim(),
+            note: String(formData.get("note") || "").trim(),
+          };
+          const password = String(formData.get("editor_password") || "").trim();
+
+          if (!payload.start_date || !payload.end_date || !payload.start_time || !payload.end_time || !payload.status) {
+            throw new Error("開始日・終了日・時間帯・状態を入力してください。");
+          }
+          if (!password) {
+            throw new Error("管理パスワードを入力してください。");
+          }
+          if (!isQuarterHour(payload.start_time) || !isQuarterHour(payload.end_time)) {
+            throw new Error("開始時間と終了時間は15分単位で指定してください。");
+          }
+          if (payload.end_date < payload.start_date) {
+            throw new Error("終了日は開始日以降を指定してください。");
+          }
+          if (toMinutes(payload.end_time) < toMinutes(payload.start_time)) {
+            throw new Error("終了時間は開始時間以降を指定してください。");
+          }
+
+          const result = await submitSlotStatusUpdate(payload, password);
+          slotAdminStatus.dataset.state = "success";
+          const count = Number(result.updated_count || result.updatedCount || 0);
+          slotAdminStatus.textContent = `${count}件の時間枠を更新しました。`;
+
+          if (
+            reservationDate.value
+            && payload.start_date <= reservationDate.value
+            && reservationDate.value <= payload.end_date
+          ) {
+            await updateReservationTimeOptions();
+          }
+        } catch (error) {
+          slotAdminStatus.dataset.state = "error";
+          slotAdminStatus.textContent = error.message;
+        } finally {
+          slotAdminSubmit.disabled = false;
+        }
+      });
+    }
 
   </script>
 </body>

@@ -331,7 +331,7 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
     }
     slots.push({
       date: dateText,
-      time: String(row[1] || "").trim(),
+      time: normalizeReservationTime(row[1]),
       status: String(row[2] || "").trim(),
       note: String(row[3] || "").trim(),
     });
@@ -381,7 +381,7 @@ function findSlotRow(sheet, dateText, timeText) {
   }
   const values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
   for (let index = 0; index < values.length; index += 1) {
-    if (toDateText_(values[index][0]) === dateText && String(values[index][1] || "").trim() === timeText) {
+    if (toDateText_(values[index][0]) === dateText && normalizeReservationTime(values[index][1]) === timeText) {
       return index + 2;
     }
   }
