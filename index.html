@@ -114,24 +114,26 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 8px 11px;
+      min-height: 46px;
+      padding: 10px 12px;
       border-radius: 999px;
-      border: 1px solid rgba(15, 23, 42, 0.12);
+      border: 1px solid rgba(15, 23, 42, 0.1);
       background: rgba(255, 255, 255, 0.94);
       color: var(--primary-color);
-      font-size: 0.8rem;
+      font-size: 0.84rem;
       font-weight: 700;
       text-decoration: none;
       text-align: center;
       transition: var(--transition);
-      box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+      box-shadow: var(--shadow-sm);
     }
 
     .global-nav-link:hover,
     .global-nav-link:focus-visible {
-      color: #ffffff;
-      background: var(--primary-color);
-      border-color: var(--primary-color);
+      transform: translateY(-2px);
+      border-color: rgba(217, 119, 6, 0.4);
+      box-shadow: var(--shadow-md);
+      color: var(--primary-color);
       text-decoration: none;
     }
 
@@ -1117,7 +1119,8 @@
       }
 
       .global-nav-link {
-        font-size: 0.8rem;
+        min-height: 42px;
+        font-size: 0.82rem;
       }
 
       .container {
@@ -1251,6 +1254,13 @@
 
 <header class="site-header">
   <div class="site-header-inner">
+    <a class="site-brand" href="#main-container" aria-label="なめがわブラス・ラボ トップへ移動">
+      <span class="site-brand-mark" aria-hidden="true">🎺</span>
+      <span class="site-brand-text">
+        <span class="site-brand-name">なめがわブラス・ラボ</span>
+        <span class="site-brand-subtitle">KAZOO SASAKI TRUMPET SCHOOL</span>
+      </span>
+    </a>
     <nav aria-label="グローバルナビゲーション">
       <ul class="global-nav-list">
         <li><a class="global-nav-link" href="lesson/">kazooささきトランペット教室</a></li>
