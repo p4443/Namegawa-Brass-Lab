@@ -35,6 +35,14 @@ LESSON_TYPES = {
     "高校生以上",
     "グループ・部活動指導",
 }
+LESSON_DURATION_MINUTES = {
+    "体験レッスン": 30,
+    "無料体験レッスン": 30,
+    "小学生": 30,
+    "中学生": 45,
+    "高校生以上": 60,
+    "グループ・部活動指導": 60,
+}
 CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "確認中", "確定", "キャンセル"}
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
@@ -58,6 +66,16 @@ def time_range(start, end):
         times.add(current.strftime("%H:%M"))
         current += timedelta(minutes=15)
     return times
+
+
+def reservation_slot_times(start_time, duration_minutes):
+    if start_time == CONSULTATION_TIME:
+        return [CONSULTATION_TIME]
+    start = datetime.strptime(start_time, "%H:%M")
+    return [
+        (start + timedelta(minutes=offset)).strftime("%H:%M")
+        for offset in range(0, duration_minutes, 15)
+    ]
 
 
 WEEKDAY_RESERVATION_TIMES = {
@@ -309,6 +327,7 @@ def validate_lesson_reservation(payload):
         raise ValueError("電話番号を正しく入力してください。")
     if values["lesson_type"] not in LESSON_TYPES:
         raise ValueError("レッスン種別を選択してください。")
+    values["duration_minutes"] = LESSON_DURATION_MINUTES[values["lesson_type"]]
     try:
         preferred_date = datetime.strptime(values["preferred_date"], "%Y-%m-%d").date()
     except ValueError as exc:
@@ -322,6 +341,9 @@ def validate_lesson_reservation(payload):
         raise ValueError("土曜日は予約を受け付けていません。")
     if values["preferred_time"] not in available_times:
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
+    values["occupied_times"] = reservation_slot_times(
+        values["preferred_time"], values["duration_minutes"]
+    )
     if len(values["message"]) > 500:
         raise ValueError("ご要望は500文字以内で入力してください。")
     return values
@@ -554,6 +576,12 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         response.headers["Expires"] = "0"
         return response
 
+    @app.get("/schedule/")
+    def schedule():
+        response = make_response(render_template("schedule/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
     @app.get("/api/updates")
     def updates_api():
         response = jsonify([public_update(item) for item in get_updates()])
@@ -564,7 +592,11 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
     @app.route("/api/lesson-reservations", methods=["POST", "OPTIONS"])
     def create_lesson_reservation():
         if request.method == "OPTIONS":
-            return with_lesson_reservation_cors(app.response_class(status=204))
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="GET, POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
             return lesson_reservation_json({"saved": True}, 201)
         try:
@@ -623,6 +655,7 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                     "reservation_id": result.get("reservationId", ""),
                     "auto_reply_sent": False,
                     "duplicate": False,
+                    "duration_minutes": values["duration_minutes"],
                 },
                 409,
             )
@@ -634,9 +667,50 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 "status": result.get("status", "調整中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
+                "duration_minutes": values["duration_minutes"],
             },
             201,
         )
+
+    @app.get("/api/lesson-reservations")
+    def list_lesson_reservations():
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="GET, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、予約一覧を取得できません。"},
+                503,
+            )
+
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {},
+                action="list",
+            )
+            response = jsonify({"reservations": result.get("reservations", [])})
+            return with_lesson_reservation_cors(
+                response,
+                methods="GET, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Failed to list lesson reservations")
+            return lesson_reservation_json(
+                {"error": "現在、予約一覧を取得できません。"},
+                503,
+            )
 
     @app.route("/api/lesson-slot-statuses", methods=["GET", "OPTIONS"])
     def list_lesson_slot_statuses():
@@ -674,6 +748,62 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
             app.logger.exception("Failed to get slot statuses")
             return lesson_reservation_json(
                 {"error": "現在、空き状況を確認できません。"},
+                503,
+            )
+
+    @app.route("/api/lesson-slot-statuses/admin", methods=["POST", "OPTIONS"])
+    def manage_lesson_slot_statuses():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        try:
+            values = validate_slot_status_request(request.get_json(silent=True))
+        except ValueError as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 400
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、予約枠を更新できません。"},
+                503,
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                values,
+                action="upsert_slot_status_range",
+            )
+            response = jsonify({"saved": True, "updated_count": parse_updated_count(result)})
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Failed to update lesson slot statuses")
+            return lesson_reservation_json(
+                {"error": "現在、予約枠を更新できません。"},
                 503,
             )
 
@@ -831,12 +961,28 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 headers="Content-Type, X-Editor-Password",
             )
 
-    @app.get("/api/editor")
+    @app.route("/api/editor", methods=["GET", "OPTIONS"])
     def editor_status():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="GET, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
         error = require_editor()
         if error:
-            return error
-        return jsonify({"authenticated": True})
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="GET, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        return with_lesson_reservation_cors(
+            jsonify({"authenticated": True}),
+            methods="GET, OPTIONS",
+            headers="Content-Type, X-Editor-Password",
+        )
 
     @app.post("/api/updates")
     def create_update():

@@ -613,6 +613,7 @@
 
   <nav class="page-nav" aria-label="教室内ページナビ">
     <ul class="page-nav-list">
+      <li><a href="../schedule/">空き状況</a></li>
       <li><a href="#instructor-title">講師プロフィール</a></li>
       <li><a href="#method-title">レッスン内容</a></li>
       <li><a href="#features-title">特徴</a></li>
@@ -709,10 +710,10 @@
         <h2 id="reservation-title">レッスン予約</h2>
         <p>予約できる期間は、明日から1か月先までです。送信後は自動返信メールをお送りします。日程は調整後に確定をご連絡します。</p>
         <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
-          <div><dt>月〜水</dt><dd>6:45〜9:00<br>20:30〜22:00</dd></div>
-          <div><dt>木曜日</dt><dd>6:45〜12:00</dd></div>
-          <div><dt>金曜日</dt><dd>15:00〜17:00それ以外は要相談</dd></div>
-          <div><dt>土／日</dt><dd>土：要相談／日：要相談</dd></div>
+          <div><dt>月〜水</dt><dd>6:45〜8:00<br>20:30〜21:00</dd></div>
+          <div><dt>木曜日</dt><dd>6:45〜11:00</dd></div>
+          <div><dt>金曜日</dt><dd>15:00〜16:00／それ以外は要相談</dd></div>
+          <div><dt>土／日</dt><dd>土：受付休止／日：要相談</dd></div>
         </dl>
       </div>
       <form class="reservation-form" id="reservation-form">
@@ -767,6 +768,7 @@
   </footer>
   <script>
     const reservationForm = document.getElementById("reservation-form");
+    const reservationType = document.getElementById("reservation-type");
     const reservationDate = document.getElementById("reservation-date");
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
@@ -832,6 +834,35 @@
     };
 
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
+    const lessonDurations = {
+      "体験レッスン": 30,
+      "無料体験レッスン": 30,
+      "小学生": 30,
+      "中学生": 45,
+      "高校生以上": 60,
+      "グループ・部活動指導": 60,
+    };
+
+    function occupiedTimes(startTime, durationMinutes) {
+      if (startTime === "要相談") {
+        return ["要相談"];
+      }
+      const [hour, minute] = startTime.split(":").map(Number);
+      const start = hour * 60 + minute;
+      return Array.from({ length: durationMinutes / 15 }, (_, index) => {
+        const value = start + index * 15;
+        return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+      });
+    }
+
+    function endTime(startTime, durationMinutes) {
+      if (startTime === "要相談") {
+        return "要相談";
+      }
+      const [hour, minute] = startTime.split(":").map(Number);
+      const value = hour * 60 + minute + durationMinutes;
+      return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    }
 
     function buildSlotMap(slots) {
       const map = new Map();
@@ -876,8 +907,16 @@
       const selectedDateText = reservationDate.value;
       const selectedDate = new Date(`${selectedDateText}T00:00:00`);
       const availableTimes = timesByDay[selectedDate.getDay()] || [];
+      const durationMinutes = lessonDurations[reservationType.value];
       reservationTime.replaceChildren();
       reservationTime.disabled = true;
+
+      if (!durationMinutes) {
+        reservationTime.add(new Option("先にレッスン種別を選択してください", ""));
+        reservationStatus.dataset.state = "";
+        reservationStatus.textContent = "";
+        return;
+      }
 
       if (!availableTimes.length) {
         reservationTime.add(new Option("土曜日は要相談です", ""));
@@ -910,8 +949,14 @@
 
       let selectableCount = 0;
       availableTimes.forEach((time) => {
-        const status = slotMap.get(`${selectedDateText}|${time}`) || "空き";
-        const label = status === "空き" ? time : `${time}（${status}）`;
+        const occupied = occupiedTimes(time, durationMinutes);
+        const status = occupied
+          .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
+          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
+        const timeLabel = time === "要相談"
+          ? `要相談（${durationMinutes}分）`
+          : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
+        const label = status === "空き" ? timeLabel : `${timeLabel}（${status}）`;
         const option = new Option(label, time);
         if (blockedStatuses.has(status)) {
           option.disabled = true;
@@ -932,6 +977,29 @@
     }
 
     reservationDate.addEventListener("change", updateReservationTimeOptions);
+    reservationType.addEventListener("change", () => {
+      if (reservationDate.value) {
+        updateReservationTimeOptions();
+      }
+    });
+
+    async function applyRequestedSlot() {
+      const parameters = new URLSearchParams(location.search);
+      const requestedType = parameters.get("lesson_type") || "";
+      const requestedDate = parameters.get("date") || "";
+      const requestedTime = parameters.get("time") || "";
+      if ([...reservationType.options].some((option) => option.value === requestedType)) {
+        reservationType.value = requestedType;
+      }
+      if (requestedDate < reservationDate.min || requestedDate > reservationDate.max) {
+        return;
+      }
+      reservationDate.value = requestedDate;
+      await updateReservationTimeOptions();
+      if ([...reservationTime.options].some((option) => option.value === requestedTime && !option.disabled)) {
+        reservationTime.value = requestedTime;
+      }
+    }
 
     async function submitReservation(payload) {
       let lastError = null;
@@ -1012,6 +1080,7 @@
       }
     });
 
+    applyRequestedSlot();
   </script>
 </body>
 </html>

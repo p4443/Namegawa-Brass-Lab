@@ -15,6 +15,14 @@ const HEADERS = [
 const SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 const SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 const DUPLICATE_WINDOW_MINUTES = 10;
+const LESSON_DURATION_MINUTES = {
+  "体験レッスン": 30,
+  "無料体験レッスン": 30,
+  "小学生": 30,
+  "中学生": 45,
+  "高校生以上": 60,
+  "グループ・部活動指導": 60,
+};
 
 function doPost(event) {
   const lock = LockService.getScriptLock();
@@ -42,16 +50,16 @@ function doPost(event) {
         });
       }
 
-      const slotStatus = getSlotStatus(
-        slotSheet,
-        String(data.preferred_date || "").trim(),
-        String(data.preferred_time || "").trim(),
-      );
-      if (slotStatus && slotStatus !== "空き") {
+      const preferredDate = String(data.preferred_date || "").trim();
+      const preferredTime = String(data.preferred_time || "").trim();
+      const durationMinutes = getLessonDuration(data.lesson_type);
+      const occupiedTimes = reservationSlotTimes(preferredTime, durationMinutes);
+      const slotConflict = findReservationSlotConflict(slotSheet, preferredDate, occupiedTimes, "");
+      if (slotConflict) {
         return jsonResponse({
           ok: true,
           reservationId: "",
-          status: slotStatus,
+          status: slotConflict.status,
           autoReplySent: false,
           duplicate: false,
           conflict: true,
@@ -72,14 +80,16 @@ function doPost(event) {
         safeCell(data.message),
       ]);
 
-      upsertSlotStatus(
-        slotSheet,
-        String(data.preferred_date || "").trim(),
-        String(data.preferred_time || "").trim(),
-        "調整中",
-        "受付自動設定",
-        reservationId,
-      );
+      occupiedTimes.forEach((time) => {
+        upsertSlotStatus(
+          slotSheet,
+          preferredDate,
+          time,
+          "調整中",
+          `${durationMinutes}分レッスン受付`,
+          reservationId,
+        );
+      });
 
       const autoReplySent = sendReservationAutoReply(data, reservationId);
       return jsonResponse({
@@ -96,6 +106,10 @@ function doPost(event) {
       const to = String(data.to || "").trim();
       const slots = listSlotStatuses(slotSheet, from, to);
       return jsonResponse({ ok: true, slots: slots });
+    }
+
+    if (action === "list") {
+      return jsonResponse({ ok: true, reservations: listReservations(sheet) });
     }
 
     if (action === "upsert_slot_status_range") {
@@ -143,19 +157,23 @@ function doPost(event) {
       const nextStatus = Object.prototype.hasOwnProperty.call(data, "status")
         ? String(data.status || "").trim()
         : currentReservation.status;
+      const nextLessonType = Object.prototype.hasOwnProperty.call(data, "lesson_type")
+        ? String(data.lesson_type || "").trim()
+        : currentReservation.lessonType;
       const nextSlotStatus = reservationStatusToSlotStatus(nextStatus);
-      const isSameSlot = currentReservation.date === nextDate && currentReservation.time === nextTime;
-      const targetSlot = getSlotRecord(slotSheet, nextDate, nextTime);
-      if (
-        nextSlotStatus !== "空き"
-        && targetSlot.status
-        && targetSlot.status !== "空き"
-        && !(isSameSlot && targetSlot.source === reservationId)
-      ) {
+      const currentTimes = reservationSlotTimes(
+        currentReservation.time,
+        getLessonDuration(currentReservation.lessonType),
+      );
+      const nextTimes = reservationSlotTimes(nextTime, getLessonDuration(nextLessonType));
+      const slotConflict = nextSlotStatus === "空き"
+        ? null
+        : findReservationSlotConflict(slotSheet, nextDate, nextTimes, reservationId);
+      if (slotConflict) {
         return jsonResponse({
           ok: true,
           reservationId: reservationId,
-          status: targetSlot.status,
+          status: slotConflict.status,
           conflict: true,
         });
       }
@@ -163,23 +181,18 @@ function doPost(event) {
       if (updatedFields.length === 0) {
         return jsonResponse({ ok: false, error: "No fields to update" });
       }
-      if (!isSameSlot || nextSlotStatus === "空き") {
-        releaseReservationSlot(
-          slotSheet,
-          currentReservation.date,
-          currentReservation.time,
-          reservationId,
-        );
-      }
+      releaseReservationSlots(slotSheet, currentReservation.date, currentTimes, reservationId);
       if (nextSlotStatus !== "空き") {
-        upsertSlotStatus(
-          slotSheet,
-          nextDate,
-          nextTime,
-          nextSlotStatus,
-          "予約更新自動設定",
-          reservationId,
-        );
+        nextTimes.forEach((time) => {
+          upsertSlotStatus(
+            slotSheet,
+            nextDate,
+            time,
+            nextSlotStatus,
+            `${getLessonDuration(nextLessonType)}分レッスン更新`,
+            reservationId,
+          );
+        });
       }
       return jsonResponse({
         ok: true,
@@ -198,10 +211,10 @@ function doPost(event) {
         return jsonResponse({ ok: false, error: "NOT_FOUND" });
       }
       const reservation = getReservationAtRow(sheet, row);
-      releaseReservationSlot(
+      releaseReservationSlots(
         slotSheet,
         reservation.date,
-        reservation.time,
+        reservationSlotTimes(reservation.time, getLessonDuration(reservation.lessonType)),
         reservationId,
       );
       sheet.deleteRow(row);
@@ -306,9 +319,36 @@ function getReservationAtRow(sheet, row) {
   const values = sheet.getRange(row, 3, 1, 7).getValues()[0];
   return {
     status: String(values[0] || "").trim(),
+    lessonType: String(values[4] || "").trim(),
     date: normalizeReservationDate(values[5]),
     time: normalizeReservationTime(values[6]),
   };
+}
+
+function listReservations(sheet) {
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return [];
+  }
+  const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  return values.map((row) => ({
+    received_at: row[0] instanceof Date
+      ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")
+      : String(row[0] || "").trim(),
+    reservation_id: String(row[1] || "").trim(),
+    status: String(row[2] || "").trim(),
+    name: String(row[3] || "").trim(),
+    email: String(row[4] || "").trim(),
+    phone: String(row[5] || "").trim(),
+    lesson_type: String(row[6] || "").trim(),
+    duration_minutes: getLessonDuration(row[6]),
+    preferred_date: normalizeReservationDate(row[7]),
+    preferred_time: normalizeReservationTime(row[8]),
+    message: String(row[9] || "").trim(),
+  })).sort((left, right) => {
+    const dateOrder = right.preferred_date.localeCompare(left.preferred_date);
+    return dateOrder || right.preferred_time.localeCompare(left.preferred_time);
+  });
 }
 
 function reservationStatusToSlotStatus(status) {
@@ -485,6 +525,36 @@ function getSlotStatus(sheet, dateText, timeText) {
   return getSlotRecord(sheet, dateText, timeText).status;
 }
 
+function getLessonDuration(lessonType) {
+  return LESSON_DURATION_MINUTES[String(lessonType || "").trim()] || 60;
+}
+
+function reservationSlotTimes(startTime, durationMinutes) {
+  if (startTime === "要相談") {
+    return ["要相談"];
+  }
+  const start = toMinutes(startTime);
+  if (start < 0 || durationMinutes <= 0 || durationMinutes % 15 !== 0) {
+    throw new Error("Invalid reservation duration");
+  }
+  const times = [];
+  for (let offset = 0; offset < durationMinutes; offset += 15) {
+    const minutes = start + offset;
+    times.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+  }
+  return times;
+}
+
+function findReservationSlotConflict(sheet, dateText, times, reservationId) {
+  for (let index = 0; index < times.length; index += 1) {
+    const slot = getSlotRecord(sheet, dateText, times[index]);
+    if (slot.status && slot.status !== "空き" && slot.source !== reservationId) {
+      return slot;
+    }
+  }
+  return null;
+}
+
 function getSlotRecord(sheet, dateText, timeText) {
   const row = findSlotRow(sheet, dateText, timeText);
   if (!row) {
@@ -497,13 +567,17 @@ function getSlotRecord(sheet, dateText, timeText) {
   };
 }
 
-function releaseReservationSlot(sheet, dateText, timeText, reservationId) {
-  const slot = getSlotRecord(sheet, dateText, timeText);
-  if (slot.source !== reservationId) {
-    return false;
-  }
-  upsertSlotStatus(sheet, dateText, timeText, "空き", "予約枠自動解放", reservationId);
-  return true;
+function releaseReservationSlots(sheet, dateText, times, reservationId) {
+  let releasedCount = 0;
+  times.forEach((time) => {
+    const slot = getSlotRecord(sheet, dateText, time);
+    if (slot.source !== reservationId) {
+      return;
+    }
+    upsertSlotStatus(sheet, dateText, time, "空き", "予約枠自動解放", reservationId);
+    releasedCount += 1;
+  });
+  return releasedCount;
 }
 
 function expandTimes(startTime, endTime) {
@@ -576,6 +650,7 @@ function sendReservationAutoReply(data, reservationId) {
     "",
     `受付番号: ${reservationId}`,
     `レッスン種別: ${lessonType}`,
+    `所要時間: ${getLessonDuration(lessonType)}分`,
     `希望日: ${preferredDate}`,
     `希望時間: ${preferredTime}`,
     "現在の状態: 調整中",

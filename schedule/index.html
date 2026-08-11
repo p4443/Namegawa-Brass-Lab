@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="kazooささきトランペット教室のレッスン空き状況と予約スケジュールです。">
+  <title>レッスンスケジュール | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --navy: #0b2545;
+      --blue: #176b87;
+      --gold: #c89416;
+      --ink: #172033;
+      --muted: #667085;
+      --line: #d9e1e9;
+      --paper: #ffffff;
+      --wash: #eef4f5;
+      --available: #16794c;
+      --busy: #b54735;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: linear-gradient(135deg, #eef4f5 0%, #f9f7f1 52%, #e8f0f3 100%);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      line-height: 1.6;
+    }
+    button, input, select, textarea { font: inherit; }
+    .topbar { color: #fff; background: var(--navy); }
+    .topbar-inner, main { width: min(100% - 28px, 1080px); margin: 0 auto; }
+    .topbar-inner { min-height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { color: #fff; font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-weight: 800; text-decoration: none; }
+    .back { color: rgba(255,255,255,.82); font-size: .84rem; text-decoration: none; }
+    main { padding: 32px 0 60px; }
+    .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
+    .eyebrow { margin: 0 0 5px; color: var(--blue); font-size: .76rem; font-weight: 800; }
+    h1 { margin: 0; color: var(--navy); font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: clamp(1.55rem, 5vw, 2.4rem); }
+    .heading-copy { max-width: 480px; margin: 0; color: var(--muted); font-size: .9rem; }
+    .lesson-filter { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
+    .lesson-filter label { color: var(--navy); font-size: .8rem; font-weight: 800; }
+    .lesson-filter select { min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--navy); background: #fff; }
+    .schedule-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, .75fr); gap: 18px; align-items: start; }
+    .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 30px rgba(11,37,69,.08); }
+    .calendar-panel { padding: 18px; }
+    .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+    .calendar-toolbar h2 { margin: 0; color: var(--navy); font-size: 1.08rem; }
+    .icon-button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 6px; color: var(--navy); background: #fff; cursor: pointer; font-size: 1.25rem; }
+    .icon-button:disabled { opacity: .35; cursor: default; }
+    .weekdays, .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 5px; }
+    .weekdays span { padding: 5px 0; color: var(--muted); text-align: center; font-size: .72rem; font-weight: 800; }
+    .day { aspect-ratio: 1 / 1; min-width: 0; padding: 6px 3px; border: 1px solid var(--line); border-radius: 5px; background: #fff; cursor: pointer; display: grid; align-content: space-between; text-align: left; }
+    .day:hover, .day:focus-visible, .day[aria-pressed="true"] { border-color: var(--blue); outline: 2px solid rgba(23,107,135,.18); }
+    .day:disabled { color: #98a2b3; background: #f6f7f8; cursor: default; }
+    .day-number { font-weight: 800; }
+    .day-summary { color: var(--available); text-align: center; font-size: clamp(.56rem, 1.6vw, .7rem); font-weight: 800; line-height: 1.25; }
+    .day-summary.busy { color: var(--busy); }
+    .day-summary.unknown { color: var(--muted); }
+    .blank-day { aspect-ratio: 1 / 1; }
+    .legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; color: var(--muted); font-size: .75rem; }
+    .legend span::before { display: inline-block; width: 9px; height: 9px; margin-right: 5px; border-radius: 50%; background: var(--available); content: ""; }
+    .legend .busy::before { background: var(--busy); }
+    .detail-panel { padding: 20px; }
+    .detail-panel h2 { margin: 0 0 4px; color: var(--navy); font-size: 1.05rem; }
+    .detail-note { margin: 0 0 14px; color: var(--muted); font-size: .78rem; }
+    .slot-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+    .slot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 8px 10px; border-left: 3px solid var(--available); background: #f3faf6; font-size: .84rem; }
+    .slot.busy { border-left-color: var(--busy); background: #fff5f3; color: var(--muted); }
+    .slot a { color: var(--available); font-weight: 800; }
+    .load-status { margin: 12px 0 0; color: var(--muted); font-size: .8rem; }
+    .admin { margin-top: 28px; overflow: hidden; }
+    .admin-heading { padding: 17px 20px; color: #fff; background: var(--navy); }
+    .admin-heading h2 { margin: 0; font-size: 1rem; }
+    .admin-heading p { margin: 3px 0 0; color: rgba(255,255,255,.72); font-size: .76rem; }
+    .admin-body { padding: 20px; }
+    .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .field { display: grid; gap: 4px; }
+    .field.wide { grid-column: span 2; }
+    .field label { color: var(--navy); font-size: .76rem; font-weight: 800; }
+    .field input, .field select, .field textarea { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; background: #fff; }
+    .button { min-height: 42px; padding: 8px 15px; border: 1px solid var(--navy); border-radius: 5px; color: #fff; background: var(--navy); font-weight: 800; cursor: pointer; }
+    .button.secondary { color: var(--navy); background: #fff; }
+    .button.danger { border-color: var(--busy); color: var(--busy); background: #fff; }
+    .login-form { display: flex; align-items: end; gap: 10px; max-width: 520px; }
+    .login-form .field { flex: 1; }
+    .admin-status { margin: 10px 0 0; color: var(--muted); font-size: .8rem; }
+    [hidden] { display: none !important; }
+    .admin-section + .admin-section { margin-top: 24px; padding-top: 22px; border-top: 1px solid var(--line); }
+    .admin-section h3 { margin: 0 0 12px; color: var(--navy); font-size: .95rem; }
+    .reservation-list { display: grid; gap: 10px; }
+    .reservation-item { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(220px, 1.4fr) auto; gap: 14px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 6px; }
+    .reservation-date { color: var(--navy); font-weight: 800; }
+    .reservation-meta, .reservation-contact { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
+    .reservation-name { font-weight: 800; }
+    .reservation-actions { display: flex; align-items: center; gap: 7px; }
+    .reservation-actions select { min-height: 38px; border: 1px solid var(--line); border-radius: 5px; }
+    .reservation-actions .button { min-height: 38px; padding: 6px 10px; font-size: .78rem; }
+    @media (max-width: 760px) {
+      .page-heading { display: block; }
+      .heading-copy { margin-top: 10px; }
+      .schedule-layout { grid-template-columns: 1fr; }
+      .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .reservation-item { grid-template-columns: 1fr; }
+      .reservation-actions { flex-wrap: wrap; }
+    }
+    @media (max-width: 480px) {
+      main { padding-top: 22px; }
+      .calendar-panel { padding: 12px; }
+      .day { padding: 4px 2px; }
+      .form-grid { grid-template-columns: 1fr; }
+      .field.wide { grid-column: auto; }
+      .login-form { align-items: stretch; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="../">なめがわブラス・ラボ</a>
+      <a class="back" href="../lesson/">教室案内・予約へ</a>
+    </div>
+  </header>
+  <main>
+    <header class="page-heading">
+      <div><p class="eyebrow">LESSON AVAILABILITY</p><h1>レッスンスケジュール</h1></div>
+      <p class="heading-copy">カレンダーから日付を選ぶと、予約可能な時間を確認できます。空き枠は予約受付と同時に更新されます。</p>
+    </header>
+    <div class="lesson-filter">
+      <label for="schedule-lesson-type">レッスン種別</label>
+      <select id="schedule-lesson-type">
+        <option value="体験レッスン">体験レッスン（30分）</option>
+        <option value="小学生">小学生（30分）</option>
+        <option value="中学生">中学生（45分）</option>
+        <option value="高校生以上">高校生以上（60分）</option>
+        <option value="グループ・部活動指導">グループ・部活動指導（60分）</option>
+      </select>
+    </div>
+    <div class="schedule-layout">
+      <section class="panel calendar-panel" aria-labelledby="calendar-month">
+        <div class="calendar-toolbar">
+          <button class="icon-button" id="previous-month" type="button" aria-label="前の月">‹</button>
+          <h2 id="calendar-month"></h2>
+          <button class="icon-button" id="next-month" type="button" aria-label="次の月">›</button>
+        </div>
+        <div class="weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+        <div class="calendar-grid" id="schedule-calendar"></div>
+        <div class="legend"><span>予約可能</span><span class="busy">満席・休み</span></div>
+        <p class="load-status" id="schedule-status" role="status"></p>
+      </section>
+      <section class="panel detail-panel" aria-labelledby="selected-date-title">
+        <h2 id="selected-date-title">日付を選択してください</h2>
+        <p class="detail-note">表示は15分単位です。「要相談」は送信後に日時を調整します。</p>
+        <ul class="slot-list" id="slot-list"></ul>
+      </section>
+    </div>
+
+    <section class="panel admin" aria-labelledby="admin-title">
+      <header class="admin-heading"><h2 id="admin-title">管理者用スケジュール管理</h2><p>予約者情報はパスワード認証後のみ表示されます。</p></header>
+      <div class="admin-body">
+        <form class="login-form" id="admin-login-form">
+          <div class="field"><label for="admin-password">編集用パスワード</label><input id="admin-password" type="password" autocomplete="current-password" required></div>
+          <button class="button" type="submit">ログイン</button>
+        </form>
+        <p class="admin-status" id="admin-status" role="status"></p>
+        <div id="admin-dashboard" hidden>
+          <section class="admin-section">
+            <h3>予約者一覧</h3>
+            <div class="reservation-list" id="reservation-list"></div>
+          </section>
+          <section class="admin-section">
+            <h3>予約不可枠の一括設定</h3>
+            <form class="form-grid" id="slot-admin-form">
+              <div class="field"><label for="slot-start-date">開始日</label><input id="slot-start-date" name="start_date" type="date" required></div>
+              <div class="field"><label for="slot-end-date">終了日</label><input id="slot-end-date" name="end_date" type="date" required></div>
+              <div class="field"><label for="slot-start-time">開始時間</label><input id="slot-start-time" name="start_time" type="time" step="900" required></div>
+              <div class="field"><label for="slot-end-time">終了時間</label><input id="slot-end-time" name="end_time" type="time" step="900" required></div>
+              <div class="field"><label for="slot-status">状態</label><select id="slot-status" name="status"><option>お休み</option><option>予約済</option></select></div>
+              <div class="field wide"><label for="slot-note">管理メモ</label><input id="slot-note" name="note" maxlength="200"></div>
+              <button class="button" type="submit">スケジュールへ反映</button>
+            </form>
+          </section>
+        </div>
+      </div>
+    </section>
+  </main>
+  <script>
+    const renderBase = "https://namegawa-brass-lab.onrender.com";
+    const apiCandidates = (path) => location.hostname.endsWith("github.io")
+      ? [`${renderBase}${path}`, `..${path}`]
+      : [`..${path}`, path, `${renderBase}${path}`];
+    const calendar = document.getElementById("schedule-calendar");
+    const monthTitle = document.getElementById("calendar-month");
+    const scheduleStatus = document.getElementById("schedule-status");
+    const slotList = document.getElementById("slot-list");
+    const selectedDateTitle = document.getElementById("selected-date-title");
+    const scheduleLessonType = document.getElementById("schedule-lesson-type");
+    const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
+    const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "グループ・部活動指導": 60 };
+    const statusMap = new Map();
+    const nowText = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const today = new Date(`${nowText}T00:00:00`);
+    const firstDate = new Date(today); firstDate.setDate(firstDate.getDate() + 1);
+    const lastDate = new Date(today); lastDate.setMonth(lastDate.getMonth() + 1);
+    let visibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+    let selectedDate = "";
+    let scheduleReady = false;
+
+    const makeRange = (startHour, startMinute, endHour, endMinute) => {
+      const result = [];
+      for (let value = startHour * 60 + startMinute; value <= endHour * 60 + endMinute; value += 15) {
+        result.push(`${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`);
+      }
+      return result;
+    };
+    const timesByDay = {
+      0: ["要相談"],
+      1: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
+      2: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
+      3: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
+      4: makeRange(6,45,11,0),
+      5: [...makeRange(15,0,16,0), "要相談"],
+      6: [],
+    };
+    const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    const occupiedTimes = (startTime, durationMinutes) => {
+      if (startTime === "要相談") return ["要相談"];
+      const [hour, minute] = startTime.split(":").map(Number);
+      const start = hour * 60 + minute;
+      return Array.from({ length: durationMinutes / 15 }, (_, index) => {
+        const value = start + index * 15;
+        return `${String(Math.floor(value / 60)).padStart(2,"0")}:${String(value % 60).padStart(2,"0")}`;
+      });
+    };
+    const endTime = (startTime, durationMinutes) => {
+      if (startTime === "要相談") return "要相談";
+      const [hour, minute] = startTime.split(":").map(Number);
+      const value = hour * 60 + minute + durationMinutes;
+      return `${String(Math.floor(value / 60)).padStart(2,"0")}:${String(value % 60).padStart(2,"0")}`;
+    };
+    const requestApi = async (path, options = {}) => {
+      let lastError;
+      for (const endpoint of [...new Set(apiCandidates(path))]) {
+        try {
+          const response = await fetch(endpoint, options);
+          const result = await response.json().catch(() => ({}));
+          if (response.ok) return result;
+          if (![404, 405].includes(response.status) && result.error) throw new Error(result.error);
+          lastError = new Error(result.error || "サーバーに接続できません。");
+        } catch (error) { lastError = error; }
+      }
+      throw lastError || new Error("サーバーに接続できません。");
+    };
+
+    function availabilityFor(date) {
+      const value = dateText(date);
+      const times = timesByDay[date.getDay()] || [];
+      const durationMinutes = lessonDurations[scheduleLessonType.value];
+      return times.filter((time) => occupiedTimes(time, durationMinutes).every(
+        (slotTime) => !blockedStatuses.has(statusMap.get(`${value}|${slotTime}`)),
+      )).length;
+    }
+    function renderSlots(value) {
+      selectedDate = value;
+      const date = new Date(`${value}T00:00:00`);
+      selectedDateTitle.textContent = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "long" }).format(date);
+      slotList.replaceChildren();
+      const times = timesByDay[date.getDay()] || [];
+      if (!times.length) {
+        const item = document.createElement("li"); item.className = "slot busy"; item.textContent = "受付時間外です"; slotList.append(item); return;
+      }
+      const durationMinutes = lessonDurations[scheduleLessonType.value];
+      times.forEach((time) => {
+        const status = occupiedTimes(time, durationMinutes)
+          .map((slotTime) => statusMap.get(`${value}|${slotTime}`) || "空き")
+          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
+        const item = document.createElement("li"); item.className = `slot${blockedStatuses.has(status) ? " busy" : ""}`;
+        const timeLabel = document.createElement("strong");
+        timeLabel.textContent = time === "要相談" ? `要相談（${durationMinutes}分）` : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
+        item.append(timeLabel);
+        if (blockedStatuses.has(status)) {
+          const state = document.createElement("span"); state.textContent = status; item.append(state);
+        } else {
+          const link = document.createElement("a");
+          link.href = `../lesson/?lesson_type=${encodeURIComponent(scheduleLessonType.value)}&date=${value}&time=${encodeURIComponent(time)}#reservation-title`;
+          link.textContent = "予約する"; item.append(link);
+        }
+        slotList.append(item);
+      });
+    }
+    function renderCalendar() {
+      monthTitle.textContent = `${visibleMonth.getFullYear()}年 ${visibleMonth.getMonth()+1}月`;
+      calendar.replaceChildren();
+      for (let index = 0; index < visibleMonth.getDay(); index += 1) {
+        const blank = document.createElement("span"); blank.className = "blank-day"; calendar.append(blank);
+      }
+      const days = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth()+1, 0).getDate();
+      for (let day = 1; day <= days; day += 1) {
+        const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day);
+        const value = dateText(date);
+        const total = (timesByDay[date.getDay()] || []).length;
+        const available = availabilityFor(date);
+        const button = document.createElement("button"); button.type = "button"; button.className = "day";
+        button.disabled = !scheduleReady || date < firstDate || date > lastDate || total === 0;
+        button.setAttribute("aria-pressed", String(selectedDate === value));
+        const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
+        const summary = document.createElement("span");
+        summary.className = `day-summary${scheduleReady ? (available ? "" : " busy") : " unknown"}`;
+        summary.textContent = scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : "未確認";
+        button.append(number, summary); button.addEventListener("click", () => { renderSlots(value); renderCalendar(); }); calendar.append(button);
+      }
+      const minimumMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
+      const maximumMonth = new Date(lastDate.getFullYear(), lastDate.getMonth(), 1);
+      document.getElementById("previous-month").disabled = visibleMonth <= minimumMonth;
+      document.getElementById("next-month").disabled = visibleMonth >= maximumMonth;
+    }
+    async function loadSchedule() {
+      scheduleReady = false;
+      scheduleStatus.textContent = "空き状況を読み込んでいます…";
+      renderCalendar();
+      try {
+        const result = await requestApi(`/api/lesson-slot-statuses?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
+        (result.slots || []).forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
+        scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar();
+        if (!selectedDate) renderSlots(dateText(firstDate));
+      } catch (error) { scheduleStatus.textContent = error.message; renderCalendar(); }
+    }
+    document.getElementById("previous-month").addEventListener("click", () => { visibleMonth.setMonth(visibleMonth.getMonth()-1); renderCalendar(); });
+    document.getElementById("next-month").addEventListener("click", () => { visibleMonth.setMonth(visibleMonth.getMonth()+1); renderCalendar(); });
+    scheduleLessonType.addEventListener("change", () => {
+      renderCalendar();
+      if (selectedDate) renderSlots(selectedDate);
+    });
+
+    const adminStatus = document.getElementById("admin-status");
+    const dashboard = document.getElementById("admin-dashboard");
+    const reservationList = document.getElementById("reservation-list");
+    let adminPassword = "";
+    const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
+    function renderReservations(reservations) {
+      reservationList.replaceChildren();
+      if (!reservations.length) { reservationList.textContent = "予約はありません。"; return; }
+      reservations.forEach((reservation) => {
+        const item = document.createElement("article"); item.className = "reservation-item";
+        const when = document.createElement("div"); when.innerHTML = `<div class="reservation-date"></div><div class="reservation-meta"></div>`;
+        when.querySelector(".reservation-date").textContent = `${reservation.preferred_date} ${reservation.preferred_time}`;
+        const durationMinutes = reservation.duration_minutes || lessonDurations[reservation.lesson_type] || 60;
+        when.querySelector(".reservation-meta").textContent = `${reservation.reservation_id} / ${reservation.lesson_type}（${durationMinutes}分）`;
+        const person = document.createElement("div"); person.innerHTML = `<div class="reservation-name"></div><div class="reservation-contact"></div>`;
+        person.querySelector(".reservation-name").textContent = reservation.name;
+        person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
+        const actions = document.createElement("div"); actions.className = "reservation-actions";
+        const status = document.createElement("select"); ["受付","確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
+        const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
+        save.addEventListener("click", () => updateReservation(reservation.reservation_id, status.value));
+        const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
+        remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
+        actions.append(status, save, remove); item.append(when, person, actions); reservationList.append(item);
+      });
+    }
+    async function loadReservations() {
+      const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders() });
+      renderReservations(result.reservations || []);
+    }
+    async function updateReservation(id, status) {
+      adminStatus.textContent = "更新しています…";
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }) }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約状態を更新しました。"; }
+      catch (error) { adminStatus.textContent = error.message; }
+    }
+    async function deleteReservation(id) {
+      if (!window.confirm(`${id} を削除しますか？`)) return;
+      adminStatus.textContent = "削除しています…";
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders() }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約を削除しました。"; }
+      catch (error) { adminStatus.textContent = error.message; }
+    }
+    document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
+      event.preventDefault(); adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
+      try { await requestApi("/api/editor", { headers: adminHeaders() }); await loadReservations(); dashboard.hidden = false; event.currentTarget.hidden = true; adminStatus.textContent = "ログインしました。"; }
+      catch (error) { adminPassword = ""; adminStatus.textContent = error.message; }
+    });
+    document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
+      event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";
+      const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
+      try { const result = await requestApi("/api/lesson-slot-statuses/admin", { method: "POST", headers: adminHeaders(), body: JSON.stringify(payload) }); statusMap.clear(); await loadSchedule(); adminStatus.textContent = `${result.updated_count}件の枠を更新しました。`; }
+      catch (error) { adminStatus.textContent = error.message; }
+    });
+    renderCalendar(); loadSchedule();
+  </script>
+</body>
+</html>

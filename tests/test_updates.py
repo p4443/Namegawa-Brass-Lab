@@ -11,6 +11,8 @@ from app import (
     load_updates,
     normalize_media_url,
     parse_update_line,
+    reservation_slot_times,
+    validate_lesson_reservation,
 )
 
 
@@ -139,6 +141,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('href="../#main-container"', page)
         self.assertIn('id="reservation-form"', page)
         self.assertIn("const renderReservationApi =", page)
+        self.assertIn('"中学生": 45', page)
+        self.assertIn('"高校生以上": 60', page)
+        self.assertIn("function occupiedTimes", page)
 
     def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
@@ -157,8 +162,11 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
-        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
-        self.assertEqual(response.headers["Access-Control-Allow-Headers"], "Content-Type")
+        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, POST, OPTIONS")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Headers"],
+            "Content-Type, X-Editor-Password",
+        )
 
     def test_lesson_slot_statuses_options_supports_cors_preflight(self):
         client = create_app().test_client()
@@ -178,6 +186,99 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertNotIn("管理者用", page)
         self.assertNotIn("slot-admin", page)
+
+    def test_schedule_page_shares_public_calendar_and_admin_panel(self):
+        client = create_app().test_client()
+
+        response = client.get("/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="schedule-calendar"', page)
+        self.assertIn('id="schedule-lesson-type"', page)
+        self.assertIn('id="admin-login-form"', page)
+        self.assertIn("api/lesson-slot-statuses", page)
+        self.assertIn("api/lesson-reservations", page)
+        self.assertIn('summary.textContent = scheduleReady ?', page)
+        self.assertIn('"中学生": 45', page)
+        self.assertIn("occupiedTimes(time, durationMinutes)", page)
+
+    def test_lesson_reservation_list_requires_editor_password(self):
+        client = create_app().test_client()
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = client.get("/api/lesson-reservations")
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_lesson_reservation_list_returns_admin_data(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservations": [
+                    {
+                        "reservation_id": "R-20260820-001",
+                        "status": "調整中",
+                        "name": "予約 太郎",
+                        "email": "taro@example.com",
+                        "phone": "090-1234-5678",
+                        "lesson_type": "体験レッスン",
+                        "preferred_date": "2026-08-20",
+                        "preferred_time": "09:00",
+                        "message": "初心者です。",
+                    }
+                ],
+            }
+            response = client.get("/api/lesson-reservations", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.json["reservations"]), 1)
+        self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
+
+    def test_lesson_slot_admin_updates_schedule(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-20",
+            "start_time": "09:00",
+            "end_time": "10:00",
+            "status": "お休み",
+            "note": "休講",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {"ok": True, "updatedCount": 5}
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["updated_count"], 5)
+        self.assertEqual(
+            send_reservation.call_args.kwargs["action"],
+            "upsert_slot_status_range",
+        )
 
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
@@ -225,10 +326,52 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
         self.assertEqual(response.json["status"], "調整中")
+        self.assertEqual(response.json["duration_minutes"], 30)
         self.assertTrue(response.json["auto_reply_sent"])
         send_reservation.assert_called_once_with(
-            "https://script.google.com/example", "test-secret", payload
+            "https://script.google.com/example",
+            "test-secret",
+            {
+                **payload,
+                "duration_minutes": 30,
+                "occupied_times": ["09:00", "09:15"],
+            },
         )
+
+    def test_lesson_duration_is_derived_from_lesson_type(self):
+        base_payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)):
+            durations = {
+                lesson_type: validate_lesson_reservation(
+                    {**base_payload, "lesson_type": lesson_type}
+                )["duration_minutes"]
+                for lesson_type in ["体験レッスン", "小学生", "中学生", "高校生以上"]
+            }
+
+        self.assertEqual(
+            durations,
+            {"体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60},
+        )
+
+    def test_lesson_duration_expands_to_fifteen_minute_slots(self):
+        self.assertEqual(reservation_slot_times("09:00", 30), ["09:00", "09:15"])
+        self.assertEqual(
+            reservation_slot_times("09:00", 45),
+            ["09:00", "09:15", "09:30"],
+        )
+        self.assertEqual(
+            reservation_slot_times("09:00", 60),
+            ["09:00", "09:15", "09:30", "09:45"],
+        )
+        self.assertEqual(reservation_slot_times("要相談", 60), ["要相談"])
 
     def test_lesson_reservation_duplicate_is_reported(self):
         client = create_app().test_client()
