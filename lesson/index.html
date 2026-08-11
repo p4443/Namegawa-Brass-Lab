@@ -366,6 +366,67 @@
       background: var(--navy);
     }
 
+    .schedule-callout {
+      display: grid;
+      width: min(100%, 760px);
+      margin: 0 auto 30px;
+      padding: 18px;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid rgba(212, 175, 55, 0.7);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    .schedule-callout-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--gold);
+      font-size: 1.2rem;
+    }
+
+    .schedule-callout-copy strong,
+    .schedule-callout-copy span {
+      display: block;
+    }
+
+    .schedule-callout-copy strong {
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .schedule-callout-copy span {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+    }
+
+    .schedule-callout-link {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--gold);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .schedule-callout-link:hover,
+    .schedule-callout-link:focus-visible {
+      background: #f1d46d;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+
     .reservation {
       display: grid;
       width: min(100%, 760px);
@@ -567,6 +628,15 @@
         width: 100%;
       }
 
+      .schedule-callout {
+        grid-template-columns: auto 1fr;
+      }
+
+      .schedule-callout-link {
+        width: 100%;
+        grid-column: 1 / -1;
+      }
+
       .reservation-form {
         grid-template-columns: 1fr;
       }
@@ -705,6 +775,14 @@
   </main>
 
   <footer class="footer">
+    <section class="schedule-callout" aria-labelledby="schedule-callout-title">
+      <span class="schedule-callout-icon" aria-hidden="true">▣</span>
+      <div class="schedule-callout-copy">
+        <strong id="schedule-callout-title">レッスン予約スケジュール</strong>
+        <span>月間カレンダーで空き時間を確認して、そのまま予約できます。</span>
+      </div>
+      <a class="schedule-callout-link" href="../schedule/">空き状況を見る</a>
+    </section>
     <section class="reservation" aria-labelledby="reservation-title">
       <div class="reservation-copy">
         <h2 id="reservation-title">レッスン予約</h2>

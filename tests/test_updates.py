@@ -140,6 +140,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("別途相談", page)
         self.assertIn('href="../#main-container"', page)
         self.assertIn('id="reservation-form"', page)
+        self.assertIn('class="schedule-callout"', page)
+        self.assertIn('class="schedule-callout-link" href="../schedule/"', page)
+        self.assertLess(page.index('id="schedule-callout-title"'), page.index('id="reservation-title"'))
         self.assertIn("const renderReservationApi =", page)
         self.assertIn('"中学生": 45', page)
         self.assertIn('"高校生以上": 60', page)
@@ -721,6 +724,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("failedLoginAttempts >= 3", page)
         self.assertIn("closeEditorPanel();", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
+        self.assertNotIn('class="schedule-callout"', page)
 
     def test_index_navigation_can_be_collapsed(self):
         client = create_app().test_client()
