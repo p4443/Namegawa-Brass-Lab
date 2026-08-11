@@ -140,16 +140,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="reservation-form"', page)
         self.assertIn("const renderReservationApi =", page)
 
-    def test_lesson_page_script_references_slot_admin_inputs(self):
+    def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
 
         response = client.get("/lesson/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn("slotStartDateInput", page)
-        self.assertIn("slotEndDateInput", page)
-        self.assertIn("/api/lesson-slot-statuses/admin", page)
+        self.assertNotIn("slotStartDateInput", page)
+        self.assertNotIn("slotEndDateInput", page)
 
     def test_lesson_reservation_options_supports_cors_preflight(self):
         client = create_app().test_client()
@@ -170,15 +169,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
 
-    def test_lesson_page_shows_admin_panel(self):
+    def test_lesson_page_does_not_show_admin_panel(self):
         client = create_app().test_client()
 
         response = client.get("/lesson/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn("管理者用: 予約時間枠の調整", page)
-        self.assertIn('id="slot-admin-form"', page)
+        self.assertNotIn("管理者用", page)
+        self.assertNotIn("slot-admin", page)
 
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
@@ -316,72 +315,6 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(len(response.json["slots"]), 1)
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
         self.assertEqual(send_reservation.call_args.kwargs["action"], "get_slot_statuses")
-
-    def test_lesson_slot_statuses_admin_options_supports_cors_preflight(self):
-        client = create_app().test_client()
-
-        response = client.options("/api/lesson-slot-statuses/admin")
-
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
-        self.assertEqual(response.headers["Access-Control-Allow-Methods"], "POST, OPTIONS")
-        self.assertEqual(
-            response.headers["Access-Control-Allow-Headers"],
-            "Content-Type, X-Editor-Password",
-        )
-
-    def test_lesson_slot_statuses_admin_requires_editor_password(self):
-        client = create_app().test_client()
-        payload = {
-            "start_date": "2026-08-20",
-            "end_date": "2026-08-20",
-            "start_time": "09:00",
-            "end_time": "10:00",
-            "status": "予約済",
-            "note": "動作確認",
-        }
-
-        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
-            response = client.post("/api/lesson-slot-statuses/admin", json=payload)
-
-        self.assertEqual(response.status_code, 401)
-
-    def test_lesson_slot_statuses_admin_can_update(self):
-        client = create_app().test_client()
-        payload = {
-            "start_date": "2026-08-20",
-            "end_date": "2026-08-21",
-            "start_time": "09:00",
-            "end_time": "10:00",
-            "status": "お休み",
-            "note": "会場都合",
-        }
-        headers = {"X-Editor-Password": "correct-password"}
-
-        with patch.dict(
-            os.environ,
-            {
-                "EDITOR_PASSWORD": "correct-password",
-                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
-                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
-            },
-        ), patch("app.send_lesson_reservation") as send_reservation:
-            send_reservation.return_value = {"ok": True, "updatedCount": 10}
-            response = client.post(
-                "/api/lesson-slot-statuses/admin",
-                json=payload,
-                headers=headers,
-            )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json["saved"])
-        self.assertEqual(response.json["updated_count"], 10)
-        send_reservation.assert_called_once_with(
-            "https://script.google.com/example",
-            "test-secret",
-            payload,
-            action="upsert_slot_status_range",
-        )
 
     def test_lesson_reservation_rejects_invalid_input(self):
         client = create_app().test_client()
