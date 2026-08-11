@@ -23,6 +23,7 @@
 		}
 	],
 	"settings": {
-		"liveServer.settings.multiRootWorkspaceName": "certs"
+		"liveServer.settings.multiRootWorkspaceName": "certs",
+		"liveServer.settings.port": 5501
 	}
 }

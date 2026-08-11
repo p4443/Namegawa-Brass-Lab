@@ -6,20 +6,22 @@
   <title>なめがわブラス・ラボ | トランペット奏者・佐々木久和</title>
   <style>
     :root {
-      --primary-color: #0b2545;
-      --primary-light: #134074;
-      --accent-color: #d4af37;
-      --accent-hover: #b59226;
-      --bg-color: #f4f6f9;
+      --primary-color: #0f172a;
+      --primary-light: #1e293b;
+      --accent-color: #d97706;
+      --accent-hover: #b45309;
+      --bg-color: #f8fafc;
       --card-bg: #ffffff;
-      --text-main: #1d2a44;
-      --text-muted: #6c757d;
-      --shadow-sm: 0 4px 14px rgba(11, 37, 69, 0.06);
-      --shadow-md: 0 12px 28px rgba(11, 37, 69, 0.14);
-      --radius: 18px;
-      --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-      --highlight-bg: #fff9c4;
-      --highlight-bg-hover: #fff59d;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
+      --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.1);
+      --radius: 16px;
+      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      --highlight-bg: #fff4da;
+      --highlight-bg-hover: #ffe7be;
+      --border-color: #e2e8f0;
+      --font-serif: "Hiragino Mincho ProN", "Yu Mincho", serif;
     }
 
     * {
@@ -30,15 +32,12 @@
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
+      background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
       color: var(--text-main);
-      line-height: 1.7;
+      line-height: 1.8;
       min-height: 100vh;
       overflow-x: hidden;
-      padding: 24px clamp(12px, 2.8vw, 24px) 48px;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
+      padding: 0;
     }
 
     #video-overlay {
@@ -166,17 +165,16 @@
 
     .container {
       width: 100%;
-      max-width: 920px;
-      padding: clamp(24px, 3.6vw, 40px) clamp(18px, 3.2vw, 30px) 36px;
-      margin: 0 auto;
+      max-width: 1200px;
+      padding: clamp(28px, 3.2vw, 42px) clamp(18px, 2.8vw, 28px) 40px;
+      margin: clamp(16px, 2.4vw, 24px) auto;
       opacity: 0;
       transform: translateY(16px);
       transition: opacity 0.8s ease, transform 0.8s ease;
-      background: rgba(255, 255, 255, 0.9);
-      border: 1px solid rgba(11, 37, 69, 0.06);
-      border-radius: 28px;
-      box-shadow: 0 24px 60px rgba(11, 37, 69, 0.12);
-      backdrop-filter: blur(10px);
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 22px;
+      box-shadow: var(--shadow-md);
     }
 
     .container.visible {
@@ -205,10 +203,11 @@
     }
 
     .main-title {
-      font-size: 1.6rem;
+      font-size: clamp(1.7rem, 2.2vw, 2.2rem);
       font-weight: 800;
       color: var(--primary-color);
       letter-spacing: 0.02em;
+      font-family: var(--font-serif);
     }
 
     .school-title {
@@ -218,12 +217,12 @@
       margin-right: auto;
       margin-left: auto;
       padding: 3px 10px 7px;
-      font-size: 1.15rem;
+      font-size: clamp(1rem, 1.5vw, 1.2rem);
       font-weight: 800;
       line-height: 1.4;
       color: var(--primary-light);
-      text-shadow: 0 2px 10px rgba(212, 175, 55, 0.22);
-      background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.12), transparent);
+      text-shadow: 0 1px 8px rgba(217, 119, 6, 0.18);
+      background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.1), transparent);
       text-decoration: none;
       animation: schoolTitleReveal 0.7s ease-out both;
     }
@@ -266,14 +265,15 @@
     }
 
     .tagline {
-      font-size: 0.86rem;
+      font-size: 0.9rem;
       font-weight: 700;
       color: var(--primary-light);
-      background: rgba(11, 37, 69, 0.06);
+      background: #f1f5f9;
       display: inline-block;
-      padding: 5px 14px;
+      padding: 7px 16px;
       border-radius: 999px;
       margin-bottom: 14px;
+      border: 1px solid var(--border-color);
     }
 
     .nav-stack {
@@ -284,7 +284,7 @@
 
     .nav-stack-inline {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(5, minmax(0, 1fr));
       gap: 8px;
     }
 
@@ -293,33 +293,33 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      min-height: 56px;
-      padding: 11px 13px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, #ffffff 0%, #f7f9fc 100%);
-      border: 1px solid rgba(11, 37, 69, 0.12);
+      min-height: 58px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: #ffffff;
+      border: 1px solid var(--border-color);
       color: var(--primary-color);
-      font-size: 0.86rem;
-      font-weight: 700;
+      font-size: 0.88rem;
+      font-weight: 600;
       text-decoration: none;
-      box-shadow: 0 8px 18px rgba(11, 37, 69, 0.08);
+      box-shadow: var(--shadow-sm);
       transition: var(--transition);
     }
 
     .nav-card:hover,
     .nav-card:focus-visible {
       transform: translateY(-2px);
-      box-shadow: 0 12px 24px rgba(11, 37, 69, 0.14);
-      border-color: rgba(212, 175, 55, 0.38);
+      box-shadow: var(--shadow-md);
+      border-color: rgba(217, 119, 6, 0.35);
       color: var(--primary-color);
       text-decoration: none;
     }
 
     .nav-card.primary {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-light) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, #1e293b 100%);
       color: #ffffff;
       border-color: transparent;
-      box-shadow: 0 12px 28px rgba(11, 37, 69, 0.2);
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
     }
 
     .nav-card.primary:hover,
@@ -373,10 +373,10 @@
     }
 
     .profile-intro-card {
-      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
-      border: 1px solid rgba(11, 37, 69, 0.08);
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 20px 22px;
+      padding: 26px 28px;
       margin: 10px 0 12px;
       box-shadow: var(--shadow-sm);
     }
@@ -403,11 +403,22 @@
       margin: 16px 0 12px;
     }
 
+    .media-updates-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 12px;
+    }
+
+    .video-column {
+      min-width: 0;
+    }
+
     .updates-card {
-      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
-      border: 1px solid rgba(11, 37, 69, 0.08);
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 16px 18px;
+      padding: 20px 22px;
       box-shadow: var(--shadow-sm);
     }
 
@@ -653,23 +664,34 @@
     }
 
     .section-title {
-      font-size: 1.06rem;
+      text-align: center;
+      justify-content: center;
+      font-size: clamp(1.4rem, 2vw, 2rem);
       font-weight: 700;
       color: var(--primary-color);
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 26px 0 12px;
+      gap: 0;
+      margin: 34px 0 14px;
+      font-family: var(--font-serif);
+      position: relative;
     }
 
     .section-title::before {
       content: "";
-      display: inline-block;
-      width: 4px;
-      height: 18px;
+      display: none;
+    }
+
+    .section-title::after {
+      content: "";
+      display: block;
+      width: 42px;
+      height: 2px;
       background-color: var(--accent-color);
       border-radius: 2px;
-      flex-shrink: 0;
+      margin: 12px auto 0;
+      position: absolute;
+      transform: translateY(30px);
     }
 
     .pdf-links-list {
@@ -710,9 +732,9 @@
     .price-section-card,
     .youtube-section-card {
       background: var(--card-bg);
-      border: 1px solid rgba(11, 37, 69, 0.06);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 16px 16px 15px;
+      padding: 22px;
       box-shadow: var(--shadow-sm);
       margin-bottom: 14px;
     }
@@ -768,18 +790,18 @@
       background: var(--card-bg);
       color: var(--text-main);
       text-decoration: none;
-      padding: 14px 15px;
-      border-radius: 16px;
+      padding: 15px 16px;
+      border-radius: 12px;
       margin-bottom: 0;
       box-shadow: var(--shadow-sm);
-      border: 1px solid rgba(0,0,0,0.04);
+      border: 1px solid var(--border-color);
       transition: var(--transition);
     }
 
     .btn-link:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-md);
-      border-color: rgba(212, 175, 55, 0.35);
+      border-color: rgba(217, 119, 6, 0.35);
     }
 
     .btn-link:active {
@@ -844,10 +866,10 @@
 
     .contact-card,
     .access-card {
-      background: linear-gradient(135deg, rgba(11, 37, 69, 0.04), rgba(212, 175, 55, 0.08));
-      border: 1px solid rgba(11, 37, 69, 0.08);
+      background: var(--bg-color);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius);
-      padding: 16px;
+      padding: 22px;
       margin: 18px 0 12px;
       text-align: left;
     }
@@ -912,12 +934,13 @@
 
     @media (max-width: 768px) {
       body {
-        padding: 16px 12px 34px;
+        padding: 0;
       }
 
       .container {
+        margin: 12px;
         padding: 24px 16px 30px;
-        border-radius: 22px;
+        border-radius: 18px;
       }
 
       .nav-stack-inline {
@@ -939,14 +962,31 @@
       }
     }
 
+    @media (min-width: 980px) {
+      .media-updates-layout {
+        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+        gap: 20px;
+        align-items: start;
+      }
+
+      .media-updates-layout .updates-section {
+        margin: 0;
+      }
+
+      .media-updates-layout .youtube-section-card {
+        margin-top: 14px;
+      }
+    }
+
     @media (max-width: 480px) {
       body {
-        padding: 14px 10px 28px;
+        padding: 0;
       }
 
       .container {
+        margin: 8px;
         padding: 22px 14px 28px;
-        border-radius: 20px;
+        border-radius: 16px;
       }
 
       .profile-header {
@@ -977,15 +1017,15 @@
       }
 
       .section-title {
-        font-size: 0.98rem;
+        font-size: 1.2rem;
         line-height: 1.45;
-        margin: 22px 0 10px;
-        align-items: flex-start;
+        margin: 24px 0 12px;
+        align-items: center;
       }
 
-      .section-title::before {
-        height: 16px;
-        margin-top: 3px;
+      .section-title::after {
+        width: 36px;
+        transform: translateY(26px);
       }
 
       .price-section-card,
@@ -1094,6 +1134,7 @@
         </span>
       </a>
       <div class="nav-stack-inline">
+        <a class="nav-card" href="lesson/">レッスン詳細</a>
         <a class="nav-card" href="#updates-section">お知らせ</a>
         <a class="nav-card" href="#video-section">演奏動画</a>
         <a class="nav-card" href="#pdf-section">PDF資料</a>
@@ -1129,81 +1170,85 @@
       </ul>
     </div>
 
-    <section class="updates-section" id="updates-section">
-      <div class="updates-card">
-        <div class="updates-header">
-          <div class="updates-title">📢 お知らせ</div>
-          <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
+    <div class="media-updates-layout">
+      <section class="updates-section" id="updates-section">
+        <div class="updates-card">
+          <div class="updates-header">
+            <div class="updates-title">📢 お知らせ</div>
+            <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
+          </div>
+          <div class="editor-panel" id="editor-panel" hidden>
+            <form id="editor-login-form">
+              <label class="editor-field">
+                編集用パスワード
+                <input type="password" id="editor-password" autocomplete="current-password" required>
+              </label>
+              <div class="editor-buttons">
+                <button type="submit" class="editor-button primary">ログイン</button>
+              </div>
+            </form>
+            <form id="update-form" hidden>
+              <input type="hidden" id="update-index">
+              <div class="editor-fields">
+                <label class="editor-field">
+                  日付
+                  <input type="date" id="update-date" required>
+                </label>
+                <label class="editor-field">
+                  種類
+                  <select id="update-category" required>
+                    <option value="つぶやき">つぶやき</option>
+                    <option value="お役立ち">お役立ち</option>
+                    <option value="お知らせ">お知らせ</option>
+                  </select>
+                </label>
+                <label class="editor-field">
+                  本文
+                  <textarea id="update-content" required></textarea>
+                </label>
+                <label class="editor-field">
+                  添付の種類
+                  <select id="update-media-type">
+                    <option value="">添付なし</option>
+                    <option value="image">画像</option>
+                    <option value="video">動画・YouTube</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                </label>
+                <label class="editor-field" id="media-url-field" hidden>
+                  添付URLまたはファイル名
+                  <input type="text" id="update-media-url" inputmode="url" placeholder="https://... または photo.jpg">
+                </label>
+              </div>
+              <div class="editor-buttons">
+                <button type="submit" class="editor-button primary" id="update-submit">追加する</button>
+                <button type="button" class="editor-button" id="update-cancel" hidden>変更をやめる</button>
+                <button type="button" class="editor-button" id="editor-logout">ログアウト</button>
+              </div>
+            </form>
+            <p class="editor-status" id="editor-status" role="status"></p>
+          </div>
+          <div id="updates-list">
+            <div class="updates-loading">読み込み中...</div>
+          </div>
+          <p class="section-scroll-hint">スクロールで全て表示できます</p>
         </div>
-        <div class="editor-panel" id="editor-panel" hidden>
-          <form id="editor-login-form">
-            <label class="editor-field">
-              編集用パスワード
-              <input type="password" id="editor-password" autocomplete="current-password" required>
-            </label>
-            <div class="editor-buttons">
-              <button type="submit" class="editor-button primary">ログイン</button>
+      </section>
+
+      <section class="video-column">
+        <h2 class="section-title" id="video-section">🎬 演奏動画・YouTube</h2>
+        <div class="youtube-section-card">
+          <a href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer" class="btn-link btn-youtube">
+            <div class="btn-header">
+              <span class="btn-title">▶ 公式YouTubeチャンネル</span>
             </div>
-          </form>
-          <form id="update-form" hidden>
-            <input type="hidden" id="update-index">
-            <div class="editor-fields">
-              <label class="editor-field">
-                日付
-                <input type="date" id="update-date" required>
-              </label>
-              <label class="editor-field">
-                種類
-                <select id="update-category" required>
-                  <option value="つぶやき">つぶやき</option>
-                  <option value="お役立ち">お役立ち</option>
-                  <option value="お知らせ">お知らせ</option>
-                </select>
-              </label>
-              <label class="editor-field">
-                本文
-                <textarea id="update-content" required></textarea>
-              </label>
-              <label class="editor-field">
-                添付の種類
-                <select id="update-media-type">
-                  <option value="">添付なし</option>
-                  <option value="image">画像</option>
-                  <option value="video">動画・YouTube</option>
-                  <option value="pdf">PDF</option>
-                </select>
-              </label>
-              <label class="editor-field" id="media-url-field" hidden>
-                添付URLまたはファイル名
-                <input type="text" id="update-media-url" inputmode="url" placeholder="https://... または photo.jpg">
-              </label>
-            </div>
-            <div class="editor-buttons">
-              <button type="submit" class="editor-button primary" id="update-submit">追加する</button>
-              <button type="button" class="editor-button" id="update-cancel" hidden>変更をやめる</button>
-              <button type="button" class="editor-button" id="editor-logout">ログアウト</button>
-            </div>
-          </form>
-          <p class="editor-status" id="editor-status" role="status"></p>
+            <div class="btn-desc">演奏動画などのコンテンツをご覧いただけます</div>
+          </a>
         </div>
-        <div id="updates-list">
-          <div class="updates-loading">読み込み中...</div>
-        </div>
-        <p class="section-scroll-hint">スクロールで全て表示できます</p>
-      </div>
-    </section>
+      </section>
+    </div>
 
   </header>
-
-  <h2 class="section-title" id="video-section">🎬 演奏動画・YouTube</h2>
-  <div class="youtube-section-card">
-    <a href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer" class="btn-link btn-youtube">
-      <div class="btn-header">
-        <span class="btn-title">▶ 公式YouTubeチャンネル</span>
-      </div>
-      <div class="btn-desc">演奏動画などのコンテンツをご覧いただけます</div>
-    </a>
-  </div>
 
   <div class="tagline" style="margin-top: 4px;">資料は順次公開予定です</div>
 
