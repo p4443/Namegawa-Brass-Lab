@@ -277,6 +277,13 @@
       const date = new Date(`${value}T00:00:00`);
       selectedDateTitle.textContent = new Intl.DateTimeFormat("ja-JP", { month: "long", day: "numeric", weekday: "long" }).format(date);
       slotList.replaceChildren();
+      if (!scheduleReady) {
+        const item = document.createElement("li");
+        item.className = "slot busy";
+        item.textContent = "空き状況を確認しています。表示後に予約時間を選択できます。";
+        slotList.append(item);
+        return;
+      }
       const times = timesByDay[date.getDay()] || [];
       if (!times.length) {
         const item = document.createElement("li"); item.className = "slot busy"; item.textContent = "受付時間外です"; slotList.append(item); return;
@@ -313,12 +320,12 @@
         const total = (timesByDay[date.getDay()] || []).length;
         const available = availabilityFor(date);
         const button = document.createElement("button"); button.type = "button"; button.className = "day";
-        button.disabled = !scheduleReady || date < firstDate || date > lastDate || total === 0;
+        button.disabled = date < firstDate || date > lastDate || total === 0;
         button.setAttribute("aria-pressed", String(selectedDate === value));
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span");
         summary.className = `day-summary${scheduleReady ? (available ? "" : " busy") : " unknown"}`;
-        summary.textContent = scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : "未確認";
+        summary.textContent = scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : (total ? "受付日" : "休み");
         button.append(number, summary); button.addEventListener("click", () => { renderSlots(value); renderCalendar(); }); calendar.append(button);
       }
       const minimumMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
@@ -336,7 +343,7 @@
         statusMap.clear();
         (result.slots || []).forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
         scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar();
-        if (!selectedDate) renderSlots(dateText(firstDate));
+        renderSlots(selectedDate || dateText(firstDate));
       } catch (error) {
         scheduleStatus.textContent = `${error.message} 再読み込みしてください。`;
         scheduleRetry.hidden = false;
