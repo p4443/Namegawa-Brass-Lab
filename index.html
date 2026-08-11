@@ -101,6 +101,49 @@
       letter-spacing: 0.08em;
     }
 
+    .global-nav-disclosure {
+      display: grid;
+      gap: 10px;
+    }
+
+    .global-nav-toggle {
+      min-height: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      border: 1px solid rgba(15, 23, 42, 0.14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--primary-color);
+      font-size: 0.84rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: var(--shadow-sm);
+      list-style: none;
+      transition: var(--transition);
+    }
+
+    .global-nav-toggle::-webkit-details-marker {
+      display: none;
+    }
+
+    .global-nav-toggle::before {
+      content: "☰";
+      font-size: 1.05rem;
+      line-height: 1;
+    }
+
+    .global-nav-disclosure[open] .global-nav-toggle::before {
+      content: "×";
+    }
+
+    .global-nav-toggle:hover,
+    .global-nav-toggle:focus-visible {
+      border-color: rgba(217, 119, 6, 0.4);
+      box-shadow: var(--shadow-md);
+    }
+
     .global-nav-list {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -1261,15 +1304,18 @@
         <span class="site-brand-subtitle">KAZOO SASAKI TRUMPET SCHOOL</span>
       </span>
     </a>
-    <nav aria-label="グローバルナビゲーション">
-      <ul class="global-nav-list">
-        <li><a class="global-nav-link" href="lesson/">kazooささきトランペット教室</a></li>
-        <li><a class="global-nav-link" href="#updates-section">お知らせ</a></li>
-        <li><a class="global-nav-link" href="#video-section">演奏動画</a></li>
-        <li><a class="global-nav-link" href="#pdf-section">PDF企画資料</a></li>
-        <li><a class="global-nav-link" href="#contact-section">お問い合わせ</a></li>
-      </ul>
-    </nav>
+    <details class="global-nav-disclosure">
+      <summary class="global-nav-toggle">メニュー</summary>
+      <nav aria-label="グローバルナビゲーション">
+        <ul class="global-nav-list">
+          <li><a class="global-nav-link" href="lesson/">kazooささきトランペット教室</a></li>
+          <li><a class="global-nav-link" href="#updates-section">お知らせ</a></li>
+          <li><a class="global-nav-link" href="#video-section">演奏動画</a></li>
+          <li><a class="global-nav-link" href="#pdf-section">PDF企画資料</a></li>
+          <li><a class="global-nav-link" href="#contact-section">お問い合わせ</a></li>
+        </ul>
+      </nav>
+    </details>
   </div>
 </header>
 

@@ -534,6 +534,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("closeEditorPanel();", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
 
+    def test_index_navigation_can_be_collapsed(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('<details class="global-nav-disclosure">', page)
+        self.assertIn('<summary class="global-nav-toggle">メニュー</summary>', page)
+
 
 if __name__ == "__main__":
     unittest.main()
