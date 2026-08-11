@@ -783,6 +783,7 @@
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
+    let slotRequestId = 0;
 
     const japanDateText = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Asia/Tokyo",
@@ -855,6 +856,7 @@
           url.searchParams.set("to", dateText);
           const response = await fetch(url.toString(), { method: "GET" });
           if (!response.ok) {
+            lastError = new Error("現在、空き状況を確認できません。");
             continue;
           }
           const result = await response.json();
@@ -866,25 +868,45 @@
       if (lastError) {
         console.warn(lastError);
       }
-      return [];
+      throw lastError || new Error("現在、空き状況を確認できません。");
     }
 
     async function updateReservationTimeOptions() {
+      const requestId = ++slotRequestId;
       const selectedDateText = reservationDate.value;
       const selectedDate = new Date(`${selectedDateText}T00:00:00`);
       const availableTimes = timesByDay[selectedDate.getDay()] || [];
       reservationTime.replaceChildren();
+      reservationTime.disabled = true;
 
       if (!availableTimes.length) {
         reservationTime.add(new Option("土曜日は要相談です", ""));
-        reservationTime.disabled = true;
         reservationStatus.dataset.state = "error";
         reservationStatus.textContent = "土曜日以外の日を選択してください。";
         return;
       }
 
-      const slotMap = buildSlotMap(await fetchSlotStatuses(selectedDateText));
+      reservationTime.add(new Option("空き状況を確認しています", ""));
+      reservationStatus.dataset.state = "";
+      reservationStatus.textContent = "空き状況を確認しています…";
+
+      let slotMap;
+      try {
+        slotMap = buildSlotMap(await fetchSlotStatuses(selectedDateText));
+      } catch (error) {
+        if (requestId !== slotRequestId) {
+          return;
+        }
+        reservationTime.replaceChildren(new Option("空き状況を確認できません", ""));
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = "現在、空き状況を確認できません。時間をおいて再度お試しください。";
+        return;
+      }
+      if (requestId !== slotRequestId) {
+        return;
+      }
       reservationTime.add(new Option("時間を選択してください", ""));
+      reservationTime.remove(0);
 
       let selectableCount = 0;
       availableTimes.forEach((time) => {
@@ -934,6 +956,9 @@
           if (response.ok) {
             return result;
           }
+          if (response.status === 409 && result.conflict) {
+            return result;
+          }
           if (response.status === 404 || response.status === 405 || !contentType.includes("application/json")) {
             continue;
           }
@@ -957,14 +982,15 @@
       try {
         const result = await submitReservation(Object.fromEntries(new FormData(reservationForm)));
 
-        reservationForm.reset();
-        reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
-        reservationTime.disabled = true;
         if (result.conflict) {
           reservationStatus.dataset.state = "error";
           reservationStatus.textContent = "この時間帯は先に予約が入っているため、受付できませんでした。別の時間をお選びください。";
+          await updateReservationTimeOptions();
           return;
         }
+        reservationForm.reset();
+        reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
+        reservationTime.disabled = true;
         reservationStatus.dataset.state = "success";
         if (result.duplicate) {
           reservationStatus.textContent = result.reservation_id

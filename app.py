@@ -646,7 +646,10 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
         if not script_url or not script_secret:
-            return lesson_reservation_json({"slots": []}, 200)
+            return lesson_reservation_json(
+                {"error": "現在、空き状況を確認できません。"},
+                503,
+            )
 
         from_date = str(request.args.get("from", "")).strip()
         to_date = str(request.args.get("to", "")).strip()
@@ -669,7 +672,10 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
             )
         except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
             app.logger.exception("Failed to get slot statuses")
-            return lesson_reservation_json({"slots": []}, 200)
+            return lesson_reservation_json(
+                {"error": "現在、空き状況を確認できません。"},
+                503,
+            )
 
 
     @app.route("/api/lesson-reservations/<reservation_id>", methods=["PUT", "DELETE", "OPTIONS"])
@@ -744,6 +750,21 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 {"reservation_id": valid_reservation_id, **values},
                 action="update",
             )
+            if result.get("conflict"):
+                response = jsonify(
+                    {
+                        "saved": False,
+                        "conflict": True,
+                        "reservation_id": result.get("reservationId", ""),
+                        "status": result.get("status", "調整中"),
+                    }
+                )
+                response.status_code = 409
+                return with_lesson_reservation_cors(
+                    response,
+                    methods="PUT, DELETE, OPTIONS",
+                    headers="Content-Type, X-Editor-Password",
+                )
             response = jsonify(
                 {
                     "saved": True,

@@ -42,6 +42,22 @@ function doPost(event) {
         });
       }
 
+      const slotStatus = getSlotStatus(
+        slotSheet,
+        String(data.preferred_date || "").trim(),
+        String(data.preferred_time || "").trim(),
+      );
+      if (slotStatus && slotStatus !== "空き") {
+        return jsonResponse({
+          ok: true,
+          reservationId: "",
+          status: slotStatus,
+          autoReplySent: false,
+          duplicate: false,
+          conflict: true,
+        });
+      }
+
       const reservationId = createReservationId(now, sheet.getLastRow());
       sheet.appendRow([
         now,
@@ -117,9 +133,53 @@ function doPost(event) {
       if (!row) {
         return jsonResponse({ ok: false, error: "NOT_FOUND" });
       }
+      const currentReservation = getReservationAtRow(sheet, row);
+      const nextDate = Object.prototype.hasOwnProperty.call(data, "preferred_date")
+        ? String(data.preferred_date || "").trim()
+        : currentReservation.date;
+      const nextTime = Object.prototype.hasOwnProperty.call(data, "preferred_time")
+        ? String(data.preferred_time || "").trim()
+        : currentReservation.time;
+      const nextStatus = Object.prototype.hasOwnProperty.call(data, "status")
+        ? String(data.status || "").trim()
+        : currentReservation.status;
+      const nextSlotStatus = reservationStatusToSlotStatus(nextStatus);
+      const isSameSlot = currentReservation.date === nextDate && currentReservation.time === nextTime;
+      const targetSlot = getSlotRecord(slotSheet, nextDate, nextTime);
+      if (
+        nextSlotStatus !== "空き"
+        && targetSlot.status
+        && targetSlot.status !== "空き"
+        && !(isSameSlot && targetSlot.source === reservationId)
+      ) {
+        return jsonResponse({
+          ok: true,
+          reservationId: reservationId,
+          status: targetSlot.status,
+          conflict: true,
+        });
+      }
       const updatedFields = updateReservationRow(sheet, row, data);
       if (updatedFields.length === 0) {
         return jsonResponse({ ok: false, error: "No fields to update" });
+      }
+      if (!isSameSlot || nextSlotStatus === "空き") {
+        releaseReservationSlot(
+          slotSheet,
+          currentReservation.date,
+          currentReservation.time,
+          reservationId,
+        );
+      }
+      if (nextSlotStatus !== "空き") {
+        upsertSlotStatus(
+          slotSheet,
+          nextDate,
+          nextTime,
+          nextSlotStatus,
+          "予約更新自動設定",
+          reservationId,
+        );
       }
       return jsonResponse({
         ok: true,
@@ -137,6 +197,13 @@ function doPost(event) {
       if (!row) {
         return jsonResponse({ ok: false, error: "NOT_FOUND" });
       }
+      const reservation = getReservationAtRow(sheet, row);
+      releaseReservationSlot(
+        slotSheet,
+        reservation.date,
+        reservation.time,
+        reservationId,
+      );
       sheet.deleteRow(row);
       return jsonResponse({ ok: true, reservationId: reservationId });
     }
@@ -235,6 +302,25 @@ function updateReservationRow(sheet, row, data) {
   return updatedFields;
 }
 
+function getReservationAtRow(sheet, row) {
+  const values = sheet.getRange(row, 3, 1, 7).getValues()[0];
+  return {
+    status: String(values[0] || "").trim(),
+    date: normalizeReservationDate(values[5]),
+    time: normalizeReservationTime(values[6]),
+  };
+}
+
+function reservationStatusToSlotStatus(status) {
+  if (status === "キャンセル") {
+    return "空き";
+  }
+  if (status === "確定") {
+    return "予約済";
+  }
+  return "調整中";
+}
+
 function findDuplicateReservation(sheet, data, now) {
   const email = String(data.email || "").trim().toLowerCase();
   const preferredDate = normalizeReservationDate(data.preferred_date);
@@ -251,6 +337,7 @@ function findDuplicateReservation(sheet, data, now) {
   const values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
   for (let index = values.length - 1; index >= 0; index -= 1) {
     const row = values[index];
+    const receivedAt = row[0] instanceof Date ? row[0] : new Date(row[0]);
     const reservationId = String(row[1] || "").trim();
     const status = String(row[2] || "").trim();
     const rowEmail = String(row[4] || "").trim().toLowerCase();
@@ -258,6 +345,12 @@ function findDuplicateReservation(sheet, data, now) {
     const rowPreferredTime = normalizeReservationTime(row[8]);
 
     if (status === "キャンセル") {
+      continue;
+    }
+    if (
+      Number.isNaN(receivedAt.getTime())
+      || now.getTime() - receivedAt.getTime() > DUPLICATE_WINDOW_MINUTES * 60 * 1000
+    ) {
       continue;
     }
     if (rowEmail !== email || rowPreferredDate !== preferredDate || rowPreferredTime !== preferredTime) {
@@ -386,6 +479,31 @@ function findSlotRow(sheet, dateText, timeText) {
     }
   }
   return 0;
+}
+
+function getSlotStatus(sheet, dateText, timeText) {
+  return getSlotRecord(sheet, dateText, timeText).status;
+}
+
+function getSlotRecord(sheet, dateText, timeText) {
+  const row = findSlotRow(sheet, dateText, timeText);
+  if (!row) {
+    return { status: "", source: "" };
+  }
+  const values = sheet.getRange(row, 3, 1, 4).getValues()[0];
+  return {
+    status: String(values[0] || "").trim(),
+    source: String(values[3] || "").trim(),
+  };
+}
+
+function releaseReservationSlot(sheet, dateText, timeText, reservationId) {
+  const slot = getSlotRecord(sheet, dateText, timeText);
+  if (slot.source !== reservationId) {
+    return false;
+  }
+  upsertSlotStatus(sheet, dateText, timeText, "空き", "予約枠自動解放", reservationId);
+  return true;
 }
 
 function expandTimes(startTime, endTime) {

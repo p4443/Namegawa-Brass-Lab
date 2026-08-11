@@ -316,6 +316,18 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
         self.assertEqual(send_reservation.call_args.kwargs["action"], "get_slot_statuses")
 
+    def test_lesson_slot_statuses_reports_unavailable_service(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {"GOOGLE_APPS_SCRIPT_URL": "", "GOOGLE_APPS_SCRIPT_SECRET": ""},
+        ):
+            response = client.get("/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("空き状況", response.json["error"])
+
     def test_lesson_reservation_rejects_invalid_input(self):
         client = create_app().test_client()
 
@@ -478,6 +490,34 @@ class UpdatesTest(unittest.TestCase):
             send_reservation.call_args_list[1].kwargs["action"],
             "delete",
         )
+
+    def test_lesson_reservation_manage_reports_slot_conflict(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260810-001",
+                "status": "予約済",
+                "conflict": True,
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"preferred_date": "2026-08-20", "preferred_time": "09:00"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(response.json["saved"])
+        self.assertTrue(response.json["conflict"])
 
     def test_lesson_reservation_manage_reports_not_found(self):
         client = create_app().test_client()
