@@ -68,6 +68,7 @@
     .slot.busy { border-left-color: var(--busy); background: #fff5f3; color: var(--muted); }
     .slot a { color: var(--available); font-weight: 800; }
     .load-status { margin: 12px 0 0; color: var(--muted); font-size: .8rem; }
+    .retry-button { margin-top: 10px; min-height: 38px; padding: 7px 13px; border: 1px solid var(--blue); border-radius: 5px; color: var(--blue); background: #fff; font-weight: 800; cursor: pointer; }
     .admin { margin-top: 28px; overflow: hidden; }
     .admin-heading { padding: 17px 20px; color: #fff; background: var(--navy); }
     .admin-heading h2 { margin: 0; font-size: 1rem; }
@@ -146,6 +147,7 @@
         <div class="calendar-grid" id="schedule-calendar"></div>
         <div class="legend"><span>予約可能</span><span class="busy">満席・休み</span></div>
         <p class="load-status" id="schedule-status" role="status"></p>
+        <button class="retry-button" id="schedule-retry" type="button" hidden>空き状況を再読み込み</button>
       </section>
       <section class="panel detail-panel" aria-labelledby="selected-date-title">
         <h2 id="selected-date-title">日付を選択してください</h2>
@@ -185,12 +187,16 @@
   </main>
   <script>
     const renderBase = "https://namegawa-brass-lab.onrender.com";
-    const apiCandidates = (path) => location.hostname.endsWith("github.io")
-      ? [`${renderBase}${path}`, `..${path}`]
-      : [`..${path}`, path, `${renderBase}${path}`];
+    const apiCandidates = (path) => {
+      const candidates = location.hostname.endsWith("github.io")
+        ? [`${renderBase}${path}`, `..${path}`]
+        : [path, `${renderBase}${path}`];
+      return [...new Set(candidates.map((candidate) => new URL(candidate, location.href).href))];
+    };
     const calendar = document.getElementById("schedule-calendar");
     const monthTitle = document.getElementById("calendar-month");
     const scheduleStatus = document.getElementById("schedule-status");
+    const scheduleRetry = document.getElementById("schedule-retry");
     const slotList = document.getElementById("slot-list");
     const selectedDateTitle = document.getElementById("selected-date-title");
     const scheduleLessonType = document.getElementById("schedule-lesson-type");
@@ -239,14 +245,21 @@
     };
     const requestApi = async (path, options = {}) => {
       let lastError;
-      for (const endpoint of [...new Set(apiCandidates(path))]) {
+      for (const endpoint of apiCandidates(path)) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
         try {
-          const response = await fetch(endpoint, options);
+          const response = await fetch(endpoint, { ...options, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
-          if (![404, 405].includes(response.status) && result.error) throw new Error(result.error);
           lastError = new Error(result.error || "サーバーに接続できません。");
-        } catch (error) { lastError = error; }
+        } catch (error) {
+          lastError = error.name === "AbortError"
+            ? new Error("空き状況の取得がタイムアウトしました。")
+            : error;
+        } finally {
+          clearTimeout(timeout);
+        }
       }
       throw lastError || new Error("サーバーに接続できません。");
     };
@@ -315,17 +328,24 @@
     }
     async function loadSchedule() {
       scheduleReady = false;
-      scheduleStatus.textContent = "空き状況を読み込んでいます…";
+      scheduleRetry.hidden = true;
+      scheduleStatus.textContent = "空き状況を読み込んでいます。サーバー起動中は最大30秒ほどかかります…";
       renderCalendar();
       try {
         const result = await requestApi(`/api/lesson-slot-statuses?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
+        statusMap.clear();
         (result.slots || []).forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
         scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar();
         if (!selectedDate) renderSlots(dateText(firstDate));
-      } catch (error) { scheduleStatus.textContent = error.message; renderCalendar(); }
+      } catch (error) {
+        scheduleStatus.textContent = `${error.message} 再読み込みしてください。`;
+        scheduleRetry.hidden = false;
+        renderCalendar();
+      }
     }
     document.getElementById("previous-month").addEventListener("click", () => { visibleMonth.setMonth(visibleMonth.getMonth()-1); renderCalendar(); });
     document.getElementById("next-month").addEventListener("click", () => { visibleMonth.setMonth(visibleMonth.getMonth()+1); renderCalendar(); });
+    scheduleRetry.addEventListener("click", loadSchedule);
     scheduleLessonType.addEventListener("change", () => {
       renderCalendar();
       if (selectedDate) renderSlots(selectedDate);

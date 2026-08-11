@@ -196,12 +196,15 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertIn('id="schedule-calendar"', page)
         self.assertIn('id="schedule-lesson-type"', page)
+        self.assertIn('id="schedule-retry"', page)
         self.assertIn('id="admin-login-form"', page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
         self.assertIn('summary.textContent = scheduleReady ?', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
+        self.assertIn("controller.abort(), 30000", page)
+        self.assertIn("サーバー起動中は最大30秒", page)
 
     def test_lesson_reservation_list_requires_editor_password(self):
         client = create_app().test_client()

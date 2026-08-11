@@ -779,8 +779,8 @@
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
         ? [renderApi, `../${relativePath}`, `/${relativePath}`]
-        : [`../${relativePath}`, `/${relativePath}`, renderApi];
-      return [...new Set(urls)];
+        : [`/${relativePath}`, renderApi];
+      return [...new Set(urls.map((url) => new URL(url, location.href).href))];
     };
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
