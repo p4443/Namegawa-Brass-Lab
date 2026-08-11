@@ -40,6 +40,103 @@
       padding: 0;
     }
 
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 60;
+      padding: 12px 16px 14px;
+      background: rgba(248, 250, 252, 0.9);
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+      backdrop-filter: blur(14px);
+    }
+
+    .site-header-inner {
+      width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      gap: 12px;
+    }
+
+    .site-brand {
+      display: grid;
+      justify-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--primary-color);
+    }
+
+    .site-brand-mark {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: var(--accent-color);
+      border: 2px solid rgba(217, 119, 6, 0.7);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
+      font-size: 1.4rem;
+    }
+
+    .site-brand-text {
+      display: grid;
+      gap: 2px;
+      text-align: center;
+    }
+
+    .site-brand-name {
+      font-family: var(--font-serif);
+      font-size: clamp(1.1rem, 2vw, 1.35rem);
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      line-height: 1.3;
+    }
+
+    .site-brand-subtitle {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .global-nav-list {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .global-nav-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 10px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--primary-color);
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .global-nav-link:hover,
+    .global-nav-link:focus-visible {
+      transform: translateY(-2px);
+      border-color: rgba(217, 119, 6, 0.4);
+      box-shadow: var(--shadow-md);
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
     #video-overlay {
       position: fixed;
       inset: 0;
@@ -368,6 +465,16 @@
       text-align: center;
     }
 
+    #updates-section {
+      scroll-margin-top: 176px;
+    }
+
+    #video-section,
+    #pdf-section,
+    #contact-section {
+      scroll-margin-top: 156px;
+    }
+
     .section-block {
       margin-top: 8px;
     }
@@ -433,6 +540,7 @@
     .updates-title {
       font-size: 0.95rem;
       font-weight: 800;
+      line-height: 1.55;
       color: var(--primary-color);
     }
 
@@ -937,6 +1045,14 @@
         padding: 0;
       }
 
+      .site-header {
+        padding: 10px 12px 12px;
+      }
+
+      .global-nav-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .container {
         margin: 12px;
         padding: 24px 16px 30px;
@@ -981,6 +1097,30 @@
     @media (max-width: 480px) {
       body {
         padding: 0;
+      }
+
+      .site-brand-mark {
+        width: 46px;
+        height: 46px;
+        font-size: 1.2rem;
+      }
+
+      .site-brand-name {
+        font-size: 1rem;
+      }
+
+      .site-brand-subtitle {
+        font-size: 0.72rem;
+        letter-spacing: 0.04em;
+      }
+
+      .global-nav-list {
+        grid-template-columns: 1fr;
+      }
+
+      .global-nav-link {
+        min-height: 42px;
+        font-size: 0.82rem;
       }
 
       .container {
@@ -1112,6 +1252,27 @@
   </video>
 </div>
 
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="#main-container" aria-label="なめがわブラス・ラボ トップへ移動">
+      <span class="site-brand-mark" aria-hidden="true">🎺</span>
+      <span class="site-brand-text">
+        <span class="site-brand-name">なめがわブラス・ラボ</span>
+        <span class="site-brand-subtitle">KAZOO SASAKI TRUMPET SCHOOL</span>
+      </span>
+    </a>
+    <nav aria-label="グローバルナビゲーション">
+      <ul class="global-nav-list">
+        <li><a class="global-nav-link" href="lesson/">kazooささきトランペット教室</a></li>
+        <li><a class="global-nav-link" href="#updates-section">お知らせ</a></li>
+        <li><a class="global-nav-link" href="#video-section">演奏動画</a></li>
+        <li><a class="global-nav-link" href="#pdf-section">PDF企画資料</a></li>
+        <li><a class="global-nav-link" href="#contact-section">お問い合わせ</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
 <!-- 2. メインコンテンツ -->
 <div class="container" id="main-container">
 
@@ -1119,28 +1280,9 @@
   <header class="profile-header">
     <div class="profile-avatar">🎺</div>
     <h1 class="main-title" style="margin-bottom: 12px;">なめがわブラス・ラボ</h1>
-    <h2>in</h2>
-    <a class="school-title" href="lesson/">kazooささきトランペット教室</a>
+    <h2 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-muted); font-weight: 700;">in</h2>
+    <a class="school-title" href="lesson/">🎺kazooささきトランペット教室</a>
     <div class="tagline" style="margin: 10px 0 18px;">音を運び、夢を響かせる</div>
-
-    <div class="nav-stack" style="margin-bottom: 12px;">
-      <a class="nav-card primary" href="lesson/">
-        <span class="nav-card-content">
-          <span class="nav-icon" aria-hidden="true">🎺</span>
-          <span>
-            <span class="nav-title">kazooささきトランペット教室</span>
-            <span class="nav-subtitle">レッスン内容・料金・予約方法</span>
-          </span>
-        </span>
-      </a>
-      <div class="nav-stack-inline">
-        <a class="nav-card" href="lesson/">レッスン詳細</a>
-        <a class="nav-card" href="#updates-section">お知らせ</a>
-        <a class="nav-card" href="#video-section">演奏動画</a>
-        <a class="nav-card" href="#pdf-section">PDF資料</a>
-        <a class="nav-card" href="#contact-section">お問い合わせ</a>
-      </div>
-    </div>
     
     <h2 class="section-title" style="margin-top: 8px; margin-bottom: 4px;">プロフィール・あいさつ</h2>
     <div class="profile-intro-card">
@@ -1174,7 +1316,7 @@
       <section class="updates-section" id="updates-section">
         <div class="updates-card">
           <div class="updates-header">
-            <div class="updates-title">📢 お知らせ</div>
+            <div class="updates-title">📢 お知らせ・つぶやき・お役立ち情報</div>
             <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
           </div>
           <div class="editor-panel" id="editor-panel" hidden>
@@ -1352,6 +1494,10 @@
   let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
   let failedLoginAttempts = 0;
   const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
+  const editorBackendHint = '編集機能は API 付きのローカルサイトでのみ使えます。EDITOR_PASSWORD=任意のパスワード ./manage-site.sh start で起動してください。';
+  let openingVideoClosed = false;
+  let openingVideoCloseTimer = null;
+  let openingVideoLoadTimer = null;
 
   const bundledUpdates = [
     {
@@ -1518,6 +1664,36 @@
     document.getElementById('editor-status').textContent = message;
   }
 
+  async function readApiErrorMessage(response, fallbackMessage) {
+    if (response.status === 404) {
+      return editorBackendHint;
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      try {
+        const result = await response.json();
+        if (result && typeof result.error === 'string' && result.error) {
+          return result.error;
+        }
+      } catch {
+        // JSON 解析失敗時は汎用メッセージへフォールバック
+      }
+    }
+    return fallbackMessage;
+  }
+
+  async function readApiJson(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      return null;
+    }
+    try {
+      return await response.json();
+    } catch {
+      return null;
+    }
+  }
+
   function closeEditorPanel() {
     const editorPanel = document.getElementById('editor-panel');
     const editorToggle = document.getElementById('editor-toggle');
@@ -1563,17 +1739,21 @@
 
   async function deleteUpdate(item) {
     if (!confirm(`${item.date} の情報を削除しますか？`)) return;
-    const response = await fetch(`/api/updates/${item.index}`, {
-      method: 'DELETE',
-      headers: editorHeaders()
-    });
-    const result = await response.json();
-    if (!response.ok) {
-      setEditorStatus(result.error || '削除できませんでした。');
-      return;
+    try {
+      const response = await fetch(`/api/updates/${item.index}`, {
+        method: 'DELETE',
+        headers: editorHeaders()
+      });
+      if (!response.ok) {
+        const errorMessage = await readApiErrorMessage(response, '削除できませんでした。');
+        setEditorStatus(errorMessage);
+        return;
+      }
+      setEditorStatus('削除しました。');
+      await loadUpdates();
+    } catch {
+      setEditorStatus(editorBackendHint);
     }
-    setEditorStatus('削除しました。');
-    await loadUpdates();
   }
 
   async function restoreEditorSession() {
@@ -1592,9 +1772,22 @@
   }
 
   function closeVideo() {
+    if (openingVideoClosed) return;
+    openingVideoClosed = true;
+
     const overlay = document.getElementById('video-overlay');
     const container = document.getElementById('main-container');
     const video = document.getElementById('intro-video');
+
+    if (openingVideoCloseTimer) {
+      window.clearTimeout(openingVideoCloseTimer);
+      openingVideoCloseTimer = null;
+    }
+
+    if (openingVideoLoadTimer) {
+      window.clearTimeout(openingVideoLoadTimer);
+      openingVideoLoadTimer = null;
+    }
 
     if (video) {
       try {
@@ -1630,23 +1823,34 @@
     document.getElementById('editor-login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       editorPassword = document.getElementById('editor-password').value;
-      const response = await fetch('/api/editor', { headers: editorHeaders() });
-      if (!response.ok) {
-        const result = await response.json();
-        editorPassword = '';
-        failedLoginAttempts += 1;
-        if (failedLoginAttempts >= 3) {
-          closeEditorPanel();
+      try {
+        const response = await fetch('/api/editor', { headers: editorHeaders() });
+        if (!response.ok) {
+          const errorMessage = await readApiErrorMessage(response, 'ログインできませんでした。');
+          editorPassword = '';
+          if (response.status === 401) {
+            failedLoginAttempts += 1;
+            if (failedLoginAttempts >= 3) {
+              closeEditorPanel();
+              return;
+            }
+            setEditorStatus(`${errorMessage} あと${3 - failedLoginAttempts}回入力できます。`);
+          } else {
+            setEditorStatus(errorMessage);
+          }
+          document.getElementById('editor-password').select();
           return;
         }
-        setEditorStatus(`${result.error || 'ログインできませんでした。'} あと${3 - failedLoginAttempts}回入力できます。`);
+
+        failedLoginAttempts = 0;
+        sessionStorage.setItem('updatesEditorPassword', editorPassword);
+        setEditorStatus('編集できます。');
+        showEditorForm();
+      } catch {
+        editorPassword = '';
+        setEditorStatus(editorBackendHint);
         document.getElementById('editor-password').select();
-        return;
       }
-      failedLoginAttempts = 0;
-      sessionStorage.setItem('updatesEditorPassword', editorPassword);
-      setEditorStatus('編集できます。');
-      showEditorForm();
     });
     document.getElementById('update-media-type').addEventListener('change', (event) => {
       document.getElementById('media-url-field').hidden = !event.target.value;
@@ -1669,19 +1873,25 @@
         media_type: document.getElementById('update-media-type').value,
         media_url: document.getElementById('update-media-url').value
       };
-      const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
-        method: updateIndex ? 'PUT' : 'POST',
-        headers: editorHeaders(),
-        body: JSON.stringify(payload)
-      });
-      const result = await response.json();
-      if (!response.ok) {
-        setEditorStatus(result.error || '保存できませんでした。');
-        return;
+      try {
+        const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
+          method: updateIndex ? 'PUT' : 'POST',
+          headers: editorHeaders(),
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          const errorMessage = await readApiErrorMessage(response, '保存できませんでした。');
+          setEditorStatus(errorMessage);
+          return;
+        }
+
+        await readApiJson(response);
+        setEditorStatus(updateIndex ? '変更を保存しました。' : '追加しました。');
+        resetUpdateForm();
+        await loadUpdates();
+      } catch {
+        setEditorStatus(editorBackendHint);
       }
-      setEditorStatus(updateIndex ? '変更を保存しました。' : '追加しました。');
-      resetUpdateForm();
-      await loadUpdates();
     });
     const video = document.getElementById('intro-video');
 
@@ -1706,22 +1916,51 @@
 
     video.style.display = 'block';
 
-    video.addEventListener('loadeddata', () => {
+    const scheduleVideoClose = (delay) => {
+      if (openingVideoCloseTimer) {
+        window.clearTimeout(openingVideoCloseTimer);
+      }
+      openingVideoCloseTimer = window.setTimeout(closeVideo, delay);
+    };
+
+    const handleVideoReady = () => {
+      if (openingVideoClosed) return;
+      if (openingVideoLoadTimer) {
+        window.clearTimeout(openingVideoLoadTimer);
+        openingVideoLoadTimer = null;
+      }
+
       video.play().catch(() => {
-        // 自動再生ができない場合はそのまま進める
+        // 自動再生ができない場合でもオーバーレイは閉じる
       });
-      window.setTimeout(closeVideo, 4200);
-    });
+
+      const durationSeconds = Number.isFinite(video.duration) ? video.duration : 0;
+      const closeDelay = durationSeconds > 0
+        ? Math.min(Math.max(Math.ceil(durationSeconds * 1000), 1800), 12000)
+        : 4200;
+
+      scheduleVideoClose(closeDelay);
+    };
+
+    video.addEventListener('loadeddata', handleVideoReady, { once: true });
+    video.addEventListener('ended', closeVideo, { once: true });
 
     video.addEventListener('error', () => {
-      window.setTimeout(closeVideo, 4200);
-    });
+      scheduleVideoClose(1200);
+    }, { once: true });
 
-    window.setTimeout(() => {
+    openingVideoLoadTimer = window.setTimeout(() => {
       if (video.readyState < 2) {
         closeVideo();
+        return;
       }
-    }, 1200);
+
+      handleVideoReady();
+    }, 3500);
+
+    if (video.readyState >= 2) {
+      handleVideoReady();
+    }
   });
 </script>
 
