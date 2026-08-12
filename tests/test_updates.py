@@ -123,6 +123,22 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("slotUpdatedAt(values[index][4])", find_function)
         self.assertIn("return selectedRow", find_function)
 
+    def test_apps_script_updates_legacy_reservation_slots(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        update_action = script.split('if (action === "update")', 1)[1].split(
+            'if (action === "delete")', 1
+        )[0]
+        release_function = script.split("function releaseReservationSlots", 1)[1].split(
+            "function expandTimes", 1
+        )[0]
+
+        self.assertIn("reservationSlotsMatch(", update_action)
+        self.assertIn('nextSlotStatus === "空き" || keepsCurrentSlots', update_action)
+        self.assertIn('slot.note === "受付自動設定"', release_function)
+        self.assertIn("slot.source !== reservationId && !isLegacyReservationSlot", release_function)
+
     def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -143,7 +159,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v5";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v6";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)

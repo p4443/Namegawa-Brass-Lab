@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v5";
+var SCRIPT_VERSION = "2026-08-12-admin-v6";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -197,7 +197,13 @@ function doPost(event) {
         getLessonDuration(currentReservation.lessonType)
       );
       var nextTimes = reservationSlotTimes(nextTime, getLessonDuration(nextLessonType));
-      var slotConflict = nextSlotStatus === "空き"
+      var keepsCurrentSlots = reservationSlotsMatch(
+        currentReservation.date,
+        currentTimes,
+        nextDate,
+        nextTimes
+      );
+      var slotConflict = nextSlotStatus === "空き" || keepsCurrentSlots
         ? null
         : findReservationSlotConflict(slotSheet, nextDate, nextTimes, reservationId);
       if (slotConflict) {
@@ -659,20 +665,34 @@ function findReservationSlotConflict(sheet, dateText, times, reservationId) {
 function getSlotRecord(sheet, dateText, timeText) {
   var row = findSlotRow(sheet, dateText, timeText);
   if (!row) {
-    return { status: "", source: "" };
+    return { status: "", note: "", source: "" };
   }
   var values = sheet.getRange(row, 3, 1, 4).getValues()[0];
   return {
     status: String(values[0] || "").trim(),
+    note: String(values[1] || "").trim(),
     source: String(values[3] || "").trim()
   };
+}
+
+function reservationSlotsMatch(currentDate, currentTimes, nextDate, nextTimes) {
+  if (currentDate !== nextDate || currentTimes.length !== nextTimes.length) {
+    return false;
+  }
+  for (var index = 0; index < currentTimes.length; index += 1) {
+    if (currentTimes[index] !== nextTimes[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function releaseReservationSlots(sheet, dateText, times, reservationId) {
   var releasedCount = 0;
   times.forEach(function (time) {
     var slot = getSlotRecord(sheet, dateText, time);
-    if (slot.source !== reservationId) {
+    var isLegacyReservationSlot = slot.note === "受付自動設定";
+    if (slot.source !== reservationId && !isLegacyReservationSlot) {
       return;
     }
     upsertSlotStatus(sheet, dateText, time, "空き", "予約枠自動解放", reservationId);
