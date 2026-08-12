@@ -13,10 +13,12 @@ from urllib import request as urllib_request
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
+from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
 
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
@@ -749,7 +751,19 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 methods="GET, OPTIONS",
                 headers="Content-Type, X-Editor-Password",
             )
-        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script rejected lesson reservation list")
+            error_message = str(exc)
+            if error_message in {"Unsupported action", "OUTDATED_DEPLOYMENT"}:
+                return lesson_reservation_json(
+                    {"error": "Apps Scriptの公開版が古いため予約一覧を取得できません。Code.gsを新しいバージョンで再デプロイしてください。"},
+                    503,
+                )
+            return lesson_reservation_json(
+                {"error": "現在、予約一覧を取得できません。"},
+                503,
+            )
+        except (json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
             app.logger.exception("Failed to list lesson reservations")
             return lesson_reservation_json(
                 {"error": "現在、予約一覧を取得できません。"},

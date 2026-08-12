@@ -56,13 +56,18 @@
       max-width: 1200px;
       margin: 0 auto;
       display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
       gap: 12px;
+      position: relative;
     }
 
     .site-brand {
-      display: grid;
-      justify-items: center;
-      gap: 6px;
+      display: flex;
+      align-items: center;
+      justify-self: start;
+      min-width: 0;
+      gap: 10px;
       text-decoration: none;
       color: var(--primary-color);
     }
@@ -83,7 +88,8 @@
     .site-brand-text {
       display: grid;
       gap: 2px;
-      text-align: center;
+      min-width: 0;
+      text-align: left;
     }
 
     .site-brand-name {
@@ -103,7 +109,20 @@
 
     .global-nav-disclosure {
       display: grid;
+      justify-self: end;
       gap: 10px;
+    }
+
+    .global-nav-disclosure nav {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      left: 0;
+      padding: 10px;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.98);
+      box-shadow: var(--shadow-md);
     }
 
     .global-nav-toggle {
@@ -112,6 +131,7 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
+      padding: 8px 16px;
       border: 1px solid rgba(15, 23, 42, 0.14);
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.94);
@@ -791,20 +811,8 @@
     }
 
     #updates-list {
-      max-height: 300px;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scrollbar-width: thin;
-      padding-right: 4px;
-    }
-
-    #updates-list::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    #updates-list::-webkit-scrollbar-thumb {
-      background: rgba(11, 37, 69, 0.24);
-      border-radius: 999px;
+      max-height: none;
+      overflow-y: visible;
     }
 
     .section-scroll-hint {
@@ -1153,8 +1161,7 @@
       }
 
       .site-brand-subtitle {
-        font-size: 0.72rem;
-        letter-spacing: 0.04em;
+        display: none;
       }
 
       .global-nav-list {

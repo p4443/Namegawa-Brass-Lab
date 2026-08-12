@@ -20,6 +20,22 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_admin_password_reset_quotes_special_characters(self):
+        reset_script = (Path(__file__).parents[1] / "reset-admin-password.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("from dotenv import set_key", reset_script)
+        self.assertIn('quote_mode="always"', reset_script)
+
+    def test_app_loads_local_environment_settings(self):
+        app_source = (Path(__file__).parents[1] / "app.py").read_text(encoding="utf-8")
+        requirements = (Path(__file__).parents[1] / "requirements.txt").read_text(encoding="utf-8")
+
+        self.assertIn("from dotenv import load_dotenv", app_source)
+        self.assertIn("load_dotenv(BASE_DIR / \".env\")", app_source)
+        self.assertIn("python-dotenv==", requirements)
+
     def test_apps_script_requests_allow_slow_write_operations(self):
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{"ok": true}'
@@ -542,6 +558,28 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 503)
         self.assertIn("古いデプロイ", response.json["error"])
+
+    def test_lesson_reservation_list_reports_outdated_apps_script(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            side_effect=LessonReservationDeliveryError("Unsupported action"),
+        ):
+            response = client.get(
+                "/api/lesson-reservations",
+                headers={"X-Editor-Password": "correct-password"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("再デプロイ", response.json["error"])
 
     def test_lesson_reservation_list_returns_admin_data(self):
         client = create_app().test_client()
@@ -1164,6 +1202,33 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertIn('<details class="global-nav-disclosure">', page)
         self.assertIn('<summary class="global-nav-toggle">メニュー</summary>', page)
+
+    def test_updates_section_expands_to_image_height(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        updates_list_css = page.split("#updates-list {", 1)[1].split("}", 1)[0]
+        self.assertIn("max-height: none", updates_list_css)
+        self.assertIn("overflow-y: visible", updates_list_css)
+
+    def test_header_balances_brand_and_menu_on_opposite_sides(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        header_css = page.split(".site-header-inner {", 1)[1].split("}", 1)[0]
+        brand_css = page.split(".site-brand {", 1)[1].split("}", 1)[0]
+        disclosure_css = page.split(".global-nav-disclosure {", 1)[1].split("}", 1)[0]
+        nav_css = page.split(".global-nav-disclosure nav {", 1)[1].split("}", 1)[0]
+        self.assertIn("grid-template-columns: minmax(0, 1fr) auto", header_css)
+        self.assertIn("justify-self: start", brand_css)
+        self.assertIn("justify-self: end", disclosure_css)
+        self.assertIn("position: absolute", nav_css)
 
 
 if __name__ == "__main__":
