@@ -793,6 +793,7 @@
           <div><dt>金曜日</dt><dd>6:45〜16:00／それ以外は要相談</dd></div>
           <div><dt>土／日</dt><dd>土・日：要相談</dd></div>
         </dl>
+        <p>体験レッスン・小学生は毎時00分／30分開始、中学生・高校生以上は毎時00分開始です。グループ・部活動指導は開始時刻・所要時間ともに個別調整します。</p>
       </div>
       <form class="reservation-form" id="reservation-form">
         <div class="form-field">
@@ -918,8 +919,22 @@
       "小学生": 30,
       "中学生": 45,
       "高校生以上": 60,
-      "グループ・部活動指導": 60,
+      "グループ・部活動指導": null,
     };
+
+    function availableTimesForLesson(lessonType, day) {
+      const dayTimes = timesByDay[day] || [];
+      if (lessonType === "グループ・部活動指導") {
+        return ["要相談"];
+      }
+      return dayTimes.filter((time) => {
+        if (time === "要相談") return true;
+        const minute = Number(time.slice(3));
+        return lessonType === "体験レッスン" || lessonType === "小学生"
+          ? minute === 0 || minute === 30
+          : minute === 0;
+      });
+    }
 
     function occupiedTimes(startTime, durationMinutes) {
       if (startTime === "要相談") {
@@ -984,12 +999,12 @@
       const requestId = ++slotRequestId;
       const selectedDateText = reservationDate.value;
       const selectedDate = new Date(`${selectedDateText}T00:00:00`);
-      const availableTimes = timesByDay[selectedDate.getDay()] || [];
+      const availableTimes = availableTimesForLesson(reservationType.value, selectedDate.getDay());
       const durationMinutes = lessonDurations[reservationType.value];
       reservationTime.replaceChildren();
       reservationTime.disabled = true;
 
-      if (!durationMinutes) {
+      if (!reservationType.value) {
         reservationTime.add(new Option("先にレッスン種別を選択してください", ""));
         reservationStatus.dataset.state = "";
         reservationStatus.textContent = "";
@@ -1025,7 +1040,7 @@
           .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
           .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
         const timeLabel = time === "要相談"
-          ? `要相談（${durationMinutes}分）`
+          ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
           : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
         const label = status === "空き" ? timeLabel : `${timeLabel}（${status}）`;
         const option = new Option(label, time);

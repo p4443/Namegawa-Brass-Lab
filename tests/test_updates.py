@@ -178,7 +178,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v8";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v9";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -211,6 +211,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("createReservationId(now, sheet)", create_action)
         self.assertIn("sheet.getRange(2, 2", function)
         self.assertIn("highestSequence", function)
+
+    def test_apps_script_persists_custom_group_duration(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"所要時間（分）"', script)
+        self.assertIn('{ key: "duration_minutes", column: 11 }', script)
+        self.assertIn("durationMinutes: getLessonDuration(values[4], values[8])", script)
+        self.assertIn("duration_minutes: getLessonDuration(row[6], row[10]) || null", script)
 
     def test_apps_script_code_is_es5_compatible(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -387,6 +397,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('5: [...makeTimeRange(6, 45, 16, 0), "要相談"]', page)
         self.assertIn('6: ["要相談"]', page)
         self.assertIn("土・日：要相談", page)
+        self.assertIn("体験レッスン・小学生は毎時00分／30分開始", page)
+        self.assertIn("function availableTimesForLesson", page)
+        self.assertIn('lessonType === "グループ・部活動指導"', page)
 
     def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
@@ -471,6 +484,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('6: ["要相談"]', page)
         self.assertIn('timeInput.type = "time"', page)
         self.assertIn("preferred_time: timeInput.value", page)
+        self.assertIn('durationInput.step = "15"', page)
+        self.assertIn("payload.duration_minutes = Number(durationInput.value)", page)
+        self.assertIn("グループは開始時刻・所要時間ともに個別調整", page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
@@ -689,6 +705,53 @@ class UpdatesTest(unittest.TestCase):
         )
         self.assertEqual(reservation_slot_times("要相談", 60), ["要相談"])
 
+    def test_lesson_start_minutes_follow_lesson_type(self):
+        base_payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "preferred_date": "2026-08-14",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)):
+            for lesson_type, accepted, rejected in (
+                ("体験レッスン", "09:30", "09:15"),
+                ("小学生", "09:30", "09:45"),
+                ("中学生", "09:00", "09:30"),
+                ("高校生以上", "09:00", "09:30"),
+            ):
+                validate_lesson_reservation({
+                    **base_payload,
+                    "lesson_type": lesson_type,
+                    "preferred_time": accepted,
+                })
+                with self.assertRaisesRegex(ValueError, "予約可能時間"):
+                    validate_lesson_reservation({
+                        **base_payload,
+                        "lesson_type": lesson_type,
+                        "preferred_time": rejected,
+                    })
+
+    def test_group_lesson_is_consultation_without_fixed_duration(self):
+        payload = {
+            "name": "団体 代表",
+            "email": "group@example.com",
+            "phone": "",
+            "lesson_type": "グループ・部活動指導",
+            "preferred_date": "2026-08-14",
+            "preferred_time": "要相談",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)):
+            values = validate_lesson_reservation(payload)
+            with self.assertRaisesRegex(ValueError, "予約可能時間"):
+                validate_lesson_reservation({**payload, "preferred_time": "09:00"})
+
+        self.assertIsNone(values["duration_minutes"])
+        self.assertEqual(values["occupied_times"], ["要相談"])
+
     def test_lesson_reservation_duplicate_is_reported(self):
         client = create_app().test_client()
         payload = {
@@ -805,7 +868,7 @@ class UpdatesTest(unittest.TestCase):
             "phone": "",
             "lesson_type": "体験レッスン",
             "preferred_date": "2026-08-11",
-            "preferred_time": "06:45",
+            "preferred_time": "07:00",
             "message": "",
         }
 
@@ -829,7 +892,7 @@ class UpdatesTest(unittest.TestCase):
             "phone": "",
             "lesson_type": "体験レッスン",
             "preferred_date": "2026-08-11",
-            "preferred_time": "06:45",
+            "preferred_time": "07:00",
             "message": "",
         }
 
@@ -856,7 +919,7 @@ class UpdatesTest(unittest.TestCase):
             "phone": "",
             "lesson_type": "体験レッスン",
             "preferred_date": "2026-08-10",
-            "preferred_time": "06:45",
+            "preferred_time": "07:00",
             "message": "",
         }
 
@@ -878,7 +941,7 @@ class UpdatesTest(unittest.TestCase):
                     client.post("/api/lesson-reservations", json=reservation).status_code,
                     400,
                 )
-            for friday_time in ["06:45", "09:00", "16:00", "要相談"]:
+            for friday_time in ["07:00", "09:00", "16:00", "要相談"]:
                 self.assertEqual(
                     client.post(
                         "/api/lesson-reservations",
@@ -1069,6 +1132,14 @@ class UpdatesTest(unittest.TestCase):
     def test_lesson_reservation_manage_rejects_invalid_admin_time(self):
         with self.assertRaisesRegex(ValueError, "希望時間"):
             validate_lesson_reservation_update({"preferred_time": "午後1時"})
+
+    def test_lesson_reservation_manage_accepts_group_duration(self):
+        self.assertEqual(
+            validate_lesson_reservation_update({"duration_minutes": 90}),
+            {"duration_minutes": 90},
+        )
+        with self.assertRaisesRegex(ValueError, "所要時間"):
+            validate_lesson_reservation_update({"duration_minutes": 70})
 
     def test_index_uses_site_relative_lesson_links(self):
         client = create_app().test_client()

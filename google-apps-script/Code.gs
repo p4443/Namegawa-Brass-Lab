@@ -10,19 +10,20 @@ var HEADERS = [
   "レッスン種別",
   "希望日",
   "希望時間",
-  "ご要望"
+  "ご要望",
+  "所要時間（分）"
 ];
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v8";
+var SCRIPT_VERSION = "2026-08-12-admin-v9";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
   "小学生": 30,
   "中学生": 45,
   "高校生以上": 60,
-  "グループ・部活動指導": 60
+  "グループ・部活動指導": 0
 };
 
 function doPost(event) {
@@ -83,7 +84,7 @@ function doPost(event) {
 
       var preferredDate = String(data.preferred_date || "").trim();
       var preferredTime = String(data.preferred_time || "").trim();
-      var durationMinutes = getLessonDuration(data.lesson_type);
+      var durationMinutes = getLessonDuration(data.lesson_type, data.duration_minutes);
       var occupiedTimes = reservationSlotTimes(preferredTime, durationMinutes);
       var slotConflict = findReservationSlotConflict(slotSheet, preferredDate, occupiedTimes, "");
       if (slotConflict) {
@@ -108,7 +109,8 @@ function doPost(event) {
         safeCell(data.lesson_type),
         safeCell(data.preferred_date),
         safeCell(data.preferred_time),
-        safeCell(data.message)
+        safeCell(data.message),
+        durationMinutes || ""
       ]);
 
       occupiedTimes.forEach(function (time) {
@@ -191,12 +193,15 @@ function doPost(event) {
       var nextLessonType = Object.prototype.hasOwnProperty.call(data, "lesson_type")
         ? String(data.lesson_type || "").trim()
         : currentReservation.lessonType;
+      var nextDurationMinutes = Object.prototype.hasOwnProperty.call(data, "duration_minutes")
+        ? getLessonDuration(nextLessonType, data.duration_minutes)
+        : currentReservation.durationMinutes;
       var nextSlotStatus = reservationStatusToSlotStatus(nextStatus);
       var currentTimes = reservationSlotTimes(
         currentReservation.time,
-        getLessonDuration(currentReservation.lessonType)
+        currentReservation.durationMinutes
       );
-      var nextTimes = reservationSlotTimes(nextTime, getLessonDuration(nextLessonType));
+      var nextTimes = reservationSlotTimes(nextTime, nextDurationMinutes);
       var keepsCurrentSlots = reservationSlotsMatch(
         currentReservation.date,
         currentTimes,
@@ -226,7 +231,7 @@ function doPost(event) {
             nextDate,
             time,
             nextSlotStatus,
-            getLessonDuration(nextLessonType) + "分レッスン更新",
+            nextDurationMinutes + "分レッスン更新",
             reservationId
           );
         });
@@ -252,7 +257,7 @@ function doPost(event) {
       releaseReservationSlots(
         slotSheet,
         reservation.date,
-        reservationSlotTimes(reservation.time, getLessonDuration(reservation.lessonType)),
+        reservationSlotTimes(reservation.time, reservation.durationMinutes),
         reservationId
       );
       sheet.deleteRow(row);
@@ -293,6 +298,13 @@ function getReservationSheet(spreadsheet) {
       .setFontWeight("bold");
     sheet.getRange("A:A").setNumberFormat("yyyy/mm/dd hh:mm:ss");
     sheet.autoResizeColumns(1, HEADERS.length);
+  }
+  if (sheet.getRange(1, HEADERS.length).getValue() !== HEADERS[HEADERS.length - 1]) {
+    sheet.getRange(1, HEADERS.length).setValue(HEADERS[HEADERS.length - 1]);
+    sheet.getRange(1, HEADERS.length)
+      .setBackground("#0b2545")
+      .setFontColor("#ffffff")
+      .setFontWeight("bold");
   }
   return sheet;
 }
@@ -361,7 +373,8 @@ function updateReservationRow(sheet, row, data) {
     { key: "lesson_type", column: 7 },
     { key: "preferred_date", column: 8 },
     { key: "preferred_time", column: 9 },
-    { key: "message", column: 10 }
+    { key: "message", column: 10 },
+    { key: "duration_minutes", column: 11 }
   ];
   var updatedFields = [];
 
@@ -377,12 +390,13 @@ function updateReservationRow(sheet, row, data) {
 }
 
 function getReservationAtRow(sheet, row) {
-  var values = sheet.getRange(row, 3, 1, 7).getValues()[0];
+  var values = sheet.getRange(row, 3, 1, 9).getValues()[0];
   return {
     status: String(values[0] || "").trim(),
     lessonType: String(values[4] || "").trim(),
     date: normalizeReservationDate(values[5]),
-    time: normalizeReservationTime(values[6])
+    time: normalizeReservationTime(values[6]),
+    durationMinutes: getLessonDuration(values[4], values[8])
   };
 }
 
@@ -403,7 +417,7 @@ function listReservations(sheet) {
       email: String(row[4] || "").trim(),
       phone: String(row[5] || "").trim(),
       lesson_type: String(row[6] || "").trim(),
-      duration_minutes: getLessonDuration(row[6]),
+      duration_minutes: getLessonDuration(row[6], row[10]) || null,
       preferred_date: normalizeReservationDate(row[7]),
       preferred_time: normalizeReservationTime(row[8]),
       message: String(row[9] || "").trim()
@@ -574,7 +588,7 @@ function activeReservationSlotStatuses(sheet) {
     }
     var dateText = normalizeReservationDate(row[7]);
     var startTime = normalizeReservationTime(row[8]);
-    reservationSlotTimes(startTime, getLessonDuration(row[6])).forEach(function (time) {
+    reservationSlotTimes(startTime, getLessonDuration(row[6], row[10])).forEach(function (time) {
       statuses[dateText + "|" + time] = slotStatus;
     });
   });
@@ -676,8 +690,17 @@ function getSlotStatus(sheet, dateText, timeText) {
   return getSlotRecord(sheet, dateText, timeText).status;
 }
 
-function getLessonDuration(lessonType) {
-  return LESSON_DURATION_MINUTES[String(lessonType || "").trim()] || 60;
+function getLessonDuration(lessonType, explicitDuration) {
+  var normalizedType = String(lessonType || "").trim();
+  var configuredDuration = LESSON_DURATION_MINUTES[normalizedType];
+  if (configuredDuration) {
+    return configuredDuration;
+  }
+  var parsedDuration = Number(explicitDuration);
+  if (parsedDuration >= 15 && parsedDuration <= 480 && parsedDuration % 15 === 0) {
+    return parsedDuration;
+  }
+  return normalizedType === "グループ・部活動指導" ? 0 : 60;
 }
 
 function reservationSlotTimes(startTime, durationMinutes) {
@@ -815,7 +838,7 @@ function sendReservationAutoReply(data, reservationId) {
     "",
     "受付番号: " + reservationId,
     "レッスン種別: " + lessonType,
-    "所要時間: " + getLessonDuration(lessonType) + "分",
+    "所要時間: " + formatLessonDuration(lessonType, data.duration_minutes),
     "希望日: " + preferredDate,
     "希望時間: " + preferredTime,
     "現在の状態: 調整中",
@@ -831,7 +854,7 @@ function sendReservationAutoReply(data, reservationId) {
     "以下の内容で確かに受け付けました。</p>",
     "<p>受付番号: " + escapeHtml(reservationId) + "<br>",
     "レッスン種別: " + escapeHtml(lessonType) + "<br>",
-    "所要時間: " + getLessonDuration(lessonType) + "分<br>",
+    "所要時間: " + escapeHtml(formatLessonDuration(lessonType, data.duration_minutes)) + "<br>",
     "希望日: " + escapeHtml(preferredDate) + "<br>",
     "希望時間: " + escapeHtml(preferredTime) + "<br>",
     "現在の状態: 調整中</p>",
@@ -855,6 +878,11 @@ function sendReservationAutoReply(data, reservationId) {
 
 function sanitizeMailHeader(value) {
   return String(value || "").replace(/[\r\n]+/g, " ");
+}
+
+function formatLessonDuration(lessonType, explicitDuration) {
+  var durationMinutes = getLessonDuration(lessonType, explicitDuration);
+  return durationMinutes ? durationMinutes + "分" : "要相談";
 }
 
 function escapeHtml(value) {

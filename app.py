@@ -42,7 +42,7 @@ LESSON_DURATION_MINUTES = {
     "小学生": 30,
     "中学生": 45,
     "高校生以上": 60,
-    "グループ・部活動指導": 60,
+    "グループ・部活動指導": None,
 }
 CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
@@ -78,6 +78,19 @@ def reservation_slot_times(start_time, duration_minutes):
         (start + timedelta(minutes=offset)).strftime("%H:%M")
         for offset in range(0, duration_minutes, 15)
     ]
+
+
+def is_allowed_lesson_start(lesson_type, preferred_time, available_times):
+    if lesson_type == "グループ・部活動指導":
+        return preferred_time == CONSULTATION_TIME
+    if preferred_time == CONSULTATION_TIME:
+        return preferred_time in available_times
+    if preferred_time not in available_times:
+        return False
+    minute = int(preferred_time[3:])
+    if lesson_type in {"体験レッスン", "無料体験レッスン", "小学生"}:
+        return minute in {0, 30}
+    return minute == 0
 
 
 WEEKDAY_RESERVATION_TIMES = {
@@ -339,7 +352,9 @@ def validate_lesson_reservation(payload):
     if not first_available_date <= preferred_date <= last_available_date:
         raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
     available_times = WEEKDAY_RESERVATION_TIMES[preferred_date.weekday()]
-    if values["preferred_time"] not in available_times:
+    if not is_allowed_lesson_start(
+        values["lesson_type"], values["preferred_time"], available_times
+    ):
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
     values["occupied_times"] = reservation_slot_times(
         values["preferred_time"], values["duration_minutes"]
@@ -394,6 +409,14 @@ def validate_lesson_reservation_update(payload):
         ):
             raise ValueError("希望時間を正しく入力してください。")
         values["preferred_time"] = preferred_time
+    if "duration_minutes" in payload:
+        try:
+            duration_minutes = int(payload.get("duration_minutes"))
+        except (TypeError, ValueError) as exc:
+            raise ValueError("所要時間を15分単位で入力してください。") from exc
+        if duration_minutes < 15 or duration_minutes > 480 or duration_minutes % 15:
+            raise ValueError("所要時間を15分単位で入力してください。")
+        values["duration_minutes"] = duration_minutes
     if "message" in payload:
         message = str(payload.get("message", "")).strip()
         if len(message) > 500:
