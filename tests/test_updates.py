@@ -320,6 +320,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('"中学生": 45', page)
         self.assertIn('"高校生以上": 60', page)
         self.assertIn("function occupiedTimes", page)
+        self.assertIn("6:45〜16:00／それ以外は要相談", page)
+        self.assertIn('5: [...makeTimeRange(6, 45, 16, 0), "要相談"]', page)
 
     def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
@@ -400,6 +402,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 })', page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
+        self.assertIn('5: [...makeRange(6,45,16,0), "要相談"]', page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
@@ -801,12 +804,23 @@ class UpdatesTest(unittest.TestCase):
                 {**payload, "preferred_date": "2026-08-09"},
                 {**payload, "preferred_date": "2026-09-10"},
                 {**payload, "preferred_date": "2026-08-15", "preferred_time": "09:00"},
-                {**payload, "preferred_date": "2026-08-14", "preferred_time": "09:00"},
             ]
             for reservation in invalid_reservations:
                 self.assertEqual(
                     client.post("/api/lesson-reservations", json=reservation).status_code,
                     400,
+                )
+            for friday_time in ["06:45", "09:00", "16:00", "要相談"]:
+                self.assertEqual(
+                    client.post(
+                        "/api/lesson-reservations",
+                        json={
+                            **payload,
+                            "preferred_date": "2026-08-14",
+                            "preferred_time": friday_time,
+                        },
+                    ).status_code,
+                    201,
                 )
             self.assertEqual(
                 client.post(
