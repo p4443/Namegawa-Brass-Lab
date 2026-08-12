@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v7";
+var SCRIPT_VERSION = "2026-08-12-admin-v8";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -97,7 +97,7 @@ function doPost(event) {
         });
       }
 
-      var reservationId = createReservationId(now, sheet.getLastRow());
+      var reservationId = createReservationId(now, sheet);
       sheet.appendRow([
         now,
         reservationId,
@@ -316,10 +316,26 @@ function getSlotStatusSheet(spreadsheet) {
   return sheet;
 }
 
-function createReservationId(date, lastRow) {
+function createReservationId(date, sheet) {
   var timeZone = Session.getScriptTimeZone();
   var datePart = Utilities.formatDate(date, timeZone, "yyyyMMdd");
-  return "R-" + datePart + "-" + zeroPad(lastRow, 3);
+  var propertyKey = "RESERVATION_SEQUENCE_" + datePart;
+  var properties = PropertiesService.getScriptProperties();
+  var highestSequence = Number(properties.getProperty(propertyKey)) || 0;
+  var lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    var values = sheet.getRange(2, 2, lastRow - 1, 1).getValues();
+    var idPattern = new RegExp("^R-" + datePart + "-(\\d+)$");
+    values.forEach(function (row) {
+      var match = idPattern.exec(String(row[0] || "").trim());
+      if (match) {
+        highestSequence = Math.max(highestSequence, Number(match[1]));
+      }
+    });
+  }
+  highestSequence += 1;
+  properties.setProperty(propertyKey, String(highestSequence));
+  return "R-" + datePart + "-" + zeroPad(highestSequence, 3);
 }
 
 function findReservationRowById(sheet, reservationId) {
@@ -782,12 +798,12 @@ function toDateText_(value) {
 }
 
 function sendReservationAutoReply(data, reservationId) {
-  var email = String(data.email || "").trim();
+  var email = sanitizeMailHeader(data.email).trim();
   if (!email || email.indexOf("@") <= 0) {
     return false;
   }
 
-  var name = String(data.name || "").trim() || "お客様";
+  var name = sanitizeMailHeader(data.name).trim() || "お客様";
   var lessonType = String(data.lesson_type || "").trim();
   var preferredDate = String(data.preferred_date || "").trim();
   var preferredTime = String(data.preferred_time || "").trim();
@@ -807,9 +823,26 @@ function sendReservationAutoReply(data, reservationId) {
     "担当より日程確定のご連絡を差し上げます。",
     "このメールは自動送信です。"
   ].join("\n");
+  var htmlBody = [
+    "<!doctype html>",
+    '<html><head><meta charset="UTF-8"></head><body>',
+    "<p>" + escapeHtml(name) + " 様</p>",
+    "<p>レッスン予約のお申し込みありがとうございます。<br>",
+    "以下の内容で確かに受け付けました。</p>",
+    "<p>受付番号: " + escapeHtml(reservationId) + "<br>",
+    "レッスン種別: " + escapeHtml(lessonType) + "<br>",
+    "所要時間: " + getLessonDuration(lessonType) + "分<br>",
+    "希望日: " + escapeHtml(preferredDate) + "<br>",
+    "希望時間: " + escapeHtml(preferredTime) + "<br>",
+    "現在の状態: 調整中</p>",
+    "<p>担当より日程確定のご連絡を差し上げます。<br>",
+    "このメールは自動送信です。</p>",
+    "</body></html>"
+  ].join("");
 
   try {
     GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
+      htmlBody: htmlBody,
       name: "なめがわブラス・ラボ",
       replyTo: "zuomuj924@gmail.com"
     });
@@ -818,6 +851,19 @@ function sendReservationAutoReply(data, reservationId) {
     Logger.log(error);
     return false;
   }
+}
+
+function sanitizeMailHeader(value) {
+  return String(value || "").replace(/[\r\n]+/g, " ");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function safeCell(value) {

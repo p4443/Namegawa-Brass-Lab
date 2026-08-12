@@ -177,11 +177,39 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v7";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v8";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
         self.assertIn("return adminActionResponse({ ok: true, reservationId: reservationId }, requestId);", script)
+
+    def test_apps_script_email_has_utf8_html_fallback(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        function = script.split("function sendReservationAutoReply", 1)[1].split(
+            "function safeCell", 1
+        )[0]
+
+        self.assertIn('charset="UTF-8"', function)
+        self.assertIn("htmlBody:", function)
+        self.assertIn("sanitizeMailHeader(data.email)", function)
+        self.assertIn("sanitizeMailHeader", script)
+
+    def test_apps_script_reservation_ids_do_not_reuse_deleted_rows(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        create_action = script.split('if (action === "create")', 1)[1].split(
+            'if (action === "get_slot_statuses")', 1
+        )[0]
+        function = script.split("function createReservationId", 1)[1].split(
+            "function findReservationRowById", 1
+        )[0]
+
+        self.assertIn("createReservationId(now, sheet)", create_action)
+        self.assertIn("sheet.getRange(2, 2", function)
+        self.assertIn("highestSequence", function)
 
     def test_apps_script_code_is_es5_compatible(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
