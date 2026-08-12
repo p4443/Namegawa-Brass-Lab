@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v4";
+var SCRIPT_VERSION = "2026-08-12-admin-v5";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -490,10 +490,11 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
   var fromDate = parseIsoDate(fromDateText);
   var toDate = parseIsoDate(toDateText);
   var values = sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues();
-  var slots = [];
+  var slotsByKey = {};
 
-  values.forEach(function (row) {
+  values.forEach(function (row, index) {
     var dateText = toDateText_(row[0]);
+    var timeText = normalizeReservationTime(row[1]);
     if (!dateText) {
       return;
     }
@@ -503,15 +504,31 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
     if (toDate && dateText > toDateText) {
       return;
     }
-    slots.push({
+    var key = dateText + "|" + timeText;
+    var updatedAt = slotUpdatedAt(row[4]);
+    var current = slotsByKey[key];
+    if (current && (current.updatedAt > updatedAt || (current.updatedAt === updatedAt && current.index > index))) {
+      return;
+    }
+    slotsByKey[key] = {
       date: dateText,
-      time: normalizeReservationTime(row[1]),
+      time: timeText,
       status: String(row[2] || "").trim(),
-      note: String(row[3] || "").trim()
-    });
+      note: String(row[3] || "").trim(),
+      updatedAt: updatedAt,
+      index: index
+    };
   });
 
-  return slots;
+  return Object.keys(slotsByKey).map(function (key) {
+    var slot = slotsByKey[key];
+    return {
+      date: slot.date,
+      time: slot.time,
+      status: slot.status,
+      note: slot.note
+    };
+  });
 }
 
 function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {
@@ -526,11 +543,17 @@ function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, st
     ? sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues()
     : [];
   var rowIndexes = {};
+  var rowUpdatedTimes = {};
   rows.forEach(function (row, index) {
     var dateText = toDateText_(row[0]);
     var timeText = normalizeReservationTime(row[1]);
     if (dateText && timeText) {
-      rowIndexes[dateText + "|" + timeText] = index;
+      var key = dateText + "|" + timeText;
+      var updatedAt = slotUpdatedAt(row[4]);
+      if (!Object.prototype.hasOwnProperty.call(rowIndexes, key) || updatedAt >= rowUpdatedTimes[key]) {
+        rowIndexes[key] = index;
+        rowUpdatedTimes[key] = updatedAt;
+      }
     }
   });
 
@@ -576,13 +599,27 @@ function findSlotRow(sheet, dateText, timeText) {
   if (lastRow <= 1) {
     return 0;
   }
-  var values = sheet.getRange(2, 1, lastRow - 1, 2).getValues();
+  var values = sheet.getRange(2, 1, lastRow - 1, 5).getValues();
+  var selectedRow = 0;
+  var selectedUpdatedAt = -1;
   for (var index = 0; index < values.length; index += 1) {
     if (toDateText_(values[index][0]) === dateText && normalizeReservationTime(values[index][1]) === timeText) {
-      return index + 2;
+      var updatedAt = slotUpdatedAt(values[index][4]);
+      if (updatedAt >= selectedUpdatedAt) {
+        selectedRow = index + 2;
+        selectedUpdatedAt = updatedAt;
+      }
     }
   }
-  return 0;
+  return selectedRow;
+}
+
+function slotUpdatedAt(value) {
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return value.getTime();
+  }
+  var parsed = new Date(value);
+  return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
 function getSlotStatus(sheet, dateText, timeText) {

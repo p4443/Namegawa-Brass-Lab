@@ -102,8 +102,26 @@ class UpdatesTest(unittest.TestCase):
         )[0]
 
         self.assertIn("rowIndexes = {}", function)
+        self.assertIn("rowUpdatedTimes = {}", function)
         self.assertIn("setValues(rows)", function)
         self.assertNotIn("upsertSlotStatus(sheet", function)
+
+    def test_apps_script_uses_latest_duplicate_slot_state(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        list_function = script.split("function listSlotStatuses", 1)[1].split(
+            "function upsertSlotStatusRange", 1
+        )[0]
+        find_function = script.split("function findSlotRow", 1)[1].split(
+            "function getSlotStatus", 1
+        )[0]
+
+        self.assertIn("slotsByKey = {}", list_function)
+        self.assertIn("slotUpdatedAt(row[4])", list_function)
+        self.assertIn("Object.keys(slotsByKey)", list_function)
+        self.assertIn("slotUpdatedAt(values[index][4])", find_function)
+        self.assertIn("return selectedRow", find_function)
 
     def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -125,7 +143,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v4";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v5";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -382,6 +400,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 })', page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
+        self.assertIn(".panel { min-width: 0;", page)
+        self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
+        self.assertIn('matchMedia("(max-width: 760px)").matches', page)
+        self.assertIn('document.querySelector(".detail-panel").scrollIntoView', page)
 
     def test_lesson_reservation_list_requires_editor_password(self):
         client = create_app().test_client()

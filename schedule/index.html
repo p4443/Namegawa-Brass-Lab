@@ -41,7 +41,7 @@
     .lesson-filter label { color: var(--navy); font-size: .8rem; font-weight: 800; }
     .lesson-filter select { min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--navy); background: #fff; }
     .schedule-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, .75fr); gap: 18px; align-items: start; }
-    .panel { border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 30px rgba(11,37,69,.08); }
+    .panel { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 30px rgba(11,37,69,.08); }
     .calendar-panel { padding: 18px; }
     .calendar-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
     .calendar-toolbar h2 { margin: 0; color: var(--navy); font-size: 1.08rem; }
@@ -150,7 +150,7 @@
         <button class="retry-button" id="schedule-retry" type="button" hidden>空き状況を再読み込み</button>
       </section>
       <section class="panel detail-panel" aria-labelledby="selected-date-title">
-        <h2 id="selected-date-title">日付を選択してください</h2>
+        <h2 id="selected-date-title" tabindex="-1">日付を選択してください</h2>
         <p class="detail-note">表示は15分単位です。「要相談」は送信後に日時を調整します。</p>
         <ul class="slot-list" id="slot-list"></ul>
       </section>
@@ -331,7 +331,14 @@
         const summary = document.createElement("span");
         summary.className = `day-summary${scheduleReady ? (available ? "" : " busy") : " unknown"}`;
         summary.textContent = scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : (total ? "受付日" : "休み");
-        button.append(number, summary); button.addEventListener("click", () => { renderSlots(value); renderCalendar(); }); calendar.append(button);
+        button.append(number, summary); button.addEventListener("click", () => {
+          renderSlots(value);
+          renderCalendar();
+          selectedDateTitle.focus({ preventScroll: true });
+          if (matchMedia("(max-width: 760px)").matches) {
+            document.querySelector(".detail-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }); calendar.append(button);
       }
       const minimumMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
       const maximumMonth = new Date(lastDate.getFullYear(), lastDate.getMonth(), 1);
