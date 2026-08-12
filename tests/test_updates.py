@@ -1,3 +1,4 @@
+import json
 import os
 import tempfile
 import unittest
@@ -41,16 +42,50 @@ class UpdatesTest(unittest.TestCase):
             "function upsertSlotStatus", 1
         )[0]
 
-        self.assertIn("rowIndexes = new Map()", function)
+        self.assertIn("rowIndexes = {}", function)
         self.assertIn("setValues(rows)", function)
         self.assertNotIn("upsertSlotStatus(sheet", function)
+
+    def test_apps_script_code_is_es5_compatible(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        for unsupported in (
+            r"\bconst\b",
+            r"\blet\b",
+            r"=>",
+            r"`",
+            r"new Map",
+            r"\.padStart\(",
+            r"Number\.isNaN",
+            r"console\.",
+        ):
+            self.assertNotRegex(script, unsupported)
 
     def test_apps_script_avoids_trailing_commas_in_function_calls(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
         )
 
-        self.assertNotRegex(script, r",\s*\n\s*\);")
+        self.assertNotRegex(script, r",\s*\n\s*[\)\}\]]")
+
+    def test_apps_script_manifest_enables_v8_runtime(self):
+        manifest = json.loads(
+            (Path(__file__).parents[1] / "google-apps-script" / "appsscript.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(manifest["runtimeVersion"], "V8")
+
+    def test_apps_script_do_post_handles_direct_editor_run(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("if (!event || !event.postData || !event.postData.contents)", script)
+        self.assertIn("if (lockAcquired)", script)
 
     def test_newest_and_later_same_day_items_come_first(self):
         with tempfile.TemporaryDirectory() as directory:

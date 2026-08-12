@@ -40,9 +40,10 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 1. Googleスプレッドシートを新規作成し、URL内の`/d/`と`/edit`の間にあるスプレッドシートIDを控えます。
 2. スプレッドシートの「拡張機能」から「Apps Script」を開き、[google-apps-script/Code.gs](google-apps-script/Code.gs)の内容を貼り付けます。
-3. Apps Scriptの「プロジェクトの設定」→「スクリプト プロパティ」に`SPREADSHEET_ID`と`API_SECRET`を追加します。`API_SECRET`には十分に長いランダム文字列を指定します。
-4. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選び、実行ユーザーを「自分」、アクセスできるユーザーを「全員」にしてデプロイします。
-5. 発行された`/exec`のURLを`GOOGLE_APPS_SCRIPT_URL`、同じ秘密文字列を`GOOGLE_APPS_SCRIPT_SECRET`としてRenderのEnvironmentへ登録し、再デプロイします。
+3. Apps Scriptの「プロジェクトの設定」で「appsscript.json マニフェスト ファイルをエディタで表示する」を有効にし、[google-apps-script/appsscript.json](google-apps-script/appsscript.json)の内容へ置き換えてV8ランタイムを有効にします。
+4. 同じ設定画面の「スクリプト プロパティ」に`SPREADSHEET_ID`と`API_SECRET`を追加します。`API_SECRET`には十分に長いランダム文字列を指定します。
+5. 「デプロイ」→「新しいデプロイ」→「ウェブアプリ」を選び、実行ユーザーを「自分」、アクセスできるユーザーを「全員」にしてデプロイします。
+6. 発行された`/exec`のURLを`GOOGLE_APPS_SCRIPT_URL`、同じ秘密文字列を`GOOGLE_APPS_SCRIPT_SECRET`としてRenderのEnvironmentへ登録し、再デプロイします。
 
 ローカルでは次の環境変数を設定して起動します。
 
