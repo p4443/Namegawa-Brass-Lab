@@ -87,7 +87,7 @@ function doPost(event) {
           time,
           "調整中",
           `${durationMinutes}分レッスン受付`,
-          reservationId,
+          reservationId
         );
       });
 
@@ -133,7 +133,7 @@ function doPost(event) {
         endTime,
         status,
         note,
-        "admin",
+        "admin"
       );
       return jsonResponse({ ok: true, updatedCount: updatedCount });
     }
@@ -163,7 +163,7 @@ function doPost(event) {
       const nextSlotStatus = reservationStatusToSlotStatus(nextStatus);
       const currentTimes = reservationSlotTimes(
         currentReservation.time,
-        getLessonDuration(currentReservation.lessonType),
+        getLessonDuration(currentReservation.lessonType)
       );
       const nextTimes = reservationSlotTimes(nextTime, getLessonDuration(nextLessonType));
       const slotConflict = nextSlotStatus === "空き"
@@ -190,7 +190,7 @@ function doPost(event) {
             time,
             nextSlotStatus,
             `${getLessonDuration(nextLessonType)}分レッスン更新`,
-            reservationId,
+            reservationId
           );
         });
       }
@@ -215,7 +215,7 @@ function doPost(event) {
         slotSheet,
         reservation.date,
         reservationSlotTimes(reservation.time, getLessonDuration(reservation.lessonType)),
-        reservationId,
+        reservationId
       );
       sheet.deleteRow(row);
       return jsonResponse({ ok: true, reservationId: reservationId });
@@ -480,15 +480,38 @@ function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, st
     throw new Error("Invalid date range");
   }
 
+  const lastRow = sheet.getLastRow();
+  const rows = lastRow > 1
+    ? sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues()
+    : [];
+  const rowIndexes = new Map();
+  rows.forEach((row, index) => {
+    const dateText = toDateText_(row[0]);
+    const timeText = normalizeReservationTime(row[1]);
+    if (dateText && timeText) {
+      rowIndexes.set(`${dateText}|${timeText}`, index);
+    }
+  });
+
   let count = 0;
   const oneDay = 24 * 60 * 60 * 1000;
   for (let current = new Date(start.getTime()); current.getTime() <= end.getTime(); current = new Date(current.getTime() + oneDay)) {
     const dateText = Utilities.formatDate(current, Session.getScriptTimeZone(), "yyyy-MM-dd");
     const times = expandTimes(startTime, endTime);
     times.forEach((time) => {
-      upsertSlotStatus(sheet, dateText, time, status, note, source);
+      const values = [dateText, time, status, safeCell(note), new Date(), safeCell(source || "")];
+      const key = `${dateText}|${time}`;
+      if (rowIndexes.has(key)) {
+        rows[rowIndexes.get(key)] = values;
+      } else {
+        rowIndexes.set(key, rows.length);
+        rows.push(values);
+      }
       count += 1;
     });
+  }
+  if (rows.length > 0) {
+    sheet.getRange(2, 1, rows.length, SLOT_HEADERS.length).setValues(rows);
   }
   return count;
 }

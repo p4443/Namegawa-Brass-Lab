@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from datetime import date
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app import (
     LessonReservationDeliveryError,
@@ -12,11 +12,46 @@ from app import (
     normalize_media_url,
     parse_update_line,
     reservation_slot_times,
+    send_lesson_reservation,
     validate_lesson_reservation,
 )
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_apps_script_requests_allow_slow_write_operations(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+
+        with patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            result = send_lesson_reservation(
+                "https://script.google.com/example",
+                "test-secret",
+                {},
+                action="list",
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 25)
+
+    def test_apps_script_bulk_slot_update_uses_single_batch_write(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        function = script.split("function upsertSlotStatusRange", 1)[1].split(
+            "function upsertSlotStatus", 1
+        )[0]
+
+        self.assertIn("rowIndexes = new Map()", function)
+        self.assertIn("setValues(rows)", function)
+        self.assertNotIn("upsertSlotStatus(sheet", function)
+
+    def test_apps_script_avoids_trailing_commas_in_function_calls(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertNotRegex(script, r",\s*\n\s*\);")
+
     def test_newest_and_later_same_day_items_come_first(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
@@ -206,8 +241,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('summary.textContent = scheduleReady ?', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
-        self.assertIn("controller.abort(), 30000", page)
+        self.assertIn("controller.abort(), timeoutMs", page)
         self.assertIn("サーバー起動中は最大30秒", page)
+        self.assertIn("const { timeoutMs = 30000, ...fetchOptions } = options", page)
+        self.assertGreaterEqual(page.count("timeoutMs: 60000"), 4)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
 

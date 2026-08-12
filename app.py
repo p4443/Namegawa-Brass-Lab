@@ -45,6 +45,7 @@ LESSON_DURATION_MINUTES = {
 }
 CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "確認中", "確定", "キャンセル"}
+LESSON_RESERVATION_TIMEOUT_SECONDS = 25
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
 
 
@@ -486,7 +487,9 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         headers={"Content-Type": "application/json; charset=utf-8"},
         method="POST",
     )
-    with urllib_request.urlopen(script_request, timeout=10) as response:
+    with urllib_request.urlopen(
+        script_request, timeout=LESSON_RESERVATION_TIMEOUT_SECONDS
+    ) as response:
         result = json.loads(response.read().decode("utf-8"))
     if not result.get("ok"):
         error_code = result.get("error", "Apps Script rejected the reservation")

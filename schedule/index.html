@@ -244,12 +244,13 @@
       return `${String(Math.floor(value / 60)).padStart(2,"0")}:${String(value % 60).padStart(2,"0")}`;
     };
     const requestApi = async (path, options = {}) => {
+      const { timeoutMs = 30000, ...fetchOptions } = options;
       let lastError;
       for (const endpoint of apiCandidates(path)) {
         const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 30000);
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
         try {
-          const response = await fetch(endpoint, { ...options, signal: controller.signal });
+          const response = await fetch(endpoint, { ...fetchOptions, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
           lastError = new Error(result.error || "サーバーに接続できません。");
@@ -385,18 +386,18 @@
       });
     }
     async function loadReservations() {
-      const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders() });
+      const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 60000 });
       renderReservations(result.reservations || []);
     }
     async function updateReservation(id, status) {
       adminStatus.textContent = "更新しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }) }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約状態を更新しました。"; }
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }), timeoutMs: 60000 }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約状態を更新しました。"; }
       catch (error) { adminStatus.textContent = error.message; }
     }
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
       adminStatus.textContent = "削除しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders() }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約を削除しました。"; }
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 60000 }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約を削除しました。"; }
       catch (error) { adminStatus.textContent = error.message; }
     }
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
@@ -407,7 +408,7 @@
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";
       const payload = Object.fromEntries(new FormData(event.currentTarget).entries());
-      try { const result = await requestApi("/api/lesson-slot-statuses/admin", { method: "POST", headers: adminHeaders(), body: JSON.stringify(payload) }); statusMap.clear(); await loadSchedule(); adminStatus.textContent = `${result.updated_count}件の枠を更新しました。`; }
+      try { const result = await requestApi("/api/lesson-slot-statuses/admin", { method: "POST", headers: adminHeaders(), body: JSON.stringify(payload), timeoutMs: 60000 }); statusMap.clear(); await loadSchedule(); adminStatus.textContent = `${result.updated_count}件の枠を更新しました。`; }
       catch (error) { adminStatus.textContent = error.message; }
     });
     renderCalendar(); loadSchedule();
