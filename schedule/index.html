@@ -253,8 +253,11 @@
           const response = await fetch(endpoint, { ...fetchOptions, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
-          lastError = new Error(result.error || "サーバーに接続できません。");
+          const responseError = new Error(result.error || "サーバーに接続できません。");
+          responseError.isHttpError = true;
+          throw responseError;
         } catch (error) {
+          if (error.isHttpError) throw error;
           lastError = error.name === "AbortError"
             ? new Error("空き状況の取得がタイムアウトしました。")
             : error;

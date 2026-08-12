@@ -279,6 +279,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("controller.abort(), timeoutMs", page)
         self.assertIn("サーバー起動中は最大30秒", page)
         self.assertIn("const { timeoutMs = 30000, ...fetchOptions } = options", page)
+        self.assertIn("responseError.isHttpError = true", page)
+        self.assertIn("if (error.isHttpError) throw error", page)
         self.assertGreaterEqual(page.count("timeoutMs: 60000"), 4)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
