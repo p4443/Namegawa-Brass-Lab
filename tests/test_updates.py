@@ -139,6 +139,24 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('slot.note === "受付自動設定"', release_function)
         self.assertIn("slot.source !== reservationId && !isLegacyReservationSlot", release_function)
 
+    def test_apps_script_reconciles_orphaned_legacy_slots_on_read(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        do_post = script.split("function doPost", 1)[1].split(
+            "function getSpreadsheet", 1
+        )[0]
+        list_function = script.split("function listSlotStatuses", 1)[1].split(
+            "function upsertSlotStatusRange", 1
+        )[0]
+
+        self.assertIn('"get_slot_statuses"', do_post.split("needsReservationSheet", 1)[1])
+        self.assertIn("listSlotStatuses(slotSheet, sheet, from, to)", do_post)
+        self.assertIn("activeReservationSlotStatuses(reservationSheet)", list_function)
+        self.assertIn('if (note === "受付自動設定")', list_function)
+        self.assertIn('status = reservationStatuses[key] || "空き"', list_function)
+        self.assertIn("function activeReservationSlotStatuses", list_function)
+
     def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -159,7 +177,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v6";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v7";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)

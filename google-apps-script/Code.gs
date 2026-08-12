@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v6";
+var SCRIPT_VERSION = "2026-08-12-admin-v7";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -64,7 +64,7 @@ function doPost(event) {
       lockAcquired = true;
     }
     var spreadsheet = getSpreadsheet();
-    var needsReservationSheet = ["create", "list", "update", "delete"].indexOf(action) !== -1;
+    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete"].indexOf(action) !== -1;
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
@@ -135,7 +135,7 @@ function doPost(event) {
     if (action === "get_slot_statuses") {
       var from = String(data.from || "").trim();
       var to = String(data.to || "").trim();
-      var slots = listSlotStatuses(slotSheet, from, to);
+      var slots = listSlotStatuses(slotSheet, sheet, from, to);
       return jsonResponse({ ok: true, slots: slots });
     }
 
@@ -487,7 +487,7 @@ function normalizeReservationTime(value) {
   return zeroPad(Number(match[1]), 2) + ":" + match[2];
 }
 
-function listSlotStatuses(sheet, fromDateText, toDateText) {
+function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return [];
@@ -496,6 +496,7 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
   var fromDate = parseIsoDate(fromDateText);
   var toDate = parseIsoDate(toDateText);
   var values = sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues();
+  var reservationStatuses = activeReservationSlotStatuses(reservationSheet);
   var slotsByKey = {};
 
   values.forEach(function (row, index) {
@@ -511,6 +512,11 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
       return;
     }
     var key = dateText + "|" + timeText;
+    var note = String(row[3] || "").trim();
+    var status = String(row[2] || "").trim();
+    if (note === "受付自動設定") {
+      status = reservationStatuses[key] || "空き";
+    }
     var updatedAt = slotUpdatedAt(row[4]);
     var current = slotsByKey[key];
     if (current && (current.updatedAt > updatedAt || (current.updatedAt === updatedAt && current.index > index))) {
@@ -519,8 +525,8 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
     slotsByKey[key] = {
       date: dateText,
       time: timeText,
-      status: String(row[2] || "").trim(),
-      note: String(row[3] || "").trim(),
+      status: status,
+      note: note,
       updatedAt: updatedAt,
       index: index
     };
@@ -535,6 +541,28 @@ function listSlotStatuses(sheet, fromDateText, toDateText) {
       note: slot.note
     };
   });
+}
+
+function activeReservationSlotStatuses(sheet) {
+  var statuses = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return statuses;
+  }
+  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  values.forEach(function (row) {
+    var reservationStatus = String(row[2] || "").trim();
+    var slotStatus = reservationStatusToSlotStatus(reservationStatus);
+    if (slotStatus === "空き") {
+      return;
+    }
+    var dateText = normalizeReservationDate(row[7]);
+    var startTime = normalizeReservationTime(row[8]);
+    reservationSlotTimes(startTime, getLessonDuration(row[6])).forEach(function (time) {
+      statuses[dateText + "|" + time] = slotStatus;
+    });
+  });
+  return statuses;
 }
 
 function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {
