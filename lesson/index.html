@@ -791,7 +791,7 @@
           <div><dt>月〜水</dt><dd>6:45〜8:00<br>20:30〜21:00</dd></div>
           <div><dt>木曜日</dt><dd>6:45〜11:00</dd></div>
           <div><dt>金曜日</dt><dd>6:45〜16:00／それ以外は要相談</dd></div>
-          <div><dt>土／日</dt><dd>土：受付休止／日：要相談</dd></div>
+          <div><dt>土／日</dt><dd>土・日：要相談</dd></div>
         </dl>
       </div>
       <form class="reservation-form" id="reservation-form">
@@ -908,7 +908,7 @@
       3: [...makeTimeRange(6, 45, 8, 0), ...makeTimeRange(20, 30, 21, 0)],
       4: makeTimeRange(6, 45, 11, 0),
       5: [...makeTimeRange(6, 45, 16, 0), "要相談"],
-      6: [],
+      6: ["要相談"],
     };
 
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
@@ -993,13 +993,6 @@
         reservationTime.add(new Option("先にレッスン種別を選択してください", ""));
         reservationStatus.dataset.state = "";
         reservationStatus.textContent = "";
-        return;
-      }
-
-      if (!availableTimes.length) {
-        reservationTime.add(new Option("土曜日は要相談です", ""));
-        reservationStatus.dataset.state = "error";
-        reservationStatus.textContent = "土曜日以外の日を選択してください。";
         return;
       }
 

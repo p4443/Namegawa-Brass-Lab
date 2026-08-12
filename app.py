@@ -86,7 +86,7 @@ WEEKDAY_RESERVATION_TIMES = {
     2: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
     3: time_range("06:45", "11:00"),
     4: time_range("06:45", "16:00") | {CONSULTATION_TIME},
-    5: set(),
+    5: {CONSULTATION_TIME},
     6: {CONSULTATION_TIME},
 }
 
@@ -339,8 +339,6 @@ def validate_lesson_reservation(payload):
     if not first_available_date <= preferred_date <= last_available_date:
         raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
     available_times = WEEKDAY_RESERVATION_TIMES[preferred_date.weekday()]
-    if not available_times:
-        raise ValueError("土曜日は予約を受け付けていません。")
     if values["preferred_time"] not in available_times:
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
     values["occupied_times"] = reservation_slot_times(
@@ -391,7 +389,9 @@ def validate_lesson_reservation_update(payload):
         values["preferred_date"] = preferred_date
     if "preferred_time" in payload:
         preferred_time = str(payload.get("preferred_time", "")).strip()
-        if not preferred_time or len(preferred_time) > 20:
+        if preferred_time != CONSULTATION_TIME and not re.fullmatch(
+            r"(?:[01]\d|2[0-3]):[0-5]\d", preferred_time
+        ):
             raise ValueError("希望時間を正しく入力してください。")
         values["preferred_time"] = preferred_time
     if "message" in payload:

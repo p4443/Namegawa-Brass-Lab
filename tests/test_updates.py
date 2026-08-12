@@ -15,6 +15,7 @@ from app import (
     reservation_slot_times,
     send_lesson_reservation,
     validate_lesson_reservation,
+    validate_lesson_reservation_update,
 )
 
 
@@ -384,6 +385,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function occupiedTimes", page)
         self.assertIn("6:45〜16:00／それ以外は要相談", page)
         self.assertIn('5: [...makeTimeRange(6, 45, 16, 0), "要相談"]', page)
+        self.assertIn('6: ["要相談"]', page)
+        self.assertIn("土・日：要相談", page)
 
     def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
@@ -465,6 +468,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
         self.assertIn('5: [...makeRange(6,45,16,0), "要相談"]', page)
+        self.assertIn('6: ["要相談"]', page)
+        self.assertIn('timeInput.type = "time"', page)
+        self.assertIn("preferred_time: timeInput.value", page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
@@ -891,6 +897,13 @@ class UpdatesTest(unittest.TestCase):
                 ).status_code,
                 201,
             )
+            self.assertEqual(
+                client.post(
+                    "/api/lesson-reservations",
+                    json={**payload, "preferred_date": "2026-08-15", "preferred_time": "要相談"},
+                ).status_code,
+                201,
+            )
 
     def test_lesson_reservation_manage_requires_editor_password(self):
         client = create_app().test_client()
@@ -1026,6 +1039,36 @@ class UpdatesTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 400)
+
+    def test_lesson_reservation_manage_accepts_admin_selected_time(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260816-001",
+                "status": "確定",
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260816-001",
+                json={"status": "確定", "preferred_time": "13:15"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(send_reservation.call_args.args[2]["preferred_time"], "13:15")
+
+    def test_lesson_reservation_manage_rejects_invalid_admin_time(self):
+        with self.assertRaisesRegex(ValueError, "希望時間"):
+            validate_lesson_reservation_update({"preferred_time": "午後1時"})
 
     def test_index_uses_site_relative_lesson_links(self):
         client = create_app().test_client()

@@ -94,7 +94,7 @@
     .reservation-meta, .reservation-contact { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
     .reservation-name { font-weight: 800; }
     .reservation-actions { display: flex; align-items: center; gap: 7px; }
-    .reservation-actions select { min-height: 38px; border: 1px solid var(--line); border-radius: 5px; }
+    .reservation-actions select, .reservation-actions input { min-height: 38px; border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; background: #fff; }
     .reservation-actions .button { min-height: 38px; padding: 6px 10px; font-size: .78rem; }
     @media (max-width: 760px) {
       .page-heading { display: block; }
@@ -226,7 +226,7 @@
       3: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
       4: makeRange(6,45,11,0),
       5: [...makeRange(6,45,16,0), "要相談"],
-      6: [],
+      6: ["要相談"],
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {
@@ -390,11 +390,13 @@
         person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
         const actions = document.createElement("div"); actions.className = "reservation-actions";
         const status = document.createElement("select"); ["受付","調整中","確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
+        const timeInput = document.createElement("input"); timeInput.type = "time"; timeInput.step = "900"; timeInput.setAttribute("aria-label", "確定時間");
+        if (/^\d{2}:\d{2}$/.test(reservation.preferred_time)) timeInput.value = reservation.preferred_time;
         const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
-        save.addEventListener("click", () => updateReservation(reservation.reservation_id, status));
+        save.addEventListener("click", () => updateReservation(reservation.reservation_id, status, timeInput));
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
-        actions.append(status, save, remove); item.append(when, person, actions); reservationList.append(item);
+        actions.append(status, timeInput, save, remove); item.append(when, person, actions); reservationList.append(item);
       });
     }
     async function loadReservations() {
@@ -406,13 +408,17 @@
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
       catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
     });
-    async function updateReservation(id, statusSelect) {
+    async function updateReservation(id, statusSelect, timeInput) {
       adminStatus.textContent = "更新しています…";
+      const payload = { status: statusSelect.value, ...(timeInput.value ? { preferred_time: timeInput.value } : {}) };
       let result;
-      try { result = await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status: statusSelect.value }), timeoutMs: 60000 }); }
+      try { result = await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify(payload), timeoutMs: 60000 }); }
       catch (error) { adminStatus.textContent = error.message; return; }
       statusSelect.value = result.status || statusSelect.value;
-      adminStatus.textContent = `予約状態を「${statusSelect.value}」へ更新しました。`;
+      adminStatus.textContent = timeInput.value
+        ? `予約時間を「${timeInput.value}」、状態を「${statusSelect.value}」へ更新しました。`
+        : `予約状態を「${statusSelect.value}」へ更新しました。`;
+      await loadReservations();
       await loadSchedule();
     }
     async function deleteReservation(id) {

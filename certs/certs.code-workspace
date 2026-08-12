@@ -19,6 +19,9 @@
 			"path": "../pdf"
 		},
 		{
+			"path": "../schedule"
+		},
+		{
 			"path": "../tests"
 		},
 		{
