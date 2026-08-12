@@ -34,6 +34,47 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 25)
 
+    def test_apps_script_request_retries_temporary_html_response(self):
+        html_response = MagicMock()
+        html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
+        json_response = MagicMock()
+        json_response.__enter__.return_value.read.return_value = b'{"ok": true}'
+
+        with patch(
+            "app.urllib_request.urlopen",
+            side_effect=[html_response, json_response],
+        ) as urlopen:
+            result = send_lesson_reservation(
+                "https://script.google.com/example",
+                "test-secret",
+                {},
+                action="update",
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(urlopen.call_count, 2)
+        first_payload = urlopen.call_args_list[0].args[0].data
+        second_payload = urlopen.call_args_list[1].args[0].data
+        self.assertEqual(first_payload, second_payload)
+
+    def test_apps_script_request_stops_after_second_invalid_response(self):
+        html_response = MagicMock()
+        html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
+
+        with patch(
+            "app.urllib_request.urlopen",
+            return_value=html_response,
+        ) as urlopen:
+            with self.assertRaises(json.JSONDecodeError):
+                send_lesson_reservation(
+                    "https://script.google.com/example",
+                    "test-secret",
+                    {},
+                    action="delete",
+                )
+
+        self.assertEqual(urlopen.call_count, 2)
+
     def test_apps_script_bulk_slot_update_uses_single_batch_write(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -45,6 +86,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("rowIndexes = {}", function)
         self.assertIn("setValues(rows)", function)
         self.assertNotIn("upsertSlotStatus(sheet", function)
+
+    def test_apps_script_caches_update_and_delete_results_for_safe_retry(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v2";', script)
+        self.assertIn('data.request_id || ""', script)
+        self.assertIn('get("admin:" + requestId)', script)
+        self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
+        self.assertIn("return adminActionResponse({ ok: true, reservationId: reservationId }, requestId);", script)
 
     def test_apps_script_code_is_es5_compatible(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(

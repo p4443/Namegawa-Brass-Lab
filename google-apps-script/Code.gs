@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v1";
+var SCRIPT_VERSION = "2026-08-12-admin-v2";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -48,6 +48,14 @@ function doPost(event) {
         version: SCRIPT_VERSION,
         capabilities: ["list", "update", "delete", "upsert_slot_status_range"]
       });
+    }
+
+    var requestId = String(data.request_id || "").trim();
+    if ((action === "update" || action === "delete") && requestId) {
+      var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
+      if (cachedResult) {
+        return jsonResponse(JSON.parse(cachedResult));
+      }
     }
 
     lock.waitLock(10000);
@@ -158,11 +166,11 @@ function doPost(event) {
     if (action === "update") {
       var reservationId = String(data.reservation_id || "").trim();
       if (!reservationId) {
-        return jsonResponse({ ok: false, error: "Missing reservation_id" });
+        return adminActionResponse({ ok: false, error: "Missing reservation_id" }, requestId);
       }
       var row = findReservationRowById(sheet, reservationId);
       if (!row) {
-        return jsonResponse({ ok: false, error: "NOT_FOUND" });
+        return adminActionResponse({ ok: false, error: "NOT_FOUND" }, requestId);
       }
       var currentReservation = getReservationAtRow(sheet, row);
       var nextDate = Object.prototype.hasOwnProperty.call(data, "preferred_date")
@@ -187,16 +195,16 @@ function doPost(event) {
         ? null
         : findReservationSlotConflict(slotSheet, nextDate, nextTimes, reservationId);
       if (slotConflict) {
-        return jsonResponse({
+        return adminActionResponse({
           ok: true,
           reservationId: reservationId,
           status: slotConflict.status,
           conflict: true
-        });
+        }, requestId);
       }
       var updatedFields = updateReservationRow(sheet, row, data);
       if (updatedFields.length === 0) {
-        return jsonResponse({ ok: false, error: "No fields to update" });
+        return adminActionResponse({ ok: false, error: "No fields to update" }, requestId);
       }
       releaseReservationSlots(slotSheet, currentReservation.date, currentTimes, reservationId);
       if (nextSlotStatus !== "空き") {
@@ -211,21 +219,21 @@ function doPost(event) {
           );
         });
       }
-      return jsonResponse({
+      return adminActionResponse({
         ok: true,
         reservationId: reservationId,
         updatedFields: updatedFields
-      });
+      }, requestId);
     }
 
     if (action === "delete") {
       var reservationId = String(data.reservation_id || "").trim();
       if (!reservationId) {
-        return jsonResponse({ ok: false, error: "Missing reservation_id" });
+        return adminActionResponse({ ok: false, error: "Missing reservation_id" }, requestId);
       }
       var row = findReservationRowById(sheet, reservationId);
       if (!row) {
-        return jsonResponse({ ok: false, error: "NOT_FOUND" });
+        return adminActionResponse({ ok: false, error: "NOT_FOUND" }, requestId);
       }
       var reservation = getReservationAtRow(sheet, row);
       releaseReservationSlots(
@@ -235,7 +243,7 @@ function doPost(event) {
         reservationId
       );
       sheet.deleteRow(row);
-      return jsonResponse({ ok: true, reservationId: reservationId });
+      return adminActionResponse({ ok: true, reservationId: reservationId }, requestId);
     }
 
     return jsonResponse({ ok: false, error: "Unsupported action" });
@@ -735,4 +743,11 @@ function zeroPad(value, width) {
 function jsonResponse(data) {
   return ContentService.createTextOutput(JSON.stringify(data))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+function adminActionResponse(data, requestId) {
+  if (requestId) {
+    CacheService.getScriptCache().put("admin:" + requestId, JSON.stringify(data), 600);
+  }
+  return jsonResponse(data);
 }

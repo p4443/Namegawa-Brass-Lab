@@ -4,6 +4,7 @@ import json
 import os
 import re
 import tempfile
+import uuid
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -479,18 +480,34 @@ def validate_slot_status_request(payload):
 
 def send_lesson_reservation(script_url, secret, values, action="create"):
     payload = json.dumps(
-        {**values, "secret": secret, "action": action}, ensure_ascii=False
+        {
+            **values,
+            "secret": secret,
+            "action": action,
+            "request_id": str(uuid.uuid4()),
+        },
+        ensure_ascii=False,
     ).encode("utf-8")
-    script_request = urllib_request.Request(
-        script_url,
-        data=payload,
-        headers={"Content-Type": "application/json; charset=utf-8"},
-        method="POST",
-    )
-    with urllib_request.urlopen(
-        script_request, timeout=LESSON_RESERVATION_TIMEOUT_SECONDS
-    ) as response:
-        result = json.loads(response.read().decode("utf-8"))
+    last_error = None
+    for attempt in range(2):
+        script_request = urllib_request.Request(
+            script_url,
+            data=payload,
+            headers={"Content-Type": "application/json; charset=utf-8"},
+            method="POST",
+        )
+        try:
+            with urllib_request.urlopen(
+                script_request, timeout=LESSON_RESERVATION_TIMEOUT_SECONDS
+            ) as response:
+                result = json.loads(response.read().decode("utf-8"))
+            break
+        except (json.JSONDecodeError, OSError, urllib_error.URLError) as error:
+            last_error = error
+            if attempt == 1:
+                raise
+    else:
+        raise last_error
     if not result.get("ok"):
         error_code = result.get("error", "Apps Script rejected the reservation")
         raise LessonReservationDeliveryError(error_code)
