@@ -382,9 +382,9 @@
         person.querySelector(".reservation-name").textContent = reservation.name;
         person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
         const actions = document.createElement("div"); actions.className = "reservation-actions";
-        const status = document.createElement("select"); ["受付","確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
+        const status = document.createElement("select"); ["受付","調整中","確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
         const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
-        save.addEventListener("click", () => updateReservation(reservation.reservation_id, status.value));
+        save.addEventListener("click", () => updateReservation(reservation.reservation_id, status));
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
         actions.append(status, save, remove); item.append(when, person, actions); reservationList.append(item);
@@ -399,14 +399,14 @@
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
       catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
     });
-    async function updateReservation(id, status) {
+    async function updateReservation(id, statusSelect) {
       adminStatus.textContent = "更新しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }), timeoutMs: 60000 }); }
+      let result;
+      try { result = await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status: statusSelect.value }), timeoutMs: 60000 }); }
       catch (error) { adminStatus.textContent = error.message; return; }
-      adminStatus.textContent = "予約状態を更新しました。";
-      try { await loadReservations(); }
-      catch (error) { adminStatus.textContent = `予約状態は更新済みです。一覧の再読み込みに失敗しました: ${error.message}`; }
-      loadSchedule();
+      statusSelect.value = result.status || statusSelect.value;
+      adminStatus.textContent = `予約状態を「${statusSelect.value}」へ更新しました。`;
+      await loadSchedule();
     }
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;

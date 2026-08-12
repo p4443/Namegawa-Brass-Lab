@@ -45,7 +45,7 @@ LESSON_DURATION_MINUTES = {
     "グループ・部活動指導": 60,
 }
 CONSULTATION_TIME = "要相談"
-RESERVATION_STATUS_VALUES = {"受付", "確認中", "確定", "キャンセル"}
+RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 25
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
 
@@ -360,7 +360,7 @@ def validate_lesson_reservation_update(payload):
     if "status" in payload:
         status = str(payload.get("status", "")).strip()
         if status not in RESERVATION_STATUS_VALUES:
-            raise ValueError("状態は 受付・確認中・確定・キャンセル から選択してください。")
+            raise ValueError("状態は 受付・調整中・確認中・確定・キャンセル から選択してください。")
         values["status"] = status
     if "name" in payload:
         name = str(payload.get("name", "")).strip()
@@ -967,6 +967,7 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 {
                     "saved": True,
                     "reservation_id": result.get("reservationId", ""),
+                    "status": result.get("status", values.get("status", "")),
                     "updated_fields": result.get("updatedFields", []),
                 }
             )

@@ -125,7 +125,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v3";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v4";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -366,7 +366,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
         self.assertIn('id="reservation-retry"', page)
         self.assertIn('reservationRetry.addEventListener("click"', page)
-        self.assertIn("予約状態は更新済みです。一覧の再読み込みに失敗しました", page)
+        self.assertIn('["受付","調整中","確認中","確定","キャンセル"]', page)
+        self.assertIn("statusSelect.value = result.status || statusSelect.value", page)
+        self.assertIn("予約状態を「${statusSelect.value}」へ更新しました。", page)
         self.assertIn("予約は削除済みです。一覧の再読み込みに失敗しました", page)
         self.assertIn('summary.textContent = scheduleReady ?', page)
         self.assertIn('"中学生": 45', page)
@@ -825,6 +827,7 @@ class UpdatesTest(unittest.TestCase):
                 {
                     "ok": True,
                     "reservationId": "R-20260810-001",
+                    "status": "確認中",
                     "updatedFields": ["status", "message"],
                 },
                 {"ok": True, "reservationId": "R-20260810-001"},
@@ -842,6 +845,7 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(update_response.status_code, 200)
         self.assertTrue(update_response.json["saved"])
+        self.assertEqual(update_response.json["status"], "確認中")
         self.assertEqual(update_response.json["updated_fields"], ["status", "message"])
         self.assertEqual(delete_response.status_code, 200)
         self.assertTrue(delete_response.json["deleted"])

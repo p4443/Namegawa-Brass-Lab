@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v3";
+var SCRIPT_VERSION = "2026-08-12-admin-v4";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -228,6 +228,7 @@ function doPost(event) {
       return adminActionResponse({
         ok: true,
         reservationId: reservationId,
+        status: nextStatus,
         updatedFields: updatedFields
       }, requestId);
     }
