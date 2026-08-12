@@ -36,10 +36,15 @@
     .page-heading { display: flex; align-items: end; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
     .eyebrow { margin: 0 0 5px; color: var(--blue); font-size: .76rem; font-weight: 800; }
     h1 { margin: 0; color: var(--navy); font-family: "Hiragino Mincho ProN", "Yu Mincho", serif; font-size: clamp(1.55rem, 5vw, 2.4rem); }
-    .heading-copy { max-width: 480px; margin: 0; color: var(--muted); font-size: .9rem; }
-    .lesson-filter { display: flex; align-items: center; gap: 10px; margin: 0 0 16px; }
-    .lesson-filter label { color: var(--navy); font-size: .8rem; font-weight: 800; }
-    .lesson-filter select { min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--navy); background: #fff; }
+    .heading-copy { max-width: 480px; margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.75; text-wrap: pretty; }
+    .lesson-filter { display: grid; width: fit-content; max-width: 100%; grid-template-columns: auto minmax(220px, 360px); align-items: center; gap: 12px; margin: 0 0 18px; padding: 11px 14px; border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 6px; background: rgba(255,255,255,.72); }
+    .lesson-filter:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(200,148,22,.13); }
+    .lesson-filter-copy { display: grid; gap: 2px; }
+    .lesson-filter label { display: flex; align-items: center; gap: 6px; color: var(--navy); font-size: .8rem; font-weight: 800; line-height: 1.4; }
+    .lesson-filter-required { padding: 1px 5px; border-radius: 4px; color: #fff; background: var(--busy); font-size: .65rem; line-height: 1.4; }
+    .lesson-filter-hint { color: var(--muted); font-size: .72rem; line-height: 1.45; }
+    .lesson-filter select { width: 100%; min-width: 0; min-height: 42px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 5px; color: var(--navy); background: #fff; }
+    .lesson-filter select:invalid { color: var(--muted); }
     .schedule-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(270px, .75fr); gap: 18px; align-items: start; }
     .panel { min-width: 0; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); box-shadow: 0 12px 30px rgba(11,37,69,.08); }
     .calendar-panel { padding: 18px; }
@@ -62,7 +67,7 @@
     .legend .busy::before { background: var(--busy); }
     .detail-panel { padding: 20px; }
     .detail-panel h2 { margin: 0 0 4px; color: var(--navy); font-size: 1.05rem; }
-    .detail-note { margin: 0 0 14px; color: var(--muted); font-size: .78rem; }
+    .detail-note { margin: 0 0 14px; color: var(--muted); font-size: .78rem; line-height: 1.75; text-wrap: pretty; }
     .slot-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
     .slot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 8px 10px; border-left: 3px solid var(--available); background: #f3faf6; font-size: .84rem; }
     .slot.busy { border-left-color: var(--busy); background: #fff5f3; color: var(--muted); }
@@ -97,8 +102,11 @@
     .reservation-actions select, .reservation-actions input { min-height: 38px; border: 1px solid var(--line); border-radius: 5px; padding: 6px 8px; background: #fff; }
     .reservation-actions .button { min-height: 38px; padding: 6px 10px; font-size: .78rem; }
     @media (max-width: 760px) {
-      .page-heading { display: block; }
-      .heading-copy { margin-top: 10px; }
+      .page-heading { display: block; margin-bottom: 18px; }
+      .heading-copy { max-width: 34rem; margin-top: 8px; }
+      .lesson-filter { width: 100%; grid-template-columns: 1fr; gap: 8px; padding: 12px; }
+      .lesson-filter label { font-size: .82rem; }
+      .lesson-filter select { min-height: 46px; font-size: 16px; }
       .schedule-layout { grid-template-columns: 1fr; }
       .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .reservation-item { grid-template-columns: 1fr; }
@@ -107,6 +115,8 @@
     @media (max-width: 480px) {
       main { padding-top: 22px; }
       .calendar-panel { padding: 12px; }
+      .detail-panel { padding: 16px; }
+      .slot { align-items: flex-start; flex-wrap: wrap; padding: 10px; }
       .day { padding: 4px 2px; }
       .form-grid { grid-template-columns: 1fr; }
       .field.wide { grid-column: auto; }
@@ -124,11 +134,15 @@
   <main>
     <header class="page-heading">
       <div><p class="eyebrow">LESSON AVAILABILITY</p><h1>レッスンスケジュール</h1></div>
-      <p class="heading-copy">カレンダーから日付を選ぶと、予約可能な時間を確認できます。空き枠は予約受付と同時に更新されます。</p>
+      <p class="heading-copy">日付を選ぶと、予約可能な時間を確認できます。空き状況は、予約の受け付けと同時に更新されます。</p>
     </header>
     <div class="lesson-filter">
-      <label for="schedule-lesson-type">レッスン種別</label>
-      <select id="schedule-lesson-type">
+      <div class="lesson-filter-copy">
+        <label for="schedule-lesson-type">レッスン種別<span class="lesson-filter-required">必須</span></label>
+        <span class="lesson-filter-hint" id="lesson-filter-hint">最初にレッスン種別を選択してください。</span>
+      </div>
+      <select id="schedule-lesson-type" aria-describedby="lesson-filter-hint" required>
+        <option value="" selected disabled>レッスン種別を選択してください</option>
         <option value="体験レッスン">体験レッスン（30分）</option>
         <option value="小学生">小学生（30分）</option>
         <option value="中学生">中学生（45分）</option>
@@ -145,13 +159,13 @@
         </div>
         <div class="weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
         <div class="calendar-grid" id="schedule-calendar"></div>
-        <div class="legend"><span>予約可能</span><span class="busy">満席・休み</span></div>
+        <div class="legend" id="calendar-legend" hidden><span>予約可能</span><span class="busy">満席・休み</span></div>
         <p class="load-status" id="schedule-status" role="status"></p>
         <button class="retry-button" id="schedule-retry" type="button" hidden>空き状況を再読み込み</button>
       </section>
       <section class="panel detail-panel" aria-labelledby="selected-date-title">
-        <h2 id="selected-date-title" tabindex="-1">日付を選択してください</h2>
-        <p class="detail-note">体験・小学生は00分／30分開始、中学生・高校生以上は00分開始です。グループは開始時刻・所要時間ともに個別調整します。</p>
+        <h2 id="selected-date-title" tabindex="-1">先にレッスン種別を選択してください</h2>
+        <p class="detail-note">体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
         <ul class="slot-list" id="slot-list"></ul>
       </section>
     </div>
@@ -198,9 +212,11 @@
     const monthTitle = document.getElementById("calendar-month");
     const scheduleStatus = document.getElementById("schedule-status");
     const scheduleRetry = document.getElementById("schedule-retry");
+    const calendarLegend = document.getElementById("calendar-legend");
     const slotList = document.getElementById("slot-list");
     const selectedDateTitle = document.getElementById("selected-date-title");
     const scheduleLessonType = document.getElementById("schedule-lesson-type");
+    const lessonFilterHint = document.getElementById("lesson-filter-hint");
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
     const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "グループ・部活動指導": null };
     const statusMap = new Map();
@@ -211,6 +227,7 @@
     let visibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedDate = "";
     let scheduleReady = false;
+    let scheduleLoadError = "";
 
     const makeRange = (startHour, startMinute, endHour, endMinute) => {
       const result = [];
@@ -229,6 +246,7 @@
       6: ["要相談"],
     };
     const availableTimesForLesson = (lessonType, day) => {
+      if (!lessonType) return [];
       const dayTimes = timesByDay[day] || [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
       return dayTimes.filter((time) => {
@@ -328,6 +346,8 @@
     function renderCalendar() {
       monthTitle.textContent = `${visibleMonth.getFullYear()}年 ${visibleMonth.getMonth()+1}月`;
       calendar.replaceChildren();
+      const hasLessonType = Boolean(scheduleLessonType.value);
+      calendarLegend.hidden = !hasLessonType;
       for (let index = 0; index < visibleMonth.getDay(); index += 1) {
         const blank = document.createElement("span"); blank.className = "blank-day"; calendar.append(blank);
       }
@@ -338,12 +358,14 @@
         const total = availableTimesForLesson(scheduleLessonType.value, date.getDay()).length;
         const available = availabilityFor(date);
         const button = document.createElement("button"); button.type = "button"; button.className = "day";
-        button.disabled = date < firstDate || date > lastDate || total === 0;
+        button.disabled = !hasLessonType || date < firstDate || date > lastDate || total === 0;
         button.setAttribute("aria-pressed", String(selectedDate === value));
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span");
-        summary.className = `day-summary${scheduleReady ? (available ? "" : " busy") : " unknown"}`;
-        summary.textContent = scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : (total ? "受付日" : "休み");
+        summary.className = `day-summary${hasLessonType && scheduleReady ? (available ? "" : " busy") : " unknown"}`;
+        summary.textContent = hasLessonType
+          ? (scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : (total ? "受付日" : "休み"))
+          : "";
         button.append(number, summary); button.addEventListener("click", () => {
           renderSlots(value);
           renderCalendar();
@@ -360,18 +382,26 @@
     }
     async function loadSchedule() {
       scheduleReady = false;
+      scheduleLoadError = "";
       scheduleRetry.hidden = true;
-      scheduleStatus.textContent = "空き状況を読み込んでいます。サーバー起動中は最大30秒ほどかかります…";
+      scheduleStatus.textContent = scheduleLessonType.value
+        ? "空き状況を読み込んでいます。サーバー起動中は最大30秒ほどかかります…"
+        : "レッスン種別を選択すると、日付を選べます。";
       renderCalendar();
       try {
         const result = await requestApi(`/api/lesson-slot-statuses?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
         statusMap.clear();
         (result.slots || []).forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
         scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar();
-        renderSlots(selectedDate || dateText(firstDate));
+        if (scheduleLessonType.value) {
+          renderSlots(selectedDate || dateText(firstDate));
+        }
       } catch (error) {
-        scheduleStatus.textContent = `${error.message} 再読み込みしてください。`;
-        scheduleRetry.hidden = false;
+        scheduleLoadError = `${error.message} 再読み込みしてください。`;
+        scheduleStatus.textContent = scheduleLessonType.value
+          ? scheduleLoadError
+          : "レッスン種別を選択すると、日付を選べます。";
+        scheduleRetry.hidden = !scheduleLessonType.value;
         renderCalendar();
       }
     }
@@ -379,8 +409,15 @@
     document.getElementById("next-month").addEventListener("click", () => { visibleMonth.setMonth(visibleMonth.getMonth()+1); renderCalendar(); });
     scheduleRetry.addEventListener("click", loadSchedule);
     scheduleLessonType.addEventListener("change", () => {
+      lessonFilterHint.textContent = "選択したレッスン種別の空き状況を表示しています。";
+      selectedDate = "";
+      selectedDateTitle.textContent = "日付を選択してください";
+      slotList.replaceChildren();
+      scheduleStatus.textContent = scheduleReady
+        ? ""
+        : (scheduleLoadError || "空き状況を読み込んでいます…");
+      scheduleRetry.hidden = scheduleReady || !scheduleLoadError;
       renderCalendar();
-      if (selectedDate) renderSlots(selectedDate);
     });
 
     const adminStatus = document.getElementById("admin-status");

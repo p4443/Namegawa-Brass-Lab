@@ -44,7 +44,7 @@
       position: sticky;
       top: 0;
       z-index: 60;
-      padding: 12px 16px 14px;
+      padding: 9px 16px 10px;
       background: rgba(248, 250, 252, 0.9);
       border-bottom: 1px solid rgba(15, 23, 42, 0.08);
       box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
@@ -67,22 +67,8 @@
       align-items: center;
       justify-self: start;
       min-width: 0;
-      gap: 10px;
       text-decoration: none;
       color: var(--primary-color);
-    }
-
-    .site-brand-mark {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      display: grid;
-      place-items: center;
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-      color: var(--accent-color);
-      border: 2px solid rgba(217, 119, 6, 0.7);
-      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.16);
-      font-size: 1.4rem;
     }
 
     .site-brand-text {
@@ -126,12 +112,12 @@
     }
 
     .global-nav-toggle {
-      min-height: 42px;
+      min-height: 38px;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 8px;
-      padding: 8px 16px;
+      padding: 6px 14px;
       border: 1px solid rgba(15, 23, 42, 0.14);
       border-radius: 999px;
       background: rgba(255, 255, 255, 0.94);
@@ -177,14 +163,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 46px;
-      padding: 10px 12px;
+      min-height: 42px;
+      padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid rgba(15, 23, 42, 0.1);
       background: rgba(255, 255, 255, 0.94);
       color: var(--primary-color);
       font-size: 0.84rem;
       font-weight: 700;
+      line-height: 1.35;
       text-decoration: none;
       text-align: center;
       transition: var(--transition);
@@ -223,6 +210,19 @@
       height: 100%;
       object-fit: cover;
       display: none;
+    }
+
+    @media (min-width: 769px) {
+      #intro-video {
+        width: auto;
+        height: auto;
+        max-width: min(880px, calc(100vw - 96px));
+        max-height: min(78vh, 720px);
+        object-fit: contain;
+        border-radius: 14px;
+        background: #000000;
+        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
+      }
     }
 
     .intro-card {
@@ -569,6 +569,19 @@
       margin-bottom: 6px;
     }
 
+    .lab-origin-message {
+      text-align: left;
+      text-wrap: pretty;
+      word-break: normal;
+      line-break: strict;
+    }
+
+    @media (min-width: 769px) {
+      .three-circles-title {
+        text-align: left;
+      }
+    }
+
     .updates-section {
       margin: 16px 0 12px;
     }
@@ -730,7 +743,6 @@
       display: flex;
       flex-direction: column;
       gap: 8px;
-      scroll-snap-type: y proximity;
     }
 
     .updates-item {
@@ -738,7 +750,6 @@
       background: rgba(255, 255, 255, 0.86);
       padding: 10px 12px;
       border-radius: 12px;
-      scroll-snap-align: start;
     }
 
     .updates-meta {
@@ -811,8 +822,37 @@
     }
 
     #updates-list {
-      max-height: none;
-      overflow-y: visible;
+      max-height: var(--updates-window-height, 300px);
+      overflow-y: auto;
+      overscroll-behavior-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(11, 37, 69, 0.42) rgba(11, 37, 69, 0.08);
+      padding: 8px 10px 8px 8px;
+      border: 1px solid rgba(11, 37, 69, 0.16);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.5);
+      box-shadow: inset 0 10px 14px -14px rgba(11, 37, 69, 0.55), inset 0 -10px 14px -14px rgba(11, 37, 69, 0.55);
+      -webkit-overflow-scrolling: touch;
+      touch-action: pan-y;
+    }
+
+    #updates-list:focus-visible {
+      outline: 3px solid rgba(217, 119, 6, 0.35);
+      outline-offset: 2px;
+    }
+
+    #updates-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #updates-list::-webkit-scrollbar-thumb {
+      background: rgba(11, 37, 69, 0.42);
+      border-radius: 999px;
+    }
+
+    #updates-list::-webkit-scrollbar-track {
+      background: rgba(11, 37, 69, 0.08);
+      border-radius: 999px;
     }
 
     .section-scroll-hint {
@@ -1097,7 +1137,7 @@
       }
 
       .site-header {
-        padding: 10px 12px 12px;
+        padding: 8px 12px 9px;
       }
 
       .global-nav-list {
@@ -1150,12 +1190,6 @@
         padding: 0;
       }
 
-      .site-brand-mark {
-        width: 46px;
-        height: 46px;
-        font-size: 1.2rem;
-      }
-
       .site-brand-name {
         font-size: 1rem;
       }
@@ -1169,7 +1203,7 @@
       }
 
       .global-nav-link {
-        min-height: 42px;
+        min-height: 40px;
         font-size: 0.82rem;
       }
 
@@ -1305,7 +1339,6 @@
 <header class="site-header">
   <div class="site-header-inner">
     <a class="site-brand" href="#main-container" aria-label="なめがわブラス・ラボ トップへ移動">
-      <span class="site-brand-mark" aria-hidden="true">🎺</span>
       <span class="site-brand-text">
         <span class="site-brand-name">なめがわブラス・ラボ</span>
         <span class="site-brand-subtitle">KAZOO SASAKI TRUMPET SCHOOL</span>
@@ -1335,7 +1368,7 @@
     <h1 class="main-title" style="margin-bottom: 12px;">なめがわブラス・ラボ</h1>
     <h2 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-muted); font-weight: 700;">in</h2>
     <a class="school-title" href="lesson/">🎺kazooささきトランペット教室</a>
-    <div class="tagline" style="margin: 10px 0 18px;">音を運び、夢を響かせる</div>
+    <div class="tagline" style="margin: 16px 0 18px;">音を運び、夢を響かせる</div>
     <h2 class="section-title" style="margin-top: 8px; margin-bottom: 4px;">プロフィール・あいさつ</h2>
     <div class="profile-intro-card">
       <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 0 0 10px;">代表・トランペット奏者</h3>
@@ -1344,9 +1377,9 @@
       <p style="margin-top: 10px; text-align: left;">また、事業用車両（黒ナンバー）を活用し、専門知識を持つ奏者自らが大切な楽器を安全に運搬し、現地での技術指導まで一括でサポートする独自のサービスも展開しています。</p>
 
       <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">なめがわブラス・ラボ誕生への想い</h3>
-      <p>2009年に、この滑川町に魅せられ拠点を構え、年末のボランティア演奏活動や自治会活動に関わる中で、この街の温かさと、少しずつ変わりゆく地域の姿を感じてきました。地域を支えてきたシニア世代と、これからの若い世代の間に生まれつつある心の距離を埋め、世代を超えて笑顔でつながる場所をつくりたいという想いのもと<span style="font-weight: 700; color: var(--primary-color);">「なめがわブラス・ラボ」</span>を立ち上げました。</p>
+      <p class="lab-origin-message">2009年に、この滑川町に魅せられ拠点を構え、年末のボランティア演奏活動や自治会活動に関わる中で、この街の温かさと、少しずつ変わりゆく地域の姿を感じてきました。地域を支えてきたシニア世代と、これからの若い世代の間に生まれつつある心の距離を埋め、世代を超えて笑顔でつながる場所をつくりたいという想いのもと<span style="font-weight: 700; color: var(--primary-color);">「なめがわブラス・ラボ」</span>を立ち上げました。</p>
 
-      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">音楽と文化で育む、広がる3つの輪</h3>
+      <h3 class="three-circles-title" style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">音楽と文化で育む、広がる3つの輪</h3>
       <ul style="text-align: left; padding-left: 1.1rem; margin-left: 0;">
         <li><strong>みんなの居場所づくり：</strong>子どもからシニアまで、音楽を通して気軽に集まり、一緒に楽しめる時間と居場所を提供します。</li>
         <li><strong>健康と笑顔の支援：</strong>楽器演奏や歌、音楽に合わせた身体運動を通して、心と体の健康を支えます。</li>
@@ -1422,10 +1455,9 @@
             </form>
             <p class="editor-status" id="editor-status" role="status"></p>
           </div>
-          <div id="updates-list">
+          <div id="updates-list" tabindex="0" aria-label="お知らせ一覧。上下にスクロールできます">
             <div class="updates-loading">読み込み中...</div>
           </div>
-          <p class="section-scroll-hint">スクロールで全て表示できます</p>
         </div>
       </section>
 
@@ -1550,6 +1582,7 @@
   let openingVideoClosed = false;
   let openingVideoCloseTimer = null;
   let openingVideoLoadTimer = null;
+  let updatesImageResizeObserver = null;
 
   const bundledUpdates = [
     {
@@ -1625,6 +1658,31 @@
     return wrapper;
   }
 
+  function syncUpdatesWindowHeight(container) {
+    if (updatesImageResizeObserver) {
+      updatesImageResizeObserver.disconnect();
+      updatesImageResizeObserver = null;
+    }
+
+    container.style.removeProperty('--updates-window-height');
+    const image = container.querySelector('.updates-media img');
+    if (!image) return;
+
+    const applyImageHeight = () => {
+      const imageHeight = Math.round(image.getBoundingClientRect().height);
+      if (imageHeight > 0) {
+        container.style.setProperty('--updates-window-height', `${imageHeight}px`);
+      }
+    };
+
+    image.addEventListener('load', applyImageHeight, { once: true });
+    if (image.complete) requestAnimationFrame(applyImageHeight);
+    if ('ResizeObserver' in window) {
+      updatesImageResizeObserver = new ResizeObserver(applyImageHeight);
+      updatesImageResizeObserver.observe(image);
+    }
+  }
+
   function renderUpdates(updates) {
     const container = document.getElementById('updates-list');
     if (!container) return;
@@ -1684,6 +1742,7 @@
       list.appendChild(update);
     });
     container.appendChild(list);
+    syncUpdatesWindowHeight(container);
   }
 
   async function loadUpdates() {

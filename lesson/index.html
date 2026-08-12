@@ -77,8 +77,11 @@
       text-decoration: underline;
     }
 
-    .section {
-      scroll-margin-top: 90px;
+    .section-title,
+    #contact-title,
+    #reservation-title,
+    #schedule-callout-title {
+      scroll-margin-top: 110px;
     }
 
     .page-nav {
@@ -452,7 +455,7 @@
 
     .reservation-hours {
       margin-top: 16px;
-      padding: 10px 14px;
+      padding: 6px 14px;
       border-top: 1px solid rgba(212, 175, 55, 0.7);
       border-bottom: 1px solid rgba(212, 175, 55, 0.7);
       color: #ffffff;
@@ -462,9 +465,16 @@
 
     .reservation-hours div {
       display: grid;
-      grid-template-columns: 58px 1fr;
-      gap: 10px;
-      padding: 5px 0;
+      grid-template-columns: 64px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .reservation-hours div:last-child {
+      border-bottom: 0;
     }
 
     .reservation-hours dt {
@@ -473,8 +483,17 @@
     }
 
     .reservation-hours dd {
+      display: grid;
+      align-content: center;
+      gap: 2px;
       margin: 0;
-      line-height: 1.5;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .reservation-time-range {
+      display: block;
+      white-space: nowrap;
     }
 
     .reservation-form {
@@ -699,7 +718,7 @@
         <h3 class="instructor-name"><span>トランペット奏者</span>佐々木 久和（ささき ひさかず）</h3>
         <p>1969年生まれ、茨城県牛久市出身。小学4年生で鼓笛隊のトランペットを始め、東京コンセルヴァトワール尚美専門コースのトランペット専攻を1991年に卒業。杉木峯夫氏（東京藝術大学名誉教授）に師事しました。</p>
         <p>卒業後は陸上自衛隊に入隊し、第11音楽隊（札幌市）、東北方面音楽隊（仙台市）、第1音楽隊（東京都）、東部方面音楽隊（朝霞市）などで33年間勤務。2023年9月の退職後は、フリーランス奏者として演奏と指導に取り組んでいます。</p>
-        <p>現在はkazooささきトランペット教室とアンサンブルNESTを主宰するほか、EYS音楽教室インストラクター、熊谷・深谷カルチャーでの演奏指導、学校の吹奏楽部指導など、幅広い世代をサポートしています。</p>
+        <p>現在は「kazooささきトランペット教室」と「アンサンブルNEST」を主宰するほか、EYS音楽教室のインストラクター、熊谷・深谷のカルチャー教室での演奏指導、学校の吹奏楽部指導などを通して、幅広い世代をサポートしています。</p>
       </div>
     </section>
 
@@ -710,11 +729,11 @@
         <div class="teaching-points">
           <div class="teaching-point">
             <strong>力を抜いてリラックス</strong>
-            <p>無理に音を出すのではなく、自然な呼吸と身体の使い方から、響く音を育てます。</p>
+            <p>無理に音を出すのではなく、自然な呼吸と身体の使い方を通して、響きのある音を育てます。</p>
           </div>
           <div class="teaching-point">
             <strong>一人ひとりのペースで</strong>
-            <p>基礎、部活動、演奏曲など、目的に合わせた内容で着実な上達を支えます。</p>
+            <p>基礎練習、部活動、演奏曲など、目的に合わせた内容で着実な上達を支えます。</p>
           </div>
         </div>
       </div>
@@ -725,7 +744,7 @@
       <ul class="feature-list">
         <li><span class="feature-icon" aria-hidden="true">♪</span>基礎から丁寧に指導</li>
         <li><span class="feature-icon" aria-hidden="true">◎</span>目的に合わせた個人レッスン</li>
-        <li><span class="feature-icon" aria-hidden="true">♬</span>初心者・経験者ともに歓迎</li>
+        <li><span class="feature-icon" aria-hidden="true">♬</span>初心者も経験者も歓迎</li>
       </ul>
     </section>
 
@@ -735,41 +754,41 @@
         <article class="price-card">
           <div>
             <h3>小学生</h3>
-            <p>個人レッスン 1回30分</p>
+            <p>個人レッスン（1回30分）</p>
           </div>
-          <div class="price">月2回 3,000円</div>
+          <div class="price">月2回：3,000円</div>
         </article>
         <article class="price-card">
           <div>
             <h3>中学生</h3>
-            <p>個人レッスン 1回45分</p>
+            <p>個人レッスン（1回45分）</p>
           </div>
-          <div class="price">月2回 5,000円</div>
+          <div class="price">月2回：5,000円</div>
         </article>
         <article class="price-card">
           <div>
             <h3>高校生以上</h3>
-            <p>個人レッスン 1回60分</p>
+            <p>個人レッスン（1回60分）</p>
           </div>
-          <div class="price">基本1回 7,000円</div>
+          <div class="price">基本料金：1回7,000円</div>
         </article>
         <article class="price-card">
           <div>
             <h3>その他</h3>
             <p>グループレッスン・部活動指導</p>
           </div>
-          <div class="price">別途相談</div>
+          <div class="price">要相談</div>
         </article>
       </div>
       <p class="price-note">グループレッスン、部活動指導なども承ります。内容や日程についてはお問い合わせください。</p>
     </section>
 
     <section class="contact-panel" aria-labelledby="contact-title">
-      <h2 id="contact-title">体験・レッスンのお問い合わせ</h2>
-      <p>ご希望のレッスン内容や年代、希望日時を添えてご連絡ください。</p>
+      <h2 id="contact-title">体験・各種レッスンのお問い合わせ</h2>
+      <p>ご希望のレッスン内容、年代、日時を添えてご連絡ください。</p>
       <div class="actions">
-        <a class="button button-primary" href="mailto:zuomuj924@gmail.com">メールで問い合わせる</a>
-        <a class="button" href="tel:09057690830">電話する（10:00-18:00）</a>
+        <a class="button button-primary" href="mailto:zuomuj924@gmail.com">メールでお問い合わせ</a>
+        <a class="button" href="tel:09057690830">電話する（10:00〜18:00）</a>
       </div>
     </section>
   </main>
@@ -779,21 +798,21 @@
       <span class="schedule-callout-icon" aria-hidden="true">▣</span>
       <div class="schedule-callout-copy">
         <strong id="schedule-callout-title">レッスン予約スケジュール</strong>
-        <span>月間カレンダーで空き時間を確認して、そのまま予約できます。</span>
+        <span>月間カレンダーで空き状況を確認し、そのまま予約できます。</span>
       </div>
       <a class="schedule-callout-link" href="../schedule/">空き状況を見る</a>
     </section>
     <section class="reservation" aria-labelledby="reservation-title">
       <div class="reservation-copy">
         <h2 id="reservation-title">レッスン予約</h2>
-        <p>予約できる期間は、明日から1か月先までです。送信後は自動返信メールをお送りします。日程は調整後に確定をご連絡します。</p>
+        <p>予約できる期間は、明日から1か月先までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
         <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
-          <div><dt>月〜水</dt><dd>6:45〜8:00<br>20:30〜21:00</dd></div>
-          <div><dt>木曜日</dt><dd>6:45〜11:00</dd></div>
-          <div><dt>金曜日</dt><dd>6:45〜16:00／それ以外は要相談</dd></div>
-          <div><dt>土／日</dt><dd>土・日：要相談</dd></div>
+          <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜08:00</span><span class="reservation-time-range">20:30〜21:00</span></dd></div>
+          <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜11:00</span></dd></div>
+          <div><dt>金曜日</dt><dd><span class="reservation-time-range">06:45〜16:00</span><span>それ以外：要相談</span></dd></div>
+          <div><dt>土・日</dt><dd><span>要相談</span></dd></div>
         </dl>
-        <p>体験レッスン・小学生は毎時00分／30分開始、中学生・高校生以上は毎時00分開始です。グループ・部活動指導は開始時刻・所要時間ともに個別調整します。</p>
+        <p>体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
       </div>
       <form class="reservation-form" id="reservation-form">
         <div class="form-field">
@@ -838,7 +857,7 @@
           <input id="reservation-website" name="website" type="text" tabindex="-1" autocomplete="off">
         </div>
         <div class="form-actions">
-          <button class="reservation-submit" type="submit">予約希望を送信</button>
+          <button class="reservation-submit" type="submit">予約希望を送信する</button>
           <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
         </div>
       </form>
@@ -865,6 +884,9 @@
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
     let slotRequestId = 0;
+    const slotStatusCache = new Map();
+    const slotStatusCacheDuration = 30 * 1000;
+    let slotStatusPreloadPromise = null;
 
     const japanDateText = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Asia/Tokyo",
@@ -971,13 +993,13 @@
       return map;
     }
 
-    async function fetchSlotStatuses(dateText) {
+    async function requestSlotStatuses(fromDateText, toDateText) {
       let lastError = null;
       for (const endpoint of slotStatusApiCandidates) {
         try {
           const url = new URL(endpoint, location.href);
-          url.searchParams.set("from", dateText);
-          url.searchParams.set("to", dateText);
+          url.searchParams.set("from", fromDateText);
+          url.searchParams.set("to", toDateText);
           const response = await fetch(url.toString(), { method: "GET" });
           if (!response.ok) {
             lastError = new Error("現在、空き状況を確認できません。");
@@ -993,6 +1015,87 @@
         console.warn(lastError);
       }
       throw lastError || new Error("現在、空き状況を確認できません。");
+    }
+
+    function cacheSlotStatuses(fromDateText, toDateText, slots) {
+      const slotsByDate = new Map();
+      slots.forEach((slot) => {
+        const dateText = String(slot.date || "").trim();
+        if (!slotsByDate.has(dateText)) {
+          slotsByDate.set(dateText, []);
+        }
+        slotsByDate.get(dateText).push(slot);
+      });
+
+      const endDate = new Date(`${toDateText}T00:00:00`);
+      for (
+        let currentDate = new Date(`${fromDateText}T00:00:00`);
+        currentDate <= endDate;
+        currentDate.setDate(currentDate.getDate() + 1)
+      ) {
+        const dateText = dateValue(currentDate);
+        slotStatusCache.set(dateText, {
+          slots: slotsByDate.get(dateText) || [],
+          expiresAt: Date.now() + slotStatusCacheDuration,
+        });
+      }
+    }
+
+    async function preloadSlotStatuses() {
+      if (slotStatusPreloadPromise) {
+        return slotStatusPreloadPromise;
+      }
+      const fromDateText = dateValue(firstAvailableDate);
+      const toDateText = dateValue(lastAvailableDate);
+      slotStatusPreloadPromise = requestSlotStatuses(fromDateText, toDateText)
+        .then((slots) => cacheSlotStatuses(fromDateText, toDateText, slots))
+        .catch(() => {})
+        .finally(() => {
+          slotStatusPreloadPromise = null;
+        });
+      return slotStatusPreloadPromise;
+    }
+
+    async function fetchSlotStatuses(dateText) {
+      const cached = slotStatusCache.get(dateText);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.slots;
+      }
+      if (slotStatusPreloadPromise) {
+        await slotStatusPreloadPromise;
+        const preloaded = slotStatusCache.get(dateText);
+        if (preloaded && preloaded.expiresAt > Date.now()) {
+          return preloaded.slots;
+        }
+      }
+      const slots = await requestSlotStatuses(dateText, dateText);
+      cacheSlotStatuses(dateText, dateText, slots);
+      return slots;
+    }
+
+    function renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, slotMap, selectedValue) {
+      reservationTime.replaceChildren(new Option("時間を選択してください", ""));
+      let selectableCount = 0;
+      availableTimes.forEach((time) => {
+        const occupied = occupiedTimes(time, durationMinutes);
+        const status = occupied
+          .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
+          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
+        const timeLabel = time === "要相談"
+          ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
+          : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
+        const option = new Option(status === "空き" ? timeLabel : `${timeLabel}（${status}）`, time);
+        option.disabled = blockedStatuses.has(status);
+        if (!option.disabled) {
+          selectableCount += 1;
+        }
+        reservationTime.add(option);
+      });
+      reservationTime.disabled = selectableCount === 0;
+      if (selectedValue && [...reservationTime.options].some((option) => option.value === selectedValue && !option.disabled)) {
+        reservationTime.value = selectedValue;
+      }
+      return selectableCount;
     }
 
     async function updateReservationTimeOptions() {
@@ -1011,7 +1114,7 @@
         return;
       }
 
-      reservationTime.add(new Option("空き状況を確認しています", ""));
+      renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, new Map(), "");
       reservationStatus.dataset.state = "";
       reservationStatus.textContent = "空き状況を確認しています…";
 
@@ -1022,40 +1125,24 @@
         if (requestId !== slotRequestId) {
           return;
         }
-        reservationTime.replaceChildren(new Option("空き状況を確認できません", ""));
         reservationStatus.dataset.state = "error";
-        reservationStatus.textContent = "現在、空き状況を確認できません。時間をおいて再度お試しください。";
+        reservationStatus.textContent = "空き状況を確認できませんでした。時間を選択して送信できますが、予約済みの場合は別の時間をご案内します。";
         return;
       }
       if (requestId !== slotRequestId) {
         return;
       }
-      reservationTime.add(new Option("時間を選択してください", ""));
-      reservationTime.remove(0);
-
-      let selectableCount = 0;
-      availableTimes.forEach((time) => {
-        const occupied = occupiedTimes(time, durationMinutes);
-        const status = occupied
-          .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
-          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
-        const timeLabel = time === "要相談"
-          ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
-          : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
-        const label = status === "空き" ? timeLabel : `${timeLabel}（${status}）`;
-        const option = new Option(label, time);
-        if (blockedStatuses.has(status)) {
-          option.disabled = true;
-        } else {
-          selectableCount += 1;
-        }
-        reservationTime.add(option);
-      });
-
-      reservationTime.disabled = selectableCount === 0;
+      const selectedValue = reservationTime.value;
+      const selectableCount = renderReservationTimeOptions(
+        selectedDateText,
+        availableTimes,
+        durationMinutes,
+        slotMap,
+        selectedValue
+      );
       if (selectableCount === 0) {
         reservationStatus.dataset.state = "error";
-        reservationStatus.textContent = "選択可能な空き枠がありません。別日を選択してください。";
+        reservationStatus.textContent = "予約可能な空き枠がありません。別の日を選択してください。";
       } else {
         reservationStatus.dataset.state = "";
         reservationStatus.textContent = "";
@@ -1138,7 +1225,7 @@
 
         if (result.conflict) {
           reservationStatus.dataset.state = "error";
-          reservationStatus.textContent = "この時間帯は先に予約が入っているため、受付できませんでした。別の時間をお選びください。";
+          reservationStatus.textContent = "この時間帯にはすでに予約が入っているため、受け付けできません。別の時間をお選びください。";
           await updateReservationTimeOptions();
           return;
         }
@@ -1148,16 +1235,16 @@
         reservationStatus.dataset.state = "success";
         if (result.duplicate) {
           reservationStatus.textContent = result.reservation_id
-            ? `同一内容の予約はすでに受け付けています。受付番号: ${result.reservation_id}`
-            : "同一内容の予約はすでに受け付けています。";
+            ? `同じ内容の予約をすでに受け付けています。受付番号：${result.reservation_id}`
+            : "同じ内容の予約をすでに受け付けています。";
           return;
         }
         const baseMessage = result.reservation_id
-          ? `受け付けました（状態: ${result.status || "調整中"}）。受付番号: ${result.reservation_id}`
-          : "予約希望を受け付けました（状態: 調整中）。";
+          ? `予約希望を受け付けました（状態：${result.status || "調整中"}）。受付番号：${result.reservation_id}`
+          : "予約希望を受け付けました（状態：調整中）。";
         reservationStatus.textContent = result.auto_reply_sent
           ? `${baseMessage} 確認メールを送信しました。`
-          : `${baseMessage} 確認メールは送信できなかったため、必要に応じてお問い合わせください。`;
+          : `${baseMessage} 確認メールを送信できませんでした。必要に応じて、お問い合わせください。`;
       } catch (error) {
         reservationStatus.dataset.state = "error";
         reservationStatus.textContent = error.message;
@@ -1166,6 +1253,7 @@
       }
     });
 
+    preloadSlotStatuses();
     applyRequestedSlot();
   </script>
 </body>
