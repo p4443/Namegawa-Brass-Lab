@@ -57,6 +57,24 @@ class UpdatesTest(unittest.TestCase):
         second_payload = urlopen.call_args_list[1].args[0].data
         self.assertEqual(first_payload, second_payload)
 
+    def test_apps_script_read_request_does_not_extend_page_timeout(self):
+        html_response = MagicMock()
+        html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
+
+        with patch(
+            "app.urllib_request.urlopen",
+            return_value=html_response,
+        ) as urlopen:
+            with self.assertRaises(json.JSONDecodeError):
+                send_lesson_reservation(
+                    "https://script.google.com/example",
+                    "test-secret",
+                    {},
+                    action="list",
+                )
+
+        self.assertEqual(urlopen.call_count, 1)
+
     def test_apps_script_request_stops_after_second_invalid_response(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
@@ -87,12 +105,27 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("setValues(rows)", function)
         self.assertNotIn("upsertSlotStatus(sheet", function)
 
+    def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        do_post = script.split("function doPost", 1)[1].split(
+            "function getSpreadsheet", 1
+        )[0]
+
+        self.assertIn('var writeActions = ["create", "upsert_slot_status_range", "update", "delete"]', do_post)
+        self.assertIn("if (writeActions.indexOf(action) !== -1)", do_post)
+        self.assertIn("var spreadsheet = getSpreadsheet();", do_post)
+        self.assertIn("getReservationSheet(spreadsheet)", do_post)
+        self.assertIn("getSlotStatusSheet(spreadsheet)", do_post)
+        self.assertEqual(script.count("SpreadsheetApp.openById"), 1)
+
     def test_apps_script_caches_update_and_delete_results_for_safe_retry(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v2";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v3";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -325,7 +358,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="admin-login-form"', page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
-        self.assertIn("api/lesson-admin-health", page)
+        self.assertNotIn('requestApi("/api/lesson-admin-health"', page)
+        self.assertIn('catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }', page)
+        self.assertIn("const loginForm = event.currentTarget", page)
+        self.assertIn("loginForm.hidden = true", page)
+        self.assertNotIn("event.currentTarget.hidden = true", page)
+        self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
+        self.assertIn('id="reservation-retry"', page)
+        self.assertIn('reservationRetry.addEventListener("click"', page)
+        self.assertIn("予約状態は更新済みです。一覧の再読み込みに失敗しました", page)
+        self.assertIn("予約は削除済みです。一覧の再読み込みに失敗しました", page)
         self.assertIn('summary.textContent = scheduleReady ?', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
@@ -334,7 +376,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const { timeoutMs = 30000, ...fetchOptions } = options", page)
         self.assertIn("responseError.isHttpError = true", page)
         self.assertIn("if (error.isHttpError) throw error", page)
-        self.assertGreaterEqual(page.count("timeoutMs: 60000"), 4)
+        self.assertGreaterEqual(page.count("timeoutMs: 60000"), 3)
+        self.assertIn('requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 })', page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
 

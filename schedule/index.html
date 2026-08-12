@@ -167,6 +167,7 @@
         <div id="admin-dashboard" hidden>
           <section class="admin-section">
             <h3>予約者一覧</h3>
+            <button class="retry-button" id="reservation-retry" type="button">予約一覧を再読み込み</button>
             <div class="reservation-list" id="reservation-list"></div>
           </section>
           <section class="admin-section">
@@ -365,6 +366,7 @@
     const adminStatus = document.getElementById("admin-status");
     const dashboard = document.getElementById("admin-dashboard");
     const reservationList = document.getElementById("reservation-list");
+    const reservationRetry = document.getElementById("reservation-retry");
     let adminPassword = "";
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function renderReservations(reservations) {
@@ -389,24 +391,40 @@
       });
     }
     async function loadReservations() {
-      const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 60000 });
+      const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 });
       renderReservations(result.reservations || []);
     }
+    reservationRetry.addEventListener("click", async () => {
+      adminStatus.textContent = "予約一覧を読み込んでいます…";
+      try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
+      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
+    });
     async function updateReservation(id, status) {
       adminStatus.textContent = "更新しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }), timeoutMs: 60000 }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約状態を更新しました。"; }
-      catch (error) { adminStatus.textContent = error.message; }
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify({ status }), timeoutMs: 60000 }); }
+      catch (error) { adminStatus.textContent = error.message; return; }
+      adminStatus.textContent = "予約状態を更新しました。";
+      try { await loadReservations(); }
+      catch (error) { adminStatus.textContent = `予約状態は更新済みです。一覧の再読み込みに失敗しました: ${error.message}`; }
+      loadSchedule();
     }
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
       adminStatus.textContent = "削除しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 60000 }); await loadReservations(); await loadSchedule(); adminStatus.textContent = "予約を削除しました。"; }
-      catch (error) { adminStatus.textContent = error.message; }
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 60000 }); }
+      catch (error) { adminStatus.textContent = error.message; return; }
+      adminStatus.textContent = "予約を削除しました。";
+      try { await loadReservations(); }
+      catch (error) { adminStatus.textContent = `予約は削除済みです。一覧の再読み込みに失敗しました: ${error.message}`; }
+      loadSchedule();
     }
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
-      event.preventDefault(); adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
-      try { await requestApi("/api/editor", { headers: adminHeaders() }); await requestApi("/api/lesson-admin-health", { headers: adminHeaders(), timeoutMs: 60000 }); await loadReservations(); dashboard.hidden = false; event.currentTarget.hidden = true; adminStatus.textContent = "ログインしました。"; }
-      catch (error) { adminPassword = ""; adminStatus.textContent = error.message; }
+      event.preventDefault(); const loginForm = event.currentTarget; adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
+      try { await requestApi("/api/editor", { headers: adminHeaders() }); }
+      catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }
+      dashboard.hidden = false; loginForm.hidden = true; adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
+      try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
+      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
     });
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";

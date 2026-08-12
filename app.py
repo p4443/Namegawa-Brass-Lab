@@ -489,7 +489,8 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    for attempt in range(2):
+    attempts = 2 if action in {"create", "update", "delete", "upsert_slot_status_range"} else 1
+    for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
             data=payload,
@@ -504,7 +505,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
             break
         except (json.JSONDecodeError, OSError, urllib_error.URLError) as error:
             last_error = error
-            if attempt == 1:
+            if attempt == attempts - 1:
                 raise
     else:
         raise last_error

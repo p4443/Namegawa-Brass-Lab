@@ -15,7 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
-var SCRIPT_VERSION = "2026-08-12-admin-v2";
+var SCRIPT_VERSION = "2026-08-12-admin-v3";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -58,10 +58,16 @@ function doPost(event) {
       }
     }
 
-    lock.waitLock(10000);
-    lockAcquired = true;
-    var sheet = getReservationSheet();
-    var slotSheet = getSlotStatusSheet();
+    var writeActions = ["create", "upsert_slot_status_range", "update", "delete"];
+    if (writeActions.indexOf(action) !== -1) {
+      lock.waitLock(10000);
+      lockAcquired = true;
+    }
+    var spreadsheet = getSpreadsheet();
+    var needsReservationSheet = ["create", "list", "update", "delete"].indexOf(action) !== -1;
+    var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete"].indexOf(action) !== -1;
+    var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
+    var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
     if (action === "create") {
       var now = new Date();
       var duplicate = findDuplicateReservation(sheet, data, now);
@@ -261,9 +267,12 @@ function doPost(event) {
   }
 }
 
-function getReservationSheet() {
+function getSpreadsheet() {
   var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
-  var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+  return SpreadsheetApp.openById(spreadsheetId);
+}
+
+function getReservationSheet(spreadsheet) {
   var sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SHEET_NAME);
@@ -281,9 +290,7 @@ function getReservationSheet() {
   return sheet;
 }
 
-function getSlotStatusSheet() {
-  var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
-  var spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+function getSlotStatusSheet(spreadsheet) {
   var sheet = spreadsheet.getSheetByName(SLOT_SHEET_NAME);
   if (!sheet) {
     sheet = spreadsheet.insertSheet(SLOT_SHEET_NAME);
