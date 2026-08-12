@@ -639,6 +639,10 @@
       color: var(--primary-color);
     }
 
+    .updates-title-mobile {
+      display: none;
+    }
+
     .editor-button,
     .update-action {
       min-height: 44px;
@@ -1246,6 +1250,14 @@
         padding: 0;
       }
 
+      .updates-title-desktop {
+        display: none;
+      }
+
+      .updates-title-mobile {
+        display: inline;
+      }
+
       .site-brand-name {
         font-size: 1rem;
       }
@@ -1464,8 +1476,8 @@
   <!-- プロフィールヘッダー -->
   <header class="profile-header">
     <div class="profile-avatar">🎺</div>
-    <h1 class="main-title" style="margin-bottom: 12px;">なめがわブラス・ラボ</h1>
-    <h2 style="margin: 0 0 4px; font-size: 1rem; color: var(--text-muted); font-weight: 700;">in</h2>
+    <h1 class="main-title" style="margin-bottom: 8px;">なめがわブラス・ラボ</h1>
+    <h2 style="margin: 0 0 8px; font-size: 1rem; color: var(--text-muted); font-weight: 700;">in</h2>
     <a class="school-title" href="lesson/">🎺kazooささきトランペット教室<span class="school-link-arrow" aria-hidden="true">→</span></a>
     <div class="tagline" style="margin: 16px 0 18px;">音を運び、夢を響かせる</div>
     <h2 class="section-title" style="margin-top: 8px; margin-bottom: 4px;">プロフィール・あいさつ</h2>
@@ -1500,7 +1512,10 @@
       <section class="updates-section" id="updates-section">
         <div class="updates-card">
           <div class="updates-header">
-            <div class="updates-title">📢 お知らせ・つぶやき・お役立ち情報</div>
+            <div class="updates-title">
+              <span class="updates-title-desktop">📢 お知らせ・つぶやき・お役立ち情報</span>
+              <span class="updates-title-mobile">📢 お知らせ・活動情報</span>
+            </div>
             <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
           </div>
           <div class="editor-panel" id="editor-panel" hidden>
