@@ -15,6 +15,7 @@ var HEADERS = [
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
+var SCRIPT_VERSION = "2026-08-12-admin-v1";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -40,11 +41,19 @@ function doPost(event) {
       return jsonResponse({ ok: false, error: "Unauthorized" });
     }
 
+    var action = String(data.action || "create").toLowerCase();
+    if (action === "health") {
+      return jsonResponse({
+        ok: true,
+        version: SCRIPT_VERSION,
+        capabilities: ["list", "update", "delete", "upsert_slot_status_range"]
+      });
+    }
+
     lock.waitLock(10000);
-  lockAcquired = true;
+    lockAcquired = true;
     var sheet = getReservationSheet();
     var slotSheet = getSlotStatusSheet();
-    var action = String(data.action || "create").toLowerCase();
     if (action === "create") {
       var now = new Date();
       var duplicate = findDuplicateReservation(sheet, data, now);

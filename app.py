@@ -715,6 +715,53 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
                 503,
             )
 
+    @app.get("/api/lesson-admin-health")
+    def lesson_admin_health():
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="GET, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "Apps Scriptの接続設定が不足しています。"},
+                503,
+            )
+
+        required_capabilities = {"list", "update", "delete", "upsert_slot_status_range"}
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {},
+                action="health",
+            )
+            capabilities = set(result.get("capabilities", []))
+            if not required_capabilities.issubset(capabilities):
+                raise LessonReservationDeliveryError("OUTDATED_DEPLOYMENT")
+            return lesson_reservation_json(
+                {
+                    "ready": True,
+                    "version": result.get("version", ""),
+                },
+                200,
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Apps Script admin deployment is unavailable or outdated")
+            return lesson_reservation_json(
+                {
+                    "error": "Apps Scriptが古いデプロイです。Code.gsを新しいバージョンで再デプロイし、RenderのGOOGLE_APPS_SCRIPT_URLを最新の/exec URLへ更新してください。"
+                },
+                503,
+            )
+
     @app.route("/api/lesson-slot-statuses", methods=["GET", "OPTIONS"])
     def list_lesson_slot_statuses():
         if request.method == "OPTIONS":

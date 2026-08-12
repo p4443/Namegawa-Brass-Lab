@@ -405,7 +405,7 @@
     }
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
-      try { await requestApi("/api/editor", { headers: adminHeaders() }); await loadReservations(); dashboard.hidden = false; event.currentTarget.hidden = true; adminStatus.textContent = "ログインしました。"; }
+      try { await requestApi("/api/editor", { headers: adminHeaders() }); await requestApi("/api/lesson-admin-health", { headers: adminHeaders(), timeoutMs: 60000 }); await loadReservations(); dashboard.hidden = false; event.currentTarget.hidden = true; adminStatus.textContent = "ログインしました。"; }
       catch (error) { adminPassword = ""; adminStatus.textContent = error.message; }
     });
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {

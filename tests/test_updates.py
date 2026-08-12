@@ -273,6 +273,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="admin-login-form"', page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
+        self.assertIn("api/lesson-admin-health", page)
         self.assertIn('summary.textContent = scheduleReady ?', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
@@ -292,6 +293,49 @@ class UpdatesTest(unittest.TestCase):
             response = client.get("/api/lesson-reservations")
 
         self.assertEqual(response.status_code, 401)
+
+    def test_lesson_admin_health_requires_current_apps_script_deployment(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "version": "2026-08-12-admin-v1",
+                "capabilities": ["list", "update", "delete", "upsert_slot_status_range"],
+            }
+            response = client.get("/api/lesson-admin-health", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["ready"])
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "health")
+
+    def test_lesson_admin_health_rejects_outdated_apps_script_deployment(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            side_effect=LessonReservationDeliveryError("Unsupported action"),
+        ):
+            response = client.get("/api/lesson-admin-health", headers=headers)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("古いデプロイ", response.json["error"])
 
     def test_lesson_reservation_list_returns_admin_data(self):
         client = create_app().test_client()
