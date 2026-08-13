@@ -34,6 +34,38 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 初回接続時にテーブルが自動作成され、`data/updates.txt`の既存情報が取り込まれます。以後の追加・変更・削除はデータベースへ保存されます。
 
+## 練習アプリのStripe販売
+
+教室ページではWeb版を無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は初期値OFFで、教室ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
+
+1. Stripe Dashboardで商品を作成し、1回払い980円の価格を登録します。
+2. 発行された`price_`から始まるPrice IDを控えます。
+3. StripeのWebhookへ`https://公開APIのドメイン/api/store/webhook`を登録し、`checkout.session.completed`を購読します。
+4. RenderのEnvironmentへ次の値を登録して再デプロイします。
+
+```text
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_METRONOME_PRICE_ID=price_...
+DOWNLOAD_TOKEN_SECRET=十分に長いランダム文字列
+METRONOME_PRICE_YEN=980
+PUBLIC_SITE_URL=https://ホームページの公開ドメイン
+```
+
+`DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
+
+```bash
+python -c 'import secrets; print(secrets.token_urlsafe(48))'
+```
+
+商品ZIPは[build_product.py](build_product.py)で生成され、Dockerビルド時にも自動更新されます。
+
+```bash
+.venv/bin/python build_product.py
+```
+
+デプロイ後は販売OFFのまま、教室ページでWeb版が動くことを確認します。その後「管理者用：販売設定」を開き、編集用パスワードを入力して販売ONへ切り替えます。Stripeのテストモードではテスト用カードで決済し、教室ページへ戻った後にダウンロードボタンが表示されることを確認してください。
+
 ## レッスン予約をGoogleスプレッドシートへ保存する
 
 教室ページのフッターから送信された予約は、Flaskを経由してGoogle Apps Scriptへ送られます。

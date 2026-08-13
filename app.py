@@ -14,12 +14,18 @@ from urllib.parse import urlparse
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, render_template, request, send_from_directory
+from flask import Flask, jsonify, make_response, render_template, request, send_file, send_from_directory
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
+STORE_FILE = BASE_DIR / "data" / "store.json"
+PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
+PRODUCT_ID = "trumpet-metronome"
+PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
+PRODUCT_PRICE_YEN = 980
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
     re.IGNORECASE,
@@ -219,6 +225,100 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                         for item in seed_updates
                     ],
                 )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS store_settings (
+                    product_id TEXT PRIMARY KEY,
+                    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cursor.execute(
+                """
+                INSERT INTO store_settings (product_id, enabled)
+                VALUES (%s, FALSE)
+                ON CONFLICT (product_id) DO NOTHING
+                """,
+                (PRODUCT_ID,),
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS stripe_events (
+                    event_id TEXT PRIMARY KEY,
+                    event_type TEXT NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+
+def load_store_settings(path=STORE_FILE):
+    try:
+        payload = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError, OSError):
+        return {"enabled": False}
+    return {"enabled": payload.get("enabled") is True}
+
+
+def save_store_settings(enabled, path=STORE_FILE):
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = path.with_name(f".{path.name}.lock")
+    with lock_path.open("a", encoding="utf-8") as lock_file:
+        fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
+        try:
+            with tempfile.NamedTemporaryFile(
+                "w", encoding="utf-8", dir=path.parent, delete=False
+            ) as temporary_file:
+                json.dump({"enabled": bool(enabled)}, temporary_file, ensure_ascii=False)
+                temporary_file.write("\n")
+                temporary_path = Path(temporary_file.name)
+            os.replace(temporary_path, path)
+        finally:
+            fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+
+
+def load_database_store_settings(database_url):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT enabled FROM store_settings WHERE product_id = %s",
+                (PRODUCT_ID,),
+            )
+            row = cursor.fetchone()
+    return {"enabled": bool(row[0]) if row else False}
+
+
+def save_database_store_settings(database_url, enabled):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO store_settings (product_id, enabled, updated_at)
+                VALUES (%s, %s, CURRENT_TIMESTAMP)
+                ON CONFLICT (product_id) DO UPDATE
+                SET enabled = EXCLUDED.enabled, updated_at = CURRENT_TIMESTAMP
+                """,
+                (PRODUCT_ID, bool(enabled)),
+            )
+
+
+def record_stripe_event(database_url, event_id, event_type):
+    if not database_url:
+        return True
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO stripe_events (event_id, event_type)
+                VALUES (%s, %s)
+                ON CONFLICT (event_id) DO NOTHING
+                RETURNING event_id
+                """,
+                (event_id, event_type),
+            )
+            return cursor.fetchone() is not None
 
 
 def load_database_updates(database_url):
@@ -569,7 +669,12 @@ def update_file(mutator, path=UPDATES_FILE):
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def create_app(updates_file=UPDATES_FILE, database_url=None):
+def create_app(
+    updates_file=UPDATES_FILE,
+    database_url=None,
+    store_file=STORE_FILE,
+    product_file=PRODUCT_FILE,
+):
     app = Flask(__name__, template_folder=".", static_folder=None)
     configured_database_url = database_url or os.environ.get("DATABASE_URL", "")
     if configured_database_url:
@@ -591,10 +696,76 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         response.status_code = status_code
         return with_lesson_reservation_cors(response)
 
+    def with_store_cors(response, methods="GET, POST, PUT, OPTIONS"):
+        response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = methods
+        response.headers["Access-Control-Allow-Headers"] = (
+            "Content-Type, X-Editor-Password, Stripe-Signature"
+        )
+        response.headers["Access-Control-Max-Age"] = "600"
+        return response
+
+    def store_json(payload, status_code=200):
+        response = jsonify(payload)
+        response.status_code = status_code
+        response.headers["Cache-Control"] = "no-store"
+        return with_store_cors(response)
+
     def get_updates():
         if configured_database_url:
             return load_database_updates(configured_database_url)
         return load_updates(updates_file)
+
+    def get_store_settings():
+        if configured_database_url:
+            return load_database_store_settings(configured_database_url)
+        return load_store_settings(store_file)
+
+    def set_store_enabled(enabled):
+        if configured_database_url:
+            save_database_store_settings(configured_database_url, enabled)
+        else:
+            save_store_settings(enabled, store_file)
+
+    def stripe_module():
+        import stripe
+
+        stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+        return stripe
+
+    def stripe_value(value, key, default=None):
+        if isinstance(value, dict):
+            return value.get(key, default)
+        return getattr(value, key, default)
+
+    def download_serializer():
+        secret = os.environ.get("DOWNLOAD_TOKEN_SECRET", "").strip()
+        if not secret:
+            return None
+        return URLSafeTimedSerializer(secret, salt="metronome-download")
+
+    def store_configuration():
+        price_text = os.environ.get("METRONOME_PRICE_YEN", str(PRODUCT_PRICE_YEN))
+        try:
+            price_yen = max(0, int(price_text))
+        except ValueError:
+            price_yen = PRODUCT_PRICE_YEN
+        required = {
+            "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", "").strip(),
+            "STRIPE_WEBHOOK_SECRET": os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip(),
+            "STRIPE_METRONOME_PRICE_ID": os.environ.get(
+                "STRIPE_METRONOME_PRICE_ID", ""
+            ).strip(),
+            "DOWNLOAD_TOKEN_SECRET": os.environ.get(
+                "DOWNLOAD_TOKEN_SECRET", ""
+            ).strip(),
+        }
+        return {
+            "price_yen": price_yen,
+            "ready": all(required.values()) and Path(product_file).is_file(),
+            "missing": [name for name, value in required.items() if not value]
+            + ([] if Path(product_file).is_file() else ["PRODUCT_FILE"]),
+        }
 
     def require_editor():
         configured_password = os.environ.get("EDITOR_PASSWORD", "")
@@ -634,6 +805,143 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
         response.headers["Cache-Control"] = "no-store"
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
+
+    @app.route("/api/store/product", methods=["GET", "PUT", "OPTIONS"])
+    def store_product():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if request.method == "PUT":
+            error = require_editor()
+            if error:
+                response, status_code = error
+                response.status_code = status_code
+                return with_store_cors(response)
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("enabled"), bool
+            ):
+                return store_json({"error": "販売状態を指定してください。"}, 400)
+            set_store_enabled(payload["enabled"])
+
+        settings = get_store_settings()
+        configuration = store_configuration()
+        return store_json(
+            {
+                "product_id": PRODUCT_ID,
+                "name": PRODUCT_NAME,
+                "price_yen": configuration["price_yen"],
+                "enabled": settings["enabled"],
+                "checkout_available": settings["enabled"] and configuration["ready"],
+            }
+        )
+
+    @app.route("/api/store/checkout", methods=["POST", "OPTIONS"])
+    def create_store_checkout():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if not get_store_settings()["enabled"]:
+            return store_json({"error": "現在販売を停止しています。"}, 403)
+        configuration = store_configuration()
+        if not configuration["ready"]:
+            app.logger.error(
+                "Store configuration is incomplete: %s", configuration["missing"]
+            )
+            return store_json({"error": "決済機能を準備中です。"}, 503)
+
+        site_url = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
+        if not site_url:
+            site_url = request.url_root.rstrip("/")
+        try:
+            checkout = stripe_module().checkout.Session.create(
+                mode="payment",
+                line_items=[
+                    {
+                        "price": os.environ["STRIPE_METRONOME_PRICE_ID"],
+                        "quantity": 1,
+                    }
+                ],
+                metadata={"product_id": PRODUCT_ID},
+                success_url=(
+                    f"{site_url}/lesson/?purchase=success"
+                    "&session_id={CHECKOUT_SESSION_ID}#practice-apps-title"
+                ),
+                cancel_url=(
+                    f"{site_url}/lesson/?purchase=cancelled#practice-apps-title"
+                ),
+            )
+        except Exception:
+            app.logger.exception("Stripe Checkout session creation failed")
+            return store_json({"error": "決済画面を開始できませんでした。"}, 502)
+        return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
+
+    @app.post("/api/store/webhook")
+    def stripe_webhook():
+        webhook_secret = os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip()
+        if not webhook_secret:
+            return jsonify({"error": "Webhookが設定されていません。"}), 503
+        try:
+            event = stripe_module().Webhook.construct_event(
+                request.get_data(),
+                request.headers.get("Stripe-Signature", ""),
+                webhook_secret,
+            )
+        except (ValueError, Exception) as exc:
+            app.logger.warning("Stripe webhook rejected: %s", exc)
+            return jsonify({"error": "Webhook署名を確認できません。"}), 400
+
+        event_id = stripe_value(event, "id", "")
+        event_type = stripe_value(event, "type", "unknown")
+        if event_id:
+            record_stripe_event(configured_database_url, event_id, event_type)
+        return jsonify({"received": True})
+
+    @app.route("/api/store/download-link", methods=["POST", "OPTIONS"])
+    def create_download_link():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        payload = request.get_json(silent=True)
+        session_id = str(payload.get("session_id", "")).strip() if isinstance(payload, dict) else ""
+        if not session_id.startswith("cs_"):
+            return store_json({"error": "決済情報が正しくありません。"}, 400)
+        serializer = download_serializer()
+        if serializer is None or not Path(product_file).is_file():
+            return store_json({"error": "ダウンロードを準備中です。"}, 503)
+        try:
+            checkout = stripe_module().checkout.Session.retrieve(session_id)
+        except Exception:
+            app.logger.exception("Stripe Checkout session retrieval failed")
+            return store_json({"error": "決済情報を確認できませんでした。"}, 502)
+        metadata = stripe_value(checkout, "metadata", {}) or {}
+        product_id = stripe_value(metadata, "product_id", "")
+        if (
+            stripe_value(checkout, "payment_status") != "paid"
+            or product_id != PRODUCT_ID
+        ):
+            return store_json({"error": "支払いの完了を確認できません。"}, 403)
+
+        token = serializer.dumps({"product_id": PRODUCT_ID, "session_id": session_id})
+        download_url = f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+        return store_json({"download_url": download_url, "expires_in": 86400})
+
+    @app.get("/api/store/download/<token>")
+    def download_product(token):
+        serializer = download_serializer()
+        if serializer is None:
+            return jsonify({"error": "ダウンロードを準備中です。"}), 503
+        try:
+            payload = serializer.loads(token, max_age=86400)
+        except SignatureExpired:
+            return jsonify({"error": "ダウンロード期限が切れました。"}), 410
+        except BadSignature:
+            return jsonify({"error": "ダウンロードURLが正しくありません。"}), 403
+        if payload.get("product_id") != PRODUCT_ID or not Path(product_file).is_file():
+            return jsonify({"error": "商品が見つかりません。"}), 404
+        return send_file(
+            product_file,
+            as_attachment=True,
+            download_name="trumpet-practice-metronome.zip",
+            mimetype="application/zip",
+        )
 
     @app.route("/api/lesson-reservations", methods=["POST", "OPTIONS"])
     def create_lesson_reservation():
@@ -1155,6 +1463,11 @@ def create_app(updates_file=UPDATES_FILE, database_url=None):
     @app.get("/<any(data,pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):
         return send_from_directory(BASE_DIR / directory, filename)
+
+    @app.get("/music%20App/<path:filename>")
+    @app.get("/music App/<path:filename>")
+    def music_app_file(filename):
+        return send_from_directory(BASE_DIR / "music App", filename)
 
     return app
 

@@ -221,6 +221,227 @@
       font-size: 1.5rem;
     }
 
+    .app-section-copy {
+      margin: -8px 0 16px;
+      color: var(--muted);
+      font-size: 0.88rem;
+    }
+
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .app-card {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(11, 37, 69, 0.06);
+    }
+
+    .app-card-header {
+      display: flex;
+      min-height: 64px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .app-card-title {
+      min-width: 0;
+    }
+
+    .app-card-title strong,
+    .app-card-title span {
+      display: block;
+    }
+
+    .app-card-title strong {
+      color: var(--navy);
+      font-size: 0.92rem;
+    }
+
+    .app-card-title span {
+      color: var(--muted);
+      font-size: 0.74rem;
+    }
+
+    .app-open-link {
+      display: inline-flex;
+      min-width: 38px;
+      min-height: 38px;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 auto;
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--navy);
+      font-size: 1rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .app-open-link:hover,
+    .app-open-link:focus-visible {
+      background: var(--blue);
+    }
+
+    .app-window {
+      display: block;
+      width: 100%;
+      height: 560px;
+      border: 0;
+      background: #121218;
+    }
+
+    .app-store {
+      display: grid;
+      gap: 10px;
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      background: #f7f9fc;
+    }
+
+    .app-store-main {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .app-store-copy strong,
+    .app-store-copy span {
+      display: block;
+    }
+
+    .app-store-copy strong {
+      color: var(--navy);
+      font-size: 0.9rem;
+    }
+
+    .app-store-copy span,
+    .app-store-status,
+    .app-sales-admin {
+      color: var(--muted);
+      font-size: 0.76rem;
+    }
+
+    .app-store-button {
+      min-height: 40px;
+      padding: 8px 14px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--navy);
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 800;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .app-store-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .app-download-link {
+      display: inline-flex;
+      min-height: 40px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--gold-dark);
+      font-size: 0.8rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .app-store-status {
+      min-height: 1.4em;
+      margin: 0;
+    }
+
+    .app-sales-admin {
+      padding-top: 8px;
+      border-top: 1px solid var(--line);
+    }
+
+    .app-sales-admin summary {
+      cursor: pointer;
+      font-weight: 700;
+    }
+
+    .app-sales-controls {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .app-sales-controls input[type="password"] {
+      min-width: 0;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      font: inherit;
+    }
+
+    .app-sales-toggle {
+      display: inline-flex;
+      min-height: 38px;
+      align-items: center;
+      gap: 6px;
+      color: var(--navy);
+      font-weight: 800;
+    }
+
+    .app-sales-save {
+      grid-column: 1 / -1;
+      min-height: 40px;
+      border: 0;
+      border-radius: 6px;
+      color: #fff;
+      background: var(--navy);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .app-sales-save:disabled {
+      cursor: wait;
+      opacity: .65;
+    }
+
+    .app-card-placeholder {
+      display: grid;
+      min-height: 624px;
+      padding: 28px;
+      place-content: center;
+      border-style: dashed;
+      background: #f7f9fc;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .app-card-placeholder strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--navy);
+      font-size: 0.92rem;
+    }
+
+    .app-card-placeholder span {
+      font-size: 0.78rem;
+    }
+
     .price-list {
       display: grid;
       gap: 12px;
@@ -615,6 +836,23 @@
         gap: 6px;
       }
 
+      .app-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .app-card-placeholder {
+        min-height: 180px;
+      }
+
+      .app-store-main {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .app-store-button {
+        width: 100%;
+      }
+
       .reservation {
         grid-template-columns: 1fr;
         gap: 22px;
@@ -748,6 +986,48 @@
       </ul>
     </section>
 
+    <section class="section" aria-labelledby="practice-apps-title">
+      <h2 class="section-title" id="practice-apps-title">トランペット練習専用アプリ</h2>
+      <p class="app-section-copy">レッスンと毎日の基礎練習に使えるツールです。画面内でそのまま操作できます。</p>
+      <div class="app-grid">
+        <article class="app-card">
+          <header class="app-card-header">
+            <div class="app-card-title">
+              <strong>トランペット練習メトロノーム</strong>
+              <span>ブレストレーニング・可変拍子・連符分割・8種類の音色</span>
+            </div>
+            <a class="app-open-link" href="../music%20App/index.html" target="_blank" rel="noopener" aria-label="ブレス練習メトロノームを別画面で開く" title="別画面で開く">↗</a>
+          </header>
+          <iframe class="app-window" src="../music%20App/index.html" title="ブレス練習メトロノーム" loading="lazy" allow="autoplay"></iframe>
+          <footer class="app-store" id="app-store">
+            <div class="app-store-main">
+              <div class="app-store-copy">
+                <strong id="app-store-title">オフライン版</strong>
+                <span>決済後、端末へダウンロードして利用できます。</span>
+              </div>
+              <button class="app-store-button" id="app-purchase-button" type="button" disabled>販売状況を確認中</button>
+            </div>
+            <a class="app-download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
+            <p class="app-store-status" id="app-store-status" role="status" aria-live="polite"></p>
+            <details class="app-sales-admin">
+              <summary>管理者用：販売設定</summary>
+              <form class="app-sales-controls" id="app-sales-form" novalidate>
+                <input id="app-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                <label class="app-sales-toggle"><input id="app-sales-enabled" type="checkbox">販売ON</label>
+                <button class="app-sales-save" id="app-sales-save" type="submit">設定を保存</button>
+              </form>
+            </details>
+          </footer>
+        </article>
+        <div class="app-card app-card-placeholder" aria-label="今後追加する練習アプリ用スペース">
+          <div>
+            <strong>COMING SOON</strong>
+            <span>新しい練習アプリを追加予定です</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <section class="section" aria-labelledby="price-title">
       <h2 class="section-title" id="price-title">レッスン料金</h2>
       <div class="price-list">
@@ -809,9 +1089,10 @@
         <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
           <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜08:00</span><span class="reservation-time-range">20:30〜21:00</span></dd></div>
           <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜11:00</span></dd></div>
-          <div><dt>金曜日</dt><dd><span class="reservation-time-range">06:45〜16:00</span><span>それ以外：要相談</span></dd></div>
-          <div><dt>土・日</dt><dd><span>要相談</span></dd></div>
+          <div><dt>金曜日</dt><dd><span>6:45〜16:00／それ以外は要相談</span></dd></div>
+          <div><dt>土・日</dt><dd><span>土・日：要相談</span></dd></div>
         </dl>
+        <p class="price-note">体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
         <p>体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
       </div>
       <form class="reservation-form" id="reservation-form">
@@ -873,6 +1154,7 @@
     const reservationSubmit = reservationForm.querySelector("button[type='submit']");
     const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
     const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
+    const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";
 
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
@@ -883,6 +1165,124 @@
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
+    const appPurchaseButton = document.getElementById("app-purchase-button");
+    const appDownloadLink = document.getElementById("app-download-link");
+    const appStoreStatus = document.getElementById("app-store-status");
+    const appSalesForm = document.getElementById("app-sales-form");
+    const appSalesPassword = document.getElementById("app-sales-password");
+    const appSalesEnabled = document.getElementById("app-sales-enabled");
+    const appSalesSave = document.getElementById("app-sales-save");
+
+    const storeApiCandidates = (path) => buildApiCandidates(
+      `${renderStoreBase}/${path}`,
+      `api/store/${path}`,
+    );
+
+    async function requestStore(path, options = {}) {
+      let lastError = null;
+      for (const endpoint of storeApiCandidates(path)) {
+        try {
+          const response = await fetch(endpoint, options);
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          if (!contentType.includes("application/json")) continue;
+          const result = await response.json();
+          if (response.ok) return result;
+          if (response.status === 404 || response.status === 405) continue;
+          throw new Error(result.error || "販売サーバーへ接続できませんでした。");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("販売サーバーへ接続できませんでした。");
+    }
+
+    function renderStoreProduct(product) {
+      appSalesEnabled.checked = product.enabled;
+      appPurchaseButton.disabled = !product.checkout_available;
+      appPurchaseButton.textContent = product.enabled
+        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円で購入`
+        : "オフライン版 販売停止中";
+      appStoreStatus.textContent = product.enabled && !product.checkout_available
+        ? "決済機能を準備中です。Web版は引き続き利用できます。"
+        : "Web版は無料で全機能を利用できます。";
+    }
+
+    async function loadStoreProduct() {
+      try {
+        renderStoreProduct(await requestStore("product"));
+      } catch (error) {
+        appPurchaseButton.textContent = "オフライン版 販売停止中";
+        appStoreStatus.textContent = error.message;
+      }
+    }
+
+    appPurchaseButton.addEventListener("click", async () => {
+      appPurchaseButton.disabled = true;
+      appStoreStatus.textContent = "安全な決済画面を準備しています…";
+      try {
+        const result = await requestStore("checkout", { method: "POST" });
+        location.href = result.checkout_url;
+      } catch (error) {
+        appStoreStatus.textContent = error.message;
+        await loadStoreProduct();
+      }
+    });
+
+    appSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = appSalesPassword.value;
+      if (!password) {
+        appStoreStatus.textContent = "編集用パスワードを入力してください。";
+        appSalesPassword.focus();
+        return;
+      }
+      const requestedState = appSalesEnabled.checked;
+      appSalesEnabled.disabled = true;
+      appSalesSave.disabled = true;
+      appStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestStore("product", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Editor-Password": password,
+          },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderStoreProduct(product);
+        appSalesPassword.value = "";
+        appStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        appSalesEnabled.checked = !requestedState;
+        appStoreStatus.textContent = error.message;
+      } finally {
+        appSalesEnabled.disabled = false;
+        appSalesSave.disabled = false;
+      }
+    });
+
+    async function applyPurchaseResult() {
+      const parameters = new URLSearchParams(location.search);
+      if (parameters.get("purchase") === "cancelled") {
+        appStoreStatus.textContent = "決済はキャンセルされました。";
+        return;
+      }
+      const sessionId = parameters.get("session_id");
+      if (parameters.get("purchase") !== "success" || !sessionId) return;
+      appStoreStatus.textContent = "お支払いを確認しています…";
+      try {
+        const result = await requestStore("download-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+        appDownloadLink.href = result.download_url;
+        appDownloadLink.hidden = false;
+        appStoreStatus.textContent = "お支払いを確認しました。リンクは24時間有効です。";
+      } catch (error) {
+        appStoreStatus.textContent = error.message;
+      }
+    }
     let slotRequestId = 0;
     const slotStatusCache = new Map();
     const slotStatusCacheDuration = 30 * 1000;
@@ -1255,6 +1655,8 @@
 
     preloadSlotStatuses();
     applyRequestedSlot();
+    loadStoreProduct();
+    applyPurchaseResult();
   </script>
 </body>
 </html>

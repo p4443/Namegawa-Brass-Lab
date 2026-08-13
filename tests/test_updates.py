@@ -449,14 +449,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
 
-    def test_lesson_page_does_not_show_admin_panel(self):
+    def test_lesson_page_only_shows_store_admin_controls(self):
         client = create_app().test_client()
 
         response = client.get("/lesson/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertNotIn("管理者用", page)
+        self.assertIn("管理者用：販売設定", page)
+        self.assertIn('id="app-sales-form"', page)
+        self.assertIn('id="app-sales-password"', page)
+        self.assertIn('id="app-sales-enabled"', page)
+        self.assertIn('id="app-sales-save"', page)
+        self.assertIn('appSalesForm.addEventListener("submit"', page)
+        self.assertIn('"X-Editor-Password": password', page)
+        self.assertIn("編集用パスワードを入力してください。", page)
         self.assertNotIn("slot-admin", page)
 
     def test_schedule_page_shares_public_calendar_and_admin_panel(self):
@@ -484,7 +491,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("statusSelect.value = result.status || statusSelect.value", page)
         self.assertIn("予約状態を「${statusSelect.value}」へ更新しました。", page)
         self.assertIn("予約は削除済みです。一覧の再読み込みに失敗しました", page)
-        self.assertIn('summary.textContent = scheduleReady ?', page)
+        self.assertIn('summary.textContent = hasLessonType', page)
+        self.assertIn('available ? `空き ${available}` : "満席"', page)
+        self.assertIn('(total ? "受付日" : "休み")', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
         self.assertIn("controller.abort(), timeoutMs", page)
@@ -502,7 +511,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("preferred_time: timeInput.value", page)
         self.assertIn('durationInput.step = "15"', page)
         self.assertIn("payload.duration_minutes = Number(durationInput.value)", page)
-        self.assertIn("グループは開始時刻・所要時間ともに個別調整", page)
+        self.assertIn("グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。", page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
@@ -1186,22 +1195,24 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertEqual(page.count('href="lesson/"'), 2)
+        self.assertEqual(page.count('href="lesson/"'), 3)
         self.assertNotIn('href="/lesson/"', page)
         self.assertIn("failedLoginAttempts >= 3", page)
         self.assertIn("closeEditorPanel();", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
         self.assertNotIn('class="schedule-callout"', page)
 
-    def test_index_navigation_can_be_collapsed(self):
+    def test_index_uses_sticky_page_navigation(self):
         client = create_app().test_client()
 
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('<details class="global-nav-disclosure">', page)
-        self.assertIn('<summary class="global-nav-toggle">メニュー</summary>', page)
+        self.assertIn('<nav class="page-nav" aria-label="サイト内ページナビ">', page)
+        self.assertNotIn('<details class="global-nav-disclosure">', page)
+        page_nav_css = page.split(".page-nav {", 1)[1].split("}", 1)[0]
+        self.assertIn("position: sticky", page_nav_css)
 
     def test_updates_section_expands_to_image_height(self):
         client = create_app().test_client()
@@ -1214,7 +1225,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("max-height: none", updates_list_css)
         self.assertIn("overflow-y: visible", updates_list_css)
 
-    def test_header_balances_brand_and_menu_on_opposite_sides(self):
+    def test_header_matches_lesson_page_navigation_system(self):
         client = create_app().test_client()
 
         response = client.get("/")
@@ -1223,12 +1234,11 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         header_css = page.split(".site-header-inner {", 1)[1].split("}", 1)[0]
         brand_css = page.split(".site-brand {", 1)[1].split("}", 1)[0]
-        disclosure_css = page.split(".global-nav-disclosure {", 1)[1].split("}", 1)[0]
-        nav_css = page.split(".global-nav-disclosure nav {", 1)[1].split("}", 1)[0]
-        self.assertIn("grid-template-columns: minmax(0, 1fr) auto", header_css)
+        nav_css = page.split(".page-nav {", 1)[1].split("}", 1)[0]
+        self.assertIn("justify-content: space-between", header_css)
         self.assertIn("justify-self: start", brand_css)
-        self.assertIn("justify-self: end", disclosure_css)
-        self.assertIn("position: absolute", nav_css)
+        self.assertIn("position: sticky", nav_css)
+        self.assertIn('class="site-header-link" href="lesson/"', page)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>トランペット練習メトロノーム（吸う・吐く／一定速度モード対応）</title>
+  <style>
+    :root {
+      --bg-color: #121218;
+      --card-bg: #1e1e2a;
+      --primary: #f39c12;
+      --inhale: #2ecc71;  /* 吸う：グリーン */
+      --exhale: #e74c3c;  /* 吐く：レッド */
+      --accent: #9b59b6;  /* ゴール：パープル/ゴールド */
+      --text: #ffffff;
+      --text-dim: #a0a0b0;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+
+    .container {
+      background-color: var(--card-bg);
+      border-radius: 20px;
+      padding: 25px;
+      width: 100%;
+      max-width: 520px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 1rem;
+      color: var(--primary);
+      margin-bottom: 15px;
+      letter-spacing: 0;
+    }
+
+    /* 呼吸ナビ・ビジュアル表示エリア */
+    .display-panel {
+      background: #101016;
+      border-radius: 16px;
+      padding: 20px 15px;
+      margin-bottom: 20px;
+      border: 3px solid #333344;
+      transition: all 0.15s ease;
+      position: relative;
+    }
+
+    .display-panel.inhale-state {
+      border-color: var(--inhale);
+      box-shadow: 0 0 25px rgba(46, 204, 113, 0.4);
+    }
+
+    .display-panel.exhale-state {
+      border-color: var(--exhale);
+      box-shadow: 0 0 25px rgba(231, 76, 60, 0.4);
+    }
+
+    .action-badge {
+      font-size: 1.8rem;
+      font-weight: 900;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+    }
+
+    .action-badge.inhale { color: var(--inhale); }
+    .action-badge.exhale { color: var(--exhale); }
+    .action-badge.goal { color: var(--accent); }
+    .action-badge.beat-start { color: var(--primary); }
+    .action-badge.sub-beat { color: var(--text-dim); }
+
+    .beat-counter {
+      font-size: 3.8rem;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--text);
+      margin: 5px 0;
+    }
+
+    .beat-counter .total {
+      font-size: 1.8rem;
+      color: var(--text-dim);
+    }
+
+    .beat-counter.normal-counter {
+      font-size: 3rem;
+    }
+
+    .beat-counter.normal-counter .total {
+      font-size: 1.35rem;
+    }
+
+    .progress-text {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-top: 8px;
+    }
+
+    /* コントロールエリア */
+    .control-group {
+      margin-bottom: 15px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 6px;
+    }
+
+    .bpm-control {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .bpm-display {
+      font-size: 1.8rem;
+      font-weight: bold;
+      width: 75px;
+      text-align: right;
+      color: var(--primary);
+    }
+
+    input[type="range"] {
+      flex: 1;
+      height: 8px;
+      border-radius: 4px;
+      background: #333344;
+      outline: none;
+      accent-color: var(--primary);
+    }
+
+    select, input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      background: #101016;
+      color: var(--text);
+      border: 1px solid #333344;
+      font-size: 0.95rem;
+      outline: none;
+    }
+
+    /* 変速練習カード */
+    .tempo-card {
+      background: #151520;
+      border: 1px solid #333348;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+    }
+
+    .tempo-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .tempo-header span {
+      font-size: 0.9rem;
+      font-weight: bold;
+      color: var(--text);
+    }
+
+    /* トグルスイッチ */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+    }
+
+    .switch input {
+      position: absolute;
+      z-index: 1;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .switch input:focus-visible + .slider {
+      outline: 2px solid #ffffff;
+      outline-offset: 3px;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: #333344;
+      transition: .3s;
+      border-radius: 22px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: .3s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider { background-color: var(--primary); }
+    input:checked + .slider:before { transform: translateX(18px); }
+
+    .tempo-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .tempo-grid label { font-size: 0.75rem; }
+
+    .mode-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 15px;
+      margin-bottom: 16px;
+      border: 1px solid #333348;
+      border-radius: 8px;
+      background: #151520;
+      text-align: left;
+    }
+
+    .mode-copy strong,
+    .mode-copy span {
+      display: block;
+    }
+
+    .mode-copy strong {
+      font-size: 0.9rem;
+    }
+
+    .mode-copy span {
+      color: var(--text-dim);
+      font-size: 0.72rem;
+    }
+
+    .normal-settings[hidden],
+    .tempo-card[hidden] {
+      display: none;
+    }
+
+    .meter-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .meter-grid .subdivision-field {
+      grid-column: 1 / -1;
+    }
+
+    .meter-grid label {
+      font-size: 0.75rem;
+    }
+
+    .btn-toggle {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      background: var(--primary);
+      color: #fff;
+      font-size: 1.2rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-toggle:hover { opacity: 0.9; }
+    .btn-toggle:active { transform: scale(0.98); }
+    .btn-toggle.running { background: var(--exhale); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>トランペット練習メトロノーム</h1>
+
+  <div class="mode-card">
+    <div class="mode-copy">
+      <strong id="modeName">ブレストレーニングモード</strong>
+      <span id="modeDescription">呼吸パターンに合わせて練習</span>
+    </div>
+    <label class="switch">
+      <input type="checkbox" id="normalModeToggle" aria-labelledby="modeName">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <!-- 表示エリア -->
+  <div class="display-panel" id="displayPanel">
+    <div class="action-badge inhale" id="actionBadge">吸う (IN)</div>
+    <div class="beat-counter" id="beatCounter">
+      <span id="currentBeat">1</span><span class="total"> / <span id="maxBeat">4</span></span>
+    </div>
+    <div class="progress-text" id="progressText">Step 1/38: 4拍 吸う (1/2回目)</div>
+  </div>
+
+  <!-- TEMPO (BPM) 設定 -->
+  <div class="control-group">
+    <label for="bpmSlider">テンポ（BPM）</label>
+    <div class="bpm-control">
+      <input type="range" id="bpmSlider" min="40" max="180" value="80">
+      <div class="bpm-display" id="bpmVal">80</div>
+    </div>
+  </div>
+
+  <div class="control-group normal-settings" id="normalSettings" hidden>
+    <div class="meter-grid">
+      <div>
+        <label for="meterNumerator">分子（1小節の拍数）</label>
+        <select id="meterNumerator">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4" selected>4</option>
+          <option value="5">5</option>
+          <option value="6">6</option>
+          <option value="7">7</option>
+          <option value="8">8</option>
+          <option value="9">9</option>
+          <option value="10">10</option>
+          <option value="11">11</option>
+          <option value="12">12</option>
+        </select>
+      </div>
+      <div>
+        <label for="meterDenominator">分母（基準音符）</label>
+        <select id="meterDenominator">
+          <option value="2">2分音符</option>
+          <option value="4" selected>4分音符</option>
+          <option value="8">8分音符</option>
+          <option value="16">16分音符</option>
+        </select>
+      </div>
+      <div class="subdivision-field">
+        <label for="subdivisionSelect">1拍内の分割</label>
+        <select id="subdivisionSelect">
+          <option value="1">4分音符（分割なし）</option>
+          <option value="2">8分音符（2分割）</option>
+          <option value="3">3連符</option>
+          <option value="4">16分音符（4分割）</option>
+          <option value="5">5連符</option>
+          <option value="6">6連符</option>
+          <option value="7">7連符</option>
+          <option value="8">8連符</option>
+          <option value="9">9連符</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- 変速練習機能 -->
+  <div class="tempo-card" id="tempoCard">
+    <div class="tempo-header">
+      <span>⚙️ テンポ自動変速モード</span>
+      <label class="switch">
+        <input type="checkbox" id="tempoToggle">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="tempo-grid">
+      <div>
+        <label for="tempoMode">変速タイプ</label>
+        <select id="tempoMode">
+          <option value="accel">🚀 加速 (毎周UP)</option>
+          <option value="ritard">🐌 減速 (毎周DOWN)</option>
+          <option value="wave">🔄 波状 (UP & DOWN)</option>
+        </select>
+      </div>
+      <div>
+        <label for="tempoStep">変化幅 (BPM)</label>
+        <input type="number" id="tempoStep" value="4" min="1" max="20">
+      </div>
+      <div style="grid-column: span 2;">
+        <label for="tempoTarget">目標限界BPM</label>
+        <input type="number" id="tempoTarget" value="130" min="40" max="220">
+      </div>
+    </div>
+  </div>
+
+  <!-- 音色選択（管楽器向け抜ける音色） -->
+  <div class="control-group">
+    <label for="soundSelect">メトロノーム音色（強アンサンブル・大音量対応）</label>
+    <select id="soundSelect">
+      <option value="cut_wood">1. ハイピッチ・ウッドクラック（倍音豊富な木製クリック）</option>
+      <option value="electronic_beep">2. クリスタル・電子アタック（輪郭のハッキリしたビープ）</option>
+      <option value="bright_bell">3. ハイトーン・ブラスベル（管楽器の音を突き抜ける高音）</option>
+      <option value="snare_rim">4. メタル・リムショット（極めて輪郭の鋭いスネア枠音）</option>
+      <option value="piercing_pulse">5. ピアシング・パルス（超高域の鋭い短音）</option>
+      <option value="dual_alarm">6. デュアル・アラーム（二音の警報型クリック）</option>
+      <option value="metal_clave">7. メタル・クラベス（硬質な金属打音）</option>
+      <option value="air_snap">8. エア・スナップ（高域ノイズの瞬間音）</option>
+    </select>
+  </div>
+
+  <!-- スタート/ストップボタン -->
+  <button class="btn-toggle" id="startBtn">ブレストレーニング開始</button>
+</div>
+
+<script>
+  // ブレス練習パターンの全ステップ定義（計38ステップ）
+  const breathPattern = [
+    // 4拍 x2
+    { beats: 4, action: 'in', label: '4拍 吸う', rep: '1/2回目' },
+    { beats: 4, action: 'out', label: '4拍 吐く', rep: '1/2回目' },
+    { beats: 4, action: 'in', label: '4拍 吸う', rep: '2/2回目' },
+    { beats: 4, action: 'out', label: '4拍 吐く', rep: '2/2回目' },
+
+    // 3拍 x2
+    { beats: 3, action: 'in', label: '3拍 吸う', rep: '1/2回目' },
+    { beats: 3, action: 'out', label: '3拍 吐く', rep: '1/2回目' },
+    { beats: 3, action: 'in', label: '3拍 吸う', rep: '2/2回目' },
+    { beats: 3, action: 'out', label: '3拍 吐く', rep: '2/2回目' },
+
+    // 2拍 x2
+    { beats: 2, action: 'in', label: '2拍 吸う', rep: '1/2回目' },
+    { beats: 2, action: 'out', label: '2拍 吐く', rep: '1/2回目' },
+    { beats: 2, action: 'in', label: '2拍 吸う', rep: '2/2回目' },
+    { beats: 2, action: 'out', label: '2拍 吐く', rep: '2/2回目' },
+
+    // 1拍 x2
+    { beats: 1, action: 'in', label: '1拍 吸う', rep: '1/2回目' },
+    { beats: 1, action: 'out', label: '1拍 吐く', rep: '1/2回目' },
+    { beats: 1, action: 'in', label: '1拍 吸う', rep: '2/2回目' },
+    { beats: 1, action: 'out', label: '1拍 吐く', rep: '2/2回目' },
+
+    // 半拍 (0.5拍) x2
+    { beats: 0.5, action: 'in', label: '半拍 吸う', rep: '1/2回目' },
+    { beats: 0.5, action: 'out', label: '半拍 吐く', rep: '1/2回目' },
+    { beats: 0.5, action: 'in', label: '半拍 吸う', rep: '2/2回目' },
+    { beats: 0.5, action: 'out', label: '半拍 吐く', rep: '2/2回目' },
+
+    // 1拍 x2
+    { beats: 1, action: 'in', label: '1拍 吸う', rep: '1/2回目' },
+    { beats: 1, action: 'out', label: '1拍 吐く', rep: '1/2回目' },
+    { beats: 1, action: 'in', label: '1拍 吸う', rep: '2/2回目' },
+    { beats: 1, action: 'out', label: '1拍 吐く', rep: '2/2回目' },
+
+    // 2拍 x2
+    { beats: 2, action: 'in', label: '2拍 吸う', rep: '1/2回目' },
+    { beats: 2, action: 'out', label: '2拍 吐く', rep: '1/2回目' },
+    { beats: 2, action: 'in', label: '2拍 吸う', rep: '2/2回目' },
+    { beats: 2, action: 'out', label: '2拍 吐く', rep: '2/2回目' },
+
+    // 3拍 x2
+    { beats: 3, action: 'in', label: '3拍 吸う', rep: '1/2回目' },
+    { beats: 3, action: 'out', label: '3拍 吐く', rep: '1/2回目' },
+    { beats: 3, action: 'in', label: '3拍 吸う', rep: '2/2回目' },
+    { beats: 3, action: 'out', label: '3拍 吐く', rep: '2/2回目' },
+
+    // 4拍 x2
+    { beats: 4, action: 'in', label: '4拍 吸う', rep: '1/2回目' },
+    { beats: 4, action: 'out', label: '4拍 吐く', rep: '1/2回目' },
+    { beats: 4, action: 'in', label: '4拍 吸う', rep: '2/2回目' },
+    { beats: 4, action: 'out', label: '4拍 吐く', rep: '2/2回目' },
+
+    // ゴール：1拍 吸う・吐く (1回)
+    { beats: 1, action: 'in', label: '🏁 ゴール：1拍 吸う', rep: 'Finish!' },
+    { beats: 1, action: 'out', label: '🏁 ゴール：1拍 吐く', rep: 'Finish!' }
+  ];
+
+  let stepIdx = 0;
+  let currentSubBeat = 1;
+  let isRunning = false;
+  let bpm = 80;
+  let initialBpm = 80;
+  let waveDirection = 1;
+  let normalBeat = 1;
+  let normalSubdivision = 1;
+  let measureCount = 1;
+  let timerId = null;
+  let audioContext = null;
+  let masterGain = null;
+  let outputCompressor = null;
+
+  const bpmSlider = document.getElementById('bpmSlider');
+  const bpmVal = document.getElementById('bpmVal');
+  const normalModeToggle = document.getElementById('normalModeToggle');
+  const modeName = document.getElementById('modeName');
+  const modeDescription = document.getElementById('modeDescription');
+  const normalSettings = document.getElementById('normalSettings');
+  const meterNumerator = document.getElementById('meterNumerator');
+  const meterDenominator = document.getElementById('meterDenominator');
+  const subdivisionSelect = document.getElementById('subdivisionSelect');
+  const tempoCard = document.getElementById('tempoCard');
+  const tempoToggle = document.getElementById('tempoToggle');
+  const tempoMode = document.getElementById('tempoMode');
+  const tempoStep = document.getElementById('tempoStep');
+  const tempoTarget = document.getElementById('tempoTarget');
+  const soundSelect = document.getElementById('soundSelect');
+  const startBtn = document.getElementById('startBtn');
+  const displayPanel = document.getElementById('displayPanel');
+  const actionBadge = document.getElementById('actionBadge');
+  const beatCounter = document.getElementById('beatCounter');
+  const currentBeat = document.getElementById('currentBeat');
+  const maxBeat = document.getElementById('maxBeat');
+  const progressText = document.getElementById('progressText');
+
+  function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+  }
+
+  function readNumber(input, fallback) {
+    const value = Number(input.value);
+    return Number.isFinite(value) ? value : fallback;
+  }
+
+  function formatBeat(value) {
+    return value === 0.5 ? '½' : String(value);
+  }
+
+  function subdivisionLabel(subdivisions) {
+    if (subdivisions === 1) return '4分音符';
+    if (subdivisions === 2) return '8分音符';
+    if (subdivisions === 4) return '16分音符';
+    return `${subdivisions}連符`;
+  }
+
+  function renderStep() {
+    if (normalModeToggle.checked) {
+      const beatsPerMeasure = Number(meterNumerator.value);
+      const beatUnit = Number(meterDenominator.value);
+      const subdivisions = Number(subdivisionSelect.value);
+      displayPanel.classList.remove('inhale-state', 'exhale-state');
+      const isMeasureStart = normalBeat === 1 && normalSubdivision === 1;
+      const isBeatStart = normalSubdivision === 1;
+      actionBadge.className = `action-badge ${isMeasureStart ? 'goal' : isBeatStart ? 'beat-start' : 'sub-beat'}`;
+      actionBadge.textContent = isMeasureStart
+        ? '強拍'
+        : isBeatStart ? '拍' : '分割';
+      beatCounter.classList.add('normal-counter');
+      currentBeat.textContent = normalBeat;
+      maxBeat.textContent = beatsPerMeasure;
+      progressText.textContent = `${measureCount}小節 ｜ ${subdivisionLabel(subdivisions)} ${normalSubdivision}/${subdivisions} ｜ ${beatsPerMeasure}/${beatUnit}拍子`;
+      return;
+    }
+
+    const step = breathPattern[stepIdx];
+    const isGoal = stepIdx >= breathPattern.length - 2;
+
+    beatCounter.classList.remove('normal-counter');
+    displayPanel.classList.toggle('inhale-state', step.action === 'in');
+    displayPanel.classList.toggle('exhale-state', step.action === 'out');
+    actionBadge.className = `action-badge ${isGoal ? 'goal' : step.action === 'in' ? 'inhale' : 'exhale'}`;
+    actionBadge.textContent = isGoal
+      ? (step.action === 'in' ? 'ゴール：吸う' : 'ゴール：吐く')
+      : (step.action === 'in' ? '吸う (IN)' : '吐く (OUT)');
+    currentBeat.textContent = formatBeat(currentSubBeat);
+    maxBeat.textContent = formatBeat(step.beats);
+    progressText.textContent = `Step ${stepIdx + 1}/${breathPattern.length}: ${step.label} (${step.rep})`;
+  }
+
+  function ensureAudio() {
+    if (!audioContext) {
+      const AudioContext = window.AudioContext || window.webkitAudioContext;
+      audioContext = new AudioContext();
+      masterGain = audioContext.createGain();
+      outputCompressor = audioContext.createDynamicsCompressor();
+      masterGain.gain.value = 0.62;
+      outputCompressor.threshold.value = -10;
+      outputCompressor.knee.value = 4;
+      outputCompressor.ratio.value = 12;
+      outputCompressor.attack.value = 0.001;
+      outputCompressor.release.value = 0.08;
+      masterGain.connect(outputCompressor).connect(audioContext.destination);
+    }
+
+    if (audioContext.state === 'suspended') {
+      return audioContext.resume();
+    }
+    return Promise.resolve();
+  }
+
+  function createNoiseBuffer(duration) {
+    const frameCount = Math.ceil(audioContext.sampleRate * duration);
+    const buffer = audioContext.createBuffer(1, frameCount, audioContext.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let index = 0; index < frameCount; index += 1) {
+      data[index] = Math.random() * 2 - 1;
+    }
+    return buffer;
+  }
+
+  function playTone(frequency, duration, type, volume, frequencyEnd = frequency) {
+    const now = audioContext.currentTime;
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = type;
+    oscillator.frequency.setValueAtTime(frequency, now);
+    oscillator.frequency.exponentialRampToValueAtTime(frequencyEnd, now + duration);
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    oscillator.connect(gain).connect(masterGain);
+    oscillator.start(now);
+    oscillator.stop(now + duration);
+  }
+
+  function playNoise(duration, volume, highpassFrequency) {
+    const now = audioContext.currentTime;
+    const source = audioContext.createBufferSource();
+    const filter = audioContext.createBiquadFilter();
+    const gain = audioContext.createGain();
+
+    source.buffer = createNoiseBuffer(duration);
+    filter.type = 'highpass';
+    filter.frequency.value = highpassFrequency;
+    gain.gain.setValueAtTime(volume, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    source.connect(filter).connect(gain).connect(masterGain);
+    source.start(now);
+  }
+
+  function playClick() {
+    if (!audioContext || audioContext.state !== 'running') return;
+
+    const isAccent = normalModeToggle.checked
+      ? normalBeat === 1 && normalSubdivision === 1
+      : currentSubBeat === 1 || currentSubBeat === 0.5;
+    const isBeatStart = normalModeToggle.checked && normalSubdivision === 1;
+    const accentMultiplier = isAccent ? 1 : isBeatStart ? 0.76 : 0.48;
+    switch (soundSelect.value) {
+      case 'electronic_beep':
+        playTone(isAccent ? 1760 : 1320, 0.055, 'sine', 0.5 * accentMultiplier);
+        playTone(isAccent ? 3520 : 2640, 0.028, 'square', 0.14 * accentMultiplier);
+        break;
+      case 'bright_bell':
+        playTone(isAccent ? 2200 : 1760, 0.18, 'sine', 0.42 * accentMultiplier, 2100);
+        playTone(isAccent ? 4400 : 3520, 0.11, 'sine', 0.2 * accentMultiplier, 3300);
+        break;
+      case 'snare_rim':
+        playNoise(0.045, 0.5 * accentMultiplier, 1800);
+        playTone(isAccent ? 2100 : 1650, 0.035, 'square', 0.24 * accentMultiplier, 900);
+        break;
+      case 'piercing_pulse':
+        playTone(isAccent ? 6200 : 5100, 0.026, 'square', 0.38 * accentMultiplier, 4100);
+        playTone(isAccent ? 3100 : 2550, 0.032, 'sine', 0.25 * accentMultiplier, 2050);
+        break;
+      case 'dual_alarm':
+        playTone(isAccent ? 4800 : 3600, 0.048, 'square', 0.3 * accentMultiplier, 3900);
+        playTone(isAccent ? 2900 : 2300, 0.065, 'sawtooth', 0.22 * accentMultiplier, 1800);
+        break;
+      case 'metal_clave':
+        playTone(isAccent ? 3600 : 2850, 0.055, 'triangle', 0.42 * accentMultiplier, 1250);
+        playTone(isAccent ? 7200 : 5700, 0.022, 'square', 0.16 * accentMultiplier, 4300);
+        playNoise(0.018, 0.18 * accentMultiplier, 4200);
+        break;
+      case 'air_snap':
+        playNoise(0.032, 0.64 * accentMultiplier, isAccent ? 5200 : 4200);
+        playTone(isAccent ? 7600 : 6100, 0.018, 'sine', 0.2 * accentMultiplier, 4700);
+        break;
+      default:
+        playNoise(0.028, 0.42 * accentMultiplier, 2400);
+        playTone(isAccent ? 1850 : 1450, 0.032, 'triangle', 0.38 * accentMultiplier, 720);
+    }
+  }
+
+  function applyTempoChange() {
+    if (normalModeToggle.checked || !tempoToggle.checked) return;
+
+    const step = clamp(readNumber(tempoStep, 4), 1, 20);
+    const target = clamp(readNumber(tempoTarget, 130), 40, 220);
+    const mode = tempoMode.value;
+
+    tempoStep.value = step;
+    tempoTarget.value = target;
+    if (mode === 'accel') {
+      bpm = Math.min(bpm + step, Math.max(initialBpm, target));
+    } else if (mode === 'ritard') {
+      bpm = Math.max(bpm - step, Math.min(initialBpm, target));
+    } else {
+      const lowerLimit = Math.min(initialBpm, target);
+      const upperLimit = Math.max(initialBpm, target);
+      bpm += step * waveDirection;
+      if (bpm >= upperLimit || bpm <= lowerLimit) {
+        bpm = clamp(bpm, lowerLimit, upperLimit);
+        waveDirection *= -1;
+      }
+    }
+    bpmVal.textContent = Math.round(bpm);
+  }
+
+  function advancePractice() {
+    if (!isRunning) return;
+
+    if (normalModeToggle.checked) {
+      const beatsPerMeasure = Number(meterNumerator.value);
+      const subdivisions = Number(subdivisionSelect.value);
+      if (normalSubdivision < subdivisions) {
+        normalSubdivision += 1;
+      } else {
+        normalSubdivision = 1;
+        if (normalBeat < beatsPerMeasure) {
+          normalBeat += 1;
+        } else {
+          normalBeat = 1;
+          measureCount += 1;
+        }
+      }
+      renderStep();
+      playClick();
+      scheduleNextBeat();
+      return;
+    }
+
+    const step = breathPattern[stepIdx];
+    if (currentSubBeat < step.beats) {
+      currentSubBeat += 1;
+    } else {
+      stepIdx += 1;
+      currentSubBeat = breathPattern[stepIdx]?.beats === 0.5 ? 0.5 : 1;
+      if (stepIdx >= breathPattern.length) {
+        stepIdx = 0;
+        currentSubBeat = 1;
+        applyTempoChange();
+      }
+    }
+
+    renderStep();
+    playClick();
+    scheduleNextBeat();
+  }
+
+  function scheduleNextBeat() {
+    if (!isRunning) return;
+    const beatLength = 60000 / bpm;
+    const step = breathPattern[stepIdx];
+    const delay = normalModeToggle.checked
+      ? beatLength / Number(subdivisionSelect.value)
+      : step.beats === 0.5 ? beatLength / 2 : beatLength;
+    timerId = window.setTimeout(advancePractice, delay);
+  }
+
+  async function startPractice() {
+    await ensureAudio();
+    if (isRunning) return;
+
+    initialBpm = clamp(readNumber(bpmSlider, 80), 40, 180);
+    bpm = initialBpm;
+    waveDirection = 1;
+    stepIdx = 0;
+    currentSubBeat = 1;
+    normalBeat = 1;
+    normalSubdivision = 1;
+    measureCount = 1;
+    isRunning = true;
+    startBtn.textContent = normalModeToggle.checked ? 'メトロノーム停止' : 'ブレストレーニング停止';
+    startBtn.classList.add('running');
+    startBtn.setAttribute('aria-pressed', 'true');
+    bpmSlider.disabled = true;
+    renderStep();
+    playClick();
+    scheduleNextBeat();
+  }
+
+  function stopPractice() {
+    isRunning = false;
+    window.clearTimeout(timerId);
+    timerId = null;
+    startBtn.textContent = normalModeToggle.checked ? 'メトロノーム開始' : 'ブレストレーニング開始';
+    startBtn.classList.remove('running');
+    startBtn.setAttribute('aria-pressed', 'false');
+    bpmSlider.disabled = false;
+  }
+
+  bpmSlider.addEventListener('input', () => {
+    bpm = readNumber(bpmSlider, 80);
+    bpmVal.textContent = bpm;
+  });
+
+  normalModeToggle.addEventListener('change', () => {
+    if (isRunning) stopPractice();
+    const isNormalMode = normalModeToggle.checked;
+    modeName.textContent = isNormalMode ? '一定速度モード' : 'ブレストレーニングモード';
+    modeDescription.textContent = isNormalMode
+      ? '設定したBPMを保って連続再生'
+      : '呼吸パターンに合わせて練習';
+    normalSettings.hidden = !isNormalMode;
+    tempoCard.hidden = isNormalMode;
+    if (isNormalMode) tempoToggle.checked = false;
+    normalBeat = 1;
+    normalSubdivision = 1;
+    measureCount = 1;
+    startBtn.textContent = isNormalMode ? 'メトロノーム開始' : 'ブレストレーニング開始';
+    renderStep();
+  });
+
+  [meterNumerator, meterDenominator, subdivisionSelect].forEach((control) => {
+    control.addEventListener('change', () => {
+      if (isRunning) stopPractice();
+      normalBeat = 1;
+      normalSubdivision = 1;
+      measureCount = 1;
+      renderStep();
+    });
+  });
+
+  tempoMode.addEventListener('change', () => {
+    const startTempo = readNumber(bpmSlider, 80);
+    const target = readNumber(tempoTarget, 130);
+    if (tempoMode.value === 'ritard' && target >= startTempo) {
+      tempoTarget.value = Math.max(40, startTempo - 20);
+    } else if (tempoMode.value !== 'ritard' && target <= startTempo) {
+      tempoTarget.value = Math.min(220, startTempo + 20);
+    }
+  });
+
+  startBtn.addEventListener('click', () => {
+    if (isRunning) {
+      stopPractice();
+    } else {
+      startPractice().catch(() => {
+        stopPractice();
+        progressText.textContent = '音声を開始できません。ブラウザの音声設定を確認してください。';
+      });
+    }
+  });
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden && isRunning) stopPractice();
+  });
+
+  startBtn.setAttribute('aria-pressed', 'false');
+  renderStep();
+</script>
+</body>
+</html>

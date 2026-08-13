@@ -5,12 +5,15 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py index.html ./
+COPY app.py index.html build_product.py ./
 COPY data ./data
 COPY lesson ./lesson
 COPY schedule ./schedule
 COPY pdf ./pdf
 COPY video ./video
+COPY ["music App", "./music App"]
+
+RUN python build_product.py
 
 RUN useradd --create-home appuser && chown -R appuser:appuser /app
 USER appuser

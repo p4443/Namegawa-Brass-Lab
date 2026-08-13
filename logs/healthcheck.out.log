@@ -45,3 +45,15 @@ Healthcheck target: https://namegawa-brass-lab.onrender.com
 Check date: 2026-08-12
 Healthcheck target: https://namegawa-brass-lab.onrender.com
 Check date: 2026-08-12
+Healthcheck target: https://namegawa-brass-lab.onrender.com
+Check date: 2026-08-13
+[PASS] GET /api/lesson-slot-statuses
+[PASS] POST /api/lesson-reservations (non-destructive probe)
+All checks passed.
+Healthcheck target: https://namegawa-brass-lab.onrender.com
+Check date: 2026-08-13
+Healthcheck target: https://namegawa-brass-lab.onrender.com
+Check date: 2026-08-13
+[PASS] GET /api/lesson-slot-statuses
+[PASS] POST /api/lesson-reservations (non-destructive probe)
+All checks passed.
