@@ -300,6 +300,145 @@
     .btn-toggle:hover { opacity: 0.9; }
     .btn-toggle:active { transform: scale(0.98); }
     .btn-toggle.running { background: var(--exhale); }
+
+    @media (max-width: 600px) {
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        min-height: 100dvh;
+        overflow: hidden;
+      }
+
+      body {
+        align-items: stretch;
+        padding: 0;
+      }
+
+      .container {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        max-width: none;
+        height: 100dvh;
+        padding: clamp(7px, 1.5dvh, 12px);
+        border-radius: 0;
+        overflow: hidden;
+      }
+
+      h1 {
+        margin-bottom: clamp(5px, 1dvh, 9px);
+        font-size: 0.88rem;
+        line-height: 1.2;
+      }
+
+      .mode-card {
+        min-height: 40px;
+        margin-bottom: clamp(5px, 1dvh, 9px);
+        padding: 6px 10px;
+      }
+
+      .mode-copy strong { font-size: 0.8rem; }
+      .mode-copy span { font-size: 0.65rem; }
+
+      .display-panel {
+        min-height: 82px;
+        margin-bottom: clamp(5px, 1dvh, 9px);
+        padding: 8px 10px;
+        border-width: 2px;
+        border-radius: 10px;
+      }
+
+      .action-badge {
+        margin-bottom: 2px;
+        font-size: clamp(1.1rem, 4.5dvh, 1.55rem);
+        line-height: 1.1;
+      }
+
+      .beat-counter,
+      .beat-counter.normal-counter {
+        margin: 2px 0;
+        font-size: clamp(2rem, 7dvh, 3rem);
+      }
+
+      .beat-counter .total,
+      .beat-counter.normal-counter .total {
+        font-size: 1.15rem;
+      }
+
+      .progress-text {
+        margin-top: 3px;
+        font-size: 0.7rem;
+        line-height: 1.2;
+      }
+
+      .control-group {
+        margin-bottom: clamp(5px, 1dvh, 9px);
+      }
+
+      label {
+        margin-bottom: 3px;
+        font-size: 0.72rem;
+        line-height: 1.2;
+      }
+
+      .bpm-control { gap: 8px; }
+      .bpm-display {
+        width: 55px;
+        font-size: 1.35rem;
+        line-height: 1;
+      }
+
+      select,
+      input[type="number"] {
+        min-height: 32px;
+        padding: 5px 7px;
+        font-size: 0.78rem;
+      }
+
+      .tempo-card {
+        margin-bottom: clamp(5px, 1dvh, 9px);
+        padding: 7px 9px;
+        border-radius: 8px;
+      }
+
+      .tempo-header {
+        margin-bottom: 5px;
+      }
+
+      .tempo-header span { font-size: 0.76rem; }
+
+      .tempo-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 5px;
+        margin-top: 4px;
+      }
+
+      .tempo-grid > div:last-child {
+        grid-column: auto !important;
+      }
+
+      .tempo-grid label,
+      .meter-grid label {
+        min-height: 1.8em;
+        font-size: 0.62rem;
+        line-height: 1.1;
+      }
+
+      .meter-grid { gap: 5px; }
+
+      .normal-settings .subdivision-field {
+        grid-column: 1 / -1;
+      }
+
+      .btn-toggle {
+        min-height: 42px;
+        margin-top: auto;
+        padding: 8px;
+        border-radius: 8px;
+        font-size: 0.98rem;
+      }
+    }
   </style>
 </head>
 <body>
