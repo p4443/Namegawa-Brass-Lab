@@ -163,6 +163,15 @@ class StoreTest(unittest.TestCase):
         self.assertIn("返金・キャンセル方針", response.get_data(as_text=True))
         self.assertIn("500円（税込）", response.get_data(as_text=True))
 
+    def test_lesson_hides_download_link_until_purchase_is_verified(self):
+        response = self.client.get("/lesson/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="app-download-link" href="#" hidden', html)
+        self.assertIn(".app-download-link[hidden]", html)
+        self.assertIn("display: none;", html)
+
     def test_checkout_is_blocked_when_store_is_disabled(self):
         response = self.client.post("/api/store/checkout")
         self.assertEqual(response.status_code, 403)
