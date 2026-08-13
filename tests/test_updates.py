@@ -423,6 +423,7 @@ class UpdatesTest(unittest.TestCase):
         response = client.get("/lesson/")
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Referrer-Policy"], "no-referrer")
         page = response.get_data(as_text=True)
         self.assertNotIn("slotStartDateInput", page)
         self.assertNotIn("slotEndDateInput", page)
@@ -464,6 +465,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('appSalesForm.addEventListener("submit"', page)
         self.assertIn('"X-Editor-Password": password', page)
         self.assertIn("編集用パスワードを入力してください。", page)
+        self.assertIn("metronome-purchase-session", page)
+        self.assertIn('purchaseMode === "reissue"', page)
+        self.assertIn("リンクを再発行しています…", page)
+        self.assertIn('method: "HEAD"', page)
+        self.assertIn("downloadInProgress", page)
+        self.assertIn("location.assign(downloadUrl)", page)
+        self.assertIn("history.replaceState", page)
+        self.assertIn("crypto.randomUUID", page)
+        self.assertIn("checkout_request_id", page)
+        self.assertNotIn("URL.createObjectURL", page)
         self.assertNotIn("slot-admin", page)
 
     def test_schedule_page_shares_public_calendar_and_admin_panel(self):

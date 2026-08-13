@@ -5,6 +5,7 @@ BASE_URL="${BASE_URL:-https://namegawa-brass-lab.onrender.com}"
 CHECK_DATE="${CHECK_DATE:-$(date +%F)}"
 HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
 HEALTHCHECK_NOTIFY_MENTION="${HEALTHCHECK_NOTIFY_MENTION:-}"
+STORE_HEALTH_EDITOR_PASSWORD="${STORE_HEALTH_EDITOR_PASSWORD:-}"
 
 json_escape() {
   local text="$1"
@@ -86,5 +87,44 @@ if [[ "$response_body" != *'"saved":true'* ]]; then
   fail "POST /api/lesson-reservations probe did not return saved=true: ${response_body}"
 fi
 pass "POST /api/lesson-reservations (non-destructive probe)"
+
+# 3) A live store must never skip the authenticated Stripe readiness check.
+request "GET" "${BASE_URL}/api/store/product"
+if [[ "$status_code" != "200" ]]; then
+  fail "GET /api/store/product returned HTTP ${status_code}: ${response_body}"
+fi
+if [[ "$response_body" != *'"enabled"'* ]]; then
+  fail "GET /api/store/product body missing enabled field: ${response_body}"
+fi
+store_is_enabled=false
+if [[ "$response_body" == *'"enabled":true'* ]]; then
+  store_is_enabled=true
+fi
+pass "GET /api/store/product"
+
+if [[ "$store_is_enabled" == true && -z "$STORE_HEALTH_EDITOR_PASSWORD" ]]; then
+  fail "Store is enabled but STORE_HEALTH_EDITOR_PASSWORD is unset"
+fi
+
+if [[ -n "$STORE_HEALTH_EDITOR_PASSWORD" ]]; then
+  body_file="${TMPDIR:-/tmp}/hp-store-health-$$.json"
+  if ! status_code=$(curl -sS -o "$body_file" -w '%{http_code}' \
+    "${BASE_URL}/api/store/health" \
+    -H "X-Editor-Password: ${STORE_HEALTH_EDITOR_PASSWORD}"); then
+    rm -f "$body_file"
+    fail "Network error on GET /api/store/health"
+  fi
+  response_body=$(cat "$body_file")
+  rm -f "$body_file"
+  if [[ "$status_code" != "200" ]]; then
+    fail "GET /api/store/health returned HTTP ${status_code}: ${response_body}"
+  fi
+  if [[ "$response_body" != *'"production_ready":true'* ]]; then
+    fail "GET /api/store/health did not report production_ready=true: ${response_body}"
+  fi
+  pass "GET /api/store/health (production Stripe)"
+else
+  printf '[SKIP] GET /api/store/health (store is disabled)\n'
+fi
 
 printf 'All checks passed.\n'

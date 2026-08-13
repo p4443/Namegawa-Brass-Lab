@@ -4,18 +4,21 @@ import json
 import os
 import re
 import tempfile
+import threading
+import time
 import uuid
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
-from urllib.parse import urlparse
+from urllib.parse import urlencode, urlparse
+from zipfile import BadZipFile, ZipFile
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, render_template, request, send_file, send_from_directory
-from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from flask import Flask, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
+from itsdangerous import BadData, BadSignature, SignatureExpired, URLSafeTimedSerializer
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -25,7 +28,12 @@ STORE_FILE = BASE_DIR / "data" / "store.json"
 PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
 PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
-PRODUCT_PRICE_YEN = 980
+PRODUCT_PRICE_YEN = 500
+PRODUCT_REQUIRED_FILES = {"index.html", "README.txt"}
+STORE_PAYMENT_CACHE_TTL_SECONDS = 30
+STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
+STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
+CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
     re.IGNORECASE,
@@ -677,6 +685,13 @@ def create_app(
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     configured_database_url = database_url or os.environ.get("DATABASE_URL", "")
+    verified_purchase_cache = {}
+    purchase_verifications_in_flight = {}
+    verified_purchase_cache_lock = threading.Lock()
+    stripe_price_cache = {"key": None, "expires_at": 0.0, "valid": False}
+    stripe_price_cache_lock = threading.Lock()
+    product_validation_cache = {"signature": None, "valid": False}
+    product_validation_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -697,7 +712,14 @@ def create_app(
         return with_lesson_reservation_cors(response)
 
     def with_store_cors(response, methods="GET, POST, PUT, OPTIONS"):
-        response.headers["Access-Control-Allow-Origin"] = "*"
+        request_origin = request.headers.get("Origin", "").rstrip("/")
+        allowed_origins = {
+            public_site_url(),
+            request.url_root.rstrip("/"),
+        }
+        if request_origin and request_origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers.add("Vary", "Origin")
         response.headers["Access-Control-Allow-Methods"] = methods
         response.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, X-Editor-Password, Stripe-Signature"
@@ -738,33 +760,248 @@ def create_app(
             return value.get(key, default)
         return getattr(value, key, default)
 
+    def stripe_secret_mode():
+        secret_key = os.environ.get("STRIPE_SECRET_KEY", "").strip()
+        if secret_key.startswith("sk_live_"):
+            return "live"
+        if secret_key.startswith("sk_test_"):
+            return "test"
+        return "invalid"
+
+    def public_site_url():
+        value = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
+        parsed = urlparse(value)
+        local_http = parsed.scheme == "http" and parsed.hostname in {
+            "127.0.0.1",
+            "localhost",
+        }
+        if (
+            not value
+            or (parsed.scheme != "https" and not local_http)
+            or not parsed.netloc
+            or parsed.username
+            or parsed.password
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in {"", "/"}
+        ):
+            return ""
+        return value
+
+    def checkout_payment_is_valid(checkout, expected_price_yen, expected_livemode):
+        metadata = stripe_value(checkout, "metadata", {}) or {}
+        payment_intent = stripe_value(checkout, "payment_intent")
+        latest_charge = stripe_value(payment_intent, "latest_charge")
+        return all(
+            (
+                stripe_value(metadata, "product_id", "") == PRODUCT_ID,
+                stripe_value(checkout, "mode") == "payment",
+                stripe_value(checkout, "status") == "complete",
+                stripe_value(checkout, "payment_status") == "paid",
+                stripe_value(checkout, "amount_total") == expected_price_yen,
+                stripe_value(checkout, "currency") == "jpy",
+                stripe_value(checkout, "livemode") is expected_livemode,
+                stripe_value(payment_intent, "status") == "succeeded",
+                stripe_value(payment_intent, "amount_received") == expected_price_yen,
+                stripe_value(payment_intent, "currency") == "jpy",
+                stripe_value(payment_intent, "livemode") is expected_livemode,
+                stripe_value(latest_charge, "status") == "succeeded",
+                stripe_value(latest_charge, "paid") is True,
+                stripe_value(latest_charge, "captured") is True,
+                stripe_value(latest_charge, "amount_captured") == expected_price_yen,
+                stripe_value(latest_charge, "amount_refunded", 0) == 0,
+                stripe_value(latest_charge, "refunded") is False,
+                stripe_value(latest_charge, "disputed") is False,
+                stripe_value(latest_charge, "currency") == "jpy",
+                stripe_value(latest_charge, "livemode") is expected_livemode,
+            )
+        )
+
+    def stripe_price_is_valid(configuration):
+        price_id = os.environ.get("STRIPE_METRONOME_PRICE_ID", "").strip()
+        cache_key = (
+            price_id,
+            configuration["price_yen"],
+            configuration["stripe_mode"],
+        )
+        now = time.monotonic()
+        with stripe_price_cache_lock:
+            if (
+                stripe_price_cache["key"] == cache_key
+                and stripe_price_cache["expires_at"] > now
+            ):
+                return stripe_price_cache["valid"]
+
+        price = stripe_module().Price.retrieve(price_id)
+        valid = all(
+            (
+                stripe_value(price, "active") is True,
+                stripe_value(price, "type") == "one_time",
+                stripe_value(price, "currency") == "jpy",
+                stripe_value(price, "unit_amount") == configuration["price_yen"],
+                stripe_value(price, "livemode")
+                is (configuration["stripe_mode"] == "live"),
+            )
+        )
+        with stripe_price_cache_lock:
+            stripe_price_cache.update(
+                key=cache_key,
+                expires_at=now + STORE_PAYMENT_CACHE_TTL_SECONDS,
+                valid=valid,
+            )
+        return valid
+
+    def retrieve_paid_product_id(
+        session_id,
+        expected_price_yen,
+        expected_livemode,
+    ):
+        verification_key = (session_id, expected_price_yen, expected_livemode)
+        now = time.monotonic()
+        with verified_purchase_cache_lock:
+            cached = verified_purchase_cache.get(verification_key)
+            if cached and cached[0] > now:
+                return cached[1]
+            if cached:
+                verified_purchase_cache.pop(verification_key, None)
+            verification = purchase_verifications_in_flight.get(verification_key)
+            if verification is None:
+                verification = {
+                    "event": threading.Event(),
+                    "product_id": "",
+                    "error": None,
+                }
+                purchase_verifications_in_flight[verification_key] = verification
+                owns_verification = True
+            else:
+                owns_verification = False
+
+        if not owns_verification:
+            verification["event"].wait()
+            if verification["error"] is not None:
+                raise verification["error"]
+            return verification["product_id"]
+
+        try:
+            checkout = stripe_module().checkout.Session.retrieve(
+                session_id,
+                expand=["payment_intent.latest_charge"],
+            )
+            metadata = stripe_value(checkout, "metadata", {}) or {}
+            product_id = stripe_value(metadata, "product_id", "")
+            try:
+                purchase_price_yen = int(
+                    stripe_value(metadata, "price_yen", expected_price_yen)
+                )
+            except (TypeError, ValueError):
+                purchase_price_yen = 0
+            try:
+                checkout_created = int(stripe_value(checkout, "created", 0))
+            except (TypeError, ValueError):
+                checkout_created = 0
+            checkout_age = int(time.time()) - checkout_created
+            if (
+                not checkout_payment_is_valid(
+                    checkout,
+                    purchase_price_yen,
+                    expected_livemode,
+                )
+                or purchase_price_yen <= 0
+                or checkout_created <= 0
+                or checkout_age < -300
+                or checkout_age > STORE_REISSUE_MAX_AGE_SECONDS
+            ):
+                product_id = ""
+            if product_id:
+                now = time.monotonic()
+                with verified_purchase_cache_lock:
+                    if len(verified_purchase_cache) >= STORE_PAYMENT_CACHE_MAX_ENTRIES:
+                        expired = [
+                            key
+                            for key, (expires_at, _) in verified_purchase_cache.items()
+                            if expires_at <= now
+                        ]
+                        for key in expired:
+                            verified_purchase_cache.pop(key, None)
+                        if len(verified_purchase_cache) >= STORE_PAYMENT_CACHE_MAX_ENTRIES:
+                            oldest = min(
+                                verified_purchase_cache,
+                                key=lambda key: verified_purchase_cache[key][0],
+                            )
+                            verified_purchase_cache.pop(oldest, None)
+                    verified_purchase_cache[verification_key] = (
+                        now + STORE_PAYMENT_CACHE_TTL_SECONDS,
+                        product_id,
+                    )
+            verification["product_id"] = product_id
+            return product_id
+        except Exception as exc:
+            verification["error"] = exc
+            raise
+        finally:
+            with verified_purchase_cache_lock:
+                purchase_verifications_in_flight.pop(verification_key, None)
+                verification["event"].set()
+
     def download_serializer():
         secret = os.environ.get("DOWNLOAD_TOKEN_SECRET", "").strip()
         if not secret:
             return None
         return URLSafeTimedSerializer(secret, salt="metronome-download")
 
+    def product_archive_is_valid():
+        path = Path(product_file)
+        try:
+            file_stat = path.stat()
+            signature = (file_stat.st_ino, file_stat.st_size, file_stat.st_mtime_ns)
+        except OSError:
+            return False
+
+        with product_validation_lock:
+            if product_validation_cache["signature"] == signature:
+                return product_validation_cache["valid"]
+            try:
+                with ZipFile(path) as archive:
+                    valid = (
+                        PRODUCT_REQUIRED_FILES.issubset(archive.namelist())
+                        and archive.testzip() is None
+                    )
+            except (BadZipFile, OSError, RuntimeError):
+                valid = False
+            product_validation_cache.update(signature=signature, valid=valid)
+            return valid
+
     def store_configuration():
         price_text = os.environ.get("METRONOME_PRICE_YEN", str(PRODUCT_PRICE_YEN))
         try:
-            price_yen = max(0, int(price_text))
+            price_yen = int(price_text)
         except ValueError:
             price_yen = PRODUCT_PRICE_YEN
+        price_valid = price_yen > 0
+        if not price_valid:
+            price_yen = PRODUCT_PRICE_YEN
         required = {
-            "STRIPE_SECRET_KEY": os.environ.get("STRIPE_SECRET_KEY", "").strip(),
-            "STRIPE_WEBHOOK_SECRET": os.environ.get("STRIPE_WEBHOOK_SECRET", "").strip(),
+            "STRIPE_SECRET_KEY": stripe_secret_mode() != "invalid",
+            "STRIPE_WEBHOOK_SECRET": os.environ.get(
+                "STRIPE_WEBHOOK_SECRET", ""
+            ).strip().startswith("whsec_"),
             "STRIPE_METRONOME_PRICE_ID": os.environ.get(
                 "STRIPE_METRONOME_PRICE_ID", ""
-            ).strip(),
-            "DOWNLOAD_TOKEN_SECRET": os.environ.get(
-                "DOWNLOAD_TOKEN_SECRET", ""
-            ).strip(),
+            ).strip().startswith("price_"),
+            "DOWNLOAD_TOKEN_SECRET": len(
+                os.environ.get("DOWNLOAD_TOKEN_SECRET", "").strip()
+            ) >= 32,
+            "PUBLIC_SITE_URL": bool(public_site_url()),
+            "METRONOME_PRICE_YEN": price_valid,
         }
+        product_ready = product_archive_is_valid()
         return {
             "price_yen": price_yen,
-            "ready": all(required.values()) and Path(product_file).is_file(),
-            "missing": [name for name, value in required.items() if not value]
-            + ([] if Path(product_file).is_file() else ["PRODUCT_FILE"]),
+            "site_url": public_site_url(),
+            "stripe_mode": stripe_secret_mode(),
+            "ready": all(required.values()) and product_ready,
+            "missing": [name for name, valid in required.items() if not valid]
+            + ([] if product_ready else ["PRODUCT_FILE_INVALID"]),
         }
 
     def require_editor():
@@ -791,7 +1028,15 @@ def create_app(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Expires"] = "0"
+        response.headers["Referrer-Policy"] = "no-referrer"
         return response
+
+    @app.get("/legal/")
+    def legal():
+        return render_template(
+            "legal/index.html",
+            product_price_yen=store_configuration()["price_yen"],
+        )
 
     @app.get("/schedule/")
     def schedule():
@@ -835,6 +1080,45 @@ def create_app(
             }
         )
 
+    @app.route("/api/store/health", methods=["GET", "OPTIONS"])
+    def store_health():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_store_cors(response)
+
+        configuration = store_configuration()
+        checks = {
+            "configuration": configuration["ready"],
+            "product_archive": product_archive_is_valid(),
+            "public_site_url": bool(configuration["site_url"]),
+            "stripe_price": False,
+        }
+        if configuration["ready"]:
+            try:
+                checks["stripe_price"] = stripe_price_is_valid(configuration)
+            except Exception:
+                app.logger.exception("Stripe price readiness check failed")
+
+        ready = all(checks.values())
+        response = store_json(
+            {
+                "ready": ready,
+                "production_ready": ready
+                and configuration["stripe_mode"] == "live",
+                "stripe_mode": configuration["stripe_mode"],
+                "store_enabled": get_store_settings()["enabled"],
+                "price_yen": configuration["price_yen"],
+                "checks": checks,
+                "invalid_configuration": configuration["missing"],
+            },
+            200 if ready else 503,
+        )
+        return response
+
     @app.route("/api/store/checkout", methods=["POST", "OPTIONS"])
     def create_store_checkout():
         if request.method == "OPTIONS":
@@ -847,10 +1131,28 @@ def create_app(
                 "Store configuration is incomplete: %s", configuration["missing"]
             )
             return store_json({"error": "決済機能を準備中です。"}, 503)
+        try:
+            if not stripe_price_is_valid(configuration):
+                app.logger.error("Configured Stripe price does not match store price")
+                return store_json({"error": "決済価格を確認中です。"}, 503)
+        except Exception:
+            app.logger.exception("Stripe price validation failed before checkout")
+            return store_json({"error": "決済価格を確認できませんでした。"}, 502)
 
-        site_url = os.environ.get("PUBLIC_SITE_URL", "").strip().rstrip("/")
-        if not site_url:
-            site_url = request.url_root.rstrip("/")
+        payload = request.get_json(silent=True)
+        checkout_request_id = (
+            str(payload.get("checkout_request_id", "")).strip()
+            if isinstance(payload, dict)
+            else ""
+        )
+        try:
+            parsed_request_id = uuid.UUID(checkout_request_id)
+        except (ValueError, TypeError, AttributeError):
+            parsed_request_id = None
+        if parsed_request_id is None or parsed_request_id.version != 4:
+            return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+
+        site_url = configuration["site_url"]
         try:
             checkout = stripe_module().checkout.Session.create(
                 mode="payment",
@@ -860,7 +1162,13 @@ def create_app(
                         "quantity": 1,
                     }
                 ],
-                metadata={"product_id": PRODUCT_ID},
+                client_reference_id=checkout_request_id,
+                metadata={
+                    "product_id": PRODUCT_ID,
+                    "checkout_request_id": checkout_request_id,
+                    "price_yen": str(configuration["price_yen"]),
+                    "price_id": os.environ["STRIPE_METRONOME_PRICE_ID"],
+                },
                 success_url=(
                     f"{site_url}/lesson/?purchase=success"
                     "&session_id={CHECKOUT_SESSION_ID}#practice-apps-title"
@@ -868,6 +1176,7 @@ def create_app(
                 cancel_url=(
                     f"{site_url}/lesson/?purchase=cancelled#practice-apps-title"
                 ),
+                idempotency_key=f"{PRODUCT_ID}:{checkout_request_id}",
             )
         except Exception:
             app.logger.exception("Stripe Checkout session creation failed")
@@ -901,22 +1210,22 @@ def create_app(
             return with_store_cors(app.response_class(status=204))
         payload = request.get_json(silent=True)
         session_id = str(payload.get("session_id", "")).strip() if isinstance(payload, dict) else ""
-        if not session_id.startswith("cs_"):
+        if CHECKOUT_SESSION_PATTERN.fullmatch(session_id) is None:
             return store_json({"error": "決済情報が正しくありません。"}, 400)
         serializer = download_serializer()
-        if serializer is None or not Path(product_file).is_file():
+        if serializer is None or not product_archive_is_valid():
             return store_json({"error": "ダウンロードを準備中です。"}, 503)
         try:
-            checkout = stripe_module().checkout.Session.retrieve(session_id)
+            configuration = store_configuration()
+            product_id = retrieve_paid_product_id(
+                session_id,
+                configuration["price_yen"],
+                configuration["stripe_mode"] == "live",
+            )
         except Exception:
             app.logger.exception("Stripe Checkout session retrieval failed")
             return store_json({"error": "決済情報を確認できませんでした。"}, 502)
-        metadata = stripe_value(checkout, "metadata", {}) or {}
-        product_id = stripe_value(metadata, "product_id", "")
-        if (
-            stripe_value(checkout, "payment_status") != "paid"
-            or product_id != PRODUCT_ID
-        ):
+        if product_id != PRODUCT_ID:
             return store_json({"error": "支払いの完了を確認できません。"}, 403)
 
         token = serializer.dumps({"product_id": PRODUCT_ID, "session_id": session_id})
@@ -930,18 +1239,57 @@ def create_app(
             return jsonify({"error": "ダウンロードを準備中です。"}), 503
         try:
             payload = serializer.loads(token, max_age=86400)
-        except SignatureExpired:
-            return jsonify({"error": "ダウンロード期限が切れました。"}), 410
+        except SignatureExpired as exc:
+            if not isinstance(exc.payload, bytes):
+                expired_payload = {}
+            else:
+                try:
+                    expired_payload = serializer.load_payload(exc.payload)
+                except BadData:
+                    expired_payload = {}
+            if not isinstance(expired_payload, dict):
+                expired_payload = {}
+            session_id = str(expired_payload.get("session_id", "")).strip()
+            if (
+                expired_payload.get("product_id") == PRODUCT_ID
+                and CHECKOUT_SESSION_PATTERN.fullmatch(session_id) is not None
+            ):
+                return redirect(
+                    f"/lesson/?{urlencode({'purchase': 'reissue', 'session_id': session_id})}"
+                    "#practice-apps-title"
+                )
+            return store_json({"error": "ダウンロード期限が切れました。"}, 410)
         except BadSignature:
-            return jsonify({"error": "ダウンロードURLが正しくありません。"}), 403
-        if payload.get("product_id") != PRODUCT_ID or not Path(product_file).is_file():
-            return jsonify({"error": "商品が見つかりません。"}), 404
-        return send_file(
+            return store_json({"error": "ダウンロードURLが正しくありません。"}, 403)
+        if payload.get("product_id") != PRODUCT_ID:
+            return store_json({"error": "商品が見つかりません。"}, 404)
+        if not product_archive_is_valid():
+            return store_json({"error": "商品ファイルを確認中です。"}, 503)
+        session_id = str(payload.get("session_id", "")).strip()
+        if CHECKOUT_SESSION_PATTERN.fullmatch(session_id) is None:
+            return store_json({"error": "決済情報が正しくありません。"}, 403)
+        try:
+            configuration = store_configuration()
+            product_id = retrieve_paid_product_id(
+                session_id,
+                configuration["price_yen"],
+                configuration["stripe_mode"] == "live",
+            )
+        except Exception:
+            app.logger.exception("Stripe payment revalidation failed before download")
+            return store_json({"error": "決済情報を再確認できませんでした。"}, 502)
+        if product_id != PRODUCT_ID:
+            return store_json({"error": "現在この商品をダウンロードできません。"}, 403)
+        response = send_file(
             product_file,
             as_attachment=True,
             download_name="trumpet-practice-metronome.zip",
             mimetype="application/zip",
+            conditional=True,
         )
+        response.headers["Cache-Control"] = "private, max-age=3600"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return with_store_cors(response)
 
     @app.route("/api/lesson-reservations", methods=["POST", "OPTIONS"])
     def create_lesson_reservation():

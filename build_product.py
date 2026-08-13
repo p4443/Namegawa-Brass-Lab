@@ -1,3 +1,5 @@
+import os
+import uuid
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -20,9 +22,20 @@ def build_product():
     if not SOURCE_FILE.is_file():
         raise FileNotFoundError(f"Source app not found: {SOURCE_FILE}")
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
-    with ZipFile(OUTPUT_FILE, "w", compression=ZIP_DEFLATED) as archive:
-        archive.write(SOURCE_FILE, "index.html")
-        archive.writestr("README.txt", README)
+    temporary_file = OUTPUT_FILE.with_name(
+        f".{OUTPUT_FILE.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        with ZipFile(temporary_file, "w", compression=ZIP_DEFLATED) as archive:
+            archive.write(SOURCE_FILE, "index.html")
+            archive.writestr("README.txt", README)
+        with ZipFile(temporary_file) as archive:
+            if archive.testzip() is not None:
+                raise ValueError("Generated product archive is corrupt")
+        temporary_file.chmod(0o644)
+        os.replace(temporary_file, OUTPUT_FILE)
+    finally:
+        temporary_file.unlink(missing_ok=True)
     return OUTPUT_FILE
 
 

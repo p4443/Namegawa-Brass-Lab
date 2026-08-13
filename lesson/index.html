@@ -369,6 +369,19 @@
       margin: 0;
     }
 
+    .app-store-legal {
+      display: flex;
+      gap: 6px 14px;
+      flex-wrap: wrap;
+      color: var(--muted);
+      font-size: 0.72rem;
+    }
+
+    .app-store-legal a:hover,
+    .app-store-legal a:focus-visible {
+      color: var(--navy);
+    }
+
     .app-sales-admin {
       padding-top: 8px;
       border-top: 1px solid var(--line);
@@ -1009,6 +1022,11 @@
             </div>
             <a class="app-download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
             <p class="app-store-status" id="app-store-status" role="status" aria-live="polite"></p>
+            <nav class="app-store-legal" aria-label="購入に関する情報">
+              <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
+              <a href="../legal/#refund">返金方針</a>
+              <a href="../legal/#contact">購入に関するお問い合わせ</a>
+            </nav>
             <details class="app-sales-admin">
               <summary>管理者用：販売設定</summary>
               <form class="app-sales-controls" id="app-sales-form" novalidate>
@@ -1172,6 +1190,8 @@
     const appSalesPassword = document.getElementById("app-sales-password");
     const appSalesEnabled = document.getElementById("app-sales-enabled");
     const appSalesSave = document.getElementById("app-sales-save");
+    const purchaseSessionStorageKey = "metronome-purchase-session";
+    let downloadInProgress = false;
 
     const storeApiCandidates = (path) => buildApiCandidates(
       `${renderStoreBase}/${path}`,
@@ -1216,15 +1236,111 @@
       }
     }
 
+    function createCheckoutRequestId() {
+      if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
+      return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+    }
+
     appPurchaseButton.addEventListener("click", async () => {
       appPurchaseButton.disabled = true;
       appStoreStatus.textContent = "安全な決済画面を準備しています…";
       try {
-        const result = await requestStore("checkout", { method: "POST" });
+        const result = await requestStore("checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
+        });
         location.href = result.checkout_url;
       } catch (error) {
         appStoreStatus.textContent = error.message;
         await loadStoreProduct();
+      }
+    });
+
+    function loadSavedPurchaseSession() {
+      try {
+        const sessionId = localStorage.getItem(purchaseSessionStorageKey) || "";
+        return sessionId.startsWith("cs_") ? sessionId : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function savePurchaseSession(sessionId) {
+      try {
+        localStorage.setItem(purchaseSessionStorageKey, sessionId);
+      } catch (error) {
+        // The current page can still provide the download when storage is unavailable.
+      }
+    }
+
+    async function provideDownload(sessionId, isReissue = false) {
+      const result = await requestStore("download-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      savePurchaseSession(sessionId);
+      appDownloadLink.href = result.download_url;
+      appDownloadLink.dataset.sessionId = sessionId;
+      appDownloadLink.hidden = false;
+      appDownloadLink.textContent = isReissue
+        ? "再発行したオフライン版をダウンロード"
+        : "オフライン版をダウンロード";
+      appStoreStatus.textContent = isReissue
+        ? "購入履歴を確認し、新しいリンクを発行しました。リンクは24時間有効です。"
+        : "お支払いを確認しました。リンクは24時間有効です。";
+      return result.download_url;
+    }
+
+    async function downloadProduct(downloadUrl) {
+      try {
+        const response = await fetch(downloadUrl, {
+          method: "HEAD",
+          cache: "no-store",
+        });
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        if (response.status !== 405 && response.status !== 501) {
+          if (!response.ok || !contentType.includes("application/zip")) {
+            throw new Error("ダウンロードリンクを更新します。");
+          }
+        }
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+      }
+      location.assign(downloadUrl);
+    }
+
+    appDownloadLink.addEventListener("click", async (event) => {
+      event.preventDefault();
+      if (downloadInProgress) return;
+      const sessionId = appDownloadLink.dataset.sessionId || loadSavedPurchaseSession();
+      if (!sessionId) {
+        appStoreStatus.textContent = "購入情報を確認できません。購入に関するお問い合わせからご連絡ください。";
+        return;
+      }
+      downloadInProgress = true;
+      appDownloadLink.setAttribute("aria-disabled", "true");
+      appStoreStatus.textContent = "ダウンロードを準備しています…";
+      try {
+        await downloadProduct(appDownloadLink.href);
+        appStoreStatus.textContent = "ダウンロードを開始しました。";
+      } catch (error) {
+        appStoreStatus.textContent = "リンクを再発行しています…";
+        try {
+          const downloadUrl = await provideDownload(sessionId, true);
+          await downloadProduct(downloadUrl);
+          appStoreStatus.textContent = "新しいリンクでダウンロードを開始しました。";
+        } catch (reissueError) {
+          appStoreStatus.textContent = "自動再提供できませんでした。購入に関するお問い合わせからご連絡ください。";
+        }
+      } finally {
+        downloadInProgress = false;
+        appDownloadLink.removeAttribute("aria-disabled");
       }
     });
 
@@ -1267,20 +1383,25 @@
         appStoreStatus.textContent = "決済はキャンセルされました。";
         return;
       }
-      const sessionId = parameters.get("session_id");
-      if (parameters.get("purchase") !== "success" || !sessionId) return;
-      appStoreStatus.textContent = "お支払いを確認しています…";
+      const purchaseMode = parameters.get("purchase");
+      const querySessionId = parameters.get("session_id") || "";
+      const sessionId = querySessionId.startsWith("cs_")
+        ? querySessionId
+        : loadSavedPurchaseSession();
+      if (!sessionId) return;
+      const isReissue = purchaseMode === "reissue" || purchaseMode !== "success";
+      appStoreStatus.textContent = isReissue
+        ? "購入履歴を確認し、ダウンロードリンクを再発行しています…"
+        : "お支払いを確認しています…";
       try {
-        const result = await requestStore("download-link", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ session_id: sessionId }),
-        });
-        appDownloadLink.href = result.download_url;
-        appDownloadLink.hidden = false;
-        appStoreStatus.textContent = "お支払いを確認しました。リンクは24時間有効です。";
+        await provideDownload(sessionId, isReissue);
+        if (querySessionId) {
+          history.replaceState(null, "", `${location.pathname}${location.hash}`);
+        }
       } catch (error) {
-        appStoreStatus.textContent = error.message;
+        appStoreStatus.textContent = isReissue
+          ? "購入履歴を確認できませんでした。購入に関するお問い合わせからご連絡ください。"
+          : error.message;
       }
     }
     let slotRequestId = 0;
@@ -1655,8 +1776,7 @@
 
     preloadSlotStatuses();
     applyRequestedSlot();
-    loadStoreProduct();
-    applyPurchaseResult();
+    loadStoreProduct().then(applyPurchaseResult);
   </script>
 </body>
 </html>

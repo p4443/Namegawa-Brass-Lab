@@ -38,7 +38,24 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 教室ページではWeb版を無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は初期値OFFで、教室ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
 
-1. Stripe Dashboardで商品を作成し、1回払い980円の価格を登録します。
+### 管理者向け・説明付き設定ウィザード
+
+ターミナルで次のコマンドを実行すると、取得場所と入力例を1項目ずつ表示し、決済設定を`.env`へ安全に保存します。秘密鍵とパスワードは入力中も画面に表示されません。
+
+```bash
+cd /Users/kazuuu/hp
+./setup-store-env.sh
+```
+
+事前にStripe Dashboardで次の2画面を開いておくと、入力がスムーズです。
+
+- 「開発者」→「APIキー」: `sk_test_`または`sk_live_`から始まる秘密鍵
+- 「商品カタログ」: 500円・JPY・1回払いの`price_`から始まるPrice ID
+- 「開発者」→「Webhook」: `/api/store/webhook`送信先の`whsec_`から始まる署名シークレット
+
+初回はウィザードの「1: テストモード」を選択してください。入力形式が正しくない場合や、本番・テストの鍵を取り違えた場合は保存前に停止します。ローカルの`.env`へ保存した後、同じ変数名をRender DashboardのEnvironmentにも登録してください。秘密値そのものはREADME、HTML、Git、チャットへ貼り付けないでください。
+
+1. Stripe Dashboardで商品を作成し、1回払い500円の価格を登録します。
 2. 発行された`price_`から始まるPrice IDを控えます。
 3. StripeのWebhookへ`https://公開APIのドメイン/api/store/webhook`を登録し、`checkout.session.completed`を購読します。
 4. RenderのEnvironmentへ次の値を登録して再デプロイします。
@@ -48,9 +65,13 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_METRONOME_PRICE_ID=price_...
 DOWNLOAD_TOKEN_SECRET=十分に長いランダム文字列
-METRONOME_PRICE_YEN=980
+METRONOME_PRICE_YEN=500
 PUBLIC_SITE_URL=https://ホームページの公開ドメイン
 ```
+
+`PUBLIC_SITE_URL`はHTTPSのオリジンだけを指定し、末尾以外のパス、クエリ、フラグメントは付けないでください。Stripeの秘密鍵・Webhook secret・Price IDはすべて同じテストモードまたは本番モードの値を組み合わせます。
+
+ストアAPIのCORSは`PUBLIC_SITE_URL`とAPI自身のオリジンだけを許可します。GitHub Pagesなど別ドメインの画面からRender APIを利用する場合、`PUBLIC_SITE_URL`には購入画面が表示される側の正確なオリジンを設定してください。
 
 `DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
 
@@ -64,7 +85,32 @@ python -c 'import secrets; print(secrets.token_urlsafe(48))'
 .venv/bin/python build_product.py
 ```
 
-デプロイ後は販売OFFのまま、教室ページでWeb版が動くことを確認します。その後「管理者用：販売設定」を開き、編集用パスワードを入力して販売ONへ切り替えます。Stripeのテストモードではテスト用カードで決済し、教室ページへ戻った後にダウンロードボタンが表示されることを確認してください。
+同一購入セッションの支払い確認は30秒間キャッシュし、再発行集中時のStripe API照会を抑えながら返金・紛争を短時間で反映します。Checkout作成にはUUID v4の冪等キーを使用し、通信再試行による重複Sessionを防ぎます。Checkout開始直前にはStripe Priceが有効な一回払い・500円・JPY・同一モードであることを確認します。商品提供時と各ダウンロード時には、購入時価格・JPY・PaymentIntent成功・Charge捕捉済み・未返金・紛争なし・Stripeモード一致を再検証します。自動再発行は購入後30日以内に限定し、ダウンロードURL自体にはStripeのセッションIDを含めません。商品配信はRangeリクエストによる途中再開と1時間のブラウザ内キャッシュに対応し、Gunicornは2ワーカー×4スレッドで同時処理します。ダウンロード前にはZIPのCRCと必須ファイルを検査し、破損商品は配信しません。商品生成は一時ファイルから原子的に置き換えるため、ビルド途中のZIPが公開されることもありません。商品サイズが大きくなった場合は、アプリサーバー配信ではなく署名付きURLを利用できるオブジェクトストレージ/CDNへ移行してください。
+
+デプロイ後は販売OFFのまま、最初にStripeテストモードで診断APIとテストカード決済を確認します。
+
+```bash
+curl -sS 'https://公開APIのドメイン/api/store/health' \
+	-H 'X-Editor-Password: 編集用パスワード' | python -m json.tool
+```
+
+テストモードでは`ready: true`かつ`production_ready: false`が正常です。テスト用カードで決済し、教室ページへ戻った後にダウンロードできること、同じリンクの再ダウンロード、期限切れ再発行を確認します。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ、教室ページの「管理者用：販売設定」から販売ONへ切り替えます。
+
+販売ON前の確認項目:
+
+- Stripe DashboardのPriceが有効・一回払い・500円・JPYである
+- Webhookの送信先が`https://公開APIのドメイン/api/store/webhook`で、署名検証付きのテスト送信がHTTP 200になる
+- 診断APIが`production_ready: true`を返す
+- テストモードで正常決済、キャンセル、未払い、再ダウンロードを確認済みである
+- 返金または紛争状態の決済から新規リンクを発行できず、既存リンクも最大30秒後に拒否される
+- `healthcheck-prod.sh`へ`STORE_HEALTH_EDITOR_PASSWORD`を設定している
+
+本番ヘルスチェックへストア診断を含める場合は、秘密値をコマンドライン引数へ直接書かず環境変数で渡します。
+
+```bash
+export STORE_HEALTH_EDITOR_PASSWORD='編集用パスワード'
+./healthcheck-prod.sh
+```
 
 ## レッスン予約をGoogleスプレッドシートへ保存する
 
