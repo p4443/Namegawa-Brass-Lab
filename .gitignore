@@ -5,3 +5,6 @@ __pycache__/
 **/.DS_Store
 logs/.env
 .env
+data/store.json
+data/.store.json.lock
+private/products/*.zip
