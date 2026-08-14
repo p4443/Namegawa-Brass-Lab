@@ -1274,9 +1274,18 @@ def create_app(
                 ),
                 idempotency_key=f"{PRODUCT_ID}:{checkout_request_id}",
             )
-        except Exception:
+        except Exception as exc:
             app.logger.exception("Stripe Checkout session creation failed")
-            return store_json({"error": "決済画面を開始できませんでした。"}, 502)
+            diagnostic_code = str(getattr(exc, "code", "") or type(exc).__name__)
+            if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", diagnostic_code) is None:
+                diagnostic_code = type(exc).__name__
+            return store_json(
+                {
+                    "error": "決済画面を開始できませんでした。",
+                    "diagnostic_code": diagnostic_code,
+                },
+                502,
+            )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
     @app.post("/api/store/webhook")

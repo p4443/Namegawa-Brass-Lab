@@ -306,6 +306,24 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         stripe.checkout.Session.create.assert_not_called()
 
+    def test_checkout_failure_returns_safe_diagnostic_code(self):
+        self.enable_store()
+        stripe = self.stripe_module()
+        stripe_error = RuntimeError("secret Stripe response")
+        stripe_error.code = "account_invalid"
+        stripe.checkout.Session.create.side_effect = stripe_error
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/checkout",
+                json={
+                    "checkout_request_id": "66e59f96-394e-4df1-9b0b-e80b888d90fc"
+                },
+            )
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.get_json()["diagnostic_code"], "account_invalid")
+        self.assertNotIn("secret Stripe response", response.get_data(as_text=True))
+
     def test_paid_checkout_creates_download_link_and_serves_product(self):
         stripe = self.stripe_module(payment_status="paid")
         with patch.dict(sys.modules, {"stripe": stripe}):
