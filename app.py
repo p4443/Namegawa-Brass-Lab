@@ -38,6 +38,8 @@ STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
 STORE_DOWNLOAD_LIMIT = 10
 STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
+STORE_RECOVERY_LIMIT = 5
+STORE_RECOVERY_WINDOW_SECONDS = 15 * 60
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
@@ -720,6 +722,8 @@ def create_app(
     product_validation_lock = threading.Lock()
     local_download_counts = {}
     download_count_lock = threading.Lock()
+    recovery_attempts = {}
+    recovery_attempt_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -1043,6 +1047,16 @@ def create_app(
             local_download_counts[reference] = (window_started_at, count)
             return count <= STORE_DOWNLOAD_LIMIT
 
+    def recovery_attempt_is_allowed(client_address):
+        now = time.monotonic()
+        with recovery_attempt_lock:
+            window_started_at, count = recovery_attempts.get(client_address, (now, 0))
+            if now - window_started_at >= STORE_RECOVERY_WINDOW_SECONDS:
+                window_started_at, count = now, 0
+            count += 1
+            recovery_attempts[client_address] = (window_started_at, count)
+            return count <= STORE_RECOVERY_LIMIT
+
     def product_archive_is_valid():
         path = Path(product_file)
         try:
@@ -1338,6 +1352,72 @@ def create_app(
         token = serializer.dumps({"product_id": PRODUCT_ID, "session_id": session_id})
         download_url = f"{request.url_root.rstrip('/')}/api/store/download/{token}"
         return store_json({"download_url": download_url, "expires_in": 86400})
+
+    @app.route("/api/store/recover-download", methods=["POST", "OPTIONS"])
+    def recover_download_link():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if not recovery_attempt_is_allowed(request.remote_addr or "unknown"):
+            return store_json(
+                {"error": "再発行の試行回数が多すぎます。15分後にお試しください。"},
+                429,
+            )
+        payload = request.get_json(silent=True)
+        email = str(payload.get("email", "")).strip().lower() if isinstance(payload, dict) else ""
+        receipt_number = (
+            str(payload.get("receipt_number", "")).strip().upper()
+            if isinstance(payload, dict)
+            else ""
+        )
+        if (
+            re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) is None
+            or re.fullmatch(r"[A-Z0-9-]{4,64}", receipt_number) is None
+        ):
+            return store_json({"error": "購入情報を確認できませんでした。"}, 400)
+        serializer = download_serializer()
+        if serializer is None or not product_archive_is_valid():
+            return store_json({"error": "ダウンロードを準備中です。"}, 503)
+        configuration = store_configuration()
+        try:
+            sessions = stripe_module().checkout.Session.list(
+                limit=100,
+                created={"gte": int(time.time()) - STORE_REISSUE_MAX_AGE_SECONDS},
+                expand=["data.payment_intent.latest_charge"],
+            )
+            for checkout in sessions.auto_paging_iter():
+                customer_details = stripe_value(checkout, "customer_details", {}) or {}
+                payment_intent = stripe_value(checkout, "payment_intent", {}) or {}
+                latest_charge = stripe_value(payment_intent, "latest_charge", {}) or {}
+                if (
+                    str(stripe_value(customer_details, "email", "")).strip().lower() != email
+                    or str(stripe_value(latest_charge, "receipt_number", "")).strip().upper()
+                    != receipt_number
+                ):
+                    continue
+                session_id = str(stripe_value(checkout, "id", ""))
+                product_id = retrieve_paid_product_id(
+                    session_id,
+                    configuration["price_yen"],
+                    configuration["stripe_mode"] == "live",
+                )
+                if product_id == PRODUCT_ID:
+                    token = serializer.dumps(
+                        {"product_id": PRODUCT_ID, "session_id": session_id}
+                    )
+                    download_url = (
+                        f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+                    )
+                    return store_json(
+                        {
+                            "download_url": download_url,
+                            "session_id": session_id,
+                            "expires_in": 86400,
+                        }
+                    )
+        except Exception:
+            app.logger.exception("Stripe purchase recovery failed")
+            return store_json({"error": "購入情報を確認できませんでした。"}, 502)
+        return store_json({"error": "購入情報を確認できませんでした。"}, 403)
 
     @app.get("/api/store/download/<token>")
     def download_product(token):

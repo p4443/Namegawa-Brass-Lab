@@ -326,6 +326,7 @@
 
     .app-store-copy span,
     .app-store-status,
+    .app-purchase-recovery,
     .app-sales-admin {
       color: var(--muted);
       font-size: 0.76rem;
@@ -386,16 +387,19 @@
       color: var(--navy);
     }
 
+    .app-purchase-recovery,
     .app-sales-admin {
       padding-top: 8px;
       border-top: 1px solid var(--line);
     }
 
+    .app-purchase-recovery summary,
     .app-sales-admin summary {
       cursor: pointer;
       font-weight: 700;
     }
 
+    .app-recovery-controls,
     .app-sales-controls {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -403,6 +407,7 @@
       margin-top: 10px;
     }
 
+    .app-recovery-controls input,
     .app-sales-controls input[type="password"] {
       min-width: 0;
       padding: 8px 10px;
@@ -1069,6 +1074,14 @@
             </div>
             <a class="app-download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
             <p class="app-store-status" id="app-store-status" role="status" aria-live="polite"></p>
+            <details class="app-purchase-recovery">
+              <summary>購入済みの方：ダウンロードを再表示</summary>
+              <form class="app-recovery-controls" id="app-recovery-form">
+                <input id="app-recovery-email" type="email" autocomplete="email" placeholder="購入時のメールアドレス" aria-label="購入時のメールアドレス" required>
+                <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号" aria-label="Stripe領収書番号" pattern="[A-Za-z0-9-]{4,64}" required>
+                <button class="app-sales-save" id="app-recovery-submit" type="submit">再表示</button>
+              </form>
+            </details>
             <nav class="app-store-legal" aria-label="購入に関する情報">
               <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
               <a href="../legal/#license">利用ライセンス</a>
@@ -1254,6 +1267,10 @@
     const appPurchaseButton = document.getElementById("app-purchase-button");
     const appDownloadLink = document.getElementById("app-download-link");
     const appStoreStatus = document.getElementById("app-store-status");
+    const appRecoveryForm = document.getElementById("app-recovery-form");
+    const appRecoveryEmail = document.getElementById("app-recovery-email");
+    const appRecoveryReceipt = document.getElementById("app-recovery-receipt");
+    const appRecoverySubmit = document.getElementById("app-recovery-submit");
     const appSalesForm = document.getElementById("app-sales-form");
     const appSalesPassword = document.getElementById("app-sales-password");
     const appSalesEnabled = document.getElementById("app-sales-enabled");
@@ -1347,12 +1364,7 @@
       }
     }
 
-    async function provideDownload(sessionId, isReissue = false) {
-      const result = await requestStore("download-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
+    function showDownloadLink(result, sessionId, isReissue = false) {
       savePurchaseSession(sessionId);
       appDownloadLink.href = result.download_url;
       appDownloadLink.dataset.sessionId = sessionId;
@@ -1365,6 +1377,38 @@
         : "お支払いを確認しました。リンクは24時間有効です。";
       return result.download_url;
     }
+
+    async function provideDownload(sessionId, isReissue = false) {
+      const result = await requestStore("download-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      return showDownloadLink(result, sessionId, isReissue);
+    }
+
+    appRecoveryForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!appRecoveryForm.reportValidity()) return;
+      appRecoverySubmit.disabled = true;
+      appStoreStatus.textContent = "購入情報を確認しています…";
+      try {
+        const result = await requestStore("recover-download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: appRecoveryEmail.value.trim(),
+            receipt_number: appRecoveryReceipt.value.trim(),
+          }),
+        });
+        showDownloadLink(result, result.session_id, true);
+        appRecoveryReceipt.value = "";
+      } catch (error) {
+        appStoreStatus.textContent = error.message;
+      } finally {
+        appRecoverySubmit.disabled = false;
+      }
+    });
 
     async function downloadProduct(downloadUrl) {
       try {

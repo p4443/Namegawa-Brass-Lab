@@ -88,6 +88,7 @@ class StoreTest(unittest.TestCase):
             disputed=disputed,
             currency=currency,
             livemode=livemode,
+            receipt_number="1234-5678",
         )
         payment_intent = types.SimpleNamespace(
             status="succeeded",
@@ -96,29 +97,33 @@ class StoreTest(unittest.TestCase):
             livemode=livemode,
             latest_charge=latest_charge,
         )
+        checkout = types.SimpleNamespace(
+            id="cs_test_paid",
+            mode="payment",
+            status="complete",
+            payment_status=payment_status,
+            amount_total=amount_total,
+            currency=currency,
+            livemode=livemode,
+            payment_intent=payment_intent,
+            customer_details=types.SimpleNamespace(email="buyer@example.com"),
+            created=created,
+            metadata={
+                "product_id": "trumpet-metronome",
+                "price_yen": "500",
+                "price_id": "price_example",
+            },
+        )
+        session_list = types.SimpleNamespace(
+            auto_paging_iter=MagicMock(return_value=iter([checkout]))
+        )
         module = types.ModuleType("stripe")
         module.api_key = ""
         module.checkout = types.SimpleNamespace(
             Session=types.SimpleNamespace(
                 create=MagicMock(return_value=types.SimpleNamespace(url="https://checkout.example/session")),
-                retrieve=MagicMock(
-                    return_value=types.SimpleNamespace(
-                        id="cs_test_paid",
-                        mode="payment",
-                        status="complete",
-                        payment_status=payment_status,
-                        amount_total=amount_total,
-                        currency=currency,
-                        livemode=livemode,
-                        payment_intent=payment_intent,
-                        created=created,
-                        metadata={
-                            "product_id": "trumpet-metronome",
-                            "price_yen": "500",
-                            "price_id": "price_example",
-                        },
-                    )
-                ),
+                retrieve=MagicMock(return_value=checkout),
+                list=MagicMock(return_value=session_list),
             )
         )
         module.Price = types.SimpleNamespace(
@@ -173,6 +178,15 @@ class StoreTest(unittest.TestCase):
         self.assertIn('id="app-download-link" href="#" hidden', html)
         self.assertIn(".app-download-link[hidden]", html)
         self.assertIn("display: none;", html)
+
+    def test_lesson_offers_secure_purchase_recovery(self):
+        response = self.client.get("/lesson/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('id="app-recovery-email"', html)
+        self.assertIn('id="app-recovery-receipt"', html)
+        self.assertIn('requestStore("recover-download"', html)
 
     def test_checkout_is_blocked_when_store_is_disabled(self):
         response = self.client.post("/api/store/checkout")
@@ -371,6 +385,55 @@ class StoreTest(unittest.TestCase):
         download_url = urlparse(response.get_json()["download_url"])
         self.assertEqual(download_url.scheme, "https")
         self.assertEqual(download_url.netloc, "namegawa-brass-lab.onrender.com")
+
+    def test_purchase_recovery_creates_download_link(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/recover-download",
+                json={
+                    "email": "buyer@example.com",
+                    "receipt_number": "1234-5678",
+                },
+                headers={
+                    "X-Forwarded-Host": "namegawa-brass-lab.onrender.com",
+                    "X-Forwarded-Proto": "https",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["session_id"], "cs_test_paid")
+        self.assertTrue(response.get_json()["download_url"].startswith("https://"))
+
+    def test_purchase_recovery_rejects_mismatched_receipt(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/recover-download",
+                json={
+                    "email": "buyer@example.com",
+                    "receipt_number": "9999-9999",
+                },
+            )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(response.get_json()["error"], "購入情報を確認できませんでした。")
+
+    def test_purchase_recovery_limits_attempts(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            for _ in range(5):
+                response = self.client.post(
+                    "/api/store/recover-download",
+                    json={"email": "invalid", "receipt_number": "invalid"},
+                )
+                self.assertEqual(response.status_code, 400)
+            blocked = self.client.post(
+                "/api/store/recover-download",
+                json={"email": "invalid", "receipt_number": "invalid"},
+            )
+
+        self.assertEqual(blocked.status_code, 429)
 
     def test_reissuing_same_purchase_uses_cached_stripe_verification(self):
         stripe = self.stripe_module(payment_status="paid")
