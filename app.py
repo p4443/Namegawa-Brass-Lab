@@ -1108,6 +1108,10 @@ def create_app(
     def index():
         return render_template("index.html", updates=get_updates())
 
+    @app.get("/favicon.ico")
+    def favicon():
+        return app.response_class(status=204)
+
     @app.get("/lesson/")
     def lesson():
         response = make_response(render_template("lesson/index.html"))
@@ -1974,10 +1978,19 @@ def create_app(
     def public_file(directory, filename):
         return send_from_directory(BASE_DIR / directory, filename)
 
+    @app.get("/<any(pdf,video):directory>/")
+    def public_index(directory):
+        return send_from_directory(BASE_DIR / directory, "index.html")
+
     @app.get("/music%20App/<path:filename>")
     @app.get("/music App/<path:filename>")
     def music_app_file(filename):
         return send_from_directory(BASE_DIR / "music App", filename)
+
+    @app.get("/music%20App/")
+    @app.get("/music App/")
+    def music_app_index():
+        return send_from_directory(BASE_DIR / "music App", "index.html")
 
     return app
 

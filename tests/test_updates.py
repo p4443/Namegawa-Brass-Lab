@@ -20,6 +20,26 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_missing_favicon_is_handled_without_a_404(self):
+        test_app = create_app(database_url="")
+        response = test_app.test_client().get("/favicon.ico")
+
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.data, b"")
+
+    def test_static_app_directory_urls_serve_index_without_exposing_data_root(self):
+        test_app = create_app(database_url="")
+        test_app.testing = True
+        client = test_app.test_client()
+
+        for path in ("/pdf/", "/video/", "/music%20App/"):
+            with self.subTest(path=path):
+                with client.get(path) as response:
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.mimetype, "text/html")
+
+        self.assertEqual(client.get("/data/").status_code, 404)
+
     def test_admin_password_reset_quotes_special_characters(self):
         reset_script = (Path(__file__).parents[1] / "reset-admin-password.sh").read_text(
             encoding="utf-8"
