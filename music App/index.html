@@ -1088,7 +1088,7 @@
   });
 
   normalModeToggle.addEventListener('change', () => {
-    if (isRunning) stopPractice();
+    if (isRunning || isPaused) stopPractice();
     const isNormalMode = normalModeToggle.checked;
     modeName.textContent = isNormalMode ? '一定速度モード' : 'ブレストレーニングモード';
     modeDescription.textContent = isNormalMode
