@@ -185,7 +185,8 @@ class StoreTest(unittest.TestCase):
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('<details class="app-purchase-recovery" open>', html)
+        self.assertIn('<section class="app-purchase-recovery"', html)
+        self.assertNotIn('<details class="app-purchase-recovery"', html)
         self.assertIn('id="app-recovery-email"', html)
         self.assertIn('id="app-recovery-receipt"', html)
         self.assertIn('requestStore("recover-download"', html)

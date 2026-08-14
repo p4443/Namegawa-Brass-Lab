@@ -393,10 +393,15 @@
       border-top: 1px solid var(--line);
     }
 
-    .app-purchase-recovery summary,
+    .app-purchase-recovery-title,
     .app-sales-admin summary {
-      cursor: pointer;
+      color: var(--navy);
       font-weight: 700;
+    }
+
+    .app-purchase-recovery-title {
+      margin: 0;
+      font-size: inherit;
     }
 
     .app-recovery-controls,
@@ -1074,14 +1079,14 @@
             </div>
             <a class="app-download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
             <p class="app-store-status" id="app-store-status" role="status" aria-live="polite"></p>
-            <details class="app-purchase-recovery" open>
-              <summary>購入済みの方：ダウンロードを再表示</summary>
+            <section class="app-purchase-recovery" aria-labelledby="app-purchase-recovery-title">
+              <h3 class="app-purchase-recovery-title" id="app-purchase-recovery-title">購入済みの方：ダウンロードを再表示</h3>
               <form class="app-recovery-controls" id="app-recovery-form">
                 <input id="app-recovery-email" type="email" autocomplete="email" placeholder="購入時のメールアドレス" aria-label="購入時のメールアドレス" required>
                 <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号または決済ID" aria-label="Stripe領収書番号または決済ID" pattern="(?:[A-Za-z0-9-]{4,64}|pi_[A-Za-z0-9_]{8,255})" required>
                 <button class="app-sales-save" id="app-recovery-submit" type="submit">再表示</button>
               </form>
-            </details>
+            </section>
             <nav class="app-store-legal" aria-label="購入に関する情報">
               <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
               <a href="../legal/#license">利用ライセンス</a>
