@@ -150,7 +150,8 @@
 
     select, input[type="number"] {
       width: 100%;
-      padding: 10px;
+      height: 42px;
+      padding: 0 10px;
       border-radius: 8px;
       background: #101016;
       color: var(--text);
@@ -280,11 +281,51 @@
       grid-column: 1 / -1;
     }
 
+    .meter-grid .accent-field {
+      grid-column: 1 / -1;
+    }
+
     .meter-grid label {
       font-size: 0.75rem;
     }
 
-    .btn-toggle {
+    .accent-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .accent-button {
+      min-width: 0;
+      height: 36px;
+      border: 1px solid #45455c;
+      border-radius: 6px;
+      background: #101016;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .accent-button[aria-pressed="true"] {
+      border-color: var(--primary);
+      background: var(--primary);
+      color: #18120a;
+    }
+
+    .accent-button:focus-visible {
+      outline: 2px solid #ffffff;
+      outline-offset: 2px;
+    }
+
+    .action-controls {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .btn-toggle,
+    .btn-secondary {
       width: 100%;
       padding: 16px;
       border: none;
@@ -297,9 +338,21 @@
       transition: background 0.2s, transform 0.1s;
     }
 
-    .btn-toggle:hover { opacity: 0.9; }
-    .btn-toggle:active { transform: scale(0.98); }
+    .btn-secondary {
+      background: #343445;
+      font-size: 0.95rem;
+    }
+
+    .btn-toggle:hover:not(:disabled),
+    .btn-secondary:hover:not(:disabled) { opacity: 0.9; }
+    .btn-toggle:active:not(:disabled),
+    .btn-secondary:active:not(:disabled) { transform: scale(0.98); }
     .btn-toggle.running { background: var(--exhale); }
+    .btn-toggle:disabled,
+    .btn-secondary:disabled {
+      cursor: default;
+      opacity: 0.42;
+    }
 
     @media (max-width: 600px) {
       html,
@@ -391,8 +444,8 @@
 
       select,
       input[type="number"] {
-        min-height: 32px;
-        padding: 5px 7px;
+        height: 34px;
+        padding: 0 7px;
         font-size: 0.78rem;
       }
 
@@ -431,13 +484,30 @@
         grid-column: 1 / -1;
       }
 
-      .btn-toggle {
-        min-height: 42px;
+      .accent-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 4px;
+      }
+
+      .accent-button {
+        height: 30px;
+        font-size: 0.72rem;
+      }
+
+      .action-controls {
+        gap: 5px;
         margin-top: auto;
+      }
+
+      .btn-toggle,
+      .btn-secondary {
+        min-height: 42px;
         padding: 8px;
         border-radius: 8px;
         font-size: 0.98rem;
       }
+
+      .btn-secondary { font-size: 0.82rem; }
     }
   </style>
 </head>
@@ -517,6 +587,10 @@
           <option value="9">9連符</option>
         </select>
       </div>
+      <div class="accent-field">
+        <label id="accentLabel">アクセントを付ける拍</label>
+        <div class="accent-grid" id="accentGrid" role="group" aria-labelledby="accentLabel"></div>
+      </div>
     </div>
   </div>
 
@@ -564,8 +638,11 @@
     </select>
   </div>
 
-  <!-- スタート/ストップボタン -->
-  <button class="btn-toggle" id="startBtn">ブレストレーニング開始</button>
+  <div class="action-controls">
+    <button class="btn-toggle" id="startBtn">開始</button>
+    <button class="btn-secondary" id="pauseBtn" disabled>一時停止</button>
+    <button class="btn-secondary" id="stopBtn" disabled>停止</button>
+  </div>
 </div>
 
 <script>
@@ -633,6 +710,7 @@
   let stepIdx = 0;
   let currentSubBeat = 1;
   let isRunning = false;
+  let isPaused = false;
   let bpm = 80;
   let initialBpm = 80;
   let waveDirection = 1;
@@ -653,6 +731,7 @@
   const meterNumerator = document.getElementById('meterNumerator');
   const meterDenominator = document.getElementById('meterDenominator');
   const subdivisionSelect = document.getElementById('subdivisionSelect');
+  const accentGrid = document.getElementById('accentGrid');
   const tempoCard = document.getElementById('tempoCard');
   const tempoToggle = document.getElementById('tempoToggle');
   const tempoMode = document.getElementById('tempoMode');
@@ -660,6 +739,8 @@
   const tempoTarget = document.getElementById('tempoTarget');
   const soundSelect = document.getElementById('soundSelect');
   const startBtn = document.getElementById('startBtn');
+  const pauseBtn = document.getElementById('pauseBtn');
+  const stopBtn = document.getElementById('stopBtn');
   const displayPanel = document.getElementById('displayPanel');
   const actionBadge = document.getElementById('actionBadge');
   const beatCounter = document.getElementById('beatCounter');
@@ -687,13 +768,62 @@
     return `${subdivisions}連符`;
   }
 
+  function renderAccentButtons() {
+    const beatsPerMeasure = Number(meterNumerator.value);
+    const selectedBeats = new Set(
+      Array.from(accentGrid.querySelectorAll('[aria-pressed="true"]'), (button) => Number(button.dataset.beat))
+    );
+    if (accentGrid.childElementCount === 0) selectedBeats.add(1);
+    accentGrid.replaceChildren();
+
+    for (let beat = 1; beat <= beatsPerMeasure; beat += 1) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'accent-button';
+      button.dataset.beat = beat;
+      button.setAttribute('aria-pressed', String(selectedBeats.has(beat)));
+      button.setAttribute('aria-label', `${beat}拍目のアクセント`);
+      button.textContent = beat;
+      accentGrid.append(button);
+    }
+  }
+
+  function isNormalAccent() {
+    const button = accentGrid.querySelector(`[data-beat="${normalBeat}"]`);
+    return normalSubdivision === 1 && button?.getAttribute('aria-pressed') === 'true';
+  }
+
+  function resetPracticePosition() {
+    stepIdx = 0;
+    currentSubBeat = 1;
+    normalBeat = 1;
+    normalSubdivision = 1;
+    measureCount = 1;
+  }
+
+  function updateActionControls() {
+    const isNormalMode = normalModeToggle.checked;
+    const isActive = isRunning || isPaused;
+    startBtn.textContent = isNormalMode
+      ? (isRunning ? 'メトロノーム停止' : 'メトロノーム開始')
+      : (isPaused ? '再開' : '開始');
+    startBtn.disabled = !isNormalMode && isRunning;
+    startBtn.classList.toggle('running', isRunning);
+    startBtn.setAttribute('aria-pressed', String(isRunning));
+    pauseBtn.hidden = isNormalMode;
+    stopBtn.hidden = isNormalMode;
+    pauseBtn.disabled = !isRunning;
+    stopBtn.disabled = !isActive;
+    bpmSlider.disabled = isActive;
+  }
+
   function renderStep() {
     if (normalModeToggle.checked) {
       const beatsPerMeasure = Number(meterNumerator.value);
       const beatUnit = Number(meterDenominator.value);
       const subdivisions = Number(subdivisionSelect.value);
       displayPanel.classList.remove('inhale-state', 'exhale-state');
-      const isMeasureStart = normalBeat === 1 && normalSubdivision === 1;
+      const isMeasureStart = isNormalAccent();
       const isBeatStart = normalSubdivision === 1;
       actionBadge.className = `action-badge ${isMeasureStart ? 'goal' : isBeatStart ? 'beat-start' : 'sub-beat'}`;
       actionBadge.textContent = isMeasureStart
@@ -786,7 +916,7 @@
     if (!audioContext || audioContext.state !== 'running') return;
 
     const isAccent = normalModeToggle.checked
-      ? normalBeat === 1 && normalSubdivision === 1
+      ? isNormalAccent()
       : currentSubBeat === 1 || currentSubBeat === 0.5;
     const isBeatStart = normalModeToggle.checked && normalSubdivision === 1;
     const accentMultiplier = isAccent ? 1 : isBeatStart ? 0.76 : 0.48;
@@ -906,32 +1036,50 @@
     await ensureAudio();
     if (isRunning) return;
 
+    if (!normalModeToggle.checked && isPaused) {
+      isPaused = false;
+      isRunning = true;
+      renderStep();
+      playClick();
+      scheduleNextBeat();
+      updateActionControls();
+      return;
+    }
+
     initialBpm = clamp(readNumber(bpmSlider, 80), 40, 180);
     bpm = initialBpm;
     waveDirection = 1;
-    stepIdx = 0;
-    currentSubBeat = 1;
-    normalBeat = 1;
-    normalSubdivision = 1;
-    measureCount = 1;
+    resetPracticePosition();
+    isPaused = false;
     isRunning = true;
-    startBtn.textContent = normalModeToggle.checked ? 'メトロノーム停止' : 'ブレストレーニング停止';
-    startBtn.classList.add('running');
-    startBtn.setAttribute('aria-pressed', 'true');
-    bpmSlider.disabled = true;
     renderStep();
     playClick();
     scheduleNextBeat();
+    updateActionControls();
   }
 
-  function stopPractice() {
+  function stopPractice(resetPosition = true) {
     isRunning = false;
+    isPaused = false;
     window.clearTimeout(timerId);
     timerId = null;
-    startBtn.textContent = normalModeToggle.checked ? 'メトロノーム開始' : 'ブレストレーニング開始';
-    startBtn.classList.remove('running');
-    startBtn.setAttribute('aria-pressed', 'false');
-    bpmSlider.disabled = false;
+    if (resetPosition) {
+      resetPracticePosition();
+      renderStep();
+    }
+    updateActionControls();
+  }
+
+  function pausePractice() {
+    if (!isRunning) return;
+    isRunning = false;
+    isPaused = true;
+    window.clearTimeout(timerId);
+    timerId = null;
+    actionBadge.className = 'action-badge beat-start';
+    actionBadge.textContent = '一時停止';
+    progressText.textContent = '続きから再開できます';
+    updateActionControls();
   }
 
   bpmSlider.addEventListener('input', () => {
@@ -949,21 +1097,27 @@
     normalSettings.hidden = !isNormalMode;
     tempoCard.hidden = isNormalMode;
     if (isNormalMode) tempoToggle.checked = false;
-    normalBeat = 1;
-    normalSubdivision = 1;
-    measureCount = 1;
-    startBtn.textContent = isNormalMode ? 'メトロノーム開始' : 'ブレストレーニング開始';
+    resetPracticePosition();
     renderStep();
+    updateActionControls();
   });
 
   [meterNumerator, meterDenominator, subdivisionSelect].forEach((control) => {
     control.addEventListener('change', () => {
       if (isRunning) stopPractice();
+      if (control === meterNumerator) renderAccentButtons();
       normalBeat = 1;
       normalSubdivision = 1;
       measureCount = 1;
       renderStep();
     });
+  });
+
+  accentGrid.addEventListener('click', (event) => {
+    const button = event.target.closest('.accent-button');
+    if (!button) return;
+    button.setAttribute('aria-pressed', String(button.getAttribute('aria-pressed') !== 'true'));
+    renderStep();
   });
 
   tempoMode.addEventListener('change', () => {
@@ -977,7 +1131,7 @@
   });
 
   startBtn.addEventListener('click', () => {
-    if (isRunning) {
+    if (normalModeToggle.checked && isRunning) {
       stopPractice();
     } else {
       startPractice().catch(() => {
@@ -987,12 +1141,17 @@
     }
   });
 
+  pauseBtn.addEventListener('click', pausePractice);
+  stopBtn.addEventListener('click', () => stopPractice());
+
   document.addEventListener('visibilitychange', () => {
     if (document.hidden && isRunning) stopPractice();
   });
 
   startBtn.setAttribute('aria-pressed', 'false');
+  renderAccentButtons();
   renderStep();
+  updateActionControls();
 </script>
 </body>
 </html>

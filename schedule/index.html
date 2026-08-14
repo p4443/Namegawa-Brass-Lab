@@ -185,13 +185,13 @@
             <div class="reservation-list" id="reservation-list"></div>
           </section>
           <section class="admin-section">
-            <h3>予約不可枠の一括設定</h3>
+            <h3>予約枠の一括設定</h3>
             <form class="form-grid" id="slot-admin-form">
               <div class="field"><label for="slot-start-date">開始日</label><input id="slot-start-date" name="start_date" type="date" required></div>
               <div class="field"><label for="slot-end-date">終了日</label><input id="slot-end-date" name="end_date" type="date" required></div>
               <div class="field"><label for="slot-start-time">開始時間</label><input id="slot-start-time" name="start_time" type="time" step="900" required></div>
               <div class="field"><label for="slot-end-time">終了時間</label><input id="slot-end-time" name="end_time" type="time" step="900" required></div>
-              <div class="field"><label for="slot-status">状態</label><select id="slot-status" name="status"><option>お休み</option><option>予約済</option></select></div>
+              <div class="field"><label for="slot-status">反映モード</label><select id="slot-status" name="status"><option value="空き">予約可</option><option value="お休み">お休み</option><option value="予約済">予約済</option></select></div>
               <div class="field wide"><label for="slot-note">管理メモ</label><input id="slot-note" name="note" maxlength="200"></div>
               <button class="button" type="submit">スケジュールへ反映</button>
             </form>
@@ -476,9 +476,16 @@
       try { result = await requestApi(`/api/lesson-reservations/${reservation.reservation_id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify(payload), timeoutMs: 60000 }); }
       catch (error) { adminStatus.textContent = error.message; return; }
       statusSelect.value = result.status || statusSelect.value;
-      adminStatus.textContent = timeInput.value
+      const updateMessage = timeInput.value
         ? `予約時間を「${timeInput.value}」、状態を「${statusSelect.value}」へ更新しました。`
         : `予約状態を「${statusSelect.value}」へ更新しました。`;
+      if (result.confirmation_email_sent === true) {
+        adminStatus.textContent = `${updateMessage} 確定メールを送信しました。`;
+      } else if (result.confirmation_email_sent === false) {
+        adminStatus.textContent = `${updateMessage} 確定メールを送信できませんでした。`;
+      } else {
+        adminStatus.textContent = updateMessage;
+      }
       await loadReservations();
       await loadSchedule();
     }

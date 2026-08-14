@@ -182,7 +182,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var writeActions = ["create", "upsert_slot_status_range", "update", "delete"]', do_post)
+        self.assertIn('var writeActions = ["create", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
         self.assertIn("if (writeActions.indexOf(action) !== -1)", do_post)
         self.assertIn("var spreadsheet = getSpreadsheet();", do_post)
         self.assertIn("getReservationSheet(spreadsheet)", do_post)
@@ -194,7 +194,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-12-admin-v9";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-14-cancellation-mail-v13";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -212,6 +212,32 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("htmlBody:", function)
         self.assertIn("sanitizeMailHeader(data.email)", function)
         self.assertIn("sanitizeMailHeader", script)
+
+    def test_apps_script_sends_confirmation_email_on_first_confirmed_transition(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        create_action = script.split('if (action === "create")', 1)[1].split(
+            'if (action === "get_slot_statuses")', 1
+        )[0]
+        update_action = script.split('if (action === "update")', 1)[1].split(
+            'if (action === "cancel")', 1
+        )[0]
+        reply_function = script.split("function sendReservationAutoReply", 1)[1].split(
+            "function sendReservationConfirmation", 1
+        )[0]
+        confirmation_function = script.split("function sendReservationConfirmation", 1)[1].split(
+            "function sanitizeMailHeader", 1
+        )[0]
+
+        self.assertIn('"確認中"', create_action)
+        self.assertIn("現在の状態: 確認中", reply_function)
+        self.assertIn('nextStatus === "確定" && currentReservation.status !== "確定"', update_action)
+        self.assertIn("sendReservationConfirmation({", update_action)
+        self.assertIn("confirmationEmailSent: confirmationEmailSent", update_action)
+        self.assertIn("レッスン予約確定のお知らせ", confirmation_function)
+        self.assertIn("確定日:", confirmation_function)
+        self.assertIn("確定時間:", confirmation_function)
 
     def test_apps_script_reservation_ids_do_not_reuse_deleted_rows(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -527,6 +553,19 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
         self.assertIn('document.querySelector(".detail-panel").scrollIntoView', page)
+        self.assertIn('<option value="空き">予約可</option>', page)
+
+    def test_lesson_page_has_public_cancellation_form(self):
+        client = create_app().test_client()
+
+        response = client.get("/lesson/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="reservation-cancel-form"', page)
+        self.assertIn('name="reservation_id"', page)
+        self.assertIn('name="email"', page)
+        self.assertIn("api/lesson-reservations/cancel", page)
 
     def test_lesson_reservation_list_requires_editor_password(self):
         client = create_app().test_client()
@@ -551,7 +590,7 @@ class UpdatesTest(unittest.TestCase):
             send_reservation.return_value = {
                 "ok": True,
                 "version": "2026-08-12-admin-v1",
-                "capabilities": ["list", "update", "delete", "upsert_slot_status_range"],
+                "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -670,6 +709,111 @@ class UpdatesTest(unittest.TestCase):
             "upsert_slot_status_range",
         )
 
+    def test_lesson_slot_admin_can_restore_available_mode(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-20",
+            "start_time": "09:00",
+            "end_time": "09:30",
+            "status": "空き",
+            "note": "予約解除",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={"ok": True, "updatedCount": 3}) as send_reservation:
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(send_reservation.call_args.args[2]["status"], "空き")
+
+    def test_user_can_cancel_confirmed_reservation_and_release_slots(self):
+        client = create_app().test_client()
+        payload = {
+            "reservation_id": "R-20260820-001",
+            "email": "USER@example.com",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260820-001",
+                "status": "キャンセル",
+                "updatedCount": 4,
+                "alreadyCancelled": False,
+                "cancellationEmailSent": True,
+            }
+            response = client.post("/api/lesson-reservations/cancel", json=payload)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["cancelled"])
+        self.assertEqual(response.json["released_count"], 4)
+        self.assertFalse(response.json["already_cancelled"])
+        self.assertTrue(response.json["cancellation_email_sent"])
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "cancel")
+        self.assertEqual(send_reservation.call_args.args[2]["email"], "user@example.com")
+
+    def test_user_cancellation_rejects_mismatched_email(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            side_effect=LessonReservationDeliveryError("EMAIL_MISMATCH"),
+        ):
+            response = client.post(
+                "/api/lesson-reservations/cancel",
+                json={"reservation_id": "R-20260820-001", "email": "wrong@example.com"},
+            )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("一致しません", response.json["error"])
+
+    def test_apps_script_user_cancellation_releases_owned_slots(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        cancel_action = script.split('if (action === "cancel")', 1)[1].split(
+            'if (action === "delete")', 1
+        )[0]
+
+        self.assertIn('storedEmail !== email', cancel_action)
+        self.assertIn('setValue("キャンセル")', cancel_action)
+        self.assertIn("releaseReservationSlots(", cancel_action)
+        self.assertIn("updatedCount: releasedCount", cancel_action)
+        self.assertIn('reservation.status === "キャンセル"', cancel_action)
+        self.assertIn("updatedCount: repairedCount", cancel_action)
+        self.assertIn("sendReservationCancellation({", cancel_action)
+        self.assertIn("cancellationEmailSent: cancellationEmailSent", cancel_action)
+
+        cancellation_function = script.split("function sendReservationCancellation", 1)[1].split(
+            "function sanitizeMailHeader", 1
+        )[0]
+        self.assertIn("レッスン予約キャンセル完了", cancellation_function)
+        self.assertIn("現在の状態: キャンセル", cancellation_function)
+
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
@@ -707,7 +851,7 @@ class UpdatesTest(unittest.TestCase):
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260820-001",
-                "status": "調整中",
+                "status": "確認中",
                 "autoReplySent": True,
             }
             response = client.post("/api/lesson-reservations", json=payload)
@@ -715,7 +859,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
-        self.assertEqual(response.json["status"], "調整中")
+        self.assertEqual(response.json["status"], "確認中")
         self.assertEqual(response.json["duration_minutes"], 30)
         self.assertTrue(response.json["auto_reply_sent"])
         send_reservation.assert_called_once_with(
@@ -873,6 +1017,58 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertTrue(response.json["conflict"])
         self.assertFalse(response.json["saved"])
+
+    def test_lesson_reservation_rejects_fifth_active_booking(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "user@example.com",
+            "phone": "",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationLimit": True,
+                "maxReservations": 4,
+            }
+            response = client.post("/api/lesson-reservations", json=payload)
+
+        self.assertEqual(response.status_code, 409)
+        self.assertFalse(response.json["saved"])
+        self.assertTrue(response.json["reservation_limit"])
+        self.assertEqual(response.json["max_reservations"], 4)
+        self.assertIn("最大4枠", response.json["error"])
+
+    def test_apps_script_counts_only_active_future_reservations_for_limit(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        create_action = script.split('if (action === "create")', 1)[1].split(
+            'if (action === "get_slot_statuses")', 1
+        )[0]
+        count_function = script.split("function countActiveReservationsByEmail", 1)[1].split(
+            "function normalizeReservationDate", 1
+        )[0]
+
+        self.assertLess(
+            create_action.index("findDuplicateReservation(sheet, data, now)"),
+            create_action.index("countActiveReservationsByEmail(sheet, data.email, now)"),
+        )
+        self.assertIn("MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4", script)
+        self.assertIn('status === "キャンセル"', count_function)
+        self.assertIn("preferredDate < today", count_function)
+        self.assertIn("rowEmail !== email", count_function)
 
     def test_lesson_slot_statuses_returns_slots(self):
         client = create_app().test_client()
@@ -1090,6 +1286,35 @@ class UpdatesTest(unittest.TestCase):
             send_reservation.call_args_list[1].kwargs["action"],
             "delete",
         )
+
+    def test_lesson_reservation_confirm_reports_confirmation_email(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260810-001",
+                "status": "確定",
+                "updatedFields": ["status"],
+                "confirmationEmailSent": True,
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "確定"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["confirmation_email_sent"])
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "update")
 
     def test_lesson_reservation_manage_reports_slot_conflict(self):
         client = create_app().test_client()

@@ -545,6 +545,16 @@ def validate_reservation_id(value):
     return reservation_id
 
 
+def validate_lesson_reservation_cancellation(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+    reservation_id = validate_reservation_id(payload.get("reservation_id", ""))
+    email = str(payload.get("email", "")).strip().lower()
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email):
+        raise ValueError("予約時のメールアドレスを正しく入力してください。")
+    return {"reservation_id": reservation_id, "email": email}
+
+
 def parse_updated_count(result):
     updated_count = result.get("updatedCount", result.get("updated_count", 0))
     try:
@@ -575,8 +585,8 @@ def validate_slot_status_request(payload):
     if end_date < start_date:
         raise ValueError("終了日は開始日以降の日付を指定してください。")
 
-    if values["status"] not in SLOT_STATUS_VALUES - {"空き", "調整中"}:
-        raise ValueError("状態は 予約済 または お休み を指定してください。")
+    if values["status"] not in SLOT_STATUS_VALUES - {"調整中"}:
+        raise ValueError("状態は 空き・予約済・お休み から指定してください。")
 
     def validate_time(field_name, value):
         if value == CONSULTATION_TIME:
@@ -622,7 +632,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "update", "delete", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -1348,6 +1358,18 @@ def create_app(
                 502,
             )
 
+        if result.get("reservationLimit"):
+            max_reservations = result.get("maxReservations", 4)
+            return lesson_reservation_json(
+                {
+                    "saved": False,
+                    "reservation_limit": True,
+                    "max_reservations": max_reservations,
+                    "error": f"予約は1人最大{max_reservations}枠までです。既存予約をキャンセルしてからお申し込みください。",
+                },
+                409,
+            )
+
         if result.get("conflict"):
             return lesson_reservation_json(
                 {
@@ -1366,7 +1388,7 @@ def create_app(
             {
                 "saved": True,
                 "reservation_id": result.get("reservationId", ""),
-                "status": result.get("status", "調整中"),
+                "status": result.get("status", "確認中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
@@ -1426,6 +1448,60 @@ def create_app(
                 503,
             )
 
+    @app.route("/api/lesson-reservations/cancel", methods=["POST", "OPTIONS"])
+    def cancel_lesson_reservation():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+            )
+        try:
+            values = validate_lesson_reservation_cancellation(request.get_json(silent=True))
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、予約をキャンセルできません。直接お問い合わせください。"},
+                503,
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                values,
+                action="cancel",
+            )
+            return lesson_reservation_json(
+                {
+                    "cancelled": True,
+                    "reservation_id": result.get("reservationId", values["reservation_id"]),
+                    "released_count": parse_updated_count(result),
+                    "already_cancelled": bool(result.get("alreadyCancelled", False)),
+                    "cancellation_email_sent": result.get("cancellationEmailSent"),
+                },
+                200,
+            )
+        except LessonReservationDeliveryError as exc:
+            if str(exc) in {"NOT_FOUND", "EMAIL_MISMATCH"}:
+                return lesson_reservation_json(
+                    {"error": "受付番号またはメールアドレスが一致しません。"},
+                    404,
+                )
+            app.logger.exception("Apps Script rejected reservation cancellation")
+            return lesson_reservation_json(
+                {"error": "予約をキャンセルできませんでした。時間をおいて再度お試しください。"},
+                502,
+            )
+        except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+            app.logger.exception("Failed to cancel lesson reservation")
+            return lesson_reservation_json(
+                {"error": "予約をキャンセルできませんでした。時間をおいて再度お試しください。"},
+                502,
+            )
+
     @app.get("/api/lesson-admin-health")
     def lesson_admin_health():
         error = require_editor()
@@ -1446,7 +1522,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"list", "update", "delete", "upsert_slot_status_range"}
+        required_capabilities = {"list", "update", "delete", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -1662,6 +1738,7 @@ def create_app(
                     "reservation_id": result.get("reservationId", ""),
                     "status": result.get("status", values.get("status", "")),
                     "updated_fields": result.get("updatedFields", []),
+                    "confirmation_email_sent": result.get("confirmationEmailSent"),
                 }
             )
             return with_lesson_reservation_cors(

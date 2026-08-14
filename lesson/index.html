@@ -788,6 +788,45 @@
       outline: 3px solid rgba(212, 175, 55, 0.25);
     }
 
+    .reservation-cancel {
+      grid-column: 1 / -1;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .reservation-cancel summary {
+      width: fit-content;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .reservation-cancel-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+      align-items: end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .reservation-cancel-form > p {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+
+    .reservation-cancel-form .reservation-submit {
+      min-height: 44px;
+      background: #963f35;
+    }
+
+    .reservation-cancel-form .form-status {
+      grid-column: 1 / -1;
+    }
+
     .form-actions {
       display: flex;
       align-items: center;
@@ -912,6 +951,10 @@
       }
 
       .reservation-form {
+        grid-template-columns: 1fr;
+      }
+
+      .reservation-cancel-form {
         grid-template-columns: 1fr;
       }
 
@@ -1107,7 +1150,7 @@
     <section class="reservation" aria-labelledby="reservation-title">
       <div class="reservation-copy">
         <h2 id="reservation-title">レッスン予約</h2>
-        <p>予約できる期間は、明日から1か月先までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
+        <p>予約できる期間は、明日から1か月先までです。同じメールアドレスで予約できる今後の予定は、最大4枠までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
         <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
           <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜08:00</span><span class="reservation-time-range">20:30〜21:00</span></dd></div>
           <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜11:00</span></dd></div>
@@ -1164,6 +1207,22 @@
           <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
         </div>
       </form>
+      <details class="reservation-cancel">
+        <summary>予約をキャンセルする</summary>
+        <form class="reservation-cancel-form" id="reservation-cancel-form">
+          <p>確認中・確定済みの予約をキャンセルできます。受付メールまたは確定メールに記載された受付番号を入力してください。</p>
+          <div class="form-field">
+            <label for="cancel-reservation-id">受付番号<span class="required">必須</span></label>
+            <input id="cancel-reservation-id" name="reservation_id" type="text" placeholder="R-20260820-001" pattern="R-\d{8}-\d{3,}" required>
+          </div>
+          <div class="form-field">
+            <label for="cancel-reservation-email">予約時のメールアドレス<span class="required">必須</span></label>
+            <input id="cancel-reservation-email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <button class="reservation-submit" type="submit">予約をキャンセル</button>
+          <p class="form-status" id="reservation-cancel-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>
     </section>
     <p class="copyright">© なめがわブラス・ラボ</p>
   </footer>
@@ -1174,6 +1233,9 @@
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
     const reservationSubmit = reservationForm.querySelector("button[type='submit']");
+    const reservationCancelForm = document.getElementById("reservation-cancel-form");
+    const reservationCancelStatus = document.getElementById("reservation-cancel-status");
+    const reservationCancelSubmit = reservationCancelForm.querySelector("button[type='submit']");
     const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
     const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
     const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";
@@ -1186,6 +1248,7 @@
     };
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
+    const reservationCancelApiCandidates = buildApiCandidates(`${renderReservationApi}/cancel`, "api/lesson-reservations/cancel");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
     const appPurchaseButton = document.getElementById("app-purchase-button");
     const appDownloadLink = document.getElementById("app-download-link");
@@ -1739,6 +1802,26 @@
       throw lastError || new Error("送信先サーバーに接続できませんでした。");
     }
 
+    async function cancelReservation(payload) {
+      let lastError = null;
+      for (const endpoint of reservationCancelApiCandidates) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=UTF-8" },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (response.ok) return result;
+          if ((response.status === 404 || response.status === 405) && !result.error) continue;
+          throw new Error(result.error || "予約をキャンセルできませんでした。");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("送信先サーバーに接続できませんでした。");
+    }
+
     reservationForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       reservationSubmit.disabled = true;
@@ -1765,8 +1848,8 @@
           return;
         }
         const baseMessage = result.reservation_id
-          ? `予約希望を受け付けました（状態：${result.status || "調整中"}）。受付番号：${result.reservation_id}`
-          : "予約希望を受け付けました（状態：調整中）。";
+          ? `予約希望を受け付けました（状態：${result.status || "確認中"}）。受付番号：${result.reservation_id}`
+          : "予約希望を受け付けました（状態：確認中）。";
         reservationStatus.textContent = result.auto_reply_sent
           ? `${baseMessage} 確認メールを送信しました。`
           : `${baseMessage} 確認メールを送信できませんでした。必要に応じて、お問い合わせください。`;
@@ -1775,6 +1858,37 @@
         reservationStatus.textContent = error.message;
       } finally {
         reservationSubmit.disabled = false;
+      }
+    });
+
+    reservationCancelForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const cancellationData = Object.fromEntries(new FormData(reservationCancelForm));
+      if (!window.confirm(`受付番号 ${cancellationData.reservation_id} の予約をキャンセルしますか？`)) {
+        return;
+      }
+      reservationCancelSubmit.disabled = true;
+      reservationCancelStatus.dataset.state = "";
+      reservationCancelStatus.textContent = "キャンセルしています…";
+      try {
+        const result = await cancelReservation(cancellationData);
+        reservationCancelForm.reset();
+        reservationCancelStatus.dataset.state = "success";
+        if (result.already_cancelled) {
+          reservationCancelStatus.textContent = `受付番号 ${result.reservation_id} はすでにキャンセル済みです。`;
+        } else {
+          const emailMessage = result.cancellation_email_sent === true
+            ? " キャンセル完了メールを送信しました。"
+            : result.cancellation_email_sent === false
+              ? " キャンセル完了メールを送信できませんでした。必要に応じてお問い合わせください。"
+              : "";
+          reservationCancelStatus.textContent = `受付番号 ${result.reservation_id} をキャンセルしました。予約枠は予約可能へ戻りました。${emailMessage}`;
+        }
+      } catch (error) {
+        reservationCancelStatus.dataset.state = "error";
+        reservationCancelStatus.textContent = error.message;
+      } finally {
+        reservationCancelSubmit.disabled = false;
       }
     });
 
