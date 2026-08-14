@@ -1,5 +1,7 @@
 import fcntl
+import hashlib
 import hmac
+import io
 import json
 import os
 import re
@@ -13,7 +15,7 @@ from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 from urllib.parse import urlencode, urlparse
-from zipfile import BadZipFile, ZipFile
+from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
@@ -33,6 +35,8 @@ PRODUCT_REQUIRED_FILES = {"index.html", "README.txt"}
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
+STORE_DOWNLOAD_LIMIT = 10
+STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
@@ -256,6 +260,16 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                     event_id TEXT PRIMARY KEY,
                     event_type TEXT NOT NULL,
                     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS store_downloads (
+                    purchase_reference TEXT PRIMARY KEY,
+                    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    download_count INTEGER NOT NULL DEFAULT 0,
+                    last_downloaded_at TIMESTAMPTZ
                 )
                 """
             )
@@ -702,6 +716,8 @@ def create_app(
     stripe_price_cache_lock = threading.Lock()
     product_validation_cache = {"signature": None, "valid": False}
     product_validation_lock = threading.Lock()
+    local_download_counts = {}
+    download_count_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -958,6 +974,66 @@ def create_app(
         if not secret:
             return None
         return URLSafeTimedSerializer(secret, salt="metronome-download")
+
+    def purchase_reference(session_id):
+        secret = os.environ.get("DOWNLOAD_TOKEN_SECRET", "").strip().encode("utf-8")
+        return hmac.new(secret, session_id.encode("utf-8"), hashlib.sha256).hexdigest()[:16].upper()
+
+    def personalized_product(session_id):
+        license_text = (
+            "トランペット練習メトロノーム 利用ライセンス\n\n"
+            "本商品は購入者本人のみ利用できます。第三者への譲渡、共有、再配布、\n"
+            "販売、公衆送信を禁止します。購入者本人が所有する複数端末では利用できます。\n\n"
+            f"購入参照ID: {purchase_reference(session_id)}\n"
+            "このIDは購入確認およびサポート対応に使用します。\n"
+        ).encode("utf-8")
+        output = io.BytesIO()
+        with ZipFile(product_file) as source, ZipFile(output, "w", compression=ZIP_DEFLATED) as archive:
+            for item in source.infolist():
+                archive.writestr(item, source.read(item.filename))
+            license_info = ZipInfo("LICENSE.txt", date_time=(2026, 1, 1, 0, 0, 0))
+            license_info.compress_type = ZIP_DEFLATED
+            archive.writestr(license_info, license_text)
+        output.seek(0)
+        return output
+
+    def download_is_allowed(reference):
+        if configured_database_url:
+            with database_connection(configured_database_url) as connection:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        """
+                        INSERT INTO store_downloads
+                            (purchase_reference, window_started_at, download_count, last_downloaded_at)
+                        VALUES (%s, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+                        ON CONFLICT (purchase_reference) DO UPDATE SET
+                            window_started_at = CASE
+                                WHEN store_downloads.window_started_at <
+                                    CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                                THEN CURRENT_TIMESTAMP
+                                ELSE store_downloads.window_started_at
+                            END,
+                            download_count = CASE
+                                WHEN store_downloads.window_started_at <
+                                    CURRENT_TIMESTAMP - INTERVAL '24 hours'
+                                THEN 1
+                                ELSE store_downloads.download_count + 1
+                            END,
+                            last_downloaded_at = CURRENT_TIMESTAMP
+                        RETURNING download_count
+                        """,
+                        (reference,),
+                    )
+                    return cursor.fetchone()[0] <= STORE_DOWNLOAD_LIMIT
+
+        now = time.monotonic()
+        with download_count_lock:
+            window_started_at, count = local_download_counts.get(reference, (now, 0))
+            if now - window_started_at >= STORE_DOWNLOAD_WINDOW_SECONDS:
+                window_started_at, count = now, 0
+            count += 1
+            local_download_counts[reference] = (window_started_at, count)
+            return count <= STORE_DOWNLOAD_LIMIT
 
     def product_archive_is_valid():
         path = Path(product_file)
@@ -1290,8 +1366,17 @@ def create_app(
             return store_json({"error": "決済情報を再確認できませんでした。"}, 502)
         if product_id != PRODUCT_ID:
             return store_json({"error": "現在この商品をダウンロードできません。"}, 403)
+        if request.method != "HEAD" and "Range" not in request.headers:
+            if not download_is_allowed(purchase_reference(session_id)):
+                return store_json(
+                    {
+                        "error": "短時間に多数のダウンロードが行われました。24時間後に再度お試しいただくか、お問い合わせください。"
+                    },
+                    429,
+                )
+        product_download = personalized_product(session_id)
         response = send_file(
-            product_file,
+            product_download,
             as_attachment=True,
             download_name="trumpet-practice-metronome.zip",
             mimetype="application/zip",

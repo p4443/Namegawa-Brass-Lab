@@ -592,6 +592,32 @@
       margin-bottom: 10px;
     }
 
+    .updates-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .updates-archive-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .updates-archive-select {
+      min-height: 32px;
+      padding: 4px 26px 4px 8px;
+      border: 1px solid rgba(11, 37, 69, 0.2);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--primary-color);
+      font: inherit;
+      font-size: 0.78rem;
+    }
+
     .updates-title {
       font-size: 0.95rem;
       font-weight: 800;
@@ -805,9 +831,9 @@
     }
 
     #updates-list {
-      max-height: none;
-      overflow-y: visible;
-      overscroll-behavior-y: auto;
+      height: var(--updates-window-height, 420px);
+      overflow-y: auto;
+      overscroll-behavior-y: contain;
       scrollbar-width: thin;
       scrollbar-color: rgba(11, 37, 69, 0.42) rgba(11, 37, 69, 0.08);
       padding: 8px 10px 8px 8px;
@@ -1478,7 +1504,13 @@
               <span class="updates-title-desktop">📢 お知らせ・つぶやき・お役立ち情報</span>
               <span class="updates-title-mobile">📢 お知らせ・活動情報</span>
             </div>
-            <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
+            <div class="updates-header-actions">
+              <label class="updates-archive-label" for="updates-archive-month">
+                月別
+                <select class="updates-archive-select" id="updates-archive-month" aria-label="表示する月を選択"></select>
+              </label>
+              <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
+            </div>
           </div>
           <div class="editor-panel" id="editor-panel" hidden>
             <form id="editor-login-form">
@@ -1650,6 +1682,7 @@
 </div>
 
 <script>
+  let allUpdates = [];
   let currentUpdates = [];
   let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
   let failedLoginAttempts = 0;
@@ -1759,6 +1792,48 @@
     }
   }
 
+  function updateMonthKey(item) {
+    const match = String(item.date || '').match(/^(\d{4})[-/.](\d{1,2})/);
+    if (!match) return '';
+    return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}`;
+  }
+
+  function archiveMonthLabel(monthKey) {
+    const [year, month] = monthKey.split('-');
+    return `${year}年${Number(month)}月`;
+  }
+
+  function renderSelectedArchiveMonth() {
+    const selector = document.getElementById('updates-archive-month');
+    const selectedMonth = selector?.value || '';
+    const updates = selectedMonth
+      ? allUpdates.filter((item) => updateMonthKey(item) === selectedMonth)
+      : allUpdates;
+    renderUpdates(updates);
+    document.getElementById('updates-list')?.scrollTo({ top: 0 });
+  }
+
+  function setUpdates(updates) {
+    allUpdates = updates;
+    const selector = document.getElementById('updates-archive-month');
+    if (!selector) {
+      renderUpdates(updates);
+      return;
+    }
+
+    const previousMonth = selector.value;
+    const months = [...new Set(updates.map(updateMonthKey).filter(Boolean))].sort().reverse();
+    selector.replaceChildren();
+    months.forEach((monthKey) => {
+      const option = document.createElement('option');
+      option.value = monthKey;
+      option.textContent = archiveMonthLabel(monthKey);
+      selector.appendChild(option);
+    });
+    if (months.includes(previousMonth)) selector.value = previousMonth;
+    renderSelectedArchiveMonth();
+  }
+
   function renderUpdates(updates) {
     const container = document.getElementById('updates-list');
     if (!container) return;
@@ -1822,7 +1897,7 @@
   }
 
   async function loadUpdates() {
-    renderUpdates(bundledUpdates);
+    setUpdates(bundledUpdates);
     if (location.protocol === 'file:') return;
 
     for (const url of ['/api/updates', renderUpdatesApi, 'data/updates.json']) {
@@ -1831,7 +1906,7 @@
         if (!response.ok) continue;
         const updates = await response.json();
         if (Array.isArray(updates)) {
-          renderUpdates(updates);
+          setUpdates(updates);
           return;
         }
       } catch (error) {
@@ -1992,6 +2067,7 @@
   }
 
   document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('updates-archive-month')?.addEventListener('change', renderSelectedArchiveMonth);
     loadUpdates();
     restoreEditorSession();
     const editorPanel = document.getElementById('editor-panel');

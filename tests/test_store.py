@@ -1,3 +1,4 @@
+import io
 import os
 import sys
 import tempfile
@@ -15,6 +16,7 @@ from itsdangerous import SignatureExpired, URLSafeTimedSerializer
 
 import build_product as product_builder
 from app import (
+    STORE_DOWNLOAD_LIMIT,
     STORE_PAYMENT_CACHE_TTL_SECONDS,
     STORE_REISSUE_MAX_AGE_SECONDS,
     create_app,
@@ -308,7 +310,12 @@ class StoreTest(unittest.TestCase):
             headers={"Origin": "https://example.com"},
         )
         self.assertEqual(download.status_code, 200)
-        self.assertEqual(download.data, self.product_bytes)
+        with ZipFile(io.BytesIO(download.data)) as archive:
+            self.assertEqual(archive.read("index.html"), b"<html>test product</html>")
+            license_text = archive.read("LICENSE.txt").decode("utf-8")
+        self.assertIn("購入者本人のみ利用できます", license_text)
+        self.assertIn("購入参照ID:", license_text)
+        self.assertNotIn("cs_test_paid", license_text)
         self.assertEqual(
             download.headers["Access-Control-Allow-Origin"],
             "https://example.com",
@@ -393,12 +400,37 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(download.status_code, 200)
         self.assertEqual(download.data, b"")
         self.assertEqual(download.headers["Content-Type"], "application/zip")
-        self.assertEqual(int(download.headers["Content-Length"]), len(self.product_bytes))
+        self.assertGreater(int(download.headers["Content-Length"]), len(self.product_bytes))
         self.assertEqual(
             download.headers["Access-Control-Allow-Origin"],
             "https://example.com",
         )
         download.close()
+
+    def test_download_limit_ignores_head_and_range_resume(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            link = self.client.post(
+                "/api/store/download-link", json={"session_id": "cs_test_paid"}
+            )
+
+        download_path = urlparse(link.get_json()["download_url"]).path
+        for _ in range(STORE_DOWNLOAD_LIMIT):
+            download = self.client.get(download_path)
+            self.assertEqual(download.status_code, 200)
+            download.close()
+
+        head = self.client.head(download_path)
+        resumed = self.client.get(download_path, headers={"Range": "bytes=0-3"})
+        blocked = self.client.get(download_path)
+
+        self.assertEqual(head.status_code, 200)
+        self.assertEqual(resumed.status_code, 206)
+        self.assertEqual(blocked.status_code, 429)
+        self.assertIn("24時間後", blocked.get_json()["error"])
+        head.close()
+        resumed.close()
+        blocked.close()
 
     def test_store_cors_rejects_untrusted_browser_origin(self):
         response = self.client.get(
@@ -419,7 +451,7 @@ class StoreTest(unittest.TestCase):
         download_path = urlparse(link.get_json()["download_url"]).path
         download = self.client.get(
             download_path,
-            headers={"Range": f"bytes={len(self.product_bytes) + 100}-"},
+            headers={"Range": "bytes=1000000-"},
         )
 
         self.assertEqual(download.status_code, 416)

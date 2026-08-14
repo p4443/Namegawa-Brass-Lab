@@ -1490,7 +1490,7 @@ class UpdatesTest(unittest.TestCase):
         page_nav_css = page.split(".page-nav {", 1)[1].split("}", 1)[0]
         self.assertIn("position: sticky", page_nav_css)
 
-    def test_updates_section_expands_to_image_height(self):
+    def test_updates_section_scrolls_at_image_height(self):
         client = create_app().test_client()
 
         response = client.get("/")
@@ -1498,8 +1498,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         updates_list_css = page.split("#updates-list {", 1)[1].split("}", 1)[0]
-        self.assertIn("max-height: none", updates_list_css)
-        self.assertIn("overflow-y: visible", updates_list_css)
+        self.assertIn("height: var(--updates-window-height, 420px)", updates_list_css)
+        self.assertIn("overflow-y: auto", updates_list_css)
+        self.assertIn('id="updates-archive-month"', page)
+        self.assertIn("function updateMonthKey(item)", page)
+        self.assertIn("function renderSelectedArchiveMonth()", page)
 
     def test_header_matches_lesson_page_navigation_system(self):
         client = create_app().test_client()
