@@ -91,6 +91,7 @@ class StoreTest(unittest.TestCase):
             receipt_number="1234-5678",
         )
         payment_intent = types.SimpleNamespace(
+            id="pi_test_paid",
             status="succeeded",
             amount_received=amount_total,
             currency=currency,
@@ -418,6 +419,20 @@ class StoreTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 403)
         self.assertEqual(response.get_json()["error"], "購入情報を確認できませんでした。")
+
+    def test_purchase_recovery_accepts_payment_intent_id(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/recover-download",
+                json={
+                    "email": "buyer@example.com",
+                    "receipt_number": "pi_test_paid",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()["session_id"], "cs_test_paid")
 
     def test_purchase_recovery_limits_attempts(self):
         stripe = self.stripe_module(payment_status="paid")

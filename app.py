@@ -1364,14 +1364,15 @@ def create_app(
             )
         payload = request.get_json(silent=True)
         email = str(payload.get("email", "")).strip().lower() if isinstance(payload, dict) else ""
-        receipt_number = (
-            str(payload.get("receipt_number", "")).strip().upper()
+        purchase_reference_input = (
+            str(payload.get("receipt_number", "")).strip()
             if isinstance(payload, dict)
             else ""
         )
         if (
             re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) is None
-            or re.fullmatch(r"[A-Z0-9-]{4,64}", receipt_number) is None
+            or re.fullmatch(r"(?:[A-Za-z0-9-]{4,64}|pi_[A-Za-z0-9_]{8,255})", purchase_reference_input)
+            is None
         ):
             return store_json({"error": "購入情報を確認できませんでした。"}, 400)
         serializer = download_serializer()
@@ -1388,10 +1389,15 @@ def create_app(
                 customer_details = stripe_value(checkout, "customer_details", {}) or {}
                 payment_intent = stripe_value(checkout, "payment_intent", {}) or {}
                 latest_charge = stripe_value(payment_intent, "latest_charge", {}) or {}
+                payment_intent_id = str(stripe_value(payment_intent, "id", "")).strip()
+                receipt_number = (
+                    str(stripe_value(latest_charge, "receipt_number", ""))
+                    .strip()
+                    .upper()
+                )
                 if (
                     str(stripe_value(customer_details, "email", "")).strip().lower() != email
-                    or str(stripe_value(latest_charge, "receipt_number", "")).strip().upper()
-                    != receipt_number
+                    or purchase_reference_input not in {payment_intent_id, receipt_number}
                 ):
                     continue
                 session_id = str(stripe_value(checkout, "id", ""))

@@ -1078,7 +1078,7 @@
               <summary>購入済みの方：ダウンロードを再表示</summary>
               <form class="app-recovery-controls" id="app-recovery-form">
                 <input id="app-recovery-email" type="email" autocomplete="email" placeholder="購入時のメールアドレス" aria-label="購入時のメールアドレス" required>
-                <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号" aria-label="Stripe領収書番号" pattern="[A-Za-z0-9-]{4,64}" required>
+                <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号または決済ID" aria-label="Stripe領収書番号または決済ID" pattern="(?:[A-Za-z0-9-]{4,64}|pi_[A-Za-z0-9_]{8,255})" required>
                 <button class="app-sales-save" id="app-recovery-submit" type="submit">再表示</button>
               </form>
             </details>
