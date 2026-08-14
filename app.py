@@ -740,7 +740,7 @@ def create_app(
     def with_store_cors(response, methods="GET, POST, PUT, OPTIONS"):
         request_origin = request.headers.get("Origin", "").rstrip("/")
         allowed_origins = {
-            public_site_url(),
+            public_site_origin(),
             request.url_root.rstrip("/"),
         }
         if request_origin and request_origin in allowed_origins:
@@ -809,10 +809,16 @@ def create_app(
             or parsed.password
             or parsed.query
             or parsed.fragment
-            or parsed.path not in {"", "/"}
         ):
             return ""
         return value
+
+    def public_site_origin():
+        site_url = public_site_url()
+        if not site_url:
+            return ""
+        parsed = urlparse(site_url)
+        return f"{parsed.scheme}://{parsed.netloc}"
 
     def checkout_payment_is_valid(checkout, expected_price_yen, expected_livemode):
         metadata = stripe_value(checkout, "metadata", {}) or {}

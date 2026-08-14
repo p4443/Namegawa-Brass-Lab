@@ -66,12 +66,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_METRONOME_PRICE_ID=price_...
 DOWNLOAD_TOKEN_SECRET=十分に長いランダム文字列
 METRONOME_PRICE_YEN=500
-PUBLIC_SITE_URL=https://ホームページの公開ドメイン
+PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 ```
 
-`PUBLIC_SITE_URL`はHTTPSのオリジンだけを指定し、末尾以外のパス、クエリ、フラグメントは付けないでください。Stripeの秘密鍵・Webhook secret・Price IDはすべて同じテストモードまたは本番モードの値を組み合わせます。
+`PUBLIC_SITE_URL`には購入ページを配信するHTTPSの公開ベースURLを指定し、末尾の`/`、`/lesson/`、クエリ、フラグメントは付けないでください。GitHub Pagesのプロジェクトサイトでは、例として`https://user.github.io/repository`のようにリポジトリ名まで含めます。Stripeの秘密鍵・Webhook secret・Price IDはすべて同じテストモードまたは本番モードの値を組み合わせます。
 
-ストアAPIのCORSは`PUBLIC_SITE_URL`とAPI自身のオリジンだけを許可します。GitHub Pagesなど別ドメインの画面からRender APIを利用する場合、`PUBLIC_SITE_URL`には購入画面が表示される側の正確なオリジンを設定してください。
+ストアAPIのCORSは`PUBLIC_SITE_URL`のオリジンとAPI自身のオリジンだけを許可します。
+
+設定ウィザードはWebhookを既定で`https://namegawa-brass-lab.onrender.com/api/store/webhook`へ登録します。APIドメインを変更した場合だけ、`STORE_API_URL=https://新しいAPIドメイン ./setup-store-env.sh`のように実行してください。
 
 `DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
 

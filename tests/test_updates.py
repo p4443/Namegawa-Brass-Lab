@@ -555,6 +555,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("history.replaceState", page)
         self.assertIn("crypto.randomUUID", page)
         self.assertIn("checkout_request_id", page)
+        self.assertIn("appStoreStatus.textContent = checkoutErrorMessage", page)
         self.assertNotIn("URL.createObjectURL", page)
         self.assertNotIn("slot-admin", page)
 

@@ -1324,8 +1324,9 @@
         });
         location.href = result.checkout_url;
       } catch (error) {
-        appStoreStatus.textContent = error.message;
+        const checkoutErrorMessage = error.message;
         await loadStoreProduct();
+        appStoreStatus.textContent = checkoutErrorMessage;
       }
     });
 

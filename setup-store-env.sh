@@ -66,6 +66,7 @@ current_stripe_price_id="$(env_value STRIPE_METRONOME_PRICE_ID)"
 current_download_token_secret="$(env_value DOWNLOAD_TOKEN_SECRET)"
 current_public_site_url="$(env_value PUBLIC_SITE_URL)"
 current_editor_password="$(env_value EDITOR_PASSWORD)"
+store_api_url="${STORE_API_URL:-https://namegawa-brass-lab.onrender.com}"
 if [[ "$current_stripe_secret_key" == sk_live_* ]]; then
   default_mode_selection="2"
 else
@@ -152,14 +153,16 @@ if [[ -n "$stripe_webhook_secret" && "$stripe_webhook_secret" != whsec_* ]]; the
 fi
 
 print_header "4/6 公開サイトURL"
-print -r -- '購入画面が表示されるサイトのオリジンを入力します。
+print -r -- '購入画面が表示されるサイトの公開ベースURLを入力します。
 例: https://example.com
-末尾の /、/lesson/などのパス、?以降は入力しません。'
+GitHub Pagesのプロジェクトサイト例: https://user.github.io/repository
+末尾の /、/lesson/、?以降は入力しません。'
 read_visible public_site_url "PUBLIC_SITE_URL [$current_public_site_url]: "
 public_site_url="${public_site_url:-$current_public_site_url}"
 [[ "$public_site_url" == https://* ]] || fail "公開サイトURLはhttps://から入力してください。"
 [[ "$public_site_url" != */ ]] || fail "公開サイトURL末尾の/を削除してください。"
 [[ "$public_site_url" != *\?* && "$public_site_url" != *\#* ]] || fail "公開サイトURLにクエリや#を含めないでください。"
+[[ "$store_api_url" == https://* && "$store_api_url" != */ ]] || fail "STORE_API_URLは末尾の/を除いたHTTPS URLにしてください。"
 
 print_header "5/6 管理者パスワード"
 print -r -- '販売ON/OFFと診断APIで使う管理者専用パスワードです。
@@ -192,6 +195,7 @@ if [[ "${STORE_SKIP_STRIPE_VALIDATION:-}" != "1" ]]; then
   STRIPE_PRICE_ID_VALUE="$stripe_price_id" \
   STRIPE_EXPECTED_MODE="$stripe_mode" \
   PUBLIC_SITE_URL_VALUE="$public_site_url" \
+  STORE_API_URL_VALUE="$store_api_url" \
     STRIPE_WEBHOOK_SECRET_VALUE="$stripe_webhook_secret" \
   "$PYTHON" -c '
 import os
@@ -210,7 +214,7 @@ try:
     price.unit_amount == 500,
     price.livemode is expected_live,
   ))
-  target = os.environ["PUBLIC_SITE_URL_VALUE"] + "/api/store/webhook"
+  target = os.environ["STORE_API_URL_VALUE"] + "/api/store/webhook"
   endpoints = stripe.WebhookEndpoint.list(limit=100).data
   endpoint = next((item for item in endpoints if item.url == target), None)
   if endpoint is None:

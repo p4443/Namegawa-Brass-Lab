@@ -226,14 +226,17 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(response.get_json()["production_ready"])
         self.assertEqual(response.get_json()["stripe_mode"], "live")
 
-    def test_invalid_public_site_url_blocks_checkout(self):
+    def test_github_pages_project_url_allows_checkout_and_cors(self):
         self.enable_store()
         stripe = self.stripe_module()
         with patch.dict(
             os.environ,
-            {"PUBLIC_SITE_URL": "https://example.com/untrusted-path"},
+            {"PUBLIC_SITE_URL": "https://p4443.github.io/Namegawa-Brass-Lab"},
         ), patch.dict(sys.modules, {"stripe": stripe}):
-            product = self.client.get("/api/store/product")
+            product = self.client.get(
+                "/api/store/product",
+                headers={"Origin": "https://p4443.github.io"},
+            )
             checkout = self.client.post(
                 "/api/store/checkout",
                 json={
@@ -241,9 +244,18 @@ class StoreTest(unittest.TestCase):
                 },
             )
 
-        self.assertFalse(product.get_json()["checkout_available"])
-        self.assertEqual(checkout.status_code, 503)
-        stripe.checkout.Session.create.assert_not_called()
+        self.assertTrue(product.get_json()["checkout_available"])
+        self.assertEqual(
+            product.headers["Access-Control-Allow-Origin"],
+            "https://p4443.github.io",
+        )
+        self.assertEqual(checkout.status_code, 201)
+        create_kwargs = stripe.checkout.Session.create.call_args.kwargs
+        self.assertTrue(
+            create_kwargs["success_url"].startswith(
+                "https://p4443.github.io/Namegawa-Brass-Lab/lesson/"
+            )
+        )
 
     def test_enabled_store_creates_stripe_checkout(self):
         self.enable_store()
