@@ -1523,6 +1523,9 @@
     };
 
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
+    const blocksReservationTime = (time, status) => time === "要相談"
+      ? status === "お休み"
+      : blockedStatuses.has(status);
     const lessonDurations = {
       "体験レッスン": 30,
       "無料体験レッスン": 30,
@@ -1668,12 +1671,12 @@
         const occupied = occupiedTimes(time, durationMinutes);
         const status = occupied
           .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
-          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
+          .find((slotStatus) => blocksReservationTime(time, slotStatus)) || "空き";
         const timeLabel = time === "要相談"
           ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
           : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
         const option = new Option(status === "空き" ? timeLabel : `${timeLabel}（${status}）`, time);
-        option.disabled = blockedStatuses.has(status);
+        option.disabled = blocksReservationTime(time, status);
         if (!option.disabled) {
           selectableCount += 1;
         }

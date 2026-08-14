@@ -140,6 +140,28 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("slotUpdatedAt(values[index][4])", find_function)
         self.assertIn("return selectedRow", find_function)
 
+    def test_apps_script_consultation_requests_do_not_occupy_shared_slot(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        create_action = script.split('if (action === "create")', 1)[1].split(
+            'if (action === "get_slot_statuses")', 1
+        )[0]
+        update_action = script.split('if (action === "update")', 1)[1].split(
+            'if (action === "cancel")', 1
+        )[0]
+        conflict_function = script.split("function findReservationSlotConflict", 1)[1].split(
+            "function getSlotRecord", 1
+        )[0]
+        active_statuses_function = script.split("function activeReservationSlotStatuses", 1)[1].split(
+            "function upsertSlotStatusRange", 1
+        )[0]
+
+        self.assertIn('if (time === "要相談")', create_action)
+        self.assertIn('if (time === "要相談")', update_action)
+        self.assertIn('times[index] === "要相談" && slot.status !== "お休み"', conflict_function)
+        self.assertIn('if (startTime === "要相談")', active_statuses_function)
+
     def test_apps_script_updates_legacy_reservation_slots(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -194,7 +216,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-14-cancellation-mail-v13";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-14-consultation-capacity-v14";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -442,6 +464,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("体験レッスン・小学生は毎時00分／30分開始", page)
         self.assertIn("function availableTimesForLesson", page)
         self.assertIn('lessonType === "グループ・部活動指導"', page)
+        self.assertIn('time === "要相談"', page)
+        self.assertIn('status === "お休み"', page)
 
     def test_lesson_page_script_does_not_reference_missing_slot_inputs(self):
         client = create_app().test_client()
@@ -544,6 +568,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
         self.assertIn('5: [...makeRange(6,45,16,0), "要相談"]', page)
         self.assertIn('6: ["要相談"]', page)
+        self.assertIn('time === "要相談"', page)
+        self.assertIn('status === "お休み"', page)
         self.assertIn('timeInput.type = "time"', page)
         self.assertIn("preferred_time: timeInput.value", page)
         self.assertIn('durationInput.step = "15"', page)

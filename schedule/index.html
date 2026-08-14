@@ -218,6 +218,9 @@
     const scheduleLessonType = document.getElementById("schedule-lesson-type");
     const lessonFilterHint = document.getElementById("lesson-filter-hint");
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
+    const blocksReservationTime = (time, status) => time === "要相談"
+      ? status === "お休み"
+      : blockedStatuses.has(status);
     const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "グループ・部活動指導": null };
     const statusMap = new Map();
     const nowText = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -303,7 +306,7 @@
       const times = availableTimesForLesson(scheduleLessonType.value, date.getDay());
       const durationMinutes = lessonDurations[scheduleLessonType.value];
       return times.filter((time) => occupiedTimes(time, durationMinutes).every(
-        (slotTime) => !blockedStatuses.has(statusMap.get(`${value}|${slotTime}`)),
+        (slotTime) => !blocksReservationTime(time, statusMap.get(`${value}|${slotTime}`)),
       )).length;
     }
     function renderSlots(value) {
@@ -326,14 +329,14 @@
       times.forEach((time) => {
         const status = occupiedTimes(time, durationMinutes)
           .map((slotTime) => statusMap.get(`${value}|${slotTime}`) || "空き")
-          .find((slotStatus) => blockedStatuses.has(slotStatus)) || "空き";
-        const item = document.createElement("li"); item.className = `slot${blockedStatuses.has(status) ? " busy" : ""}`;
+          .find((slotStatus) => blocksReservationTime(time, slotStatus)) || "空き";
+        const item = document.createElement("li"); item.className = `slot${blocksReservationTime(time, status) ? " busy" : ""}`;
         const timeLabel = document.createElement("strong");
         timeLabel.textContent = time === "要相談"
           ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
           : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
         item.append(timeLabel);
-        if (blockedStatuses.has(status)) {
+        if (blocksReservationTime(time, status)) {
           const state = document.createElement("span"); state.textContent = status; item.append(state);
         } else {
           const link = document.createElement("a");

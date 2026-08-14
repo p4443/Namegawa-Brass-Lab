@@ -17,7 +17,7 @@ var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
-var SCRIPT_VERSION = "2026-08-14-cancellation-mail-v13";
+var SCRIPT_VERSION = "2026-08-14-consultation-capacity-v14";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -127,6 +127,9 @@ function doPost(event) {
       ]);
 
       occupiedTimes.forEach(function (time) {
+        if (time === "要相談") {
+          return;
+        }
         upsertSlotStatus(
           slotSheet,
           preferredDate,
@@ -239,6 +242,9 @@ function doPost(event) {
       releaseReservationSlots(slotSheet, currentReservation.date, currentTimes, reservationId);
       if (nextSlotStatus !== "空き") {
         nextTimes.forEach(function (time) {
+          if (time === "要相談") {
+            return;
+          }
           upsertSlotStatus(
             slotSheet,
             nextDate,
@@ -689,6 +695,9 @@ function activeReservationSlotStatuses(sheet) {
     }
     var dateText = normalizeReservationDate(row[7]);
     var startTime = normalizeReservationTime(row[8]);
+    if (startTime === "要相談") {
+      return;
+    }
     reservationSlotTimes(startTime, getLessonDuration(row[6], row[10])).forEach(function (time) {
       statuses[dateText + "|" + time] = slotStatus;
     });
@@ -823,6 +832,9 @@ function reservationSlotTimes(startTime, durationMinutes) {
 function findReservationSlotConflict(sheet, dateText, times, reservationId) {
   for (var index = 0; index < times.length; index += 1) {
     var slot = getSlotRecord(sheet, dateText, times[index]);
+    if (times[index] === "要相談" && slot.status !== "お休み") {
+      continue;
+    }
     if (slot.status && slot.status !== "空き" && slot.source !== reservationId) {
       return slot;
     }
