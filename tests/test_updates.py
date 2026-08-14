@@ -1503,6 +1503,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="updates-archive-month"', page)
         self.assertIn("function updateMonthKey(item)", page)
         self.assertIn("function renderSelectedArchiveMonth()", page)
+        mobile_css = page.split("@media (max-width: 480px) {", 1)[1]
+        self.assertIn("flex: 1 0 100%", mobile_css)
+        self.assertIn("height: clamp(300px, var(--updates-window-height, 55dvh), 420px)", mobile_css)
 
     def test_header_matches_lesson_page_navigation_system(self):
         client = create_app().test_client()
