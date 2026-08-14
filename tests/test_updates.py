@@ -162,6 +162,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('times[index] === "要相談" && slot.status !== "お休み"', conflict_function)
         self.assertIn('if (startTime === "要相談")', active_statuses_function)
 
+    def test_apps_script_hides_cancelled_reservations_from_admin_list(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        list_function = script.split("function listReservations", 1)[1].split(
+            "function reservationStatusToSlotStatus", 1
+        )[0]
+
+        self.assertIn("values.filter(function (row)", list_function)
+        self.assertIn('trim() !== "キャンセル"', list_function)
+
     def test_apps_script_updates_legacy_reservation_slots(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -216,7 +227,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-14-consultation-capacity-v14";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-14-hide-cancelled-v15";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -564,6 +575,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("if (error.isHttpError) throw error", page)
         self.assertGreaterEqual(page.count("timeoutMs: 60000"), 3)
         self.assertIn('requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 })', page)
+        self.assertIn('reservation.status !== "キャンセル"', page)
+        self.assertIn("setInterval(() =>", page)
+        self.assertIn("}, 30000);", page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
         self.assertIn('5: [...makeRange(6,45,16,0), "要相談"]', page)

@@ -17,7 +17,7 @@ var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
-var SCRIPT_VERSION = "2026-08-14-consultation-capacity-v14";
+var SCRIPT_VERSION = "2026-08-14-hide-cancelled-v15";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -495,7 +495,9 @@ function listReservations(sheet) {
     return [];
   }
   var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  return values.map(function (row) {
+  return values.filter(function (row) {
+    return String(row[2] || "").trim() !== "キャンセル";
+  }).map(function (row) {
     return {
       received_at: row[0] instanceof Date
         ? Utilities.formatDate(row[0], Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm")

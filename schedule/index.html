@@ -430,9 +430,10 @@
     let adminPassword = "";
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function renderReservations(reservations) {
+      const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
       reservationList.replaceChildren();
-      if (!reservations.length) { reservationList.textContent = "予約はありません。"; return; }
-      reservations.forEach((reservation) => {
+      if (!activeReservations.length) { reservationList.textContent = "予約はありません。"; return; }
+      activeReservations.forEach((reservation) => {
         const item = document.createElement("article"); item.className = "reservation-item";
         const when = document.createElement("div"); when.innerHTML = `<div class="reservation-date"></div><div class="reservation-meta"></div>`;
         when.querySelector(".reservation-date").textContent = `${reservation.preferred_date} ${reservation.preferred_time}`;
@@ -460,6 +461,11 @@
       const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 });
       renderReservations(result.reservations || []);
     }
+    setInterval(() => {
+      if (adminPassword && !dashboard.hidden && !document.hidden) {
+        loadReservations().catch(() => {});
+      }
+    }, 30000);
     reservationRetry.addEventListener("click", async () => {
       adminStatus.textContent = "予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
