@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 from dotenv import load_dotenv
 from flask import Flask, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
 from itsdangerous import BadData, BadSignature, SignatureExpired, URLSafeTimedSerializer
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -708,6 +709,7 @@ def create_app(
     product_file=PRODUCT_FILE,
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     configured_database_url = database_url or os.environ.get("DATABASE_URL", "")
     verified_purchase_cache = {}
     purchase_verifications_in_flight = {}

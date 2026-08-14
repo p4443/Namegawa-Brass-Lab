@@ -355,6 +355,23 @@ class StoreTest(unittest.TestCase):
         self.assertIn("trumpet-practice-metronome.zip", download.headers["Content-Disposition"])
         download.close()
 
+    def test_download_link_uses_forwarded_https_scheme(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/download-link",
+                json={"session_id": "cs_test_paid"},
+                headers={
+                    "X-Forwarded-Host": "namegawa-brass-lab.onrender.com",
+                    "X-Forwarded-Proto": "https",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        download_url = urlparse(response.get_json()["download_url"])
+        self.assertEqual(download_url.scheme, "https")
+        self.assertEqual(download_url.netloc, "namegawa-brass-lab.onrender.com")
+
     def test_reissuing_same_purchase_uses_cached_stripe_verification(self):
         stripe = self.stripe_module(payment_status="paid")
         with patch.dict(sys.modules, {"stripe": stripe}):
