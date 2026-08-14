@@ -189,6 +189,15 @@ class StoreTest(unittest.TestCase):
         self.assertIn('id="app-recovery-receipt"', html)
         self.assertIn('requestStore("recover-download"', html)
 
+    def test_lesson_changes_purchase_button_after_purchase_is_verified(self):
+        response = self.client.get("/lesson/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('appPurchaseButton.textContent = "ダウンロード版を使用する"', html)
+        self.assertIn("if (!appDownloadLink.hidden)", html)
+        self.assertIn("appDownloadLink.click()", html)
+
     def test_checkout_is_blocked_when_store_is_disabled(self):
         response = self.client.post("/api/store/checkout")
         self.assertEqual(response.status_code, 403)

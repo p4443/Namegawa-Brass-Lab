@@ -1331,6 +1331,10 @@
     }
 
     appPurchaseButton.addEventListener("click", async () => {
+      if (!appDownloadLink.hidden) {
+        appDownloadLink.click();
+        return;
+      }
       appPurchaseButton.disabled = true;
       appStoreStatus.textContent = "安全な決済画面を準備しています…";
       try {
@@ -1369,6 +1373,8 @@
       appDownloadLink.href = result.download_url;
       appDownloadLink.dataset.sessionId = sessionId;
       appDownloadLink.hidden = false;
+      appPurchaseButton.disabled = false;
+      appPurchaseButton.textContent = "ダウンロード版を使用する";
       appDownloadLink.textContent = isReissue
         ? "再発行したオフライン版をダウンロード"
         : "オフライン版をダウンロード";
