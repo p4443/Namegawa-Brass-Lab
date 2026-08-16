@@ -1,44 +1,220 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>動画一覧</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="滑川町ふれあいコンサートの交流動画です。">
+  <title>滑川町ふれあいコンサート | なめがわブラス・ラボ</title>
   <style>
     :root {
-      color-scheme: light;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color-scheme: dark;
+      --ink: #070b0f;
+      --paper: #f7f2e7;
+      --gold: #f3bf4f;
+      --cyan: #53d4d1;
     }
+
+    * {
+      box-sizing: border-box;
+    }
+
     body {
+      min-height: 100vh;
       margin: 0;
-      padding: 32px 20px 48px;
-      background: #f5f7fb;
-      color: #123;
-      line-height: 1.7;
+      color: var(--paper);
+      background:
+        linear-gradient(rgba(83, 212, 209, 0.08) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(83, 212, 209, 0.08) 1px, transparent 1px),
+        var(--ink);
+      background-size: 44px 44px;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
     }
-    .card {
-      max-width: 760px;
-      margin: 0 auto;
-      background: #fff;
-      border-radius: 20px;
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
-      padding: 24px 28px;
+
+    .screen {
+      display: grid;
+      min-height: 100vh;
+      grid-template-rows: auto 1fr auto;
     }
-    h1 { margin: 0 0 12px; font-size: 1.6rem; }
-    p { margin: 0 0 16px; color: #556; }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 10px; }
-    a { color: #0a5cff; text-decoration: none; }
-    a:hover { text-decoration: underline; }
+
+    .title-telop,
+    .credit-telop {
+      position: relative;
+      z-index: 1;
+      overflow: hidden;
+    }
+
+    .title-telop {
+      padding: 26px clamp(20px, 5vw, 72px) 22px;
+      border-bottom: 1px solid rgba(243, 191, 79, 0.55);
+      background: rgba(7, 11, 15, 0.94);
+    }
+
+    .title-telop::after {
+      position: absolute;
+      right: -30px;
+      bottom: -72px;
+      width: 210px;
+      height: 150px;
+      border: 18px solid rgba(243, 191, 79, 0.2);
+      border-radius: 50%;
+      content: "";
+      transform: rotate(-12deg);
+    }
+
+    .back-link {
+      display: inline-block;
+      margin-bottom: 16px;
+      color: var(--cyan);
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .event-label {
+      margin: 0 0 5px;
+      color: var(--gold);
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      font-size: clamp(0.72rem, 1.5vw, 0.9rem);
+      font-weight: 800;
+      letter-spacing: 0.18em;
+    }
+
+    h1 {
+      max-width: 1100px;
+      margin: 0;
+      font-size: clamp(1.75rem, 4.2vw, 4.15rem);
+      font-weight: 700;
+      letter-spacing: 0;
+      line-height: 1.12;
+    }
+
+    .event-detail {
+      display: flex;
+      margin: 14px 0 0;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px 18px;
+      color: #dce7e7;
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+      font-size: clamp(0.82rem, 1.5vw, 1rem);
+    }
+
+    .event-detail span:first-child {
+      color: var(--gold);
+      font-weight: 800;
+    }
+
+    .player-stage {
+      display: grid;
+      min-height: 0;
+      padding: clamp(18px, 3vw, 36px);
+      place-items: center;
+    }
+
+    video {
+      display: block;
+      width: min(100%, 1180px);
+      max-height: 66vh;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: #000000;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+    }
+
+    .credit-telop {
+      display: flex;
+      min-height: 86px;
+      padding: 20px clamp(20px, 5vw, 72px);
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      border-top: 1px solid rgba(83, 212, 209, 0.55);
+      background: var(--paper);
+      color: #111820;
+      font-family: "Hiragino Sans", "Yu Gothic", sans-serif;
+    }
+
+    .credit-telop::before {
+      width: 48px;
+      height: 5px;
+      flex: 0 0 auto;
+      background: var(--gold);
+      content: "";
+    }
+
+    .credit-telop p {
+      margin: 0 auto 0 0;
+      font-size: clamp(0.9rem, 2vw, 1.25rem);
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .credit-telop strong {
+      display: block;
+      margin-top: 4px;
+      color: #a64e00;
+      font-size: 0.82em;
+    }
+
+    @media (max-width: 600px) {
+      .title-telop {
+        padding-top: 18px;
+      }
+
+      .back-link {
+        margin-bottom: 12px;
+      }
+
+      .event-detail {
+        display: grid;
+        gap: 3px;
+      }
+
+      .player-stage {
+        padding: 16px 0;
+      }
+
+      video {
+        width: 100%;
+        max-height: 55vh;
+        border-right: 0;
+        border-left: 0;
+      }
+
+      .credit-telop {
+        min-height: 74px;
+        padding: 16px 20px;
+        gap: 12px;
+      }
+
+      .credit-telop::before {
+        width: 28px;
+      }
+    }
   </style>
 </head>
 <body>
-  <main class="card">
-    <h1>動画一覧</h1>
-    <p>このページはディレクトリリスティングではなく、動画への入口です。</p>
-    <ul>
-      <li><a href="intro.mp4">intro.mp4</a></li>
-    </ul>
-  </main>
+  <div class="screen">
+    <header class="title-telop">
+      <a class="back-link" href="../#features">← 3つの輪へ戻る</a>
+      <p class="event-label">NAMEGAWA FUREAI CONCERT</p>
+      <h1>滑川町ふれあいコンサート</h1>
+      <p class="event-detail">
+        <span>2026年5月10日（日）</span>
+        <span>滑川町コミュニティセンターにて</span>
+      </p>
+    </header>
+
+    <main class="player-stage">
+      <video controls playsinline preload="metadata" aria-label="滑川町ふれあいコンサートの動画">
+        <source src="intergenerational-concert.mp4" type="video/mp4">
+        お使いのブラウザーは動画再生に対応していません。
+      </video>
+    </main>
+
+    <footer class="credit-telop">
+      <p>まるっと！2026年5月18日号<strong>【制作：東松山ケーブルテレビ】</strong></p>
+    </footer>
+  </div>
 </body>
 </html>
