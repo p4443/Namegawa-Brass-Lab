@@ -112,13 +112,32 @@
       place-items: center;
     }
 
+    .player-frame {
+      width: min(100%, 1180px);
+    }
+
     video {
       display: block;
-      width: min(100%, 1180px);
+      width: 100%;
       max-height: 66vh;
       border: 1px solid rgba(255, 255, 255, 0.18);
       background: #000000;
       box-shadow: 0 24px 70px rgba(0, 0, 0, 0.62);
+    }
+
+    .play-button {
+      display: block;
+      width: min(calc(100% - 32px), 320px);
+      min-height: 52px;
+      margin: 16px auto 0;
+      padding: 12px 18px;
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 6px;
+      color: #071014;
+      background: var(--gold);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      font: 800 1rem/1 "Hiragino Sans", "Yu Gothic", sans-serif;
+      cursor: pointer;
     }
 
     .credit-telop {
@@ -158,16 +177,37 @@
 
     @media (max-width: 600px) {
       .title-telop {
-        padding-top: 18px;
+        padding: 18px 18px 20px;
       }
 
       .back-link {
         margin-bottom: 12px;
       }
 
+      .event-label {
+        font-size: 0.7rem;
+        line-height: 1.4;
+      }
+
+      h1 {
+        font-size: 1.65rem;
+        line-height: 1.3;
+      }
+
       .event-detail {
         display: grid;
-        gap: 3px;
+        margin-top: 10px;
+        gap: 2px;
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      .event-detail span {
+        display: block;
+      }
+
+      .event-detail span:last-child {
+        color: #e6eeee;
       }
 
       .player-stage {
@@ -190,6 +230,17 @@
       .credit-telop::before {
         width: 28px;
       }
+
+      .credit-telop p {
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      .credit-telop strong {
+        margin-top: 2px;
+        font-size: 0.78rem;
+        line-height: 1.45;
+      }
     }
   </style>
 </head>
@@ -206,15 +257,52 @@
     </header>
 
     <main class="player-stage">
-      <video controls playsinline preload="metadata" aria-label="滑川町ふれあいコンサートの動画">
-        <source src="intergenerational-concert.mp4" type="video/mp4">
-        お使いのブラウザーは動画再生に対応していません。
-      </video>
+      <div class="player-frame">
+        <video controls playsinline preload="metadata" aria-label="滑川町ふれあいコンサートの動画">
+          <source src="generations.mp4?v=20260817" type="video/mp4">
+          お使いのブラウザーは動画再生に対応していません。
+        </video>
+        <button class="play-button" type="button">▶ 音声をオンにして再生</button>
+      </div>
     </main>
 
     <footer class="credit-telop">
       <p>まるっと！2026年5月18日号<strong>【制作：東松山ケーブルテレビ】</strong></p>
     </footer>
   </div>
+  <script>
+    const video = document.querySelector("video");
+    const playButton = document.querySelector(".play-button");
+
+    playButton.addEventListener("click", async () => {
+      if (!video.paused && !video.ended) {
+        video.pause();
+        return;
+      }
+      video.defaultMuted = false;
+      video.muted = false;
+      video.volume = 1;
+      if (video.ended || video.currentTime >= video.duration - 0.25) {
+        video.currentTime = 0;
+      }
+      try {
+        await video.play();
+      } catch (error) {
+        playButton.textContent = "再生できませんでした。もう一度押してください";
+      }
+    });
+
+    video.addEventListener("playing", () => {
+      playButton.textContent = "Ⅱ 一時停止";
+    });
+
+    video.addEventListener("pause", () => {
+      if (!video.ended) playButton.textContent = "▶ 音声をオンにして続きから再生";
+    });
+
+    video.addEventListener("ended", () => {
+      playButton.textContent = "▶ 音声をオンにしてもう一度再生";
+    });
+  </script>
 </body>
 </html>
