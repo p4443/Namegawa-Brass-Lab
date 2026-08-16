@@ -1688,6 +1688,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("2026年5月10日（日）", video_page)
         self.assertIn("滑川町コミュニティセンターにて", video_page)
         self.assertIn('src="generations.mp4?v=20260817"', video_page)
+        self.assertIn('class="play-button"', video_page)
+        self.assertIn("video.currentTime = 0", video_page)
         self.assertIn("まるっと！2026年5月18日号", video_page)
         self.assertIn("【制作：東松山ケーブルテレビ】", video_page)
         self.assertRegex(video_page, r"\.credit-telop strong\s*\{[^}]*display: block;")
