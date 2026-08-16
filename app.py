@@ -910,6 +910,13 @@ def create_app(
             )
         return valid
 
+    def stripe_price_is_ready(configuration):
+        try:
+            return stripe_price_is_valid(configuration)
+        except Exception:
+            app.logger.error("Stripe price readiness check failed")
+            return False
+
     def retrieve_paid_product_id(
         session_id,
         expected_price_yen,
@@ -1209,13 +1216,18 @@ def create_app(
 
         settings = get_store_settings()
         configuration = store_configuration()
+        checkout_available = (
+            settings["enabled"]
+            and configuration["ready"]
+            and stripe_price_is_ready(configuration)
+        )
         return store_json(
             {
                 "product_id": PRODUCT_ID,
                 "name": PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
                 "enabled": settings["enabled"],
-                "checkout_available": settings["enabled"] and configuration["ready"],
+                "checkout_available": checkout_available,
             }
         )
 
@@ -1237,10 +1249,7 @@ def create_app(
             "stripe_price": False,
         }
         if configuration["ready"]:
-            try:
-                checks["stripe_price"] = stripe_price_is_valid(configuration)
-            except Exception:
-                app.logger.exception("Stripe price readiness check failed")
+            checks["stripe_price"] = stripe_price_is_ready(configuration)
 
         ready = all(checks.values())
         response = store_json(
@@ -1270,13 +1279,9 @@ def create_app(
                 "Store configuration is incomplete: %s", configuration["missing"]
             )
             return store_json({"error": "決済機能を準備中です。"}, 503)
-        try:
-            if not stripe_price_is_valid(configuration):
-                app.logger.error("Configured Stripe price does not match store price")
-                return store_json({"error": "決済価格を確認中です。"}, 503)
-        except Exception:
-            app.logger.exception("Stripe price validation failed before checkout")
-            return store_json({"error": "決済価格を確認できませんでした。"}, 502)
+        if not stripe_price_is_ready(configuration):
+            app.logger.error("Configured Stripe price is unavailable or invalid")
+            return store_json({"error": "決済価格を確認できませんでした。"}, 503)
 
         payload = request.get_json(silent=True)
         checkout_request_id = (

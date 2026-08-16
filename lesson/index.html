@@ -702,6 +702,10 @@
       letter-spacing: 0.08em;
     }
 
+    .mobile-break {
+      display: none;
+    }
+
     h1 {
       color: #0f172a;
       font-size: clamp(2rem, 5vw, 3rem);
@@ -934,6 +938,10 @@
     }
 
     @media (max-width: 600px) {
+      .mobile-break {
+        display: block;
+      }
+
       .hero {
         padding: 42px 0 48px;
       }
@@ -1074,7 +1082,7 @@
     </section>
 
     <section class="section" aria-labelledby="method-title">
-      <h2 class="section-title" id="method-title">レッスンで大切にしていること</h2>
+      <h2 class="section-title" id="method-title">レッスンで<span class="mobile-break"></span>大切にしていること</h2>
       <div class="instructor-panel">
         <p>トランペット歴30年以上のプロ奏者として、初心者から上達を目指す経験者まで、それぞれの課題と目標に合わせて丁寧に指導します。</p>
         <div class="teaching-points">
@@ -1135,7 +1143,7 @@
     </section>
 
     <section class="contact-panel" aria-labelledby="contact-title">
-      <h2 id="contact-title">体験・各種レッスンのお問い合わせ</h2>
+      <h2 id="contact-title">体験・各種レッスンの<span class="mobile-break"></span>お問い合わせ</h2>
       <p>ご希望のレッスン内容、年代、日時を添えてご連絡ください。</p>
       <div class="actions">
         <a class="button button-primary" href="mailto:zuomuj924@gmail.com">メールでお問い合わせ</a>

@@ -70,11 +70,7 @@ class StoreTest(unittest.TestCase):
         self.temporary_directory.cleanup()
 
     def enable_store(self):
-        return self.client.put(
-            "/api/store/product",
-            json={"enabled": True},
-            headers={"X-Editor-Password": "editor-secret"},
-        )
+        self.store_file.write_text('{"enabled": true}\n', encoding="utf-8")
 
     def stripe_module(
         self,
@@ -169,10 +165,28 @@ class StoreTest(unittest.TestCase):
         )
         self.assertEqual(unauthorized.status_code, 401)
 
-        enabled = self.enable_store()
+        stripe = self.stripe_module()
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            enabled = self.client.put(
+                "/api/store/product",
+                json={"enabled": True},
+                headers={"X-Editor-Password": "editor-secret"},
+            )
         self.assertEqual(enabled.status_code, 200)
         self.assertTrue(enabled.get_json()["enabled"])
         self.assertTrue(enabled.get_json()["checkout_available"])
+
+    def test_enabled_store_hides_checkout_when_stripe_is_unavailable(self):
+        self.enable_store()
+        stripe = self.stripe_module()
+        stripe.Price.retrieve.side_effect = RuntimeError("expired key")
+
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            product = self.client.get("/api/store/product")
+
+        self.assertEqual(product.status_code, 200)
+        self.assertTrue(product.get_json()["enabled"])
+        self.assertFalse(product.get_json()["checkout_available"])
 
     def test_legal_page_displays_store_terms_and_configured_price(self):
         response = self.client.get("/legal/")
