@@ -103,6 +103,23 @@ def reservation_slot_times(start_time, duration_minutes):
     ]
 
 
+def normalize_slot_statuses(slots: object) -> list[dict[str, object]]:
+    normalized_slots: list[dict[str, object]] = []
+    for slot in slots if isinstance(slots, list) else []:
+        if not isinstance(slot, dict):
+            continue
+        normalized_slot = {str(key): value for key, value in slot.items()}
+        time_text = str(normalized_slot.get("time", "")).strip()
+        if time_text != CONSULTATION_TIME:
+            time_match = re.search(r"\b(\d{1,2}):(\d{2})(?::\d{2})?\b", time_text)
+            if time_match:
+                normalized_slot["time"] = (
+                    f"{int(time_match.group(1)):02d}:{time_match.group(2)}"
+                )
+        normalized_slots.append(normalized_slot)
+    return normalized_slots
+
+
 def is_allowed_lesson_start(lesson_type, preferred_time, available_times):
     if lesson_type == "グループ・部活動指導":
         return preferred_time == CONSULTATION_TIME
@@ -433,7 +450,11 @@ def validate_update(payload):
         "media_type": str(payload.get("media_type", "")).strip().lower(),
         "media_url": str(payload.get("media_url", "")).strip(),
     }
-    if not values["date"] or parse_date(values["date"]) == datetime.min:
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", values["date"]):
+        raise ValueError("日付を正しく入力してください。")
+    try:
+        datetime.strptime(values["date"], "%Y-%m-%d")
+    except ValueError:
         raise ValueError("日付を正しく入力してください。")
     if not values["category"] or not values["content"]:
         raise ValueError("種類と本文を入力してください。")
@@ -1143,6 +1164,12 @@ def create_app(
         response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
+    @app.get("/products/")
+    def products():
+        response = make_response(render_template("products/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
     @app.get("/legal/")
     def legal():
         return render_template(
@@ -1282,12 +1309,10 @@ def create_app(
                     "price_id": os.environ["STRIPE_METRONOME_PRICE_ID"],
                 },
                 success_url=(
-                    f"{site_url}/lesson/?purchase=success"
-                    "&session_id={CHECKOUT_SESSION_ID}#practice-apps-title"
+                    f"{site_url}/products/?purchase=success"
+                    "&session_id={CHECKOUT_SESSION_ID}#metronome"
                 ),
-                cancel_url=(
-                    f"{site_url}/lesson/?purchase=cancelled#practice-apps-title"
-                ),
+                cancel_url=f"{site_url}/products/?purchase=cancelled#metronome",
                 idempotency_key=f"{PRODUCT_ID}:{checkout_request_id}",
             )
         except Exception as exc:
@@ -1448,8 +1473,8 @@ def create_app(
                 and CHECKOUT_SESSION_PATTERN.fullmatch(session_id) is not None
             ):
                 return redirect(
-                    f"/lesson/?{urlencode({'purchase': 'reissue', 'session_id': session_id})}"
-                    "#practice-apps-title"
+                    f"/products/?{urlencode({'purchase': 'reissue', 'session_id': session_id})}"
+                    "#metronome"
                 )
             return store_json({"error": "ダウンロード期限が切れました。"}, 410)
         except BadSignature:
@@ -1770,7 +1795,7 @@ def create_app(
                 action="get_slot_statuses",
             )
             return lesson_reservation_json(
-                {"slots": result.get("slots", [])},
+                {"slots": normalize_slot_statuses(result.get("slots", []))},
                 200,
             )
         except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):

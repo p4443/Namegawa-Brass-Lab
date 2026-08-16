@@ -33,3 +33,20 @@ curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
 curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
 [FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-13&to=2026-08-13
 curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-15&to=2026-08-15
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Store is enabled but STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-15&to=2026-08-15
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Store is enabled but STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses?from=2026-08-16&to=2026-08-16
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Store is enabled but STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Store is enabled but STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL

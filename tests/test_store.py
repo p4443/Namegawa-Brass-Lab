@@ -24,6 +24,17 @@ from app import (
 
 
 class StoreTest(unittest.TestCase):
+    def test_store_setup_wizard_embedded_python_is_valid(self):
+        script = (Path(__file__).parents[1] / "setup-store-env.sh").read_text()
+        start = script.index(
+            "import os\nimport sys\n\nimport stripe",
+            script.index("Stripe接続確認"),
+        )
+        end_marker = "\nprint(generated_secret)"
+        end = script.index(end_marker, start) + len(end_marker)
+
+        compile(script[start:end], "stripe-validation", "exec")
+
     def setUp(self):
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.base_path = Path(self.temporary_directory.name)
@@ -171,34 +182,45 @@ class StoreTest(unittest.TestCase):
         self.assertIn("返金・キャンセル方針", response.get_data(as_text=True))
         self.assertIn("500円（税込）", response.get_data(as_text=True))
 
-    def test_lesson_hides_download_link_until_purchase_is_verified(self):
-        response = self.client.get("/lesson/")
+    def test_products_hides_download_link_until_purchase_is_verified(self):
+        response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('id="app-download-link" href="#" hidden', html)
-        self.assertIn(".app-download-link[hidden]", html)
+        self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
-    def test_lesson_offers_secure_purchase_recovery(self):
-        response = self.client.get("/lesson/")
+    def test_products_offers_secure_purchase_recovery(self):
+        response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('<section class="app-purchase-recovery"', html)
-        self.assertNotIn('<details class="app-purchase-recovery"', html)
+        self.assertIn('<section class="purchase-recovery"', html)
+        self.assertNotIn('<details class="purchase-recovery"', html)
         self.assertIn('id="app-recovery-email"', html)
         self.assertIn('id="app-recovery-receipt"', html)
         self.assertIn('requestStore("recover-download"', html)
 
-    def test_lesson_changes_purchase_button_after_purchase_is_verified(self):
-        response = self.client.get("/lesson/")
+    def test_products_changes_purchase_button_after_purchase_is_verified(self):
+        response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('appPurchaseButton.textContent = "ダウンロード版を使用する"', html)
         self.assertIn("if (!appDownloadLink.hidden)", html)
         self.assertIn("appDownloadLink.click()", html)
+
+    def test_products_retries_download_link_after_checkout_propagation_delay(self):
+        response = self.client.get("/products/")
+
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn("async function provideDownloadAfterCheckout(sessionId)", html)
+        self.assertIn("const maximumAttempts = 5", html)
+        self.assertIn("setTimeout(resolve, 1500)", html)
+        self.assertIn('if (purchaseMode === "success")', html)
+        self.assertIn("await provideDownloadAfterCheckout(sessionId)", html)
 
     def test_checkout_is_blocked_when_store_is_disabled(self):
         response = self.client.post("/api/store/checkout")
@@ -279,7 +301,7 @@ class StoreTest(unittest.TestCase):
         create_kwargs = stripe.checkout.Session.create.call_args.kwargs
         self.assertTrue(
             create_kwargs["success_url"].startswith(
-                "https://p4443.github.io/Namegawa-Brass-Lab/lesson/"
+                "https://p4443.github.io/Namegawa-Brass-Lab/products/"
             )
         )
 
@@ -673,7 +695,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(
             response.headers["Location"],
-            "/lesson/?purchase=reissue&session_id=cs_test_paid#practice-apps-title",
+            "/products/?purchase=reissue&session_id=cs_test_paid#metronome",
         )
 
     def test_expired_download_with_invalid_payload_returns_gone(self):

@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="なめがわブラス・ラボが開発する音楽・教育向けアプリとデジタル商品の紹介・販売ページです。">
+  <title>アプリ・商品 | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --primary-color: #1a56db;
+      --primary-hover: #1e40af;
+      --accent-color: #f59e0b;
+      --accent-hover: #d97706;
+      --text-main: #1f2937;
+      --text-muted: #4b5563;
+      --bg-light: #f8fafc;
+      --bg-white: #ffffff;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { color: var(--text-main); background: var(--bg-light); font-family: var(--font-family); line-height: 1.7; }
+    a { color: inherit; text-decoration: none; }
+    button, input { font: inherit; }
+    .container { width: min(calc(100% - 40px), 1160px); margin: 0 auto; }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      border-bottom: 1px solid var(--border-color);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: var(--shadow-sm);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-inner { display: flex; min-height: 70px; align-items: center; justify-content: space-between; gap: 20px; }
+    .brand { color: var(--primary-color); font-size: 1.05rem; font-weight: 800; }
+    .back-link { color: var(--text-muted); font-size: 0.88rem; font-weight: 700; }
+    .back-link:hover { color: var(--primary-color); }
+
+    .hero { padding: 76px 0; border-bottom: 1px solid var(--border-color); background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%); }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr); align-items: center; gap: 64px; }
+    .eyebrow { margin-bottom: 10px; color: var(--accent-hover); font-size: 0.78rem; font-weight: 800; letter-spacing: 0.08em; }
+    h1 { max-width: 720px; color: #0f172a; font-size: clamp(2rem, 5vw, 3.3rem); line-height: 1.25; }
+    .hero-copy { max-width: 680px; margin-top: 20px; color: var(--text-muted); font-size: 1.02rem; }
+    .hero-mark { display: grid; min-height: 280px; place-content: center; border-radius: 8px; color: #ffffff; background: #0f172a; box-shadow: var(--shadow-md); text-align: center; }
+    .hero-mark strong { display: block; color: #fbbf24; font-size: 3.8rem; line-height: 1; }
+    .hero-mark span { margin-top: 16px; color: #bfdbfe; font-size: 0.85rem; font-weight: 700; }
+
+    .catalog { padding: 80px 0; background: var(--bg-white); }
+    .section-title { color: var(--primary-color); font-size: 2rem; text-align: center; }
+    .section-desc { margin: 8px 0 40px; color: var(--text-muted); text-align: center; }
+
+    .product-feature { overflow: hidden; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); box-shadow: var(--shadow-md); }
+    .product-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 30px; border-bottom: 1px solid var(--border-color); }
+    .product-label { display: inline-block; margin-bottom: 5px; color: var(--accent-hover); font-size: 0.76rem; font-weight: 800; }
+    .product-heading h2 { color: #0f172a; font-size: 1.45rem; }
+    .product-heading p { margin-top: 4px; color: var(--text-muted); font-size: 0.9rem; }
+    .launch-link { flex: 0 0 auto; padding: 11px 18px; border: 1px solid var(--primary-color); border-radius: 50px; color: var(--primary-color); font-size: 0.84rem; font-weight: 800; }
+    .launch-link:hover { color: #ffffff; background: var(--primary-color); }
+
+    .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
+
+    .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
+    .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
+    .store-copy p { margin-top: 8px; color: var(--text-muted); font-size: 0.88rem; }
+    .store-benefits { display: grid; gap: 8px; margin-top: 18px; padding: 0; list-style: none; }
+    .store-benefits li { color: var(--text-muted); font-size: 0.86rem; }
+    .store-benefits li::before { margin-right: 8px; color: var(--primary-color); font-weight: 800; content: "✓"; }
+
+    .store-actions { display: grid; align-content: start; gap: 10px; }
+    .store-button, .download-link, .recovery-button, .sales-save { min-height: 46px; border: 0; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-weight: 800; cursor: pointer; }
+    .store-button:hover:not(:disabled), .recovery-button:hover:not(:disabled), .sales-save:hover:not(:disabled) { background: var(--primary-hover); }
+    .store-button:disabled, .recovery-button:disabled, .sales-save:disabled { cursor: wait; opacity: 0.6; }
+    .download-link { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-hover); }
+    .download-link[hidden] { display: none; }
+    .store-status { min-height: 1.5em; color: var(--text-muted); font-size: 0.8rem; }
+
+    .purchase-recovery, .sales-admin { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-color); }
+    .purchase-recovery h3, .sales-admin summary { color: var(--text-main); font-size: 0.84rem; font-weight: 800; }
+    .recovery-controls, .sales-controls { display: grid; gap: 8px; margin-top: 10px; }
+    .recovery-controls input, .sales-controls input[type="password"] { width: 100%; min-height: 42px; padding: 9px 11px; border: 1px solid #cbd5e1; border-radius: 8px; background: #ffffff; }
+    .recovery-controls input:focus, .sales-controls input[type="password"]:focus { border-color: var(--primary-color); outline: 3px solid rgba(26, 86, 219, 0.16); }
+    .sales-toggle { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
+    .store-legal { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 14px; color: var(--text-muted); font-size: 0.74rem; }
+    .store-legal a:hover { color: var(--primary-color); }
+
+    .future-products { padding: 80px 0; }
+    .future-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+    .future-card { min-height: 210px; padding: 28px; border: 1px dashed #94a3b8; border-radius: 8px; background: var(--bg-white); }
+    .future-card strong { display: block; color: var(--primary-color); font-size: 1rem; }
+    .future-card p { margin-top: 10px; color: var(--text-muted); font-size: 0.86rem; }
+
+    .contact { padding: 70px 0; color: #ffffff; background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); text-align: center; }
+    .contact h2 { font-size: 2rem; }
+    .contact p { margin: 10px 0 24px; opacity: 0.9; }
+    .contact-link { display: inline-flex; min-height: 48px; align-items: center; padding: 12px 28px; border-radius: 50px; color: #ffffff; background: var(--accent-color); font-weight: 800; }
+    footer { padding: 28px 20px; color: #94a3b8; background: #0f172a; text-align: center; font-size: 0.8rem; }
+
+    @media (max-width: 820px) {
+      .hero-grid, .store-panel, .future-grid { grid-template-columns: 1fr; }
+      .hero-mark { min-height: 190px; }
+      .product-heading { align-items: flex-start; flex-direction: column; }
+      .app-window { height: 760px; }
+    }
+
+    @media (max-width: 520px) {
+      .container { width: min(calc(100% - 32px), 1160px); }
+      .hero { padding: 54px 0; }
+      .hero-mark strong { font-size: 3rem; }
+      .catalog, .future-products { padding: 60px 0; }
+      .product-heading, .store-panel { padding: 22px; }
+      .launch-link { width: 100%; text-align: center; }
+      .section-title, .contact h2 { font-size: 1.65rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="../">なめがわブラス・ラボ</a>
+      <a class="back-link" href="../#web">← サービス案内へ戻る</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <p class="eyebrow">APPS &amp; DIGITAL PRODUCTS</p>
+          <h1>音楽と学びを、もっと使いやすく。</h1>
+          <p class="hero-copy">現場で感じた課題から生まれたアプリやデジタル商品を紹介します。無料で試せるWeb版から、手元に置いて使える商品まで、順次ラインアップを広げていきます。</p>
+        </div>
+        <div class="hero-mark" aria-hidden="true">
+          <strong>♪ + IT</strong>
+          <span>現場発想のデジタルツール</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog" id="products" aria-labelledby="products-title">
+      <div class="container">
+        <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
+        <p class="section-desc">現在公開中の商品を、このページで体験・購入できます</p>
+
+        <article class="product-feature" id="metronome">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">NOW AVAILABLE</span>
+              <h2>トランペット練習メトロノーム</h2>
+              <p>ブレストレーニング、可変テンポ、連符分割、音色切替を一つにまとめた練習アプリです。</p>
+            </div>
+            <a class="launch-link" href="../music%20App/" target="_blank" rel="noopener">別画面で試す</a>
+          </header>
+
+          <iframe class="app-window" src="../music%20App/" title="トランペット練習メトロノーム" loading="lazy" allow="autoplay"></iframe>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>オフライン版</h3>
+              <p>インターネット接続を気にせず、ご本人の端末で利用できるダウンロード商品です。</p>
+              <ul class="store-benefits">
+                <li>Web版は無料で全機能を体験可能</li>
+                <li>購入者本人の所有端末で利用可能</li>
+                <li>決済確認後、24時間有効のリンクを発行</li>
+              </ul>
+              <nav class="store-legal" aria-label="購入に関する情報">
+                <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
+                <a href="../legal/#license">利用ライセンス</a>
+                <a href="../legal/#refund">返金方針</a>
+                <a href="../legal/#contact">購入に関するお問い合わせ</a>
+              </nav>
+            </div>
+
+            <div class="store-actions">
+              <button class="store-button" id="app-purchase-button" type="button" disabled>販売状況を確認中</button>
+              <a class="download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
+              <p class="store-status" id="app-store-status" role="status" aria-live="polite"></p>
+
+              <section class="purchase-recovery" aria-labelledby="recovery-title">
+                <h3 id="recovery-title">購入済みの方：ダウンロードを再表示</h3>
+                <form class="recovery-controls" id="app-recovery-form">
+                  <input id="app-recovery-email" type="email" autocomplete="email" placeholder="購入時のメールアドレス" aria-label="購入時のメールアドレス" required>
+                  <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号または決済ID" aria-label="Stripe領収書番号または決済ID" pattern="(?:[A-Za-z0-9-]{4,64}|pi_[A-Za-z0-9_]{8,255})" required>
+                  <button class="recovery-button" id="app-recovery-submit" type="submit">再表示</button>
+                </form>
+              </section>
+
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="app-sales-form" novalidate>
+                  <input id="app-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="app-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="app-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="future-products" aria-labelledby="future-title">
+      <div class="container">
+        <h2 class="section-title" id="future-title">これからの商品</h2>
+        <p class="section-desc">音楽・教育・地域活動を支えるツールを順次追加します</p>
+        <div class="future-grid">
+          <article class="future-card"><strong>練習サポートアプリ</strong><p>基礎練習や日々の記録を支える新しいツールを準備しています。</p></article>
+          <article class="future-card"><strong>音楽教育コンテンツ</strong><p>指導現場で使いやすい教材やデジタルコンテンツを企画しています。</p></article>
+          <article class="future-card"><strong>WEB制作・開発相談</strong><p>教室・店舗・地域活動に合ったWebサイトやアプリ開発をご相談いただけます。</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="contact">
+      <div class="container">
+        <h2>制作・商品についてのご相談</h2>
+        <p>導入、開発、購入済み商品の利用についてお問い合わせいただけます。</p>
+        <a class="contact-link" href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener">お問い合わせフォームへ</a>
+      </div>
+    </section>
+  </main>
+
+  <footer>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
+
+  <script>
+    const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";
+    const buildApiCandidates = (renderApi, relativePath) => {
+      const urls = location.hostname.endsWith("github.io")
+        ? [renderApi, `../${relativePath}`, `/${relativePath}`]
+        : [`/${relativePath}`, renderApi];
+      return [...new Set(urls.map((url) => new URL(url, location.href).href))];
+    };
+
+    const appPurchaseButton = document.getElementById("app-purchase-button");
+    const appDownloadLink = document.getElementById("app-download-link");
+    const appStoreStatus = document.getElementById("app-store-status");
+    const appRecoveryForm = document.getElementById("app-recovery-form");
+    const appRecoveryEmail = document.getElementById("app-recovery-email");
+    const appRecoveryReceipt = document.getElementById("app-recovery-receipt");
+    const appRecoverySubmit = document.getElementById("app-recovery-submit");
+    const appSalesForm = document.getElementById("app-sales-form");
+    const appSalesPassword = document.getElementById("app-sales-password");
+    const appSalesEnabled = document.getElementById("app-sales-enabled");
+    const appSalesSave = document.getElementById("app-sales-save");
+    const purchaseSessionStorageKey = "metronome-purchase-session";
+    let downloadInProgress = false;
+
+    const storeApiCandidates = (path) => buildApiCandidates(`${renderStoreBase}/${path}`, `api/store/${path}`);
+
+    async function requestStore(path, options = {}) {
+      let lastError = null;
+      for (const endpoint of storeApiCandidates(path)) {
+        try {
+          const response = await fetch(endpoint, options);
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          if (!contentType.includes("application/json")) continue;
+          const result = await response.json();
+          if (response.ok) return result;
+          if (response.status === 404 || response.status === 405) continue;
+          throw new Error(result.error || "販売サーバーへ接続できませんでした。");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("販売サーバーへ接続できませんでした。");
+    }
+
+    function renderStoreProduct(product) {
+      appSalesEnabled.checked = product.enabled;
+      appPurchaseButton.disabled = !product.checkout_available;
+      appPurchaseButton.textContent = product.enabled
+        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円で購入`
+        : "オフライン版 販売停止中";
+      appStoreStatus.textContent = product.enabled && !product.checkout_available
+        ? "決済機能を準備中です。Web版は引き続き利用できます。"
+        : "Web版は無料で全機能を利用できます。";
+    }
+
+    async function loadStoreProduct() {
+      try {
+        renderStoreProduct(await requestStore("product"));
+      } catch (error) {
+        appPurchaseButton.textContent = "オフライン版 販売停止中";
+        appStoreStatus.textContent = error.message;
+      }
+    }
+
+    function createCheckoutRequestId() {
+      if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+      const bytes = crypto.getRandomValues(new Uint8Array(16));
+      bytes[6] = (bytes[6] & 0x0f) | 0x40;
+      bytes[8] = (bytes[8] & 0x3f) | 0x80;
+      const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
+      return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+    }
+
+    appPurchaseButton.addEventListener("click", async () => {
+      if (!appDownloadLink.hidden) {
+        appDownloadLink.click();
+        return;
+      }
+      appPurchaseButton.disabled = true;
+      appStoreStatus.textContent = "安全な決済画面を準備しています…";
+      try {
+        const result = await requestStore("checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
+        });
+        location.href = result.checkout_url;
+      } catch (error) {
+        const checkoutErrorMessage = error.message;
+        await loadStoreProduct();
+        appStoreStatus.textContent = checkoutErrorMessage;
+      }
+    });
+
+    function loadSavedPurchaseSession() {
+      try {
+        const sessionId = localStorage.getItem(purchaseSessionStorageKey) || "";
+        return sessionId.startsWith("cs_") ? sessionId : "";
+      } catch (error) {
+        return "";
+      }
+    }
+
+    function savePurchaseSession(sessionId) {
+      try {
+        localStorage.setItem(purchaseSessionStorageKey, sessionId);
+      } catch (error) {
+        // The current page can still provide the download when storage is unavailable.
+      }
+    }
+
+    function showDownloadLink(result, sessionId, isReissue = false) {
+      savePurchaseSession(sessionId);
+      appDownloadLink.href = result.download_url;
+      appDownloadLink.dataset.sessionId = sessionId;
+      appDownloadLink.hidden = false;
+      appPurchaseButton.disabled = false;
+      appPurchaseButton.textContent = "ダウンロード版を使用する";
+      appDownloadLink.textContent = isReissue ? "再発行したオフライン版をダウンロード" : "オフライン版をダウンロード";
+      appStoreStatus.textContent = isReissue
+        ? "購入履歴を確認し、新しいリンクを発行しました。リンクは24時間有効です。"
+        : "お支払いを確認しました。リンクは24時間有効です。";
+      return result.download_url;
+    }
+
+    async function provideDownload(sessionId, isReissue = false) {
+      const result = await requestStore("download-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      return showDownloadLink(result, sessionId, isReissue);
+    }
+
+    async function provideDownloadAfterCheckout(sessionId) {
+      const maximumAttempts = 5;
+      for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+        try {
+          return await provideDownload(sessionId, false);
+        } catch (error) {
+          if (attempt === maximumAttempts) throw error;
+          appStoreStatus.textContent = `お支払いの反映を待っています…（${attempt}/${maximumAttempts}）`;
+          await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
+    appRecoveryForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      if (!appRecoveryForm.reportValidity()) return;
+      appRecoverySubmit.disabled = true;
+      appStoreStatus.textContent = "購入情報を確認しています…";
+      try {
+        const result = await requestStore("recover-download", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: appRecoveryEmail.value.trim(), receipt_number: appRecoveryReceipt.value.trim() }),
+        });
+        showDownloadLink(result, result.session_id, true);
+        appRecoveryReceipt.value = "";
+      } catch (error) {
+        appStoreStatus.textContent = error.message;
+      } finally {
+        appRecoverySubmit.disabled = false;
+      }
+    });
+
+    async function downloadProduct(downloadUrl) {
+      try {
+        const response = await fetch(downloadUrl, { method: "HEAD", cache: "no-store" });
+        const contentType = (response.headers.get("content-type") || "").toLowerCase();
+        if (response.status !== 405 && response.status !== 501 && (!response.ok || !contentType.includes("application/zip"))) {
+          throw new Error("ダウンロードリンクを更新します。");
+        }
+      } catch (error) {
+        if (!(error instanceof TypeError)) throw error;
+      }
+      location.assign(downloadUrl);
+    }
+
+    appDownloadLink.addEventListener("click", async (event) => {
+      event.preventDefault();
+      if (downloadInProgress) return;
+      const sessionId = appDownloadLink.dataset.sessionId || loadSavedPurchaseSession();
+      if (!sessionId) {
+        appStoreStatus.textContent = "購入情報を確認できません。購入に関するお問い合わせからご連絡ください。";
+        return;
+      }
+      downloadInProgress = true;
+      appDownloadLink.setAttribute("aria-disabled", "true");
+      appStoreStatus.textContent = "ダウンロードを準備しています…";
+      try {
+        await downloadProduct(appDownloadLink.href);
+        appStoreStatus.textContent = "ダウンロードを開始しました。";
+      } catch (error) {
+        appStoreStatus.textContent = "リンクを再発行しています…";
+        try {
+          const downloadUrl = await provideDownload(sessionId, true);
+          await downloadProduct(downloadUrl);
+          appStoreStatus.textContent = "新しいリンクでダウンロードを開始しました。";
+        } catch (reissueError) {
+          appStoreStatus.textContent = "自動再提供できませんでした。購入に関するお問い合わせからご連絡ください。";
+        }
+      } finally {
+        downloadInProgress = false;
+        appDownloadLink.removeAttribute("aria-disabled");
+      }
+    });
+
+    appSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = appSalesPassword.value;
+      if (!password) {
+        appStoreStatus.textContent = "編集用パスワードを入力してください。";
+        appSalesPassword.focus();
+        return;
+      }
+      const requestedState = appSalesEnabled.checked;
+      appSalesEnabled.disabled = true;
+      appSalesSave.disabled = true;
+      appStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestStore("product", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-Editor-Password": password },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderStoreProduct(product);
+        appSalesPassword.value = "";
+        appStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        appSalesEnabled.checked = !requestedState;
+        appStoreStatus.textContent = error.message;
+      } finally {
+        appSalesEnabled.disabled = false;
+        appSalesSave.disabled = false;
+      }
+    });
+
+    async function applyPurchaseResult() {
+      const parameters = new URLSearchParams(location.search);
+      if (parameters.get("purchase") === "cancelled") {
+        appStoreStatus.textContent = "決済はキャンセルされました。";
+        return;
+      }
+      const purchaseMode = parameters.get("purchase");
+      const querySessionId = parameters.get("session_id") || "";
+      const sessionId = querySessionId.startsWith("cs_") ? querySessionId : loadSavedPurchaseSession();
+      if (!sessionId) return;
+      const isReissue = purchaseMode === "reissue" || purchaseMode !== "success";
+      appStoreStatus.textContent = isReissue
+        ? "購入履歴を確認し、ダウンロードリンクを再発行しています…"
+        : "お支払いを確認しています…";
+      try {
+        if (purchaseMode === "success") {
+          await provideDownloadAfterCheckout(sessionId);
+        } else {
+          await provideDownload(sessionId, isReissue);
+        }
+        if (querySessionId) history.replaceState(null, "", `${location.pathname}${location.hash}`);
+      } catch (error) {
+        appStoreStatus.textContent = isReissue
+          ? "購入履歴を確認できませんでした。購入に関するお問い合わせからご連絡ください。"
+          : error.message;
+      }
+    }
+
+    loadStoreProduct().then(applyPurchaseResult);
+  </script>
+</body>
+</html>

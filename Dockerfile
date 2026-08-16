@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py index.html build_product.py ./
 COPY data ./data
 COPY lesson ./lesson
+COPY products ./products
 COPY legal ./legal
 COPY schedule ./schedule
 COPY pdf ./pdf

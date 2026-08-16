@@ -11,11 +11,13 @@ from app import (
     create_app,
     load_updates,
     normalize_media_url,
+    normalize_slot_statuses,
     parse_update_line,
     reservation_slot_times,
     send_lesson_reservation,
     validate_lesson_reservation,
     validate_lesson_reservation_update,
+    validate_update,
 )
 
 
@@ -463,6 +465,21 @@ class UpdatesTest(unittest.TestCase):
 
             self.assertEqual(response.status_code, 200)
 
+    def test_update_editor_requires_iso_calendar_date(self):
+        valid_payload = {
+            "date": "2026-08-16",
+            "category": "お知らせ",
+            "content": "本文",
+            "media_type": "",
+            "media_url": "",
+        }
+
+        self.assertEqual(validate_update(valid_payload)["date"], "2026-08-16")
+        for invalid_date in ("2026/08/16", "2026.08.16", "2026-08-16T12:30:00", "2026-02-30"):
+            with self.subTest(invalid_date=invalid_date):
+                with self.assertRaisesRegex(ValueError, "日付を正しく"):
+                    validate_update({**valid_payload, "date": invalid_date})
+
     def test_lesson_page_is_available(self):
         client = create_app().test_client()
 
@@ -479,8 +496,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("佐々木 久和", page)
         self.assertIn("グループレッスン・部活動指導", page)
         self.assertIn("別途相談", page)
-        self.assertIn('href="../#main-container"', page)
+        self.assertIn('href="../"', page)
         self.assertIn('id="reservation-form"', page)
+        self.assertNotIn('id="app-purchase-button"', page)
         self.assertIn('class="schedule-callout"', page)
         self.assertIn('class="schedule-callout-link" href="../schedule/"', page)
         self.assertLess(page.index('id="schedule-callout-title"'), page.index('id="reservation-title"'))
@@ -531,10 +549,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
 
-    def test_lesson_page_only_shows_store_admin_controls(self):
+    def test_products_page_only_shows_store_admin_controls(self):
         client = create_app().test_client()
 
-        response = client.get("/lesson/")
+        response = client.get("/products/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
@@ -558,6 +576,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("appStoreStatus.textContent = checkoutErrorMessage", page)
         self.assertNotIn("URL.createObjectURL", page)
         self.assertNotIn("slot-admin", page)
+
+    def test_main_page_links_to_products_without_embedded_app_or_reservation(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('href="products/"', page)
+        self.assertNotIn('id="reservation-form"', page)
+        self.assertNotIn('<iframe class="app-frame"', page)
 
     def test_schedule_page_shares_public_calendar_and_admin_panel(self):
         client = create_app().test_client()
@@ -1153,6 +1182,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
         self.assertEqual(send_reservation.call_args.kwargs["action"], "get_slot_statuses")
 
+    def test_lesson_slot_statuses_normalizes_apps_script_date_times(self):
+        slots = normalize_slot_statuses(
+            [
+                {
+                    "date": "2026-08-20",
+                    "time": "Sat Dec 30 1899 07:45:00 GMT+0900 (日本標準時)",
+                    "status": "予約済",
+                },
+                {"date": "2026-08-20", "time": "要相談", "status": "空き"},
+            ]
+        )
+
+        self.assertEqual(slots[0]["time"], "07:45")
+        self.assertEqual(slots[1]["time"], "要相談")
+
     def test_lesson_slot_statuses_reports_unavailable_service(self):
         client = create_app().test_client()
 
@@ -1485,63 +1529,184 @@ class UpdatesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "所要時間"):
             validate_lesson_reservation_update({"duration_minutes": 70})
 
-    def test_index_uses_site_relative_lesson_links(self):
+    def test_index_uses_site_relative_products_and_lesson_links(self):
         client = create_app().test_client()
 
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertEqual(page.count('href="lesson/"'), 3)
-        self.assertNotIn('href="/lesson/"', page)
-        self.assertIn("failedLoginAttempts >= 3", page)
-        self.assertIn("closeEditorPanel();", page)
-        self.assertIn("https://namegawa-brass-lab.onrender.com/api/updates", page)
-        self.assertNotIn('class="schedule-callout"', page)
+        self.assertIn('href="products/"', page)
+        self.assertIn('href="lesson/"', page)
+        self.assertIn('href="pdf/"', page)
+        self.assertIn("イベント企画PDFを見る", page)
+        self.assertNotIn('src="music%20App/"', page)
+        self.assertNotIn("namegawa-brass-lab.onrender.com/api/lesson", page)
 
-    def test_index_uses_sticky_page_navigation(self):
+    def test_event_planning_pdf_index_is_available(self):
+        client = create_app().test_client()
+
+        response = client.get("/pdf/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('<a href="cafe-live-plan-1.pdf">cafe-live-plan-1.pdf</a>', page)
+        self.assertIn('<a href="dayservice.pdf">dayservice.pdf</a>', page)
+
+    def test_index_uses_sticky_responsive_navigation(self):
         client = create_app().test_client()
 
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('<nav class="page-nav" aria-label="サイト内ページナビ">', page)
-        self.assertNotIn('<details class="global-nav-disclosure">', page)
-        page_nav_css = page.split(".page-nav {", 1)[1].split("}", 1)[0]
-        self.assertIn("position: sticky", page_nav_css)
+        header_css = page.split("header {", 1)[1].split("}", 1)[0]
+        self.assertIn("position: sticky", header_css)
+        self.assertIn('class="nav-menu" id="navMenu"', page)
+        self.assertIn('class="hamburger" id="hamburgerBtn"', page)
+        self.assertIn("navMenu.classList.toggle('active')", page)
+        header_nav = page.split('<ul class="nav-menu" id="navMenu">', 1)[1].split("</ul>", 1)[0]
+        footer_nav = page.split('<div class="footer-links">', 1)[1].split("</div>", 1)[0]
+        for navigation in (header_nav, footer_nav):
+            self.assertIn('<a href="lesson/">kazooささきトランペット教室</a>', navigation)
+            self.assertIn('<a href="#trumpet">事業・サービス内容</a>', navigation)
+            self.assertNotIn(">イベント企画</a>", navigation)
+            self.assertNotIn(">アプリ・商品</a>", navigation)
 
-    def test_updates_section_scrolls_at_image_height(self):
+    def test_products_embed_app_and_lesson_owns_reservation_form(self):
+        client = create_app().test_client()
+
+        products_response = client.get("/products/")
+        lesson_response = client.get("/lesson/")
+
+        self.assertEqual(products_response.status_code, 200)
+        self.assertEqual(lesson_response.status_code, 200)
+        products_page = products_response.get_data(as_text=True)
+        lesson_page = lesson_response.get_data(as_text=True)
+        self.assertIn('id="metronome"', products_page)
+        self.assertIn('class="app-window"', products_page)
+        self.assertNotIn('id="reservation-form"', products_page)
+        self.assertIn('class="hero-photo"', lesson_page)
+        self.assertIn('src="../data/media/lesson-header-photo.jpg"', lesson_page)
+        self.assertIn('id="reservation-form"', lesson_page)
+        self.assertIn('id="reservation-cancel-form"', lesson_page)
+        self.assertNotIn("renderStoreBase", lesson_page)
+        self.assertNotIn("appPurchaseButton", lesson_page)
+        self.assertNotIn(".app-store", lesson_page)
+
+    def test_index_uses_real_contact_map_and_hero_media(self):
         client = create_app().test_client()
 
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        updates_list_css = page.split("#updates-list {", 1)[1].split("}", 1)[0]
-        self.assertIn("height: var(--updates-window-height, 420px)", updates_list_css)
-        self.assertIn("overflow-y: auto", updates_list_css)
-        self.assertIn('id="updates-archive-month"', page)
-        self.assertIn("function updateMonthKey(item)", page)
-        self.assertIn("function renderSelectedArchiveMonth()", page)
-        mobile_css = page.split("@media (max-width: 480px) {", 1)[1]
-        self.assertIn("flex: 1 0 100%", mobile_css)
-        self.assertIn("height: clamp(300px, var(--updates-window-height, 55dvh), 420px)", mobile_css)
+        self.assertIn('src="video/intro.mp4"', page)
+        self.assertIn('src="data/media/profile-photo.jpg"', page)
+        self.assertIn('alt="トランペットを持つ佐々木久和"', page)
+        hero_label_css = page.split(".hero-visual-label {", 1)[1].split("}", 1)[0]
+        self.assertIn("border-top: 4px solid var(--accent-color)", hero_label_css)
+        self.assertNotIn("border-left:", hero_label_css)
+        self.assertIn("埼玉県比企郡滑川町月の輪5丁目1-3", page)
 
-    def test_header_matches_lesson_page_navigation_system(self):
+    def test_index_renders_update_media_as_reliable_external_links(self):
         client = create_app().test_client()
 
         response = client.get("/")
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        header_css = page.split(".site-header-inner {", 1)[1].split("}", 1)[0]
-        brand_css = page.split(".site-brand {", 1)[1].split("}", 1)[0]
-        nav_css = page.split(".page-nav {", 1)[1].split("}", 1)[0]
-        self.assertIn("justify-content: space-between", header_css)
-        self.assertIn("justify-self: start", brand_css)
-        self.assertIn("position: sticky", nav_css)
-        self.assertIn('class="site-header-link" href="lesson/"', page)
+        self.assertIn('class="update-media-link update-image-link"', page)
+        self.assertIn("写真を見る", page)
+        self.assertIn('class="update-media-link update-video-link"', page)
+        self.assertIn("YouTubeで見る", page)
+        self.assertNotRegex(page, r'<img[^>]+src="data/media/updates/')
+        self.assertNotIn('<iframe src="https://www.youtube.com/embed/', page)
+        self.assertIn("トランペットミニコンサート&amp;自由研究の詳しい資料です。", page)
+        self.assertNotIn("↓こちら↓", page)
+        self.assertNotIn("↓写真↓", page)
+
+    def test_index_provides_monthly_scroll_window_and_update_editor(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="updates-month"', page)
+        self.assertIn('class="updates-window" id="updates-window"', page)
+        self.assertIn("height: 520px", page)
+        self.assertIn("overflow-y: auto", page)
+        self.assertIn("location.port === '5500'", page)
+        self.assertIn("if (location.protocol === 'file:' || isLiveServer)", page)
+        self.assertIn("location.replace(`http://localhost:8080/", page)
+        self.assertRegex(page, r"\.updates-grid\s*\{[^}]*grid-template-columns: 1fr;")
+        self.assertIn("scroll-margin-top: 94px", page)
+        self.assertIn("grid-template-columns: minmax(240px, 36%) minmax(0, 1fr)", page)
+        self.assertRegex(page, r"\.update-media\s*\{[^}]*min-height: 140px;")
+        self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?\.update-media\s*\{[^}]*min-height: 104px;")
+        self.assertNotRegex(page, r"\.updates-section\s*\{\s*display: none;")
+        self.assertIn('class="updates-nav-item"', page)
+        self.assertIn('id="updates-admin-toggle"', page)
+        self.assertIn('id="updates-editor-login"', page)
+        self.assertIn('id="updates-editor-form"', page)
+        self.assertIn("filterUpdatesByMonth", page)
+        self.assertIn("/api/editor", page)
+        self.assertIn("method: updateIndex ? 'PUT' : 'POST'", page)
+        self.assertIn("method: 'DELETE'", page)
+        self.assertIn("updatesEditorSave.disabled = true", page)
+        self.assertIn("updatesEditorSave.disabled = false", page)
+        self.assertIn("timeZone: 'Asia/Tokyo'", page)
+        self.assertIn("sessionStorage.removeItem('updatesEditorPassword')", page)
+        self.assertIn("通信できませんでした。時間をおいて再度お試しください。", page)
+        self.assertIn("zuomuj924@gmail.com", page)
+        self.assertNotIn("info@example.com", page)
+        self.assertNotIn("配置案", page)
+
+    def test_index_presents_three_community_feature_rings(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn("音楽と文化で育む、広がる3つの輪", page)
+        self.assertIn("みんなの居場所づくり", page)
+        self.assertIn("健康と笑顔の支援", page)
+        self.assertIn("世代を超えた交流", page)
+        self.assertIn('href="video/"', page)
+        self.assertIn('aria-label="世代を超えた交流の動画を見る"', page)
+        self.assertIn("交流動画を見る ▶", page)
+        self.assertEqual(page.count('class="feature-ring"'), 3)
+        self.assertIn("padding-top: 144px", page)
+        self.assertNotIn('class="feature-ring" aria-hidden="true">01</div>', page)
+
+        video_response = client.get("/video/")
+        self.assertEqual(video_response.status_code, 200)
+        video_page = video_response.get_data(as_text=True)
+        self.assertIn("滑川町ふれあいコンサート", video_page)
+        self.assertIn("2026年5月10日（日）", video_page)
+        self.assertIn("滑川町コミュニティセンターにて", video_page)
+        self.assertIn('src="generations.mp4"', video_page)
+        self.assertIn("まるっと！2026年5月18日号", video_page)
+        self.assertIn("【制作：東松山ケーブルテレビ】", video_page)
+        self.assertRegex(video_page, r"\.credit-telop strong\s*\{[^}]*display: block;")
+
+    def test_index_presents_five_reorganized_services(self):
+        client = create_app().test_client()
+
+        response = client.get("/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn("音楽・地域連携・イベント・デジタルをつなぐ5つの事業", page)
+        self.assertIn("部活動の地域連携・地域クラブ移行支援", page)
+        self.assertIn("滑川町こどもの居場所ネットワークへの参加", page)
+        self.assertIn("イベント企画・プロデュース／輸送業務", page)
+        self.assertIn("WEB制作・アプリ開発販売", page)
+        self.assertIn("kazooささき トランペット教室", page)
+        self.assertEqual(page.count('<div class="service-card'), 5)
+        self.assertNotIn("kazoo イベント・楽器運搬", page)
 
 
 if __name__ == "__main__":

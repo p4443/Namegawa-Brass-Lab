@@ -3,25 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    const isLiveServer = ['localhost', '127.0.0.1'].includes(location.hostname)
+      && location.port === '5500';
+    if (location.protocol === 'file:' || isLiveServer) {
+      location.replace(`http://localhost:8080/${location.search}${location.hash}`);
+    }
+  </script>
   <title>なめがわブラス・ラボ | トランペット奏者・佐々木久和</title>
   <style>
+    /* ----------------------------------
+       CSS RESET & VARIABLES
+    ---------------------------------- */
     :root {
-      --primary-color: #0f172a;
-      --primary-light: #1e293b;
-      --accent-color: #d97706;
-      --accent-hover: #b45309;
-      --bg-color: #f8fafc;
-      --card-bg: #ffffff;
-      --text-main: #1e293b;
-      --text-muted: #64748b;
-      --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.06);
-      --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.1);
-      --radius: 16px;
-      --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      --highlight-bg: #fff4da;
-      --highlight-bg-hover: #ffe7be;
+      --primary-color: #1a56db;
+      --primary-hover: #1e40af;
+      --accent-color: #f59e0b;
+      --text-main: #1f2937;
+      --text-muted: #4b5563;
+      --bg-light: #f8fafc;
+      --bg-white: #ffffff;
       --border-color: #e2e8f0;
-      --font-serif: "Hiragino Mincho ProN", "Yu Mincho", serif;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
     * {
@@ -31,2175 +36,1734 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background: linear-gradient(180deg, #f1f5f9 0%, #f8fafc 100%);
+      font-family: var(--font-family);
       color: var(--text-main);
-      line-height: 1.8;
-      min-height: 100vh;
-      overflow-x: hidden;
-      padding: 0;
+      background-color: var(--bg-light);
+      line-height: 1.7;
     }
 
-    .site-header {
-      color: #ffffff;
-      background: var(--primary-color);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    section[id],
+    .service-card[id] {
+      scroll-margin-top: 94px;
     }
 
-    .site-header-inner {
-      width: min(100% - 24px, 860px);
-      min-height: 58px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .site-brand {
-      display: flex;
-      align-items: center;
-      justify-self: start;
-      min-width: 0;
+    a {
       text-decoration: none;
-      color: #ffffff;
+      color: inherit;
     }
 
-    .site-brand-text {
-      display: grid;
-      gap: 2px;
-      min-width: 0;
-      text-align: left;
-    }
-
-    .site-brand-name {
-      font-family: var(--font-serif);
-      font-size: 0.9rem;
-      font-weight: 800;
-      letter-spacing: 0.04em;
-      line-height: 1.3;
-    }
-
-    .site-brand-subtitle {
-      font-size: 0.68rem;
-      font-weight: 700;
-      color: rgba(255, 255, 255, 0.72);
-      letter-spacing: 0.08em;
-    }
-
-    .site-header-link {
-      color: rgba(255, 255, 255, 0.82);
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-decoration: none;
-      white-space: nowrap;
-    }
-
-    .site-header-link:hover,
-    .site-header-link:focus-visible {
-      color: #ffffff;
-      text-decoration: underline;
-    }
-
-    .page-nav {
-      position: sticky;
-      top: 0;
-      z-index: 60;
-      width: min(100% - 24px, 860px);
-      margin: 0 auto;
-      padding: 12px 0 0;
-    }
-
-    .global-nav-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 0;
-      padding: 0;
+    ul {
       list-style: none;
     }
 
-    .global-nav-link {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 7px;
-      min-height: 42px;
-      padding: 8px 11px;
-      border-radius: 999px;
-      border: 1px solid rgba(15, 23, 42, 0.1);
-      background: rgba(255, 255, 255, 0.94);
-      color: var(--primary-color);
-      font-size: 0.84rem;
-      font-weight: 700;
-      line-height: 1.35;
-      text-decoration: none;
-      text-align: center;
-      transition: var(--transition);
-      box-shadow: var(--shadow-sm);
-    }
-
-    .global-nav-link::after,
-    .youtube-section-card .btn-link::after,
-    .contact-link::after {
-      content: "→";
-      flex-shrink: 0;
-      font-weight: 800;
-      line-height: 1;
-    }
-
-    .contact-link::after {
-      margin-left: 7px;
-    }
-
-    .school-link-arrow {
-      margin-left: 7px;
-      font-weight: 800;
-    }
-
-    .global-nav-link:hover,
-    .global-nav-link:focus-visible {
-      transform: translateY(-2px);
-      border-color: rgba(217, 119, 6, 0.4);
-      box-shadow: var(--shadow-md);
-      color: var(--primary-color);
-      text-decoration: none;
-    }
-
-    #video-overlay {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at top, #163a5d 0%, #071628 55%, #02070d 100%);
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.8s ease, visibility 0.8s ease;
-      padding: 24px;
-    }
-
-    #video-overlay.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    #intro-video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-
-    @media (max-width: 768px) {
-      #video-overlay {
-        padding: 0;
-      }
-    }
-
-    @media (min-width: 769px) {
-      #intro-video {
-        width: auto;
-        height: auto;
-        max-width: min(880px, calc(100vw - 96px));
-        max-height: min(78vh, 720px);
-        object-fit: contain;
-        border-radius: 14px;
-        background: #000000;
-        box-shadow: 0 24px 64px rgba(0, 0, 0, 0.42);
-      }
-    }
-
-    .intro-card {
-      position: relative;
-      z-index: 1;
-      max-width: 360px;
-      width: 100%;
-      text-align: center;
-      color: #ffffff;
-      padding: 28px 24px;
-      border-radius: 24px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.28);
-      backdrop-filter: blur(12px);
-      animation: introFadeIn 0.8s ease both;
-    }
-
-    .intro-card .icon {
-      font-size: 2.8rem;
-      margin-bottom: 12px;
-      display: inline-block;
-      animation: float 2.4s ease-in-out infinite;
-    }
-
-    .intro-card h2 {
-      font-size: 1.35rem;
-      margin-bottom: 8px;
-      letter-spacing: 0.04em;
-    }
-
-    .intro-card p {
-      font-size: 0.95rem;
-      line-height: 1.7;
-      color: rgba(255, 255, 255, 0.86);
-      margin-bottom: 16px;
-    }
-
-    .intro-bar {
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.2);
-      overflow: hidden;
-      margin-top: 12px;
-    }
-
-    .intro-bar span {
-      display: block;
-      height: 100%;
-      width: 0;
-      background: linear-gradient(90deg, #d4af37, #f7d97a);
-      animation: introProgress 4.2s ease-in-out forwards;
-    }
-
-    @keyframes introFadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-6px); }
-    }
-
-    @keyframes introProgress {
-      from { width: 0; }
-      to { width: 100%; }
-    }
-
-    .skip-btn {
+    .sr-only {
       position: absolute;
-      top: 24px;
-      right: 24px;
-      background: rgba(0, 0, 0, 0.55);
-      color: #ffffff;
-      border: 1px solid rgba(255, 255, 255, 0.35);
-      padding: 8px 16px;
-      border-radius: 999px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      cursor: pointer;
-      backdrop-filter: blur(8px);
-      transition: var(--transition);
-      z-index: 10000;
-    }
-
-    .skip-btn:hover {
-      background: rgba(255, 255, 255, 0.18);
-      border-color: #ffffff;
-    }
-
-    .video-fallback {
-      color: #ffffff;
-      text-align: center;
-      font-size: 0.95rem;
-      line-height: 1.8;
-      padding: 0 24px;
-      max-width: 340px;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
     }
 
     .container {
-      width: 100%;
       max-width: 1200px;
-      padding: clamp(28px, 3.2vw, 42px) clamp(18px, 2.8vw, 28px) 40px;
-      margin: clamp(16px, 2.4vw, 24px) auto;
-      opacity: 0;
-      transform: translateY(16px);
-      transition: opacity 0.8s ease, transform 0.8s ease;
-      background: var(--card-bg);
-      border: 1px solid var(--border-color);
-      border-radius: 22px;
-      box-shadow: var(--shadow-md);
+      margin: 0 auto;
+      padding: 0 20px;
     }
 
-    .container.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .profile-header {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .profile-avatar {
-      width: 112px;
-      height: 112px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-      color: var(--accent-color);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.6rem;
-      margin: 0 auto 16px;
-      border: 3px solid var(--accent-color);
-      box-shadow: var(--shadow-md);
-    }
-
-    .main-title {
-      font-size: clamp(1.7rem, 2.2vw, 2.2rem);
-      font-weight: 800;
-      color: var(--primary-color);
-      letter-spacing: 0.02em;
-      font-family: var(--font-serif);
-    }
-
-    .school-title {
-      position: relative;
-      display: block;
-      width: fit-content;
-      margin-right: auto;
-      margin-left: auto;
-      padding: 3px 10px 7px;
-      font-size: clamp(1rem, 1.5vw, 1.2rem);
-      font-weight: 800;
-      line-height: 1.4;
-      color: var(--primary-light);
-      text-shadow: 0 1px 8px rgba(217, 119, 6, 0.18);
-      background: linear-gradient(90deg, transparent, rgba(217, 119, 6, 0.1), transparent);
-      text-decoration: none;
-      animation: schoolTitleReveal 0.7s ease-out both;
-    }
-
-    .school-title:hover,
-    .school-title:focus-visible {
-      color: var(--primary-color);
-      text-shadow: 0 2px 14px rgba(212, 175, 55, 0.38);
-    }
-
-    .school-title::after {
-      content: "";
-      position: absolute;
-      right: 10%;
-      bottom: 0;
-      left: 10%;
-      height: 2px;
-      border-radius: 2px;
-      background: linear-gradient(90deg, transparent, var(--accent-color), transparent);
-      transform-origin: center;
-      animation: schoolTitleLine 0.9s 0.2s ease-out both;
-    }
-
-    @keyframes schoolTitleReveal {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes schoolTitleLine {
-      from { opacity: 0; transform: scaleX(0); }
-      to { opacity: 1; transform: scaleX(1); }
-    }
-
-    .sub-title {
-      font-size: 0.96rem;
-      font-weight: 700;
-      color: var(--accent-color);
-      margin-top: 4px;
-      margin-bottom: 10px;
-    }
-
-    .tagline {
-      font-size: 0.9rem;
-      font-weight: 700;
-      color: var(--primary-light);
-      background: #f1f5f9;
+    .btn {
       display: inline-block;
-      padding: 7px 16px;
-      border-radius: 999px;
-      margin-bottom: 14px;
-      border: 1px solid var(--border-color);
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      text-align: center;
+      cursor: pointer;
     }
 
-    .nav-stack {
-      display: grid;
-      gap: 8px;
-      margin: 14px 0 8px;
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #fff;
     }
 
-    .nav-stack-inline {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 8px;
-    }
-
-    .nav-card {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      min-height: 58px;
-      padding: 12px 14px;
-      border-radius: 12px;
-      background: #ffffff;
-      border: 1px solid var(--border-color);
-      color: var(--primary-color);
-      font-size: 0.88rem;
-      font-weight: 600;
-      text-decoration: none;
-      box-shadow: var(--shadow-sm);
-      transition: var(--transition);
-    }
-
-    .nav-card:hover,
-    .nav-card:focus-visible {
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
       transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: rgba(217, 119, 6, 0.35);
-      color: var(--primary-color);
-      text-decoration: none;
     }
 
-    .nav-card.primary {
-      background: linear-gradient(135deg, var(--primary-color) 0%, #1e293b 100%);
-      color: #ffffff;
-      border-color: transparent;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.22);
+    .btn-accent {
+      background-color: var(--accent-color);
+      color: #fff;
     }
 
-    .nav-card.primary:hover,
-    .nav-card.primary:focus-visible {
-      color: #ffffff;
-      box-shadow: 0 16px 30px rgba(11, 37, 69, 0.24);
-    }
-
-    .nav-card-content {
-      display: flex;
-      align-items: center;
-      gap: 9px;
-      min-width: 0;
-    }
-
-    .nav-icon {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      font-size: 1rem;
-    }
-
-    .nav-title {
-      display: block;
-      font-size: 0.9rem;
-      line-height: 1.3;
-    }
-
-    .nav-subtitle {
-      display: block;
-      margin-top: 2px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      line-height: 1.35;
-      opacity: 0.82;
-    }
-
-    .nav-arrow {
-      flex-shrink: 0;
-      font-size: 0.95rem;
-      font-weight: 800;
-    }
-
-    .profile-header {
-      text-align: center;
-    }
-
-    #updates-section {
-      scroll-margin-top: 176px;
-    }
-
-    #video-section,
-    #pdf-section,
-    #contact-section {
-      scroll-margin-top: 156px;
-    }
-
-    .section-block {
-      margin-top: 8px;
-    }
-
-    .profile-intro-card {
-      background: var(--bg-color);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 26px 28px;
-      margin: 10px 0 12px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .profile-intro-card p,
-    .profile-intro-card li {
-      font-size: 0.9rem;
-      line-height: 1.8;
-      color: var(--text-main);
-      margin-bottom: 0;
-    }
-
-    .profile-intro-card ul {
-      padding-left: 1.15rem;
-      margin-top: 8px;
-      margin-bottom: 4px;
-    }
-
-    .profile-intro-card li {
-      margin-bottom: 6px;
-    }
-
-    .lab-origin-message {
-      text-align: left;
-      text-wrap: pretty;
-      word-break: normal;
-      line-break: strict;
-    }
-
-    @media (min-width: 769px) {
-      .three-circles-title {
-        text-align: left;
-      }
-    }
-
-    .updates-section {
-      margin: 16px 0 12px;
-    }
-
-    .media-updates-layout {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 16px;
-      margin-top: 12px;
-    }
-
-    .video-column {
-      min-width: 0;
-    }
-
-    .updates-card {
-      background: var(--bg-color);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 20px 22px;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .updates-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    .updates-header-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .updates-archive-label {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      color: var(--text-muted);
-      font-size: 0.72rem;
-      font-weight: 700;
-    }
-
-    .updates-archive-select {
-      min-height: 32px;
-      padding: 4px 26px 4px 8px;
-      border: 1px solid rgba(11, 37, 69, 0.2);
-      border-radius: 6px;
-      background: #ffffff;
-      color: var(--primary-color);
-      font: inherit;
-      font-size: 0.78rem;
-    }
-
-    .updates-title {
-      font-size: 0.95rem;
-      font-weight: 800;
-      line-height: 1.55;
-      color: var(--primary-color);
-    }
-
-    .updates-title-mobile {
-      display: none;
-    }
-
-    .editor-button,
-    .update-action {
-      min-height: 44px;
-      border: 0;
-      border-radius: 8px;
-      font: inherit;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .editor-button.primary {
-      padding: 8px 14px;
-      background: var(--primary-color);
-      color: #ffffff;
-    }
-
-    .editor-toggle {
-      min-height: 32px;
-      padding: 4px 9px;
-      border: 1px solid rgba(11, 37, 69, 0.2);
-      border-radius: 6px;
-      background: transparent;
-      color: var(--text-muted);
-      font: inherit;
-      font-size: 0.72rem;
-      font-weight: 600;
-      cursor: pointer;
-    }
-
-    .editor-toggle:hover,
-    .editor-toggle:focus-visible,
-    .editor-toggle[aria-expanded="true"] {
-      border-color: rgba(11, 37, 69, 0.38);
-      background: rgba(11, 37, 69, 0.05);
-      color: var(--primary-color);
-    }
-
-    .editor-panel {
-      margin-bottom: 12px;
-      padding: 12px;
-      border: 1px solid rgba(11, 37, 69, 0.14);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.92);
-      text-align: left;
-    }
-
-    .editor-panel[hidden] {
-      display: none;
-    }
-
-    .editor-fields {
-      display: grid;
-      gap: 10px;
-    }
-
-    .editor-field {
-      display: grid;
-      gap: 4px;
-      color: var(--primary-color);
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-
-    .editor-field[hidden] {
-      display: none;
-    }
-
-    .editor-field input,
-    .editor-field select,
-    .editor-field textarea {
-      width: 100%;
-      min-height: 44px;
-      padding: 9px 10px;
-      border: 1px solid #aeb8c5;
-      border-radius: 6px;
-      background: #ffffff;
-      color: var(--text-main);
-      font: inherit;
-      font-size: 16px;
-    }
-
-    .editor-field textarea {
-      min-height: 110px;
-      resize: vertical;
-    }
-
-    .editor-buttons,
-    .update-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .editor-button {
-      padding: 8px 14px;
-      background: #e6ebf1;
-      color: var(--primary-color);
-    }
-
-    .editor-status {
-      min-height: 1.5em;
-      margin-top: 8px;
-      color: #9b2c2c;
-      font-size: 0.78rem;
-      font-weight: 700;
-    }
-
-    .update-action {
-      min-width: 44px;
-      padding: 6px 11px;
-      background: #e8edf3;
-      color: var(--primary-color);
-    }
-
-    .update-action.delete {
-      color: #9b2c2c;
-    }
-
-    .updates-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .updates-item {
-      border-left: 3px solid var(--accent-color);
-      background: rgba(255, 255, 255, 0.86);
-      padding: 10px 12px;
-      border-radius: 12px;
-    }
-
-    .updates-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 4px;
-    }
-
-    .updates-date {
-      font-size: 0.78rem;
-      color: var(--text-muted);
-      font-weight: 700;
-    }
-
-    .updates-tag {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--primary-light);
-      background: rgba(212, 175, 55, 0.16);
-      padding: 2px 7px;
-      border-radius: 999px;
-      white-space: nowrap;
-    }
-
-    .updates-content {
-      font-size: 0.86rem;
-      line-height: 1.7;
-      color: var(--text-main);
-      white-space: pre-wrap;
-      word-break: break-word;
-    }
-
-    .updates-media {
-      margin-top: 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .updates-media img,
-    .updates-media video,
-    .updates-media iframe {
-      width: 100%;
-      border-radius: 10px;
-      display: block;
-      background: #f8fafc;
-    }
-
-    .updates-media video {
-      max-height: 260px;
-      object-fit: cover;
-    }
-
-    .updates-media iframe {
-      aspect-ratio: 16 / 9;
-      border: 0;
-    }
-
-    .updates-loading,
-    .updates-empty {
-      text-align: center;
-      padding: 12px;
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.7);
-      color: var(--text-muted);
-      font-size: 0.84rem;
-      line-height: 1.7;
-    }
-
-    #updates-list {
-      height: var(--updates-window-height, 420px);
-      overflow-y: auto;
-      overscroll-behavior-y: contain;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(11, 37, 69, 0.42) rgba(11, 37, 69, 0.08);
-      padding: 8px 10px 8px 8px;
-      border: 1px solid rgba(11, 37, 69, 0.16);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.5);
-      box-shadow: inset 0 10px 14px -14px rgba(11, 37, 69, 0.55), inset 0 -10px 14px -14px rgba(11, 37, 69, 0.55);
-      -webkit-overflow-scrolling: touch;
-      touch-action: pan-y;
-    }
-
-    #updates-list:focus-visible {
-      outline: 3px solid rgba(217, 119, 6, 0.35);
-      outline-offset: 2px;
-    }
-
-    #updates-list::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    #updates-list::-webkit-scrollbar-thumb {
-      background: rgba(11, 37, 69, 0.42);
-      border-radius: 999px;
-    }
-
-    #updates-list::-webkit-scrollbar-track {
-      background: rgba(11, 37, 69, 0.08);
-      border-radius: 999px;
-    }
-
-    .section-scroll-hint {
-      margin-top: 8px;
-      font-size: 0.76rem;
-      color: var(--text-muted);
-      text-align: right;
+    .btn-accent:hover {
+      background-color: #d97706;
+      transform: translateY(-2px);
     }
 
     .section-title {
       text-align: center;
-      justify-content: center;
-      font-size: clamp(1.4rem, 2vw, 2rem);
-      font-weight: 700;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+    }
+
+    /* ----------------------------------
+       1. HEADER (Sticky Navigation)
+    ---------------------------------- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 70px;
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: bold;
       color: var(--primary-color);
       display: flex;
       align-items: center;
-      gap: 0;
-      margin: 34px 0 14px;
-      font-family: var(--font-serif);
-      position: relative;
+      gap: 10px;
     }
 
-    .section-title::before {
-      content: "";
+    .logo-dummy {
+      width: 36px;
+      height: 36px;
+      background-color: var(--primary-color);
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .nav-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 14px;
+    }
+
+    .nav-menu a {
+      font-size: 0.95rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.2s;
+    }
+
+    .nav-menu a:hover {
+      color: var(--primary-color);
+    }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 28px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .hamburger span {
+      width: 100%;
+      height: 3px;
+      background-color: var(--text-main);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    /* ----------------------------------
+       2. HERO SECTION
+    ---------------------------------- */
+    .hero {
+      padding: 80px 0;
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .hero-content h1 {
+      font-size: 2.4rem;
+      line-height: 1.3;
+      margin-bottom: 20px;
+      color: #0f172a;
+    }
+
+    .hero-content p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+
+    .hero-visual {
+      position: relative;
+      overflow: hidden;
+      background: #0f172a;
+      width: min(100%, 360px);
+      justify-self: center;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .hero-video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+    }
+
+    .hero-visual-label {
+      padding: 12px 16px;
+      border-top: 4px solid var(--accent-color);
+      color: #ffffff;
+      background: #0f172a;
+      font-size: 0.88rem;
+      font-weight: bold;
+    }
+
+    /* ----------------------------------
+       NEWS / ACTIVITY UPDATES
+    ---------------------------------- */
+    .updates-section {
+      padding: 72px 0;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .updates-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .updates-heading .section-title,
+    .updates-heading .section-desc {
+      text-align: left;
+    }
+
+    .updates-heading .section-desc {
+      margin-bottom: 0;
+    }
+
+    .updates-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .updates-month,
+    .updates-admin-toggle,
+    .updates-editor input,
+    .updates-editor select,
+    .updates-editor textarea,
+    .updates-editor button {
+      min-height: 42px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text-main);
+      font: inherit;
+    }
+
+    .updates-month {
+      padding: 8px 34px 8px 12px;
+    }
+
+    .updates-admin-toggle,
+    .updates-editor button {
+      padding: 8px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .updates-admin-toggle:hover,
+    .updates-editor button:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .updates-window {
+      height: 520px;
+      overflow-y: auto;
+      padding: 4px 10px 16px 4px;
+      scrollbar-gutter: stable;
+      overscroll-behavior: contain;
+    }
+
+    .updates-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .update-card {
+      display: grid;
+      grid-template-columns: minmax(240px, 36%) minmax(0, 1fr);
+      align-items: stretch;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .update-media {
+      display: grid;
+      width: 100%;
+      min-height: 140px;
+      place-items: center;
+      overflow: hidden;
+      border-right: 1px solid var(--border-color);
+      color: #ffffff;
+      background: #0f172a;
+    }
+
+    .update-media-link {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      padding: 20px;
+      color: #ffffff;
+      background: var(--primary-color);
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .update-video-link {
+      align-content: center;
+      gap: 8px;
+      background: #0f172a;
+    }
+
+    .update-video-icon {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      margin: 0 auto;
+      place-items: center;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .update-media-placeholder {
+      color: #bfdbfe;
+      font-size: 0.82rem;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+    }
+
+    .update-card-body {
+      padding: 20px;
+    }
+
+    .update-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .update-category {
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--primary-hover);
+      background: #dbeafe;
+      font-weight: bold;
+    }
+
+    .update-card p {
+      color: var(--text-main);
+      font-size: 0.94rem;
+    }
+
+    .update-admin-actions {
+      display: flex;
+      grid-column: 2;
+      gap: 8px;
+      padding: 0 20px 20px;
+    }
+
+    .update-admin-actions[hidden],
+    .updates-editor[hidden],
+    .updates-editor-form[hidden],
+    .updates-editor-login[hidden],
+    .updates-empty[hidden] {
       display: none;
     }
 
-    .section-title::after {
-      content: "";
-      display: block;
-      width: 42px;
-      height: 2px;
-      background-color: var(--accent-color);
-      border-radius: 2px;
-      margin: 12px auto 0;
-      position: absolute;
-      transform: translateY(30px);
-    }
-
-    .pdf-links-list {
-      display: grid;
-      gap: 12px;
-      max-height: 330px;
-      overflow-y: auto;
-      overscroll-behavior: contain;
-      scrollbar-width: thin;
-      padding-right: 4px;
-      scroll-snap-type: y proximity;
-    }
-
-    .pdf-links-list::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .pdf-links-list::-webkit-scrollbar-thumb {
-      background: rgba(11, 37, 69, 0.24);
-      border-radius: 999px;
-    }
-
-    .pdf-links-list .btn-link {
-      margin-bottom: 0;
-      padding: 14px 15px;
-      scroll-snap-align: start;
-    }
-
-    .pdf-links-list .btn-header {
-      align-items: flex-start;
-      gap: 8px;
-    }
-
-    .pdf-links-list .btn-title {
-      line-height: 1.45;
-    }
-
-    .price-section-card,
-    .youtube-section-card {
-      background: var(--card-bg);
+    .update-admin-actions button {
+      min-height: 36px;
+      padding: 6px 10px;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 22px;
-      box-shadow: var(--shadow-sm);
-      margin-bottom: 14px;
-    }
-
-    .price-section-card .price-header {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .price-section-card .price-item {
-      padding: 8px 0;
-      border-bottom: 1px solid rgba(11, 37, 69, 0.08);
-    }
-
-    .price-section-card .price-item:last-child {
-      border-bottom: none;
-      padding-bottom: 0;
-    }
-
-    .price-section-card .price-title {
-      font-weight: 700;
-      font-size: 0.9rem;
+      border-radius: 6px;
+      background: #ffffff;
       color: var(--primary-color);
-      line-height: 1.5;
-      white-space: normal;
-      overflow: visible;
-      text-overflow: clip;
-      display: block;
-    }
-
-    .price-section-card .price-value {
-      margin-top: 4px;
-      font-size: 0.9rem;
-      color: var(--primary-light);
+      font: inherit;
+      font-size: 0.8rem;
       font-weight: 700;
-      line-height: 1.5;
+      cursor: pointer;
     }
 
-    .price-section-card .price-desc {
-      font-size: 0.82rem;
+    .update-admin-actions .update-delete {
+      color: #b91c1c;
+    }
+
+    .updates-empty {
+      padding: 48px 20px;
       color: var(--text-muted);
-      margin-top: 10px;
-      line-height: 1.7;
+      text-align: center;
     }
 
-    .youtube-section-card .btn-desc {
-      margin-top: 6px;
-    }
-
-    .youtube-section-card .btn-link {
-      position: relative;
-      padding-right: 42px;
-    }
-
-    .youtube-section-card .btn-link::after {
-      position: absolute;
-      top: 50%;
-      right: 16px;
-      transform: translateY(-50%);
-      color: var(--accent-color);
-      font-size: 1.05rem;
-    }
-
-    .business-title {
-      margin: 16px 0 8px;
-      color: var(--primary-color);
-      font-size: 1rem;
-      font-weight: 800;
-      text-align: left;
-    }
-
-    .business-list {
-      margin: 0;
-      padding-left: 1.1rem;
-      text-align: left;
-    }
-
-    .btn-link {
-      display: block;
-      background: var(--card-bg);
-      color: var(--text-main);
-      text-decoration: none;
-      padding: 15px 16px;
-      border-radius: 12px;
-      margin-bottom: 0;
-      box-shadow: var(--shadow-sm);
+    .updates-editor {
+      margin-top: 24px;
+      padding: 24px;
       border: 1px solid var(--border-color);
-      transition: var(--transition);
+      border-radius: 8px;
+      background: var(--bg-light);
+      box-shadow: var(--shadow-sm);
     }
 
-    .btn-link:hover {
-      transform: translateY(-2px);
-      box-shadow: var(--shadow-md);
-      border-color: rgba(217, 119, 6, 0.35);
-    }
-
-    .btn-link:active {
-      transform: translateY(0);
-    }
-
-    .btn-link.disabled {
-      opacity: 0.85;
-      pointer-events: none;
-      background: #f8fafc;
-      border: 1px solid rgba(11, 37, 69, 0.06);
-    }
-
-    .btn-header {
+    .updates-editor-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 4px;
+      gap: 16px;
+      margin-bottom: 18px;
     }
 
-    .btn-title {
-      font-weight: 700;
-      font-size: 0.94rem;
+    .updates-editor-header h3 {
       color: var(--primary-color);
+      font-size: 1rem;
+    }
+
+    .updates-editor-login {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .updates-editor-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .updates-editor-field {
+      display: grid;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .updates-editor-field-wide,
+    .updates-editor-actions,
+    .updates-editor-status {
+      grid-column: 1 / -1;
+    }
+
+    .updates-editor input,
+    .updates-editor select,
+    .updates-editor textarea {
+      width: 100%;
+      padding: 9px 11px;
+    }
+
+    .updates-editor textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .updates-editor-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .updates-editor-primary {
+      border-color: var(--primary-color) !important;
+      background: var(--primary-color) !important;
+      color: #ffffff !important;
+    }
+
+    .updates-editor-status {
+      min-height: 1.5em;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+    }
+
+    .updates-editor-status[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    /* ----------------------------------
+       PROFILE / GREETING SECTION
+    ---------------------------------- */
+    .profile-section {
+      padding: 80px 0;
+      background-color: var(--bg-white);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .profile-card {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 40px;
+      background: var(--bg-light);
+      padding: 40px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      align-items: start;
+    }
+
+    .profile-photo {
+      display: block;
+      width: min(100%, 360px);
+      height: auto;
+      aspect-ratio: 2 / 3;
+      justify-self: center;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .profile-info h3 {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+      margin-bottom: 5px;
+    }
+
+    .profile-info .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .profile-info p {
+      margin-bottom: 15px;
+      color: var(--text-main);
+      font-size: 0.98rem;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 1 (特徴)
+    ---------------------------------- */
+    .features {
+      padding: 80px 0;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    .feature-cards {
+      position: relative;
+      gap: 22px;
+    }
+
+    .card {
+      background-color: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-icon {
+      width: 50px;
+      height: 50px;
+      background-color: #dbeafe;
+      color: var(--primary-color);
+      border-radius: 10px;
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
     }
 
-    .pdf-badge {
-      font-size: 0.7rem;
-      font-weight: 700;
-      background-color: #e74c3c;
-      color: #ffffff;
-      padding: 2px 6px;
-      border-radius: 4px;
-      letter-spacing: 0.05em;
+    .card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
     }
 
-    .duration-badge {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--accent-color);
-      white-space: nowrap;
-    }
-
-    .btn-desc {
-      font-size: 0.82rem;
+    .card p {
       color: var(--text-muted);
+      font-size: 0.95rem;
     }
 
-    .footer {
+    .feature-card {
+      position: relative;
+      padding-top: 144px;
+      border-top: 4px solid var(--feature-color);
       text-align: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-top: 36px;
-      padding-top: 18px;
-      border-top: 1px solid #e0e6ed;
     }
 
-    .contact-card,
-    .access-card {
-      background: var(--bg-color);
+    .feature-ring {
+      position: absolute;
+      z-index: 1;
+      top: 22px;
+      left: 50%;
+      display: grid;
+      width: 106px;
+      height: 106px;
+      place-items: center;
+      border: 9px solid var(--feature-color);
+      border-radius: 50%;
+      color: var(--feature-color);
+      background: #ffffff;
+      box-shadow: 0 0 0 8px #f8fafc;
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1;
+      transform: translateX(-50%);
+    }
+
+    .feature-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--feature-color);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .feature-card-community {
+      --feature-color: #1a56db;
+    }
+
+    .feature-card-health {
+      --feature-color: #059669;
+    }
+
+    .feature-card-generations {
+      --feature-color: #d97706;
+    }
+
+    .feature-card-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .feature-card-link:focus-visible {
+      outline: 3px solid var(--feature-color);
+      outline-offset: 4px;
+    }
+
+    .feature-video-cta {
+      display: inline-block;
+      margin-top: 18px;
+      color: var(--feature-color);
+      font-weight: 800;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 2 (事業比較)
+    ---------------------------------- */
+    .services {
+      padding: 80px 0;
+      background-color: var(--bg-white);
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 25px;
+    }
+
+    .service-card {
+      background: var(--bg-light);
+      border-radius: 12px;
+      padding: 30px;
       border: 1px solid var(--border-color);
-      border-radius: var(--radius);
-      padding: 22px;
-      margin: 18px 0 12px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .service-card-events {
+      grid-column: span 2;
+    }
+
+    .service-card h3 {
+      font-size: 1.3rem;
+      color: var(--primary-color);
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .service-card ul {
+      margin-bottom: 20px;
+    }
+
+    .service-card li {
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .service-card li::before {
+      content: "✓";
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 3 (店舗・アクセス)
+    ---------------------------------- */
+    .access {
+      padding: 80px 0;
+    }
+
+    .access-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+
+    .access-info table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .access-info th, .access-info td {
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border-color);
       text-align: left;
     }
 
-    .contact-card p,
-    .access-card p {
-      margin-bottom: 2px;
+    .access-info th {
+      width: 30%;
+      color: var(--text-main);
+      background-color: var(--bg-white);
     }
 
-    .contact-title,
-    .access-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--primary-color);
-      margin-bottom: 8px;
-    }
-
-    .map-wrapper {
-      margin-top: 14px;
-      border-radius: 16px;
-      overflow: hidden;
-      background: #fff;
-      border: 1px solid rgba(11, 37, 69, 0.08);
-    }
-
-    .map-wrapper iframe {
+    .map-frame {
       width: 100%;
-      height: 260px;
-      border: 0;
-      display: block;
-    }
-
-    .contact-link {
-      display: inline-flex;
+      height: 300px;
+      background-color: #e2e8f0;
+      border-radius: 12px;
+      display: flex;
       align-items: center;
       justify-content: center;
+      color: #64748b;
+      border: 1px solid var(--border-color);
+    }
+
+    /* ----------------------------------
+       PRACTICE APP & LESSON RESERVATION
+    ---------------------------------- */
+    .practice-apps,
+    .lesson-reservation {
+      padding: 80px 0;
+    }
+
+    .practice-apps {
+      background-color: var(--bg-white);
+    }
+
+    .app-panel {
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: #121218;
+      box-shadow: var(--shadow-md);
+    }
+
+    .app-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 24px;
+      color: #fff;
+      background: #0f172a;
+    }
+
+    .app-panel-header h3 {
+      margin-bottom: 4px;
+      font-size: 1.15rem;
+    }
+
+    .app-panel-header p {
+      color: #cbd5e1;
+      font-size: 0.88rem;
+    }
+
+    .app-open-link {
+      flex-shrink: 0;
+      color: #fff;
+      border: 1px solid #475569;
+      background: transparent;
+    }
+
+    .app-open-link:hover {
+      color: #0f172a;
+      background: #fff;
+    }
+
+    .app-frame {
+      display: block;
+      width: 100%;
+      height: 760px;
+      border: 0;
+      background: #121218;
+    }
+
+    .reservation-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: 32px;
+      align-items: start;
+    }
+
+    .reservation-guide,
+    .reservation-panel {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--bg-white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .reservation-guide {
+      padding: 28px;
+    }
+
+    .reservation-guide h3 {
+      margin-bottom: 14px;
+      color: var(--primary-color);
+    }
+
+    .reservation-guide p {
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+    }
+
+    .reservation-hours {
+      margin: 20px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .reservation-hours div {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.86rem;
+    }
+
+    .reservation-hours dt {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .reservation-hours dd {
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+    .schedule-link {
+      width: 100%;
+    }
+
+    .reservation-panel {
+      padding: 28px;
+    }
+
+    .reservation-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .form-field-wide,
+    .form-actions {
+      grid-column: 1 / -1;
+    }
+
+    .form-field label {
+      font-size: 0.82rem;
+      font-weight: bold;
+    }
+
+    .required {
+      margin-left: 5px;
+      color: #b45309;
+      font-size: 0.72rem;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: var(--text-main);
+      background: #fff;
+      font: inherit;
+      font-size: 0.9rem;
+    }
+
+    .form-field textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--primary-color);
+      outline: 3px solid rgba(26, 86, 219, 0.15);
+    }
+
+    .form-trap {
+      position: absolute;
+      left: -10000px;
+    }
+
+    .reservation-submit {
+      border: 0;
+      font: inherit;
+    }
+
+    .reservation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .form-status {
+      min-height: 1.7em;
       margin-top: 10px;
-      padding: 10px 16px;
-      border-radius: 999px;
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-      color: #ffffff;
-      font-weight: 700;
-      text-decoration: none;
-      box-shadow: 0 8px 20px rgba(11, 37, 69, 0.16);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      color: var(--text-muted);
+      font-size: 0.86rem;
+    }
+
+    .form-status[data-state="success"] {
+      color: #047857;
+      font-weight: bold;
+    }
+
+    .form-status[data-state="error"] {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .reservation-cancel {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .reservation-cancel summary {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .reservation-cancel-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .reservation-cancel-form > p,
+    .reservation-cancel-form > button,
+    .reservation-cancel-form > .form-status {
+      grid-column: 1 / -1;
+    }
+
+    .reservation-cancel-form > p {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+    }
+
+    /* ----------------------------------
+       4. CTA SECTION
+    ---------------------------------- */
+    .cta-section {
+      padding: 70px 0;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      color: #fff;
       text-align: center;
     }
 
-    .contact-link:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 10px 24px rgba(11, 37, 69, 0.22);
-      color: #ffffff;
-      text-decoration: none;
+    .cta-section h2 {
+      font-size: 2rem;
+      margin-bottom: 15px;
     }
 
-    .contact-detail {
-      display: block;
-      margin: 6px 0;
-      font-size: 0.9rem;
-      color: var(--text-main);
+    .cta-section p {
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      opacity: 0.9;
     }
 
-    @media (max-width: 768px) {
-      body {
-        padding: 0;
-      }
-
-      .site-header {
-        padding: 0;
-      }
-
-      .global-nav-list {
-        gap: 6px;
-      }
-
-      .container {
-        width: auto;
-        margin: 12px;
-        padding: 24px 16px 30px;
-        border-radius: 18px;
-      }
-
-      .nav-stack-inline {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-      }
-
-      .updates-header {
-        flex-direction: row;
-        align-items: center;
-      }
-
-      .updates-title {
-        min-width: 0;
-      }
-
-      .editor-toggle {
-        flex-shrink: 0;
-        margin-left: auto;
-      }
-
-      .contact-card,
-      .access-card {
-        padding: 15px;
-      }
-
-      .map-wrapper iframe {
-        height: 240px;
-      }
+    /* ----------------------------------
+       5. FOOTER
+    ---------------------------------- */
+    footer {
+      background-color: #0f172a;
+      color: #94a3b8;
+      padding: 50px 0 20px;
     }
 
-    @media (min-width: 980px) {
-      .media-updates-layout {
-        grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
-        gap: 20px;
-        align-items: start;
-      }
-
-      .media-updates-layout .updates-section {
-        margin: 0;
-      }
-
-      .media-updates-layout .youtube-section-card {
-        margin-top: 14px;
-      }
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      gap: 40px;
+      margin-bottom: 40px;
     }
 
-    @media (max-width: 480px) {
-      body {
-        padding: 0;
-      }
+    .footer-links {
+      display: flex;
+      gap: 25px;
+      flex-wrap: wrap;
+    }
 
-      .updates-card {
-        padding: 16px 12px;
-      }
+    .footer-links a:hover {
+      color: #fff;
+    }
 
-      .updates-header {
-        flex-wrap: wrap;
-        align-items: flex-start;
-        gap: 10px;
-      }
+    .copyright {
+      text-align: center;
+      border-top: 1px solid #1e293b;
+      padding-top: 20px;
+      font-size: 0.85rem;
+    }
 
-      .updates-title {
-        flex: 1 0 100%;
-        font-size: 1rem;
-        line-height: 1.5;
-      }
-
-      .updates-header-actions {
-        width: 100%;
-        justify-content: space-between;
-      }
-
-      .updates-archive-label {
-        white-space: nowrap;
-        font-size: 0.78rem;
-      }
-
-      .updates-archive-select,
-      .editor-toggle {
-        min-height: 44px;
-        font-size: 0.82rem;
-      }
-
-      .editor-toggle {
-        min-width: 52px;
-        margin-left: 0;
-      }
-
-      #updates-list {
-        height: clamp(300px, var(--updates-window-height, 55dvh), 420px);
-        padding: 6px;
-      }
-
-      .updates-item {
-        padding: 10px;
-      }
-
-      .updates-date {
-        font-size: 0.82rem;
-      }
-
-      .updates-tag {
-        font-size: 0.75rem;
-      }
-
-      .updates-content {
-        font-size: 0.9rem;
-        line-height: 1.75;
-      }
-
-      .updates-title-desktop {
-        display: none;
-      }
-
-      .updates-title-mobile {
-        display: inline;
-      }
-
-      .site-brand-name {
-        font-size: 1rem;
-      }
-
-      .site-brand {
-        margin-left: 8px;
-      }
-
-      .site-brand-subtitle {
-        display: none;
-      }
-
-      .global-nav-list {
+    /* ----------------------------------
+       MOBILE RESPONSIVE
+    ---------------------------------- */
+    @media (max-width: 1200px) {
+      .hero-grid, .profile-card, .cards-grid, .services-grid, .access-grid, .reservation-layout {
         grid-template-columns: 1fr;
       }
 
-      .global-nav-link {
-        min-height: 40px;
-        font-size: 0.82rem;
+      .app-frame {
+        height: 820px;
       }
 
-      .container {
-        width: auto;
-        margin: 8px;
-        padding: 22px 14px 28px;
-        border-radius: 16px;
+      .hamburger {
+        display: flex;
       }
 
-      .profile-header {
-        margin-bottom: 18px;
-      }
-
-      .profile-avatar {
-        width: 96px;
-        height: 96px;
-        font-size: 2.2rem;
-      }
-
-      .main-title {
-        font-size: 1.38rem;
-      }
-
-      .school-title {
-        font-size: 1rem;
-      }
-
-      .sub-title {
-        font-size: 0.9rem;
-      }
-
-      .tagline {
-        font-size: 0.8rem;
-        padding: 5px 12px;
-      }
-
-      .section-title {
-        font-size: 1.2rem;
-        line-height: 1.45;
-        margin: 24px 0 12px;
-        align-items: center;
-      }
-
-      .section-title::after {
-        width: 36px;
-        transform: translateY(26px);
-      }
-
-      .price-section-card,
-      .youtube-section-card,
-      .contact-card {
-        padding: 14px;
-      }
-
-      .btn-header {
+      .nav-menu {
+        position: absolute;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        background-color: var(--bg-white);
         flex-direction: column;
-        align-items: flex-start;
+        padding: 20px;
+        gap: 15px;
+        box-shadow: var(--shadow-md);
+        display: none;
+        border-bottom: 1px solid var(--border-color);
       }
 
-      .nav-stack-inline {
+      .nav-menu.active {
+        display: flex;
+      }
+
+      .header-cta {
+        display: none;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .service-card-events {
+        grid-column: auto;
+      }
+
+    }
+
+    @media (max-width: 600px) {
+      .updates-heading {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .updates-grid {
         grid-template-columns: 1fr;
       }
 
-      .nav-card {
-        justify-content: flex-start;
+      .update-card {
+        display: block;
       }
 
-      .btn-title {
-        font-size: 0.9rem;
+      .update-media {
+        min-height: 104px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border-color);
       }
 
-      .business-title {
-        margin: 18px 0 6px;
-        font-size: 0.95rem;
-        line-height: 1.5;
+      .update-admin-actions {
+        grid-column: 1;
       }
 
-      .business-list {
-        padding-left: 1.2rem;
-      }
-
-      .business-list li {
-        margin-bottom: 5px;
-        line-height: 1.65;
-      }
-
-      .youtube-section-card .btn-link {
-        padding: 13px 14px;
-        text-align: left;
-      }
-
-      .youtube-section-card .btn-header {
-        margin-bottom: 2px;
-      }
-
-      .youtube-section-card .btn-title {
+      .updates-toolbar,
+      .updates-editor-actions {
         width: 100%;
-        justify-content: flex-start;
-        font-size: 0.92rem;
-        line-height: 1.5;
-        text-align: left;
+        align-items: stretch;
+        flex-direction: column;
       }
 
-      .youtube-section-card .btn-desc {
-        margin-top: 4px;
-        font-size: 0.8rem;
-        line-height: 1.65;
-        text-align: left;
-      }
-
-      .pdf-links-list {
-        gap: 10px;
-        max-height: 320px;
-      }
-
-      .pdf-links-list .btn-link {
-        padding: 12px 13px;
-      }
-
-      .pdf-links-list .btn-desc {
-        margin-top: 4px;
-      }
-
-      .duration-badge {
-        margin-top: 2px;
-      }
-
-      .contact-link {
+      .updates-month,
+      .updates-admin-toggle,
+      .updates-editor-actions button {
         width: 100%;
       }
 
-      /* ハイライト用スタイル（強調） */
-      .highlight {
-        background-color: var(--highlight-bg);
-        padding: 0.18em 0.6em;
-        border-radius: 8px;
-        display: inline-block;
-        transition: background-color 0.25s ease, transform 0.18s ease, box-shadow 0.25s ease;
-        border-left: 6px solid var(--accent-color);
-        box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12);
-        font-weight: 700;
-        color: var(--text-main);
-        transform: translateZ(0);
-        animation: highlight-pulse 1.6s ease-in-out 0s 1;
+      .updates-window {
+        height: 620px;
       }
 
-      .highlight:hover {
-        background-color: var(--highlight-bg-hover);
-        transform: translateY(-6px) scale(1.02);
-        box-shadow: 0 18px 40px rgba(11, 37, 69, 0.22);
+      .updates-editor {
+        padding: 18px;
       }
 
-      @keyframes highlight-pulse {
-        0% { box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12); }
-        50% { box-shadow: 0 20px 45px rgba(11, 37, 69, 0.20); }
-        100% { box-shadow: 0 8px 30px rgba(11, 37, 69, 0.12); }
+      .updates-editor-login,
+      .updates-editor-form {
+        grid-template-columns: 1fr;
+      }
+
+      .updates-editor-field,
+      .updates-editor-field-wide,
+      .updates-editor-actions,
+      .updates-editor-status {
+        grid-column: 1;
+      }
+
+      .app-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .app-frame {
+        height: 880px;
+      }
+
+      .reservation-form,
+      .reservation-cancel-form {
+        grid-template-columns: 1fr;
+      }
+
+      .form-field,
+      .form-field-wide,
+      .form-actions {
+        grid-column: 1;
+      }
+
+      .reservation-guide,
+      .reservation-panel {
+        padding: 22px;
       }
     }
   </style>
 </head>
 <body>
 
-<!-- 1. オープニング動画スプラッシュ画面 -->
-<div id="video-overlay">
-  <button class="skip-btn" onclick="closeVideo()">Skip ▶</button>
-  <video id="intro-video" playsinline autoplay muted onended="closeVideo()" onerror="closeVideo()">
-    <source src="video/intro.mp4" type="video/mp4">
-    お使いのブラウザは動画再生に対応していません。
-  </video>
-</div>
-
-<header class="site-header">
-  <div class="site-header-inner">
-    <a class="site-brand" href="#main-container" aria-label="なめがわブラス・ラボ トップへ移動">
-      <span class="site-brand-text">
-        <span class="site-brand-name">なめがわブラス・ラボ</span>
-        <span class="site-brand-subtitle">KAZOO SASAKI TRUMPET SCHOOL</span>
-      </span>
-    </a>
-    <a class="site-header-link" href="lesson/">教室案内へ</a>
-  </div>
-</header>
-
-<nav class="page-nav" aria-label="サイト内ページナビ">
-  <ul class="global-nav-list">
-    <li><a class="global-nav-link" href="lesson/">トランペット教室</a></li>
-    <li><a class="global-nav-link" href="schedule/">空き状況</a></li>
-    <li><a class="global-nav-link" href="#updates-section">お知らせ</a></li>
-    <li><a class="global-nav-link" href="#video-section">演奏動画</a></li>
-    <li><a class="global-nav-link" href="#pdf-section">企画資料</a></li>
-    <li><a class="global-nav-link" href="#contact-section">お問い合わせ</a></li>
-  </ul>
-</nav>
-
-<!-- 2. メインコンテンツ -->
-<div class="container" id="main-container">
-
-  <!-- プロフィールヘッダー -->
-  <header class="profile-header">
-    <div class="profile-avatar">🎺</div>
-    <h1 class="main-title" style="margin-bottom: 8px;">なめがわブラス・ラボ</h1>
-    <h2 style="margin: 0 0 8px; font-size: 1rem; color: var(--text-muted); font-weight: 700;">in</h2>
-    <a class="school-title" href="lesson/">🎺kazooささきトランペット教室<span class="school-link-arrow" aria-hidden="true">→</span></a>
-    <div class="tagline" style="margin: 16px 0 18px;">音を運び、夢を響かせる</div>
-    <h2 class="section-title" style="margin-top: 8px; margin-bottom: 4px;">プロフィール・あいさつ</h2>
-    <div class="profile-intro-card">
-      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 0 0 10px;">代表・トランペット奏者</h3>
-      <p style="margin-bottom: 10px; text-align: center;"><strong>佐々木 久和（ささき ひさかず）</strong></p>
-      <p style="text-align: left;">33年間にわたる自衛隊音楽隊員としてのキャリアを通じて、子どもから大人まで幅広い世代への演奏・指導に従事してきました。独立後は滑川町や比企地域を中心に、小・中学校の吹奏楽部指導や、個人レッスンを行っています。</p>
-      <p style="margin-top: 10px; text-align: left;">また、事業用車両（黒ナンバー）を活用し、専門知識を持つ奏者自らが大切な楽器を安全に運搬し、現地での技術指導まで一括でサポートする独自のサービスも展開しています。</p>
-
-      <h3 style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">なめがわブラス・ラボ誕生への想い</h3>
-      <p class="lab-origin-message">2009年に、この滑川町に魅せられ拠点を構え、年末のボランティア演奏活動や自治会活動に関わる中で、この街の温かさと、少しずつ変わりゆく地域の姿を感じてきました。地域を支えてきたシニア世代と、これからの若い世代の間に生まれつつある心の距離を埋め、世代を超えて笑顔でつながる場所をつくりたいという想いのもと<span style="font-weight: 700; color: var(--primary-color);">「なめがわブラス・ラボ」</span>を立ち上げました。</p>
-
-      <h3 class="three-circles-title" style="font-size: 1rem; font-weight: 800; color: var(--primary-color); margin: 16px 0 8px;">音楽と文化で育む、広がる3つの輪</h3>
-      <ul style="text-align: left; padding-left: 1.1rem; margin-left: 0;">
-        <li><strong>みんなの居場所づくり：</strong>子どもからシニアまで、音楽を通して気軽に集まり、一緒に楽しめる時間と居場所を提供します。</li>
-        <li><strong>健康と笑顔の支援：</strong>楽器演奏や歌、音楽に合わせた身体運動を通して、心と体の健康を支えます。</li>
-        <li><strong>世代を超えた交流：</strong>子どもたちの弾ける演奏と、大人の温かな視線が交わる場をつくります。</li>
-      </ul>
-
-      <h3 class="business-title">主な事業内容</h3>
-      <ul class="business-list">
-        <li>部活動の地域連携・地域クラブ移行支援</li>
-        <li>滑川町子供の居場所ネットワークへの参加</li>
-        <li>個人レッスン（40名以上を指導中）</li>
-        <li>イベント・公演の企画、プロデュース</li>
-        <li>楽器輸送と演奏指導の一括サポート</li>
-        <li>一般貨物の委託運送</li>
-      </ul>
+  <!-- 1. Header -->
+  <header>
+    <div class="container header-inner">
+      <div class="logo">
+        <span class="logo-dummy"></span>
+        <span>なめがわブラス・ラボ</span>
+      </div>
+      <div class="nav-wrapper">
+        <nav>
+          <ul class="nav-menu" id="navMenu">
+            <li><a href="#profile">ごあいさつ</a></li>
+            <li class="updates-nav-item"><a href="#updates">お知らせ</a></li>
+            <li><a href="#features">特徴</a></li>
+            <li><a href="lesson/">kazooささきトランペット教室</a></li>
+            <li><a href="#trumpet">事業・サービス内容</a></li>
+            <li><a href="#access">アクセス</a></li>
+          </ul>
+        </nav>
+        <a href="#contact" class="btn btn-primary header-cta">お問い合わせ</a>
+        <button class="hamburger" id="hamburgerBtn" aria-label="メニューを開く">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
     </div>
-
-    <div class="media-updates-layout">
-      <section class="updates-section" id="updates-section">
-        <div class="updates-card">
-          <div class="updates-header">
-            <div class="updates-title">
-              <span class="updates-title-desktop">📢 お知らせ・つぶやき・お役立ち情報</span>
-              <span class="updates-title-mobile">📢 お知らせ・活動情報</span>
-            </div>
-            <div class="updates-header-actions">
-              <label class="updates-archive-label" for="updates-archive-month">
-                月別
-                <select class="updates-archive-select" id="updates-archive-month" aria-label="表示する月を選択"></select>
-              </label>
-              <button type="button" class="editor-toggle" id="editor-toggle" aria-expanded="false" aria-controls="editor-panel">編集</button>
-            </div>
-          </div>
-          <div class="editor-panel" id="editor-panel" hidden>
-            <form id="editor-login-form">
-              <label class="editor-field">
-                編集用パスワード
-                <input type="password" id="editor-password" autocomplete="current-password" required>
-              </label>
-              <div class="editor-buttons">
-                <button type="submit" class="editor-button primary">ログイン</button>
-              </div>
-            </form>
-            <form id="update-form" hidden>
-              <input type="hidden" id="update-index">
-              <div class="editor-fields">
-                <label class="editor-field">
-                  日付
-                  <input type="date" id="update-date" required>
-                </label>
-                <label class="editor-field">
-                  種類
-                  <select id="update-category" required>
-                    <option value="つぶやき">つぶやき</option>
-                    <option value="お役立ち">お役立ち</option>
-                    <option value="お知らせ">お知らせ</option>
-                  </select>
-                </label>
-                <label class="editor-field">
-                  本文
-                  <textarea id="update-content" required></textarea>
-                </label>
-                <label class="editor-field">
-                  添付の種類
-                  <select id="update-media-type">
-                    <option value="">添付なし</option>
-                    <option value="image">画像</option>
-                    <option value="video">動画・YouTube</option>
-                    <option value="pdf">PDF</option>
-                  </select>
-                </label>
-                <label class="editor-field" id="media-url-field" hidden>
-                  添付URLまたはファイル名
-                  <input type="text" id="update-media-url" inputmode="url" placeholder="https://... または photo.jpg">
-                </label>
-              </div>
-              <div class="editor-buttons">
-                <button type="submit" class="editor-button primary" id="update-submit">追加する</button>
-                <button type="button" class="editor-button" id="update-cancel" hidden>変更をやめる</button>
-                <button type="button" class="editor-button" id="editor-logout">ログアウト</button>
-              </div>
-            </form>
-            <p class="editor-status" id="editor-status" role="status"></p>
-          </div>
-          <div id="updates-list" tabindex="0" aria-label="お知らせ一覧。上下にスクロールできます">
-            <div class="updates-loading">読み込み中...</div>
-          </div>
-        </div>
-      </section>
-
-      <section class="video-column">
-        <h2 class="section-title" id="video-section">🎬 演奏動画・YouTube</h2>
-        <div class="youtube-section-card">
-          <a href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer" class="btn-link btn-youtube">
-            <div class="btn-header">
-              <span class="btn-title">▶ 公式YouTubeチャンネル</span>
-            </div>
-            <div class="btn-desc">演奏動画などのコンテンツをご覧いただけます</div>
-          </a>
-        </div>
-      </section>
-    </div>
-
   </header>
 
-  <div class="tagline" style="margin-top: 4px;">資料は順次公開予定です</div>
-
-  <!-- 出張演奏・企画提案書（PDFリンク集） -->
-  <h2 class="section-title" id="pdf-section">出張演奏・企画提案書（PDF）</h2>
-
-  <div class="pdf-links-list">
-
-    <!-- 新着PDF -->
-    <a href="pdf/cafe-live-plan-1.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案① <span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">新着</span>
+  <!-- 2. Hero Section (FV) -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <h1>音楽とITで、滑川町から未来の可能性を広げる。</h1>
+        <p>「kazooささきトランペット教室」をはじめ、部活動の地域連携、子どもの居場所づくり、イベント企画・輸送、自社アプリ開発まで。「なめがわブラス・ラボ」は地域に寄り添い、新しい挑戦を応援します。</p>
+        <a href="#contact" class="btn btn-accent" style="font-size: 1.1rem; padding: 14px 36px;">無料体験・ご相談はこちら</a>
       </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/cafe-live-plan-2.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案② <span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">新着</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/cafe-live-plan-3.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">📢 新着資料 トランペット・カフェライブ企画案③ <span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">新着</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/dayservice.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">👴👵デイサービス・シニア向け音楽会<span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">45分</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/shukatsu.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">☕終活相談会cafeライブ <span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">45分</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/gakudou.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">🎒学童保育向け体験ワークショップ<span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">60分</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-
-    <a href="pdf/hoikuen.pdf" target="_blank" rel="noopener noreferrer" class="btn-link" type="application/pdf">
-      <div class="btn-header">
-        <span class="btn-title">👶保育園・幼稚園向け出張ワークショップ<span class="pdf-badge">PDF</span></span>
-        <span class="duration-badge">45分</span>
-      </div>
-      <div class="btn-desc">PDF を新しいタブで開きます。</div>
-    </a>
-  </div>
-  <p class="section-scroll-hint">スクロールで全て表示できます</p>
-
-  <!-- フッター -->
-  <footer class="footer">
-    <div class="contact-card" id="contact-section">
-      <div class="contact-title">お問い合わせ・ご依頼</div>
-      <p style="font-weight: 700; color: #000;">【お客様専用窓口です】</p>
-      <p>演奏依頼</p>
-      <p>演奏指導（レッスン）</p>
-      <p>音楽イベント立案</p>
-      <p>楽器修理・購入相談</p>
-      <p>楽器運搬及び一般的な運送荷物の運搬</p>
-      <p>その他</p>
-      <p>＊ご質問・相談など、こちらからお送りください。</p>
-      <span class="contact-detail">Gmail: <a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a></span>
-      <span class="contact-detail">TEL: 090-5769-0830（ご対応時間：10:00-18:00）</span>
-      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener noreferrer" class="contact-link">Googleフォームで問い合わせる</a>
-      <p style="color: #d9534f; font-size: 0.9em; margin-top: 8px;">＊営業目的の連絡、送信はお断りしております。</p>
-    </div>
-    <div class="access-card">
-      <div class="access-title">アクセス</div>
-      <p>〒355-0815 埼玉県比企郡滑川町月の輪5丁目1-3</p>
-      <p>最寄り駅：東武東上線 つきのわ駅</p>
-      <p>駐車場：敷地内に1台スペースあります。（要調整）</p>
-      <div class="map-wrapper">
-        <iframe src="https://www.google.com/maps?q=埼玉県比企郡滑川町月の輪5丁目1-3&output=embed" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <div class="hero-visual">
+        <video class="hero-video" autoplay muted loop playsinline preload="metadata">
+          <source src="video/intro.mp4" type="video/mp4">
+        </video>
+        <div class="hero-visual-label">演奏・指導・デジタル技術を、地域の力へ。</div>
       </div>
     </div>
-    <p>&copy; Namegawa Brass Lab. All Rights Reserved.</p>
+  </section>
+
+  <section class="updates-section" id="updates" aria-labelledby="updates-title">
+    <div class="container">
+      <div class="updates-heading">
+        <div>
+          <h2 class="section-title" id="updates-title">お知らせ・活動情報</h2>
+          <p class="section-desc">レッスン、演奏活動、地域での取り組みをお届けします</p>
+        </div>
+        <div class="updates-toolbar">
+          <label>
+            <span class="sr-only">表示する月</span>
+            <select class="updates-month" id="updates-month" aria-label="表示する月"></select>
+          </label>
+          <button class="updates-admin-toggle" id="updates-admin-toggle" type="button" aria-expanded="false" aria-controls="updates-editor">管理者編集</button>
+        </div>
+      </div>
+      {% if updates %}
+      <div class="updates-window" id="updates-window" tabindex="0" aria-label="月別のお知らせ一覧">
+        <div class="updates-grid" id="updates-grid">
+        {% for update in updates %}
+        <article class="update-card" data-update-index="{{ update.index }}" data-update-date="{{ update.date }}" data-update-category="{{ update.category }}" data-update-content="{{ update.content }}" data-update-media-type="{{ update.media_type }}" data-update-media-url="{{ update.media_url }}">
+          <div class="update-media">
+            {% if update.media_type == "image" %}
+            <a class="update-media-link update-image-link" href="{{ update.media_url }}" target="_blank" rel="noopener" aria-label="{{ update.content }}の写真を見る">写真を見る</a>
+            {% elif update.media_type == "video" %}
+            <a class="update-media-link update-video-link" href="{{ update.media_url }}" target="_blank" rel="noopener" aria-label="{{ update.content }}をYouTubeで見る">
+              <span class="update-video-icon" aria-hidden="true">▶</span>
+              <span>YouTubeで見る</span>
+            </a>
+            {% elif update.media_type == "pdf" %}
+            <a class="update-media-link" href="{{ update.media_url }}" target="_blank" rel="noopener">資料を見る</a>
+            {% else %}
+            <span class="update-media-placeholder">NAMEGAWA BRASS LAB</span>
+            {% endif %}
+          </div>
+          <div class="update-card-body">
+            <div class="update-meta">
+              <time datetime="{{ update.date }}">{{ update.date }}</time>
+              <span class="update-category">{{ update.category }}</span>
+            </div>
+            <p>{{ update.content }}</p>
+          </div>
+          <div class="update-admin-actions" hidden>
+            <button class="update-edit" type="button" aria-label="{{ update.date }} {{ update.category }}のお知らせを変更">変更</button>
+            <button class="update-delete" type="button" aria-label="{{ update.date }} {{ update.category }}のお知らせを削除">削除</button>
+          </div>
+        </article>
+        {% endfor %}
+        </div>
+        <p class="updates-empty" id="updates-empty" hidden>この月のお知らせはありません。</p>
+      </div>
+      {% else %}
+      <p class="section-desc">現在、新しいお知らせはありません。</p>
+      {% endif %}
+
+      <section class="updates-editor" id="updates-editor" aria-labelledby="updates-editor-title" hidden>
+        <div class="updates-editor-header">
+          <h3 id="updates-editor-title">お知らせ管理</h3>
+          <button id="updates-editor-logout" type="button" hidden>ログアウト</button>
+        </div>
+        <form class="updates-editor-login" id="updates-editor-login">
+          <input id="updates-editor-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+          <button class="updates-editor-primary" type="submit">ログイン</button>
+        </form>
+        <form class="updates-editor-form" id="updates-editor-form" hidden>
+          <input id="updates-editor-index" type="hidden">
+          <label class="updates-editor-field">日付
+            <input id="updates-editor-date" type="date" required>
+          </label>
+          <label class="updates-editor-field">種類
+            <input id="updates-editor-category" type="text" maxlength="40" required>
+          </label>
+          <label class="updates-editor-field updates-editor-field-wide">本文
+            <textarea id="updates-editor-content" maxlength="500" required></textarea>
+          </label>
+          <label class="updates-editor-field">メディア
+            <select id="updates-editor-media-type">
+              <option value="">なし</option>
+              <option value="image">画像</option>
+              <option value="video">動画</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </label>
+          <label class="updates-editor-field">メディアURL
+            <input id="updates-editor-media-url" type="text" inputmode="url">
+          </label>
+          <div class="updates-editor-actions">
+            <button class="updates-editor-primary" id="updates-editor-save" type="submit">追加する</button>
+            <button id="updates-editor-cancel" type="button" hidden>変更をやめる</button>
+          </div>
+        </form>
+        <p class="updates-editor-status" id="updates-editor-status" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+  </section>
+
+  <!-- Profile & Greeting Section -->
+  <section class="profile-section" id="profile">
+    <div class="container">
+      <h2 class="section-title">ごあいさつ・代表プロフィール</h2>
+      <p class="section-desc">「なめがわブラス・ラボ」代表の佐々木久和より</p>
+      <div class="profile-card">
+        <img class="profile-photo" src="data/media/profile-photo.jpg" alt="トランペットを持つ佐々木久和" width="1200" height="1800" loading="lazy" decoding="async">
+        <div class="profile-info">
+          <h3>佐々木 久和（ささき ひさかず）</h3>
+          <p class="subtitle">トランペット奏者 / kazooささきトランペット教室 主宰 / Webエンジニア・軽貨物事業主</p>
+          <p>
+            はじめまして。「なめがわブラス・ラボ」代表の佐々木久和です。埼玉県比企郡滑川町を拠点に、音楽指導・独自アプリ開発・地域物流と多角的なアプローチで活動しております。
+          </p>
+          <p>
+            お子様の「音が鳴った！」という達成感や、趣味で音楽を楽しむ大人の充実感を大切にしています。独自アプリなどを活用したわかりやすいレッスンで、初めてのお子様から憧れの曲に挑戦したい大人の方、本格的な音大受験対策まで、目標に合わせて楽しく上達できるようサポートします。
+          </p>
+          <p>
+            また、部活動の地域連携や子どもの居場所づくり、イベント企画・輸送、WEB制作や自社開発アプリの提供を通じて、地域の皆さまの活動を支える「身近なラボ（研究室）」を目指しています。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 1: 特徴 -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">音楽と文化で育む、広がる3つの輪</h2>
+      <p class="section-desc">人が集い、健やかに笑い、世代を超えてつながる地域の場を育てます</p>
+      <div class="cards-grid feature-cards">
+        <article class="card feature-card feature-card-community">
+          <div class="feature-ring" aria-hidden="true">1</div>
+          <span class="feature-label">集う輪</span>
+          <h3>みんなの居場所づくりサポート</h3>
+          <p>子どもからシニアまで、音楽を通して気軽に集まり、一緒に楽しめる時間と居場所をご提案します。</p>
+        </article>
+        <article class="card feature-card feature-card-health">
+          <div class="feature-ring" aria-hidden="true">2</div>
+          <span class="feature-label">健やかな輪</span>
+          <h3>健康と笑顔の支援</h3>
+          <p>楽器演奏や歌、音楽に合わせた身体運動を通して、心と体の健康を支えます。</p>
+        </article>
+        <a class="card feature-card feature-card-generations feature-card-link" href="video/" aria-label="世代を超えた交流の動画を見る">
+          <div class="feature-ring" aria-hidden="true">3</div>
+          <span class="feature-label">つながる輪</span>
+          <h3>世代を超えた交流</h3>
+          <p>子どもたちの弾ける演奏と、大人の温かな視線が交わる場をご提案します。</p>
+          <span class="feature-video-cta">交流動画を見る ▶</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 2: 事業内容（カード比較形式） -->
+  <section class="services" id="trumpet">
+    <div class="container">
+      <h2 class="section-title">事業・サービス案内</h2>
+      <p class="section-desc">音楽・地域連携・イベント・デジタルをつなぐ5つの事業</p>
+      <div class="services-grid">
+        <div class="service-card">
+          <div>
+            <h3>kazooささき トランペット教室</h3>
+            <ul>
+              <li>初めての音出しから音大受験まで幅広く対応</li>
+              <li>長年の演奏・指導経験を生かした個別レッスン</li>
+              <li>独自アプリで楽しく身につく新しいレッスン</li>
+            </ul>
+          </div>
+          <a href="lesson/" class="btn btn-primary" style="margin-top:15px;">教室の詳細・体験申込</a>
+        </div>
+
+        <div class="service-card" id="club-support">
+          <div>
+            <h3>部活動の地域連携・地域クラブ移行支援サポート</h3>
+            <ul>
+              <li>学校・地域・指導者をつなぐ活動体制づくりサポート</li>
+              <li>吹奏楽活動の地域クラブ移行に向けた相談・企画支援</li>
+              <li>地域の実情に合わせた継続可能な音楽活動をサポート</li>
+            </ul>
+          </div>
+          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">地域連携のご相談</a>
+        </div>
+
+        <div class="service-card" id="child-network">
+          <div>
+            <h3>滑川町こどもの居場所ネットワークへの参加</h3>
+            <ul>
+              <li>地域の団体と連携した子どもの居場所づくりのお手伝い</li>
+              <li>音楽体験を通じて安心して交流できる時間のご提案</li>
+              <li>子どもと地域をつなぐ活動・情報発信に協力</li>
+            </ul>
+          </div>
+          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">居場所づくりのご相談</a>
+        </div>
+
+        <div class="service-card service-card-events" id="events">
+          <div>
+            <h3>イベント企画・プロデュース／輸送業務</h3>
+            <ul>
+              <li>トランペット音楽の魅力の公演企画・地域音楽イベントの企画</li>
+              <li>体験型音楽ワークショップの開催</li>
+              <li>Web集客と連動したイベントデザイン・運営支援</li>
+              <li>イベント機材・荷物の搬入出と大切な楽器の安全な輸送</li>
+              <li>行事単位・定期契約など輸送業務の委託に柔軟対応</li>
+            </ul>
+          </div>
+          <a href="pdf/" class="btn btn-primary" style="margin-top:15px;">イベント企画PDFを見る</a>
+          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
+        </div>
+
+        <div class="service-card" id="web">
+          <div>
+            <h3>WEB制作・アプリ開発販売</h3>
+            <ul>
+              <li>店舗認知を高めるWebサイト制作サポート</li>
+              <li>音楽・教育・軽貨物向け独自アプリの開発および販売</li>
+              <li>Webマーケティングなど</li>
+            </ul>
+          </div>
+          <a href="products/" class="btn btn-primary" style="margin-top:15px;">アプリ・商品を見る</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 3: 店舗・アクセス -->
+  <section class="access" id="access">
+    <div class="container">
+      <h2 class="section-title">店舗・アクセス情報</h2>
+      <p class="section-desc">お気軽にお越し・お問い合わせください</p>
+      <div class="access-grid">
+        <div class="access-info">
+          <table>
+            <tr>
+              <th>屋号</th>
+              <td>なめがわブラス・ラボ</td>
+            </tr>
+            <tr>
+              <th>代表・講師</th>
+              <td>佐々木 久和</td>
+            </tr>
+            <tr>
+              <th>拠点</th>
+              <td>埼玉県比企郡滑川町（レッスン会場等の詳細はご予約時にお伝えします）</td>
+            </tr>
+            <tr>
+              <th>営業時間</th>
+              <td>09:00 - 18:00（不定休）</td>
+            </tr>
+          </table>
+        </div>
+        <iframe class="map-frame" src="https://www.google.com/maps?q=埼玉県比企郡滑川町月の輪5丁目1-3&amp;output=embed" title="なめがわブラス・ラボ周辺地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. CTA Section -->
+  <section class="cta-section" id="contact">
+    <div class="container">
+      <h2>まずはお気軽にお問い合わせください</h2>
+      <p>トランペット体験レッスン、地域連携、イベント企画・輸送、Web制作・アプリ開発のご相談を受け付けています。</p>
+      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener" class="btn btn-accent" style="font-size: 1.1rem; padding: 15px 40px;">お問い合わせフォームへ</a>
+      <p style="margin: 20px 0 0; font-size: 0.9rem;">メール：<a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a> ／ 電話：<a href="tel:+819057690830">090-5769-0830</a>（10:00〜18:00）</p>
+    </div>
+  </section>
+
+  <!-- 5. Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <h3 style="color:#fff; margin-bottom: 10px;">なめがわブラス・ラボ</h3>
+          <p style="font-size: 0.9rem;">代表：佐々木久和 / 埼玉県比企郡滑川町</p>
+        </div>
+        <div class="footer-links">
+          <a href="#profile">ごあいさつ</a>
+          <a href="#updates">お知らせ</a>
+          <a href="#features">特徴</a>
+          <a href="lesson/">kazooささきトランペット教室</a>
+          <a href="#trumpet">事業・サービス内容</a>
+          <a href="#access">アクセス</a>
+          <a href="#">プライバシーポリシー</a>
+        </div>
+      </div>
+      <div class="copyright">
+        © 2026 なめがわブラス・ラボ. All rights reserved.
+      </div>
+    </div>
   </footer>
 
-</div>
+  <!-- JavaScript for Hamburger Menu -->
+  <script>
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navMenu = document.getElementById('navMenu');
 
-<script>
-  let allUpdates = [];
-  let currentUpdates = [];
-  let editorPassword = sessionStorage.getItem('updatesEditorPassword') || '';
-  let failedLoginAttempts = 0;
-  const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
-  const editorBackendHint = '編集機能は API 付きのローカルサイトでのみ使えます。EDITOR_PASSWORD=任意のパスワード ./manage-site.sh start で起動してください。';
-  let openingVideoClosed = false;
-  let openingVideoCloseTimer = null;
-  let openingVideoLoadTimer = null;
-  let updatesImageResizeObserver = null;
-
-  const bundledUpdates = [
-    {
-      date: '2026-08-07',
-      category: 'お役立ち',
-      content: 'トランペットミニコンサート&自由研究【詳しい資料】　　　　　　　　　　　　　↓こちら↓',
-      media_type: 'pdf',
-      media_url: 'data/media/trumpet-mini-concert-research.pdf',
-      youtube_embed_url: ''
-    },
-    {
-      date: '2026-08-05',
-      category: 'つぶやき',
-      content: 'ツバ抜きシートに最適？！。うさぎ用トイレシーツの使用サイズ感はこんな感じ。↓写真↓',
-      media_type: 'image',
-      media_url: 'data/media/usagi-toilet-sheet.jpg',
-      youtube_embed_url: ''
-    },
-    {
-      date: '2026-08-05',
-      category: 'つぶやき',
-      content: 'トランペットを吹く時に大活躍の口輪筋。どうやって鍛えたら効果的かな？オススメ動画です。',
-      media_type: 'video',
-      media_url: 'https://youtu.be/WoGHpX4c9ec?si=Q1cI2TxnZC8TbKqa',
-      youtube_embed_url: 'https://www.youtube.com/embed/WoGHpX4c9ec?playsinline=1&rel=0'
-    },
-    {
-      date: '2026-08-04',
-      category: 'お役立ち',
-      content: '夏のレッスンは早めの予約をおすすめしています。',
-      media_type: '',
-      media_url: '',
-      youtube_embed_url: ''
-    }
-  ];
-
-  function createUpdateMedia(item) {
-    if (!item.media_url) return null;
-
-    const wrapper = document.createElement('div');
-    wrapper.className = 'updates-media';
-
-    if (item.media_type === 'image') {
-      const image = document.createElement('img');
-      image.src = item.media_url;
-      image.alt = '更新画像';
-      wrapper.appendChild(image);
-    } else if (item.media_type === 'video' && item.youtube_embed_url) {
-      const iframe = document.createElement('iframe');
-      iframe.src = item.youtube_embed_url;
-      iframe.title = 'YouTube動画';
-      iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
-      iframe.allowFullscreen = true;
-      wrapper.appendChild(iframe);
-    } else if (item.media_type === 'video') {
-      const video = document.createElement('video');
-      video.src = item.media_url;
-      video.controls = true;
-      video.playsInline = true;
-      video.preload = 'metadata';
-      wrapper.appendChild(video);
-    } else if (item.media_type === 'pdf') {
-      const link = document.createElement('a');
-      link.href = item.media_url;
-      link.target = '_blank';
-      link.rel = 'noopener noreferrer';
-      link.textContent = '資料を開く';
-      wrapper.appendChild(link);
-    } else {
-      return null;
-    }
-
-    return wrapper;
-  }
-
-  function syncUpdatesWindowHeight(container) {
-    if (updatesImageResizeObserver) {
-      updatesImageResizeObserver.disconnect();
-      updatesImageResizeObserver = null;
-    }
-
-    container.style.removeProperty('--updates-window-height');
-    const image = container.querySelector('.updates-media img');
-    if (!image) return;
-
-    const applyImageHeight = () => {
-      const imageHeight = Math.round(image.getBoundingClientRect().height);
-      if (imageHeight > 0) {
-        container.style.setProperty('--updates-window-height', `${imageHeight}px`);
-      }
-    };
-
-    image.addEventListener('load', applyImageHeight, { once: true });
-    if (image.complete) requestAnimationFrame(applyImageHeight);
-    if ('ResizeObserver' in window) {
-      updatesImageResizeObserver = new ResizeObserver(applyImageHeight);
-      updatesImageResizeObserver.observe(image);
-    }
-  }
-
-  function updateMonthKey(item) {
-    const match = String(item.date || '').match(/^(\d{4})[-/.](\d{1,2})/);
-    if (!match) return '';
-    return `${match[1]}-${String(Number(match[2])).padStart(2, '0')}`;
-  }
-
-  function archiveMonthLabel(monthKey) {
-    const [year, month] = monthKey.split('-');
-    return `${year}年${Number(month)}月`;
-  }
-
-  function renderSelectedArchiveMonth() {
-    const selector = document.getElementById('updates-archive-month');
-    const selectedMonth = selector?.value || '';
-    const updates = selectedMonth
-      ? allUpdates.filter((item) => updateMonthKey(item) === selectedMonth)
-      : allUpdates;
-    renderUpdates(updates);
-    document.getElementById('updates-list')?.scrollTo({ top: 0 });
-  }
-
-  function setUpdates(updates) {
-    allUpdates = updates;
-    const selector = document.getElementById('updates-archive-month');
-    if (!selector) {
-      renderUpdates(updates);
-      return;
-    }
-
-    const previousMonth = selector.value;
-    const months = [...new Set(updates.map(updateMonthKey).filter(Boolean))].sort().reverse();
-    selector.replaceChildren();
-    months.forEach((monthKey) => {
-      const option = document.createElement('option');
-      option.value = monthKey;
-      option.textContent = archiveMonthLabel(monthKey);
-      selector.appendChild(option);
+    hamburgerBtn.addEventListener('click', () => {
+      navMenu.classList.toggle('active');
     });
-    if (months.includes(previousMonth)) selector.value = previousMonth;
-    renderSelectedArchiveMonth();
-  }
 
-  function renderUpdates(updates) {
-    const container = document.getElementById('updates-list');
-    if (!container) return;
-
-    currentUpdates = updates;
-
-    container.replaceChildren();
-    if (!updates.length) {
-      const empty = document.createElement('div');
-      empty.className = 'updates-empty';
-      empty.textContent = '表示する内容がありません。';
-      container.appendChild(empty);
-      return;
-    }
-
-    const list = document.createElement('div');
-    list.className = 'updates-list';
-    updates.forEach((item) => {
-      const update = document.createElement('div');
-      update.className = 'updates-item';
-
-      const meta = document.createElement('div');
-      meta.className = 'updates-meta';
-      const date = document.createElement('span');
-      date.className = 'updates-date';
-      date.textContent = item.date;
-      const category = document.createElement('span');
-      category.className = 'updates-tag';
-      category.textContent = item.category;
-      meta.append(date, category);
-
-      const content = document.createElement('div');
-      content.className = 'updates-content';
-      content.textContent = item.content;
-      update.append(meta, content);
-
-      const media = createUpdateMedia(item);
-      if (media) update.appendChild(media);
-      if (editorPassword && Number.isInteger(item.index)) {
-        const actions = document.createElement('div');
-        actions.className = 'update-actions';
-        const editButton = document.createElement('button');
-        editButton.type = 'button';
-        editButton.className = 'update-action';
-        editButton.textContent = '✎ 変更';
-        editButton.title = 'この情報を変更';
-        editButton.addEventListener('click', () => beginEdit(item));
-        const deleteButton = document.createElement('button');
-        deleteButton.type = 'button';
-        deleteButton.className = 'update-action delete';
-        deleteButton.textContent = '削除';
-        deleteButton.title = 'この情報を削除';
-        deleteButton.addEventListener('click', () => deleteUpdate(item));
-        actions.append(editButton, deleteButton);
-        update.appendChild(actions);
-      }
-      list.appendChild(update);
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+      link.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+      });
     });
-    container.appendChild(list);
-    syncUpdatesWindowHeight(container);
-  }
 
-  async function loadUpdates() {
-    setUpdates(bundledUpdates);
-    if (location.protocol === 'file:') return;
+    const updatesMonth = document.getElementById('updates-month');
+    const updateCards = [...document.querySelectorAll('.update-card')];
+    const updatesEmpty = document.getElementById('updates-empty');
+    const updatesAdminToggle = document.getElementById('updates-admin-toggle');
+    const updatesEditor = document.getElementById('updates-editor');
+    const updatesEditorLogin = document.getElementById('updates-editor-login');
+    const updatesEditorForm = document.getElementById('updates-editor-form');
+    const updatesEditorPassword = document.getElementById('updates-editor-password');
+    const updatesEditorLogout = document.getElementById('updates-editor-logout');
+    const updatesEditorStatus = document.getElementById('updates-editor-status');
+    const updatesEditorIndex = document.getElementById('updates-editor-index');
+    const updatesEditorDate = document.getElementById('updates-editor-date');
+    const updatesEditorCategory = document.getElementById('updates-editor-category');
+    const updatesEditorContent = document.getElementById('updates-editor-content');
+    const updatesEditorMediaType = document.getElementById('updates-editor-media-type');
+    const updatesEditorMediaUrl = document.getElementById('updates-editor-media-url');
+    const updatesEditorSave = document.getElementById('updates-editor-save');
+    const updatesEditorCancel = document.getElementById('updates-editor-cancel');
+    let updatesEditorKey = sessionStorage.getItem('updatesEditorPassword') || '';
 
-    for (const url of ['/api/updates', renderUpdatesApi, 'data/updates.json']) {
-      try {
-        const response = await fetch(url, { cache: 'no-store' });
-        if (!response.ok) continue;
-        const updates = await response.json();
-        if (Array.isArray(updates)) {
-          setUpdates(updates);
-          return;
-        }
-      } catch (error) {
-        // 次の取得元を試す
-      }
+    function monthLabel(month) {
+      const [year, monthNumber] = month.split('-');
+      return `${year}年${Number(monthNumber)}月`;
     }
-  }
 
-  function editorHeaders() {
-    return {
-      'Content-Type': 'application/json',
-      'X-Editor-Password': editorPassword
-    };
-  }
-
-  function setEditorStatus(message) {
-    document.getElementById('editor-status').textContent = message;
-  }
-
-  async function readApiErrorMessage(response, fallbackMessage) {
-    if (response.status === 404) {
-      return editorBackendHint;
+    function initializeUpdateMonths() {
+      if (!updatesMonth || !updateCards.length) return;
+      const months = [...new Set(updateCards.map(card => card.dataset.updateDate.slice(0, 7)))].sort().reverse();
+      const savedMonth = sessionStorage.getItem('updatesSelectedMonth');
+      months.forEach(month => {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = monthLabel(month);
+        updatesMonth.appendChild(option);
+      });
+      updatesMonth.value = months.includes(savedMonth) ? savedMonth : months[0];
+      filterUpdatesByMonth();
     }
-    const contentType = response.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
+
+    function filterUpdatesByMonth() {
+      if (!updatesMonth) return;
+      let visibleCount = 0;
+      updateCards.forEach(card => {
+        const visible = card.dataset.updateDate.startsWith(updatesMonth.value);
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      if (updatesEmpty) updatesEmpty.hidden = visibleCount > 0;
+      sessionStorage.setItem('updatesSelectedMonth', updatesMonth.value);
+      document.getElementById('updates-window')?.scrollTo({ top: 0 });
+    }
+
+    function setUpdatesEditorStatus(message, state = '') {
+      updatesEditorStatus.textContent = message;
+      updatesEditorStatus.dataset.state = state;
+    }
+
+    async function readUpdatesError(response, fallback) {
       try {
         const result = await response.json();
-        if (result && typeof result.error === 'string' && result.error) {
-          return result.error;
-        }
+        return result.error || fallback;
       } catch {
-        // JSON 解析失敗時は汎用メッセージへフォールバック
+        return fallback;
       }
     }
-    return fallbackMessage;
-  }
 
-  async function readApiJson(response) {
-    const contentType = response.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      return null;
+    function editorHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'X-Editor-Password': updatesEditorKey
+      };
     }
-    try {
-      return await response.json();
-    } catch {
-      return null;
+
+    function todayInJapan() {
+      const parts = new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
     }
-  }
 
-  function closeEditorPanel() {
-    const editorPanel = document.getElementById('editor-panel');
-    const editorToggle = document.getElementById('editor-toggle');
-    editorPanel.hidden = true;
-    editorToggle.setAttribute('aria-expanded', 'false');
-    document.getElementById('editor-login-form').hidden = Boolean(editorPassword);
-    document.getElementById('update-form').hidden = !editorPassword;
-    document.getElementById('editor-password').value = '';
-    setEditorStatus('');
-    failedLoginAttempts = 0;
-  }
-
-  function resetUpdateForm() {
-    const form = document.getElementById('update-form');
-    form.reset();
-    document.getElementById('update-index').value = '';
-    document.getElementById('update-date').value = new Date().toISOString().slice(0, 10);
-    document.getElementById('update-submit').textContent = '追加する';
-    document.getElementById('update-cancel').hidden = true;
-    document.getElementById('media-url-field').hidden = true;
-    document.getElementById('update-media-url').required = false;
-  }
-
-  function showEditorForm() {
-    document.getElementById('editor-login-form').hidden = true;
-    document.getElementById('update-form').hidden = false;
-    resetUpdateForm();
-    renderUpdates(currentUpdates);
-  }
-
-  function beginEdit(item) {
-    document.getElementById('update-index').value = item.index;
-    document.getElementById('update-date').value = item.date;
-    document.getElementById('update-category').value = item.category;
-    document.getElementById('update-content').value = item.content;
-    document.getElementById('update-media-type').value = item.media_type || '';
-    document.getElementById('update-media-url').value = item.media_url || '';
-    document.getElementById('media-url-field').hidden = !item.media_type;
-    document.getElementById('update-submit').textContent = '変更を保存';
-    document.getElementById('update-cancel').hidden = false;
-    document.getElementById('update-form').scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
-
-  async function deleteUpdate(item) {
-    if (!confirm(`${item.date} の情報を削除しますか？`)) return;
-    try {
-      const response = await fetch(`/api/updates/${item.index}`, {
-        method: 'DELETE',
-        headers: editorHeaders()
+    function showAuthenticatedEditor() {
+      updatesEditorLogin.hidden = true;
+      updatesEditorForm.hidden = false;
+      updatesEditorLogout.hidden = false;
+      document.querySelectorAll('.update-admin-actions').forEach(actions => {
+        actions.hidden = false;
       });
-      if (!response.ok) {
-        const errorMessage = await readApiErrorMessage(response, '削除できませんでした。');
-        setEditorStatus(errorMessage);
-        return;
-      }
-      setEditorStatus('削除しました。');
-      await loadUpdates();
-    } catch {
-      setEditorStatus(editorBackendHint);
-    }
-  }
-
-  async function restoreEditorSession() {
-    if (!editorPassword) return;
-    try {
-      const response = await fetch('/api/editor', { headers: editorHeaders() });
-      if (response.ok) {
-        showEditorForm();
-      } else if (response.status === 401) {
-        editorPassword = '';
-        sessionStorage.removeItem('updatesEditorPassword');
-      }
-    } catch {
-      // ネットワークエラー時は保存パスワードを維持
-    }
-  }
-
-  function closeVideo() {
-    if (openingVideoClosed) return;
-    openingVideoClosed = true;
-
-    const overlay = document.getElementById('video-overlay');
-    const container = document.getElementById('main-container');
-    const video = document.getElementById('intro-video');
-
-    if (openingVideoCloseTimer) {
-      window.clearTimeout(openingVideoCloseTimer);
-      openingVideoCloseTimer = null;
+      resetUpdatesEditorForm();
     }
 
-    if (openingVideoLoadTimer) {
-      window.clearTimeout(openingVideoLoadTimer);
-      openingVideoLoadTimer = null;
+    function resetUpdatesEditorForm() {
+      updatesEditorForm.reset();
+      updatesEditorIndex.value = '';
+      updatesEditorDate.value = todayInJapan();
+      updatesEditorSave.textContent = '追加する';
+      updatesEditorCancel.hidden = true;
+      updatesEditorMediaUrl.required = false;
     }
 
-    if (video) {
+    function beginUpdateEdit(card) {
+      updatesEditorIndex.value = card.dataset.updateIndex;
+      updatesEditorDate.value = card.dataset.updateDate;
+      updatesEditorCategory.value = card.dataset.updateCategory;
+      updatesEditorContent.value = card.dataset.updateContent;
+      updatesEditorMediaType.value = card.dataset.updateMediaType;
+      updatesEditorMediaUrl.value = card.dataset.updateMediaUrl;
+      updatesEditorMediaUrl.required = Boolean(card.dataset.updateMediaType);
+      updatesEditorSave.textContent = '変更を保存';
+      updatesEditorCancel.hidden = false;
+      updatesEditor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function deleteUpdate(card) {
+      if (!confirm(`${card.dataset.updateDate} のお知らせを削除しますか？`)) return;
       try {
-        video.pause();
-        video.currentTime = 0;
-      } catch (e) {
-        // ignore
-      }
-    }
-
-    if (!overlay || !container) return;
-
-    overlay.classList.add('hidden');
-    container.classList.add('visible');
-  }
-
-  document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('updates-archive-month')?.addEventListener('change', renderSelectedArchiveMonth);
-    loadUpdates();
-    restoreEditorSession();
-    const editorPanel = document.getElementById('editor-panel');
-    const editorToggle = document.getElementById('editor-toggle');
-    editorToggle.addEventListener('click', () => {
-      if (!editorPanel.hidden) {
-        closeEditorPanel();
-        return;
-      }
-      editorPanel.hidden = false;
-      editorToggle.setAttribute('aria-expanded', 'true');
-      document.getElementById('editor-login-form').hidden = Boolean(editorPassword);
-      document.getElementById('update-form').hidden = !editorPassword;
-      if (!editorPassword) document.getElementById('editor-password').focus();
-    });
-    document.getElementById('editor-login-form').addEventListener('submit', async (event) => {
-      event.preventDefault();
-      editorPassword = document.getElementById('editor-password').value;
-      try {
-        const response = await fetch('/api/editor', { headers: editorHeaders() });
+        const response = await fetch(`/api/updates/${card.dataset.updateIndex}`, {
+          method: 'DELETE',
+          headers: editorHeaders()
+        });
         if (!response.ok) {
-          const errorMessage = await readApiErrorMessage(response, 'ログインできませんでした。');
-          editorPassword = '';
-          if (response.status === 401) {
-            failedLoginAttempts += 1;
-            if (failedLoginAttempts >= 3) {
-              closeEditorPanel();
-              return;
-            }
-            setEditorStatus(`${errorMessage} あと${3 - failedLoginAttempts}回入力できます。`);
-          } else {
-            setEditorStatus(errorMessage);
-          }
-          document.getElementById('editor-password').select();
+          setUpdatesEditorStatus(await readUpdatesError(response, '削除できませんでした。'), 'error');
           return;
         }
-
-        failedLoginAttempts = 0;
-        sessionStorage.setItem('updatesEditorPassword', editorPassword);
-        setEditorStatus('編集できます。');
-        showEditorForm();
+        location.reload();
       } catch {
-        editorPassword = '';
-        setEditorStatus(editorBackendHint);
-        document.getElementById('editor-password').select();
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+      }
+    }
+
+    updatesMonth?.addEventListener('change', filterUpdatesByMonth);
+    initializeUpdateMonths();
+
+    updatesAdminToggle?.addEventListener('click', async () => {
+      updatesEditor.hidden = !updatesEditor.hidden;
+      updatesAdminToggle.setAttribute('aria-expanded', String(!updatesEditor.hidden));
+      if (updatesEditor.hidden) return;
+      if (updatesEditorKey) {
+        try {
+          const response = await fetch('/api/editor', { headers: editorHeaders() });
+          if (response.ok) {
+            showAuthenticatedEditor();
+            return;
+          }
+        } catch {
+          setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+          return;
+        }
+        updatesEditorKey = '';
+        sessionStorage.removeItem('updatesEditorPassword');
+      }
+      updatesEditorLogin.hidden = false;
+      updatesEditorForm.hidden = true;
+      updatesEditorLogout.hidden = true;
+      updatesEditorPassword.focus();
+    });
+
+    updatesEditorLogin?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const password = updatesEditorPassword.value;
+      try {
+        const response = await fetch('/api/editor', {
+          headers: { 'X-Editor-Password': password }
+        });
+        if (!response.ok) {
+          setUpdatesEditorStatus(await readUpdatesError(response, 'ログインできませんでした。'), 'error');
+          updatesEditorPassword.select();
+          return;
+        }
+        updatesEditorKey = password;
+        sessionStorage.setItem('updatesEditorPassword', password);
+        setUpdatesEditorStatus('編集できます。');
+        showAuthenticatedEditor();
+      } catch {
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
       }
     });
-    document.getElementById('update-media-type').addEventListener('change', (event) => {
-      document.getElementById('media-url-field').hidden = !event.target.value;
-      document.getElementById('update-media-url').required = Boolean(event.target.value);
-    });
-    document.getElementById('update-cancel').addEventListener('click', resetUpdateForm);
-    document.getElementById('editor-logout').addEventListener('click', () => {
-      editorPassword = '';
-      sessionStorage.removeItem('updatesEditorPassword');
-      closeEditorPanel();
-      renderUpdates(currentUpdates);
-    });
-    document.getElementById('update-form').addEventListener('submit', async (event) => {
+
+    updatesEditorForm?.addEventListener('submit', async event => {
       event.preventDefault();
-      const updateIndex = document.getElementById('update-index').value;
+      if (!updatesEditorForm.reportValidity()) return;
+      updatesEditorSave.disabled = true;
+      const updateIndex = updatesEditorIndex.value;
       const payload = {
-        date: document.getElementById('update-date').value,
-        category: document.getElementById('update-category').value,
-        content: document.getElementById('update-content').value,
-        media_type: document.getElementById('update-media-type').value,
-        media_url: document.getElementById('update-media-url').value
+        date: updatesEditorDate.value,
+        category: updatesEditorCategory.value,
+        content: updatesEditorContent.value,
+        media_type: updatesEditorMediaType.value,
+        media_url: updatesEditorMediaUrl.value
       };
       try {
         const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
@@ -2208,89 +1772,42 @@
           body: JSON.stringify(payload)
         });
         if (!response.ok) {
-          const errorMessage = await readApiErrorMessage(response, '保存できませんでした。');
-          setEditorStatus(errorMessage);
+          setUpdatesEditorStatus(await readUpdatesError(response, '保存できませんでした。'), 'error');
           return;
         }
-
-        await readApiJson(response);
-        setEditorStatus(updateIndex ? '変更を保存しました。' : '追加しました。');
-        resetUpdateForm();
-        await loadUpdates();
+        sessionStorage.setItem('updatesSelectedMonth', payload.date.slice(0, 7));
+        location.reload();
       } catch {
-        setEditorStatus(editorBackendHint);
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+      } finally {
+        updatesEditorSave.disabled = false;
       }
     });
-    const video = document.getElementById('intro-video');
 
-    if (window.location.hash === '#main-container') {
-      closeVideo();
-      document.getElementById('main-container')?.scrollIntoView();
-      return;
-    }
+    updatesEditorMediaType?.addEventListener('change', () => {
+      updatesEditorMediaUrl.required = Boolean(updatesEditorMediaType.value);
+      if (!updatesEditorMediaType.value) updatesEditorMediaUrl.value = '';
+    });
 
-    if (!video) {
-      closeVideo();
-      return;
-    }
+    updatesEditorCancel?.addEventListener('click', resetUpdatesEditorForm);
 
-    const source = video.querySelector('source');
-    const hasSource = Boolean(source && source.src);
-
-    if (!hasSource) {
-      window.setTimeout(closeVideo, 2200);
-      return;
-    }
-
-    video.style.display = 'block';
-
-    const scheduleVideoClose = (delay) => {
-      if (openingVideoCloseTimer) {
-        window.clearTimeout(openingVideoCloseTimer);
-      }
-      openingVideoCloseTimer = window.setTimeout(closeVideo, delay);
-    };
-
-    const handleVideoReady = () => {
-      if (openingVideoClosed) return;
-      if (openingVideoLoadTimer) {
-        window.clearTimeout(openingVideoLoadTimer);
-        openingVideoLoadTimer = null;
-      }
-
-      video.play().catch(() => {
-        // 自動再生ができない場合でもオーバーレイは閉じる
+    updatesEditorLogout?.addEventListener('click', () => {
+      updatesEditorKey = '';
+      sessionStorage.removeItem('updatesEditorPassword');
+      updatesEditorLogin.hidden = false;
+      updatesEditorForm.hidden = true;
+      updatesEditorLogout.hidden = true;
+      document.querySelectorAll('.update-admin-actions').forEach(actions => {
+        actions.hidden = true;
       });
+      setUpdatesEditorStatus('');
+    });
 
-      const durationSeconds = Number.isFinite(video.duration) ? video.duration : 0;
-      const closeDelay = durationSeconds > 0
-        ? Math.min(Math.max(Math.ceil(durationSeconds * 1000), 1800), 12000)
-        : 4200;
+    document.querySelectorAll('.update-card').forEach(card => {
+      card.querySelector('.update-edit')?.addEventListener('click', () => beginUpdateEdit(card));
+      card.querySelector('.update-delete')?.addEventListener('click', () => deleteUpdate(card));
+    });
 
-      scheduleVideoClose(closeDelay);
-    };
-
-    video.addEventListener('loadeddata', handleVideoReady, { once: true });
-    video.addEventListener('ended', closeVideo, { once: true });
-
-    video.addEventListener('error', () => {
-      scheduleVideoClose(1200);
-    }, { once: true });
-
-    openingVideoLoadTimer = window.setTimeout(() => {
-      if (video.readyState < 2) {
-        closeVideo();
-        return;
-      }
-
-      handleVideoReady();
-    }, 3500);
-
-    if (video.readyState >= 2) {
-      handleVideoReady();
-    }
-  });
-</script>
-
+  </script>
 </body>
 </html>

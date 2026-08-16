@@ -7,16 +7,16 @@
   <title>kazooささきトランペット教室 | なめがわブラス・ラボ</title>
   <style>
     :root {
-      --navy: #0b2545;
-      --blue: #134074;
-      --gold: #d4af37;
-      --gold-dark: #9a7612;
-      --ink: #1d2a44;
-      --muted: #667085;
-      --line: #dce3ec;
+      --navy: #1a56db;
+      --blue: #1e40af;
+      --gold: #f59e0b;
+      --gold-dark: #d97706;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #e2e8f0;
       --surface: #ffffff;
-      --background: #eef3f8;
-      --shadow: 0 16px 40px rgba(11, 37, 69, 0.12);
+      --background: #f8fafc;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
     * {
@@ -219,254 +219,6 @@
       display: block;
       margin-bottom: 8px;
       font-size: 1.5rem;
-    }
-
-    .app-section-copy {
-      margin: -8px 0 16px;
-      color: var(--muted);
-      font-size: 0.88rem;
-    }
-
-    .app-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .app-card {
-      min-width: 0;
-      overflow: hidden;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: var(--surface);
-      box-shadow: 0 6px 18px rgba(11, 37, 69, 0.06);
-    }
-
-    .app-card-header {
-      display: flex;
-      min-height: 64px;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .app-card-title {
-      min-width: 0;
-    }
-
-    .app-card-title strong,
-    .app-card-title span {
-      display: block;
-    }
-
-    .app-card-title strong {
-      color: var(--navy);
-      font-size: 0.92rem;
-    }
-
-    .app-card-title span {
-      color: var(--muted);
-      font-size: 0.74rem;
-    }
-
-    .app-open-link {
-      display: inline-flex;
-      min-width: 38px;
-      min-height: 38px;
-      align-items: center;
-      justify-content: center;
-      flex: 0 0 auto;
-      border-radius: 6px;
-      color: #ffffff;
-      background: var(--navy);
-      font-size: 1rem;
-      font-weight: 800;
-      text-decoration: none;
-    }
-
-    .app-open-link:hover,
-    .app-open-link:focus-visible {
-      background: var(--blue);
-    }
-
-    .app-window {
-      display: block;
-      width: 100%;
-      height: 560px;
-      border: 0;
-      background: #121218;
-    }
-
-    .app-store {
-      display: grid;
-      gap: 10px;
-      padding: 14px;
-      border-top: 1px solid var(--line);
-      background: #f7f9fc;
-    }
-
-    .app-store-main {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .app-store-copy strong,
-    .app-store-copy span {
-      display: block;
-    }
-
-    .app-store-copy strong {
-      color: var(--navy);
-      font-size: 0.9rem;
-    }
-
-    .app-store-copy span,
-    .app-store-status,
-    .app-purchase-recovery,
-    .app-sales-admin {
-      color: var(--muted);
-      font-size: 0.76rem;
-    }
-
-    .app-store-button {
-      min-height: 40px;
-      padding: 8px 14px;
-      border: 0;
-      border-radius: 6px;
-      color: #ffffff;
-      background: var(--navy);
-      font: inherit;
-      font-size: 0.8rem;
-      font-weight: 800;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    .app-store-button:disabled {
-      cursor: not-allowed;
-      opacity: 0.5;
-    }
-
-    .app-download-link {
-      display: inline-flex;
-      min-height: 40px;
-      align-items: center;
-      justify-content: center;
-      padding: 8px 14px;
-      border-radius: 6px;
-      color: #ffffff;
-      background: var(--gold-dark);
-      font-size: 0.8rem;
-      font-weight: 800;
-      text-decoration: none;
-    }
-
-    .app-download-link[hidden] {
-      display: none;
-    }
-
-    .app-store-status {
-      min-height: 1.4em;
-      margin: 0;
-    }
-
-    .app-store-legal {
-      display: flex;
-      gap: 6px 14px;
-      flex-wrap: wrap;
-      color: var(--muted);
-      font-size: 0.72rem;
-    }
-
-    .app-store-legal a:hover,
-    .app-store-legal a:focus-visible {
-      color: var(--navy);
-    }
-
-    .app-purchase-recovery,
-    .app-sales-admin {
-      padding-top: 8px;
-      border-top: 1px solid var(--line);
-    }
-
-    .app-purchase-recovery-title,
-    .app-sales-admin summary {
-      color: var(--navy);
-      font-weight: 700;
-    }
-
-    .app-purchase-recovery-title {
-      margin: 0;
-      font-size: inherit;
-    }
-
-    .app-recovery-controls,
-    .app-sales-controls {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .app-recovery-controls input,
-    .app-sales-controls input[type="password"] {
-      min-width: 0;
-      padding: 8px 10px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      font: inherit;
-    }
-
-    .app-sales-toggle {
-      display: inline-flex;
-      min-height: 38px;
-      align-items: center;
-      gap: 6px;
-      color: var(--navy);
-      font-weight: 800;
-    }
-
-    .app-sales-save {
-      grid-column: 1 / -1;
-      min-height: 40px;
-      border: 0;
-      border-radius: 6px;
-      color: #fff;
-      background: var(--navy);
-      font: inherit;
-      font-weight: 800;
-      cursor: pointer;
-    }
-
-    .app-sales-save:disabled {
-      cursor: wait;
-      opacity: .65;
-    }
-
-    .app-card-placeholder {
-      display: grid;
-      min-height: 624px;
-      padding: 28px;
-      place-content: center;
-      border-style: dashed;
-      background: #f7f9fc;
-      color: var(--muted);
-      text-align: center;
-    }
-
-    .app-card-placeholder strong {
-      display: block;
-      margin-bottom: 5px;
-      color: var(--navy);
-      font-size: 0.92rem;
-    }
-
-    .app-card-placeholder span {
-      font-size: 0.78rem;
     }
 
     .price-list {
@@ -888,6 +640,259 @@
       font-size: 0.76rem;
     }
 
+    /* Main-site visual system */
+    body {
+      background: var(--background);
+    }
+
+    .page-header {
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .nav,
+    .hero,
+    .content {
+      width: min(calc(100% - 40px), 1160px);
+    }
+
+    .nav {
+      min-height: 70px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-brand {
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+
+    .back-link {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .back-link:hover {
+      color: var(--navy);
+    }
+
+    .hero {
+      padding: 72px 0 80px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+      align-items: center;
+      gap: 56px;
+      text-align: left;
+    }
+
+    .hero-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 0 20px;
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--navy);
+      box-shadow: var(--shadow);
+      font-size: 2.2rem;
+    }
+
+    .eyebrow {
+      color: var(--gold-dark);
+      letter-spacing: 0.08em;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: clamp(2rem, 5vw, 3rem);
+    }
+
+    .hero-copy {
+      margin-left: 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .hero-photo {
+      display: block;
+      width: min(100%, 320px);
+      height: auto;
+      aspect-ratio: 2 / 3;
+      justify-self: end;
+      object-fit: cover;
+      border: 4px solid #ffffff;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .page-nav {
+      width: 100%;
+      padding: 10px max(20px, calc((100% - 1160px) / 2));
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .page-nav-list {
+      gap: 10px;
+    }
+
+    .page-nav-list a {
+      border-color: var(--line);
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--surface);
+      box-shadow: none;
+    }
+
+    .page-nav-list a:hover,
+    .page-nav-list a:focus-visible {
+      border-color: var(--navy);
+      background: var(--navy);
+    }
+
+    .content {
+      padding: 72px 0 88px;
+    }
+
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-title {
+      display: block;
+      margin-bottom: 24px;
+      color: var(--navy);
+      font-size: 1.8rem;
+      text-align: center;
+    }
+
+    .section-title::before {
+      display: none;
+    }
+
+    .feature-list {
+      gap: 24px;
+    }
+
+    .feature-list li,
+    .price-card,
+    .instructor-panel,
+    .contact-panel {
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-list li {
+      padding: 26px 18px;
+      border-top: 3px solid var(--navy);
+      background: var(--surface);
+    }
+
+    .feature-icon {
+      color: var(--navy);
+    }
+
+    .instructor-panel,
+    .contact-panel {
+      padding: 32px;
+      border-left-color: var(--gold);
+    }
+
+    .teaching-points {
+      gap: 20px;
+    }
+
+    .teaching-point {
+      border-left-color: var(--gold);
+      border-radius: 0 8px 8px 0;
+      background: var(--background);
+    }
+
+    .price-note {
+      text-align: center;
+    }
+
+    .price-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .price-card {
+      padding: 24px;
+      border-top: 3px solid var(--navy);
+    }
+
+    .button,
+    .schedule-callout-link,
+    .reservation-submit {
+      border-radius: 50px;
+    }
+
+    .button {
+      min-height: 48px;
+      padding: 12px 28px;
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+
+    .button-primary {
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .footer {
+      padding: 64px 20px 28px;
+      background: #0f172a;
+    }
+
+    .schedule-callout,
+    .reservation {
+      width: min(100%, 1000px);
+    }
+
+    .schedule-callout {
+      padding: 22px;
+      border-color: rgba(245, 158, 11, 0.7);
+      border-radius: 8px;
+    }
+
+    .schedule-callout-icon,
+    .schedule-callout-link,
+    .reservation-submit {
+      color: #ffffff;
+      background: var(--gold-dark);
+    }
+
+    .reservation {
+      grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+      gap: 48px;
+    }
+
+    .reservation-hours {
+      border-color: rgba(245, 158, 11, 0.7);
+    }
+
+    .reservation-hours dt,
+    .required {
+      color: #fbbf24;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      border-color: #cbd5e1;
+      border-radius: 8px;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--navy);
+      outline: 3px solid rgba(26, 86, 219, 0.2);
+    }
+
     @keyframes heroReveal {
       from { opacity: 0; transform: translateY(10px) scale(0.94); }
       to { opacity: 1; transform: translateY(0) scale(1); }
@@ -895,28 +900,31 @@
 
     @media (max-width: 760px) {
       .hero {
+        grid-template-columns: 1fr;
         padding: 48px 0 54px;
+        gap: 32px;
+        text-align: center;
+      }
+
+      .hero-icon {
+        margin: 0 auto 20px;
+      }
+
+      .hero-copy {
+        margin-left: auto;
+      }
+
+      .hero-photo {
+        width: min(78vw, 280px);
+        justify-self: center;
       }
 
       .page-nav-list {
         gap: 6px;
       }
 
-      .app-grid {
+      .price-list {
         grid-template-columns: 1fr;
-      }
-
-      .app-card-placeholder {
-        min-height: 180px;
-      }
-
-      .app-store-main {
-        align-items: stretch;
-        flex-direction: column;
-      }
-
-      .app-store-button {
-        width: 100%;
       }
 
       .reservation {
@@ -997,14 +1005,17 @@
 <body>
   <header class="page-header">
     <nav class="nav" aria-label="ページナビゲーション">
-      <a class="nav-brand" href="../#main-container">なめがわブラス・ラボ</a>
-      <a class="back-link" href="../#main-container">← トップへ戻る</a>
+      <a class="nav-brand" href="../">なめがわブラス・ラボ</a>
+      <a class="back-link" href="../">← トップへ戻る</a>
     </nav>
     <div class="hero">
-      <div class="hero-icon" aria-hidden="true">🎺</div>
-      <p class="eyebrow">TRUMPET LESSON</p>
-      <h1>kazooささき<br>トランペット教室</h1>
-      <p class="hero-copy">力を抜いて、もっと自由に。初心者から経験者まで、一人ひとりの音と目標に合わせて丁寧にレッスンします。</p>
+      <div class="hero-content">
+        <div class="hero-icon" aria-hidden="true">🎺</div>
+        <p class="eyebrow">TRUMPET LESSON</p>
+        <h1>kazooささき<br>トランペット教室</h1>
+        <p class="hero-copy">初めての音出しから音大受験まで。一人ひとりの目標に合わせた個別指導で、楽しく着実な上達を支えます。</p>
+      </div>
+      <img class="hero-photo" src="../data/media/lesson-header-photo.jpg" alt="トランペットを持つ講師の佐々木久和" width="1200" height="1800" decoding="async">
     </div>
   </header>
 
@@ -1025,7 +1036,7 @@
       <div class="instructor-panel">
         <h3 class="instructor-name"><span>トランペット奏者</span>佐々木 久和（ささき ひさかず）</h3>
         <p>1969年生まれ、茨城県牛久市出身。小学4年生で鼓笛隊のトランペットを始め、東京コンセルヴァトワール尚美専門コースのトランペット専攻を1991年に卒業。杉木峯夫氏（東京藝術大学名誉教授）に師事しました。</p>
-        <p>卒業後は陸上自衛隊に入隊し、第11音楽隊（札幌市）、東北方面音楽隊（仙台市）、第1音楽隊（東京都）、東部方面音楽隊（朝霞市）などで33年間勤務。2023年9月の退職後は、フリーランス奏者として演奏と指導に取り組んでいます。</p>
+        <p>トランペット奏者・指導者として30年以上の経験を重ね、現在はフリーランス奏者として演奏と指導に取り組んでいます。</p>
         <p>現在は「kazooささきトランペット教室」と「アンサンブルNEST」を主宰するほか、EYS音楽教室のインストラクター、熊谷・深谷のカルチャー教室での演奏指導、学校の吹奏楽部指導などを通して、幅広い世代をサポートしています。</p>
       </div>
     </section>
@@ -1050,66 +1061,10 @@
     <section class="section" aria-labelledby="features-title">
       <h2 class="section-title" id="features-title">レッスンの特徴</h2>
       <ul class="feature-list">
-        <li><span class="feature-icon" aria-hidden="true">♪</span>基礎から丁寧に指導</li>
-        <li><span class="feature-icon" aria-hidden="true">◎</span>目的に合わせた個人レッスン</li>
-        <li><span class="feature-icon" aria-hidden="true">♬</span>初心者も経験者も歓迎</li>
+        <li><span class="feature-icon" aria-hidden="true">♪</span>初めての音出しから音大受験まで対応</li>
+        <li><span class="feature-icon" aria-hidden="true">◎</span>演奏・指導経験を生かした個別レッスン</li>
+        <li><span class="feature-icon" aria-hidden="true">♬</span>練習ツールも活用した分かりやすい指導</li>
       </ul>
-    </section>
-
-    <section class="section" aria-labelledby="practice-apps-title">
-      <h2 class="section-title" id="practice-apps-title">トランペット練習専用アプリ</h2>
-      <p class="app-section-copy">レッスンと毎日の基礎練習に使えるツールです。画面内でそのまま操作できます。</p>
-      <div class="app-grid">
-        <article class="app-card">
-          <header class="app-card-header">
-            <div class="app-card-title">
-              <strong>トランペット練習メトロノーム</strong>
-              <span>ブレストレーニング・可変拍子・連符分割・8種類の音色</span>
-            </div>
-            <a class="app-open-link" href="../music%20App/index.html" target="_blank" rel="noopener" aria-label="ブレス練習メトロノームを別画面で開く" title="別画面で開く">↗</a>
-          </header>
-          <iframe class="app-window" src="../music%20App/index.html" title="ブレス練習メトロノーム" loading="lazy" allow="autoplay"></iframe>
-          <footer class="app-store" id="app-store">
-            <div class="app-store-main">
-              <div class="app-store-copy">
-                <strong id="app-store-title">オフライン版</strong>
-                <span>購入者本人の所有端末で利用できます。第三者との共有・再配布は禁止です。</span>
-              </div>
-              <button class="app-store-button" id="app-purchase-button" type="button" disabled>販売状況を確認中</button>
-            </div>
-            <a class="app-download-link" id="app-download-link" href="#" hidden>オフライン版をダウンロード</a>
-            <p class="app-store-status" id="app-store-status" role="status" aria-live="polite"></p>
-            <section class="app-purchase-recovery" aria-labelledby="app-purchase-recovery-title">
-              <h3 class="app-purchase-recovery-title" id="app-purchase-recovery-title">購入済みの方：ダウンロードを再表示</h3>
-              <form class="app-recovery-controls" id="app-recovery-form">
-                <input id="app-recovery-email" type="email" autocomplete="email" placeholder="購入時のメールアドレス" aria-label="購入時のメールアドレス" required>
-                <input id="app-recovery-receipt" type="text" autocomplete="off" placeholder="Stripe領収書番号または決済ID" aria-label="Stripe領収書番号または決済ID" pattern="(?:[A-Za-z0-9-]{4,64}|pi_[A-Za-z0-9_]{8,255})" required>
-                <button class="app-sales-save" id="app-recovery-submit" type="submit">再表示</button>
-              </form>
-            </section>
-            <nav class="app-store-legal" aria-label="購入に関する情報">
-              <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
-              <a href="../legal/#license">利用ライセンス</a>
-              <a href="../legal/#refund">返金方針</a>
-              <a href="../legal/#contact">購入に関するお問い合わせ</a>
-            </nav>
-            <details class="app-sales-admin">
-              <summary>管理者用：販売設定</summary>
-              <form class="app-sales-controls" id="app-sales-form" novalidate>
-                <input id="app-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
-                <label class="app-sales-toggle"><input id="app-sales-enabled" type="checkbox">販売ON</label>
-                <button class="app-sales-save" id="app-sales-save" type="submit">設定を保存</button>
-              </form>
-            </details>
-          </footer>
-        </article>
-        <div class="app-card app-card-placeholder" aria-label="今後追加する練習アプリ用スペース">
-          <div>
-            <strong>COMING SOON</strong>
-            <span>新しい練習アプリを追加予定です</span>
-          </div>
-        </div>
-      </div>
     </section>
 
     <section class="section" aria-labelledby="price-title">
@@ -1257,8 +1212,6 @@
     const reservationCancelSubmit = reservationCancelForm.querySelector("button[type='submit']");
     const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
     const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
-    const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";
-
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
         ? [renderApi, `../${relativePath}`, `/${relativePath}`]
@@ -1269,265 +1222,6 @@
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const reservationCancelApiCandidates = buildApiCandidates(`${renderReservationApi}/cancel`, "api/lesson-reservations/cancel");
     const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
-    const appPurchaseButton = document.getElementById("app-purchase-button");
-    const appDownloadLink = document.getElementById("app-download-link");
-    const appStoreStatus = document.getElementById("app-store-status");
-    const appRecoveryForm = document.getElementById("app-recovery-form");
-    const appRecoveryEmail = document.getElementById("app-recovery-email");
-    const appRecoveryReceipt = document.getElementById("app-recovery-receipt");
-    const appRecoverySubmit = document.getElementById("app-recovery-submit");
-    const appSalesForm = document.getElementById("app-sales-form");
-    const appSalesPassword = document.getElementById("app-sales-password");
-    const appSalesEnabled = document.getElementById("app-sales-enabled");
-    const appSalesSave = document.getElementById("app-sales-save");
-    const purchaseSessionStorageKey = "metronome-purchase-session";
-    let downloadInProgress = false;
-
-    const storeApiCandidates = (path) => buildApiCandidates(
-      `${renderStoreBase}/${path}`,
-      `api/store/${path}`,
-    );
-
-    async function requestStore(path, options = {}) {
-      let lastError = null;
-      for (const endpoint of storeApiCandidates(path)) {
-        try {
-          const response = await fetch(endpoint, options);
-          const contentType = (response.headers.get("content-type") || "").toLowerCase();
-          if (!contentType.includes("application/json")) continue;
-          const result = await response.json();
-          if (response.ok) return result;
-          if (response.status === 404 || response.status === 405) continue;
-          throw new Error(result.error || "販売サーバーへ接続できませんでした。");
-        } catch (error) {
-          lastError = error;
-        }
-      }
-      throw lastError || new Error("販売サーバーへ接続できませんでした。");
-    }
-
-    function renderStoreProduct(product) {
-      appSalesEnabled.checked = product.enabled;
-      appPurchaseButton.disabled = !product.checkout_available;
-      appPurchaseButton.textContent = product.enabled
-        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円で購入`
-        : "オフライン版 販売停止中";
-      appStoreStatus.textContent = product.enabled && !product.checkout_available
-        ? "決済機能を準備中です。Web版は引き続き利用できます。"
-        : "Web版は無料で全機能を利用できます。";
-    }
-
-    async function loadStoreProduct() {
-      try {
-        renderStoreProduct(await requestStore("product"));
-      } catch (error) {
-        appPurchaseButton.textContent = "オフライン版 販売停止中";
-        appStoreStatus.textContent = error.message;
-      }
-    }
-
-    function createCheckoutRequestId() {
-      if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
-      const bytes = crypto.getRandomValues(new Uint8Array(16));
-      bytes[6] = (bytes[6] & 0x0f) | 0x40;
-      bytes[8] = (bytes[8] & 0x3f) | 0x80;
-      const hex = [...bytes].map((value) => value.toString(16).padStart(2, "0"));
-      return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
-    }
-
-    appPurchaseButton.addEventListener("click", async () => {
-      if (!appDownloadLink.hidden) {
-        appDownloadLink.click();
-        return;
-      }
-      appPurchaseButton.disabled = true;
-      appStoreStatus.textContent = "安全な決済画面を準備しています…";
-      try {
-        const result = await requestStore("checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
-        });
-        location.href = result.checkout_url;
-      } catch (error) {
-        const checkoutErrorMessage = error.message;
-        await loadStoreProduct();
-        appStoreStatus.textContent = checkoutErrorMessage;
-      }
-    });
-
-    function loadSavedPurchaseSession() {
-      try {
-        const sessionId = localStorage.getItem(purchaseSessionStorageKey) || "";
-        return sessionId.startsWith("cs_") ? sessionId : "";
-      } catch (error) {
-        return "";
-      }
-    }
-
-    function savePurchaseSession(sessionId) {
-      try {
-        localStorage.setItem(purchaseSessionStorageKey, sessionId);
-      } catch (error) {
-        // The current page can still provide the download when storage is unavailable.
-      }
-    }
-
-    function showDownloadLink(result, sessionId, isReissue = false) {
-      savePurchaseSession(sessionId);
-      appDownloadLink.href = result.download_url;
-      appDownloadLink.dataset.sessionId = sessionId;
-      appDownloadLink.hidden = false;
-      appPurchaseButton.disabled = false;
-      appPurchaseButton.textContent = "ダウンロード版を使用する";
-      appDownloadLink.textContent = isReissue
-        ? "再発行したオフライン版をダウンロード"
-        : "オフライン版をダウンロード";
-      appStoreStatus.textContent = isReissue
-        ? "購入履歴を確認し、新しいリンクを発行しました。リンクは24時間有効です。"
-        : "お支払いを確認しました。リンクは24時間有効です。";
-      return result.download_url;
-    }
-
-    async function provideDownload(sessionId, isReissue = false) {
-      const result = await requestStore("download-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-      return showDownloadLink(result, sessionId, isReissue);
-    }
-
-    appRecoveryForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!appRecoveryForm.reportValidity()) return;
-      appRecoverySubmit.disabled = true;
-      appStoreStatus.textContent = "購入情報を確認しています…";
-      try {
-        const result = await requestStore("recover-download", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: appRecoveryEmail.value.trim(),
-            receipt_number: appRecoveryReceipt.value.trim(),
-          }),
-        });
-        showDownloadLink(result, result.session_id, true);
-        appRecoveryReceipt.value = "";
-      } catch (error) {
-        appStoreStatus.textContent = error.message;
-      } finally {
-        appRecoverySubmit.disabled = false;
-      }
-    });
-
-    async function downloadProduct(downloadUrl) {
-      try {
-        const response = await fetch(downloadUrl, {
-          method: "HEAD",
-          cache: "no-store",
-        });
-        const contentType = (response.headers.get("content-type") || "").toLowerCase();
-        if (response.status !== 405 && response.status !== 501) {
-          if (!response.ok || !contentType.includes("application/zip")) {
-            throw new Error("ダウンロードリンクを更新します。");
-          }
-        }
-      } catch (error) {
-        if (!(error instanceof TypeError)) throw error;
-      }
-      location.assign(downloadUrl);
-    }
-
-    appDownloadLink.addEventListener("click", async (event) => {
-      event.preventDefault();
-      if (downloadInProgress) return;
-      const sessionId = appDownloadLink.dataset.sessionId || loadSavedPurchaseSession();
-      if (!sessionId) {
-        appStoreStatus.textContent = "購入情報を確認できません。購入に関するお問い合わせからご連絡ください。";
-        return;
-      }
-      downloadInProgress = true;
-      appDownloadLink.setAttribute("aria-disabled", "true");
-      appStoreStatus.textContent = "ダウンロードを準備しています…";
-      try {
-        await downloadProduct(appDownloadLink.href);
-        appStoreStatus.textContent = "ダウンロードを開始しました。";
-      } catch (error) {
-        appStoreStatus.textContent = "リンクを再発行しています…";
-        try {
-          const downloadUrl = await provideDownload(sessionId, true);
-          await downloadProduct(downloadUrl);
-          appStoreStatus.textContent = "新しいリンクでダウンロードを開始しました。";
-        } catch (reissueError) {
-          appStoreStatus.textContent = "自動再提供できませんでした。購入に関するお問い合わせからご連絡ください。";
-        }
-      } finally {
-        downloadInProgress = false;
-        appDownloadLink.removeAttribute("aria-disabled");
-      }
-    });
-
-    appSalesForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const password = appSalesPassword.value;
-      if (!password) {
-        appStoreStatus.textContent = "編集用パスワードを入力してください。";
-        appSalesPassword.focus();
-        return;
-      }
-      const requestedState = appSalesEnabled.checked;
-      appSalesEnabled.disabled = true;
-      appSalesSave.disabled = true;
-      appStoreStatus.textContent = "販売設定を更新しています…";
-      try {
-        const product = await requestStore("product", {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Editor-Password": password,
-          },
-          body: JSON.stringify({ enabled: requestedState }),
-        });
-        renderStoreProduct(product);
-        appSalesPassword.value = "";
-        appStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
-      } catch (error) {
-        appSalesEnabled.checked = !requestedState;
-        appStoreStatus.textContent = error.message;
-      } finally {
-        appSalesEnabled.disabled = false;
-        appSalesSave.disabled = false;
-      }
-    });
-
-    async function applyPurchaseResult() {
-      const parameters = new URLSearchParams(location.search);
-      if (parameters.get("purchase") === "cancelled") {
-        appStoreStatus.textContent = "決済はキャンセルされました。";
-        return;
-      }
-      const purchaseMode = parameters.get("purchase");
-      const querySessionId = parameters.get("session_id") || "";
-      const sessionId = querySessionId.startsWith("cs_")
-        ? querySessionId
-        : loadSavedPurchaseSession();
-      if (!sessionId) return;
-      const isReissue = purchaseMode === "reissue" || purchaseMode !== "success";
-      appStoreStatus.textContent = isReissue
-        ? "購入履歴を確認し、ダウンロードリンクを再発行しています…"
-        : "お支払いを確認しています…";
-      try {
-        await provideDownload(sessionId, isReissue);
-        if (querySessionId) {
-          history.replaceState(null, "", `${location.pathname}${location.hash}`);
-        }
-      } catch (error) {
-        appStoreStatus.textContent = isReissue
-          ? "購入履歴を確認できませんでした。購入に関するお問い合わせからご連絡ください。"
-          : error.message;
-      }
-    }
     let slotRequestId = 0;
     const slotStatusCache = new Map();
     const slotStatusCacheDuration = 30 * 1000;
@@ -1954,7 +1648,6 @@
 
     preloadSlotStatuses();
     applyRequestedSlot();
-    loadStoreProduct().then(applyPurchaseResult);
   </script>
 </body>
 </html>

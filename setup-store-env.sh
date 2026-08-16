@@ -236,11 +236,11 @@ if not price_valid:
   print("Stripe Priceが500円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
   raise SystemExit(1)
 if not webhook_valid:
-    print(f"Webhookを有効化できませんでした: {target}", file=sys.stderr)
+  print(f"Webhookを有効化できませんでした: {target}", file=sys.stderr)
   raise SystemExit(1)
 if not generated_secret and not os.environ["STRIPE_WEBHOOK_SECRET_VALUE"].startswith("whsec_"):
-    print("既存Webhookの署名シークレットが必要です。", file=sys.stderr)
-    raise SystemExit(1)
+  print("既存Webhookの署名シークレットが必要です。", file=sys.stderr)
+  raise SystemExit(1)
 print(generated_secret)
 ')"; then
   fail "Stripe設定を確認できないため保存を中止しました。上の案内を修正して再実行してください。"
