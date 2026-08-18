@@ -37,6 +37,7 @@ FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zi
 FLOW_HARMONY_PRODUCT_ID = "flow-harmony"
 FLOW_HARMONY_PRODUCT_NAME = "Flow Harmony オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
+FLOW_HARMONY_SALES_ENABLED = False
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -1478,8 +1479,9 @@ def create_app(
                 "product_id": FLOW_HARMONY_PRODUCT_ID,
                 "name": FLOW_HARMONY_PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": True,
-                "checkout_available": configuration["ready"]
+                "enabled": FLOW_HARMONY_SALES_ENABLED,
+                "checkout_available": FLOW_HARMONY_SALES_ENABLED
+                and configuration["ready"]
                 and flow_harmony_price_is_ready(configuration),
             }
         )
@@ -1488,6 +1490,8 @@ def create_app(
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
+        if not FLOW_HARMONY_SALES_ENABLED:
+            return store_json({"error": "近日公開予定です。"}, 503)
         configuration = flow_harmony_configuration()
         if not configuration["ready"] or not flow_harmony_price_is_ready(configuration):
             return store_json({"error": "決済機能を準備中です。"}, 503)
