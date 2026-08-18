@@ -1055,6 +1055,12 @@ class StoreTest(unittest.TestCase):
             self.assertIn("index.html", archive.namelist())
             self.assertIn("README.txt", archive.namelist())
 
+    def test_tracked_metronome_archive_matches_web_app_source(self):
+        with ZipFile(product_builder.OUTPUT_FILE) as archive:
+            archived_app = archive.read("index.html")
+
+        self.assertEqual(archived_app, product_builder.SOURCE_FILE.read_bytes())
+
     def test_product_builder_keeps_existing_archive_when_source_is_missing(self):
         source_file = self.base_path / "missing.html"
         output_file = self.base_path / "existing-product.zip"
