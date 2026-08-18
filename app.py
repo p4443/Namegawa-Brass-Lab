@@ -134,11 +134,11 @@ def is_allowed_lesson_start(lesson_type, preferred_time, available_times):
 
 
 WEEKDAY_RESERVATION_TIMES = {
-    0: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
-    1: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
-    2: time_range("06:45", "08:00") | time_range("20:30", "21:00"),
-    3: time_range("06:45", "11:00"),
-    4: time_range("06:45", "16:00") | {CONSULTATION_TIME},
+    0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    2: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    3: time_range("06:45", "12:00"),
+    4: time_range("06:45", "17:00") | {CONSULTATION_TIME},
     5: {CONSULTATION_TIME},
     6: {CONSULTATION_TIME},
 }
@@ -1156,7 +1156,7 @@ def create_app(
 
     @app.get("/")
     def index():
-        return render_template("index.html", updates=get_updates())
+        return render_template("index.html")
 
     @app.get("/favicon.ico")
     def favicon():
@@ -1171,6 +1171,10 @@ def create_app(
         response.headers["Referrer-Policy"] = "no-referrer"
         return response
 
+    @app.get("/lesson/application-form.html")
+    def lesson_application_form():
+        return render_template("lesson/application-form.html")
+
     @app.get("/products/")
     def products():
         response = make_response(render_template("products/index.html"))
@@ -1183,6 +1187,10 @@ def create_app(
             "legal/index.html",
             product_price_yen=store_configuration()["price_yen"],
         )
+
+    @app.get("/legal/privacy-policy.html")
+    def privacy_policy():
+        return render_template("legal/privacy-policy.html")
 
     @app.get("/schedule/")
     def schedule():

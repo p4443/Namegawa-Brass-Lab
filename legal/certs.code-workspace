@@ -1,0 +1,46 @@
+{
+	"folders": [
+		{
+			"path": "../certs"
+		},
+		{
+			"path": "../data"
+		},
+		{
+			"path": "../google-apps-script"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../lesson"
+		},
+		{
+			"path": "../logs"
+		},
+		{
+			"path": "../music App"
+		},
+		{
+			"path": "../pdf"
+		},
+		{
+			"path": "../private"
+		},
+		{
+			"path": "../products"
+		},
+		{
+			"path": "../schedule"
+		},
+		{
+			"path": "../tests"
+		},
+		{
+			"path": "../video"
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "certs"
+	}
+}

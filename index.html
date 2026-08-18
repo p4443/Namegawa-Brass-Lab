@@ -326,11 +326,13 @@
     }
 
     .updates-window {
+      width: 100%;
+      max-width: 980px;
       height: 520px;
+      margin: 0 auto;
       overflow-y: auto;
       padding: 4px 10px 16px 4px;
       scrollbar-gutter: stable;
-      overscroll-behavior: contain;
     }
 
     .updates-grid {
@@ -803,6 +805,45 @@
       grid-column: span 2;
     }
 
+    .events-service-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .service-card-events-visual {
+      position: relative;
+      min-height: 220px;
+      margin: 0;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #e2e8f0;
+    }
+
+    .service-card-events-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .service-card-events-visual::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 48%;
+      background: linear-gradient(to bottom, rgba(241, 245, 249, 0), rgba(71, 85, 105, 0.42));
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, #000 38%);
+      mask-image: linear-gradient(to bottom, transparent, #000 38%);
+      pointer-events: none;
+    }
+
     .service-card h3 {
       font-size: 1.3rem;
       color: var(--primary-color);
@@ -1153,8 +1194,29 @@
       flex-wrap: wrap;
     }
 
+    .footer-links a[href="lesson/"] {
+      font-size: 0.84rem;
+      white-space: nowrap;
+    }
+
     .footer-links a:hover {
       color: #fff;
+    }
+
+    .footer-address {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 0.84rem;
+      font-style: normal;
+      line-height: 1.7;
+    }
+
+    .footer-address span {
+      display: block;
+    }
+
+    .footer-address span:last-child {
+      white-space: nowrap;
     }
 
     .copyright {
@@ -1214,6 +1276,35 @@
     }
 
     @media (max-width: 600px) {
+      .events-service-layout {
+        grid-template-columns: minmax(0, 1.35fr) minmax(108px, 0.65fr);
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .service-card-events-visual {
+        min-height: 0;
+        aspect-ratio: auto;
+      }
+
+      .service-card-events h3 {
+        font-size: 1rem;
+        line-height: 1.35;
+        margin-bottom: 10px;
+      }
+
+      .service-card-events ul {
+        margin-bottom: 0;
+      }
+
+      .service-card-events li {
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 6px;
+        font-size: 0.76rem;
+        line-height: 1.45;
+      }
+
       .mobile-break {
         display: block;
       }
@@ -1435,44 +1526,10 @@
           <button class="updates-admin-toggle" id="updates-admin-toggle" type="button" aria-expanded="false" aria-controls="updates-editor">管理者編集</button>
         </div>
       </div>
-      {% if updates %}
       <div class="updates-window" id="updates-window" tabindex="0" aria-label="月別のお知らせ一覧">
-        <div class="updates-grid" id="updates-grid">
-        {% for update in updates %}
-        <article class="update-card" data-update-index="{{ update.index }}" data-update-date="{{ update.date }}" data-update-category="{{ update.category }}" data-update-content="{{ update.content }}" data-update-media-type="{{ update.media_type }}" data-update-media-url="{{ update.media_url }}">
-          <div class="update-media">
-            {% if update.media_type == "image" %}
-            <a class="update-media-link update-image-link" href="{{ update.media_url }}" target="_blank" rel="noopener" aria-label="{{ update.content }}の写真を見る">写真を見る</a>
-            {% elif update.media_type == "video" %}
-            <a class="update-media-link update-video-link" href="{{ update.media_url }}" target="_blank" rel="noopener" aria-label="{{ update.content }}をYouTubeで見る">
-              <span class="update-video-icon" aria-hidden="true">▶</span>
-              <span>YouTubeで見る</span>
-            </a>
-            {% elif update.media_type == "pdf" %}
-            <a class="update-media-link" href="{{ update.media_url }}" target="_blank" rel="noopener">資料を見る</a>
-            {% else %}
-            <span class="update-media-placeholder">NAMEGAWA BRASS LAB</span>
-            {% endif %}
-          </div>
-          <div class="update-card-body">
-            <div class="update-meta">
-              <time datetime="{{ update.date }}">{{ update.date }}</time>
-              <span class="update-category">{{ update.category }}</span>
-            </div>
-            <p>{{ update.content }}</p>
-          </div>
-          <div class="update-admin-actions" hidden>
-            <button class="update-edit" type="button" aria-label="{{ update.date }} {{ update.category }}のお知らせを変更">変更</button>
-            <button class="update-delete" type="button" aria-label="{{ update.date }} {{ update.category }}のお知らせを削除">削除</button>
-          </div>
-        </article>
-        {% endfor %}
-        </div>
-        <p class="updates-empty" id="updates-empty" hidden>この月のお知らせはありません。</p>
+        <div class="updates-grid" id="updates-grid"></div>
+        <p class="updates-empty" id="updates-empty">お知らせを読み込んでいます。</p>
       </div>
-      {% else %}
-      <p class="section-desc">現在、新しいお知らせはありません。</p>
-      {% endif %}
 
       <section class="updates-editor" id="updates-editor" aria-labelledby="updates-editor-title" hidden>
         <div class="updates-editor-header">
@@ -1621,15 +1678,20 @@
         </div>
 
         <div class="service-card service-card-events" id="events">
-          <div>
-            <h3>イベント企画・プロデュース／輸送業務</h3>
-            <ul>
-              <li>トランペット音楽の魅力の公演企画・地域音楽イベントの企画</li>
-              <li>体験型音楽ワークショップの開催</li>
-              <li>Web集客と連動したイベントデザイン・運営支援</li>
-              <li>イベント機材・荷物の搬入出と大切な楽器の安全な輸送</li>
-              <li>行事単位・定期契約など輸送業務の委託に柔軟対応</li>
-            </ul>
+          <div class="events-service-layout">
+            <div>
+              <h3>イベント企画・プロデュース／輸送業務</h3>
+              <ul>
+                <li>トランペット音楽の魅力の公演企画・地域音楽イベントの企画</li>
+                <li>体験型音楽ワークショップの開催</li>
+                <li>Web集客と連動したイベントデザイン・運営支援</li>
+                <li>イベント機材・荷物の搬入出と大切な楽器の安全な輸送</li>
+                <li>行事単位・定期契約など輸送業務の委託に柔軟対応</li>
+              </ul>
+            </div>
+            <figure class="service-card-events-visual">
+              <img src="data/media/event-preschool-performance.png" alt="保育園で子どもたちが演奏を鑑賞している様子" loading="lazy">
+            </figure>
           </div>
           <a href="pdf/" class="btn btn-primary" style="margin-top:15px;">イベント企画PDFを見る</a>
           <a href="#contact" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
@@ -1697,7 +1759,11 @@
       <div class="footer-content">
         <div>
           <h3 style="color:#fff; margin-bottom: 10px;">なめがわブラス・ラボ</h3>
-          <p style="font-size: 0.9rem;">代表：佐々木久和 / 埼玉県比企郡滑川町</p>
+          <p style="font-size: 0.9rem;">代表：佐々木久和</p>
+          <address class="footer-address">
+            <span>〒355-0815</span>
+            <span>埼玉県比企郡滑川町月の輪5丁目1-3</span>
+          </address>
         </div>
         <div class="footer-links">
           <a href="#profile">ごあいさつ</a>
@@ -1706,7 +1772,7 @@
           <a href="lesson/">kazooささきトランペット教室</a>
           <a href="#trumpet">事業・サービス内容</a>
           <a href="#access">アクセス</a>
-          <a href="#">プライバシーポリシー</a>
+          <a href="legal/privacy-policy.html">プライバシーポリシー</a>
         </div>
       </div>
       <div class="copyright">
@@ -1731,7 +1797,8 @@
     });
 
     const updatesMonth = document.getElementById('updates-month');
-    const updateCards = [...document.querySelectorAll('.update-card')];
+    const updatesGrid = document.getElementById('updates-grid');
+    let updateCards = [];
     const updatesEmpty = document.getElementById('updates-empty');
     const updatesAdminToggle = document.getElementById('updates-admin-toggle');
     const updatesEditor = document.getElementById('updates-editor');
@@ -1749,6 +1816,109 @@
     const updatesEditorSave = document.getElementById('updates-editor-save');
     const updatesEditorCancel = document.getElementById('updates-editor-cancel');
     let updatesEditorKey = sessionStorage.getItem('updatesEditorPassword') || '';
+    const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
+    const updatesApiCandidates = location.hostname.endsWith('github.io') || location.protocol === 'file:'
+      ? [renderUpdatesApi]
+      : ['/api/updates', renderUpdatesApi];
+
+    function updateMedia(update) {
+      const media = document.createElement('div');
+      media.className = 'update-media';
+      if (!update.media_type || !update.media_url) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'update-media-placeholder';
+        placeholder.textContent = 'NAMEGAWA BRASS LAB';
+        media.appendChild(placeholder);
+        return media;
+      }
+
+      const link = document.createElement('a');
+      link.className = `update-media-link${update.media_type === 'image' ? ' update-image-link' : ''}${update.media_type === 'video' ? ' update-video-link' : ''}`;
+      link.href = update.media_url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      if (update.media_type === 'video') {
+        const icon = document.createElement('span');
+        icon.className = 'update-video-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '▶';
+        link.append(icon, document.createTextNode('YouTubeで見る'));
+        link.setAttribute('aria-label', `${update.content}をYouTubeで見る`);
+      } else {
+        link.textContent = update.media_type === 'image' ? '写真を見る' : '資料を見る';
+        link.setAttribute('aria-label', `${update.content}の${update.media_type === 'image' ? '写真' : '資料'}を見る`);
+      }
+      media.appendChild(link);
+      return media;
+    }
+
+    function createUpdateCard(update) {
+      const card = document.createElement('article');
+      card.className = 'update-card';
+      card.dataset.updateIndex = String(update.index ?? '');
+      card.dataset.updateDate = String(update.date || '');
+      card.dataset.updateCategory = String(update.category || '');
+      card.dataset.updateContent = String(update.content || '');
+      card.dataset.updateMediaType = String(update.media_type || '');
+      card.dataset.updateMediaUrl = String(update.media_url || '');
+      card.appendChild(updateMedia(update));
+
+      const body = document.createElement('div');
+      body.className = 'update-card-body';
+      const meta = document.createElement('div');
+      meta.className = 'update-meta';
+      const date = document.createElement('time');
+      date.dateTime = card.dataset.updateDate;
+      date.textContent = card.dataset.updateDate;
+      const category = document.createElement('span');
+      category.className = 'update-category';
+      category.textContent = card.dataset.updateCategory;
+      const content = document.createElement('p');
+      content.textContent = card.dataset.updateContent;
+      meta.append(date, category);
+      body.append(meta, content);
+      card.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'update-admin-actions';
+      actions.hidden = true;
+      const editButton = document.createElement('button');
+      editButton.className = 'update-edit';
+      editButton.type = 'button';
+      editButton.textContent = '変更';
+      editButton.setAttribute('aria-label', `${card.dataset.updateDate} ${card.dataset.updateCategory}のお知らせを変更`);
+      editButton.addEventListener('click', () => beginUpdateEdit(card));
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'update-delete';
+      deleteButton.type = 'button';
+      deleteButton.textContent = '削除';
+      deleteButton.setAttribute('aria-label', `${card.dataset.updateDate} ${card.dataset.updateCategory}のお知らせを削除`);
+      deleteButton.addEventListener('click', () => deleteUpdate(card));
+      actions.append(editButton, deleteButton);
+      card.appendChild(actions);
+      return card;
+    }
+
+    async function loadPublicUpdates() {
+      let lastError;
+      for (const endpoint of updatesApiCandidates) {
+        try {
+          const response = await fetch(endpoint);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const updates = await response.json();
+          if (!Array.isArray(updates)) throw new Error('Invalid updates response');
+          updatesGrid.replaceChildren(...updates.map(createUpdateCard));
+          updateCards = [...updatesGrid.querySelectorAll('.update-card')];
+          initializeUpdateMonths();
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      console.error(lastError);
+      updatesEmpty.hidden = false;
+      updatesEmpty.textContent = 'お知らせを読み込めませんでした。時間をおいて再度お試しください。';
+    }
 
     function monthLabel(month) {
       const [year, monthNumber] = month.split('-');
@@ -1756,7 +1926,12 @@
     }
 
     function initializeUpdateMonths() {
-      if (!updatesMonth || !updateCards.length) return;
+      updatesMonth.replaceChildren();
+      if (!updateCards.length) {
+        updatesEmpty.hidden = false;
+        updatesEmpty.textContent = '現在、新しいお知らせはありません。';
+        return;
+      }
       const months = [...new Set(updateCards.map(card => card.dataset.updateDate.slice(0, 7)))].sort().reverse();
       const savedMonth = sessionStorage.getItem('updatesSelectedMonth');
       months.forEach(month => {
@@ -1779,7 +1954,6 @@
       });
       if (updatesEmpty) updatesEmpty.hidden = visibleCount > 0;
       sessionStorage.setItem('updatesSelectedMonth', updatesMonth.value);
-      document.getElementById('updates-window')?.scrollTo({ top: 0 });
     }
 
     function setUpdatesEditorStatus(message, state = '') {
@@ -1864,7 +2038,7 @@
     }
 
     updatesMonth?.addEventListener('change', filterUpdatesByMonth);
-    initializeUpdateMonths();
+    loadPublicUpdates();
 
     updatesAdminToggle?.addEventListener('click', async () => {
       updatesEditor.hidden = !updatesEditor.hidden;
@@ -1959,11 +2133,6 @@
         actions.hidden = true;
       });
       setUpdatesEditorStatus('');
-    });
-
-    document.querySelectorAll('.update-card').forEach(card => {
-      card.querySelector('.update-edit')?.addEventListener('click', () => beginUpdateEdit(card));
-      card.querySelector('.update-delete')?.addEventListener('click', () => deleteUpdate(card));
     });
 
   </script>

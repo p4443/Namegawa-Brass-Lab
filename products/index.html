@@ -56,6 +56,29 @@
     .section-title { color: var(--primary-color); font-size: 2rem; text-align: center; }
     .section-desc { margin: 8px 0 40px; color: var(--text-muted); text-align: center; }
 
+    .upcoming-app {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 30px;
+      margin-bottom: 24px;
+      padding: 26px 30px;
+      border: 1px solid var(--border-color);
+      border-left: 5px solid var(--accent-color);
+      border-radius: 8px;
+      background: var(--bg-white);
+      box-shadow: var(--shadow-sm);
+    }
+    .upcoming-app-label { color: var(--accent-hover); font-size: 0.76rem; font-weight: 800; }
+    .upcoming-app h2 { margin-top: 4px; color: #0f172a; font-size: 1.35rem; }
+    .upcoming-app p { margin-top: 6px; color: var(--text-muted); font-size: 0.9rem; }
+    .upcoming-app-features { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 16px; padding: 0; list-style: none; }
+    .upcoming-app-features li { padding: 5px 9px; border: 1px solid #bfdbfe; border-radius: 4px; color: var(--primary-hover); background: #eff6ff; font-size: 0.75rem; font-weight: 700; }
+    .upcoming-app-meta { min-width: 180px; padding-left: 26px; border-left: 1px solid var(--border-color); text-align: right; }
+    .upcoming-app-price { display: block; color: #0f172a; font-size: 1.2rem; font-weight: 800; }
+    .upcoming-app-price-note { display: block; margin-top: 2px; color: var(--text-muted); font-size: 0.7rem; }
+    .upcoming-app-status { display: inline-block; margin-top: 12px; padding: 7px 11px; border-radius: 4px; color: #92400e; background: #fef3c7; font-size: 0.78rem; font-weight: 800; }
+
     .product-feature { overflow: hidden; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); box-shadow: var(--shadow-md); }
     .product-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 30px; border-bottom: 1px solid var(--border-color); }
     .product-label { display: inline-block; margin-bottom: 5px; color: var(--accent-hover); font-size: 0.76rem; font-weight: 800; }
@@ -102,10 +125,13 @@
     .contact p { margin: 10px 0 24px; opacity: 0.9; }
     .contact-link { display: inline-flex; min-height: 48px; align-items: center; padding: 12px 28px; border-radius: 50px; color: #ffffff; background: var(--accent-color); font-weight: 800; }
     footer { padding: 28px 20px; color: #94a3b8; background: #0f172a; text-align: center; font-size: 0.8rem; }
+    footer a { margin-right: 16px; color: #ffffff; text-decoration: underline; }
 
     @media (max-width: 820px) {
       .hero-grid, .store-panel, .future-grid { grid-template-columns: 1fr; }
       .hero-mark { min-height: 190px; }
+      .upcoming-app { grid-template-columns: 1fr; }
+      .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
     }
@@ -158,12 +184,31 @@
     <section class="catalog" id="products" aria-labelledby="products-title">
       <div class="container">
         <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
-        <p class="section-desc">現在公開中の商品を、このページで体験・購入できます</p>
+        <p class="section-desc">公開中・公開予定のアプリをご案内します</p>
+
+        <article class="upcoming-app" id="flow-harmony">
+          <div>
+            <span class="upcoming-app-label">COMING SOON</span>
+            <h2>Flow Harmony（フロー・ハーモニー）</h2>
+            <p>演奏した音をリアルタイムで検知し、自分の音色に寄り添うハーモニーを返すトランペット練習アプリです。</p>
+            <ul class="upcoming-app-features" aria-label="主な機能">
+              <li>12音程ハーモニー</li>
+              <li>My Tone音色分析</li>
+              <li>演奏録音</li>
+              <li>Bluetooth連携</li>
+            </ul>
+          </div>
+          <div class="upcoming-app-meta" aria-label="販売予定情報">
+            <span class="upcoming-app-price">1,980円</span>
+            <span class="upcoming-app-price-note">永久ライセンス予定価格</span>
+            <span class="upcoming-app-status">公開準備中</span>
+          </div>
+        </article>
 
         <article class="product-feature" id="metronome">
           <header class="product-heading">
             <div>
-              <span class="product-label">NOW AVAILABLE</span>
+              <span class="product-label">公開中のアプリ・Web版無料</span>
               <h2>トランペット練習メトロノーム</h2>
               <p>ブレストレーニング、可変テンポ、連符分割、音色切替を一つにまとめた練習アプリです。</p>
             </div>
@@ -238,7 +283,7 @@
     </section>
   </main>
 
-  <footer>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
+  <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
   <script>
     const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";

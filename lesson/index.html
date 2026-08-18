@@ -512,6 +512,35 @@
       grid-column: 1 / -1;
     }
 
+    .form-note {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .form-agreement {
+      display: flex;
+      grid-column: 1 / -1;
+      align-items: flex-start;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .form-agreement input {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--gold);
+    }
+
+    .form-agreement a {
+      color: #f1d46d;
+    }
+
     .form-field label {
       color: rgba(255, 255, 255, 0.9);
       font-size: 0.78rem;
@@ -633,11 +662,44 @@
     }
 
 
+    .footer-bottom {
+      display: flex;
+      width: min(100%, 1000px);
+      margin: 0 auto;
+      padding-top: 22px;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-direction: column;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      text-align: center;
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px 20px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.78rem;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.88);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus-visible {
+      color: #ffffff;
+    }
+
     .copyright {
       margin: 0;
       color: rgba(255, 255, 255, 0.58);
-      text-align: center;
       font-size: 0.76rem;
+      white-space: nowrap;
     }
 
     /* Main-site visual system */
@@ -1025,7 +1087,18 @@
         align-items: stretch;
         flex-direction: column;
       }
-    }
+
+      .footer-bottom {
+        align-items: center;
+        gap: 12px;
+      }
+
+      .footer-links {
+        align-items: center;
+        flex-direction: column;
+        gap: 8px;
+      }
+
 
     @media (prefers-reduced-motion: reduce) {
       html {
@@ -1148,6 +1221,7 @@
       <div class="actions">
         <a class="button button-primary" href="mailto:zuomuj924@gmail.com">メールでお問い合わせ</a>
         <a class="button" href="tel:09057690830">電話する（10:00〜18:00）</a>
+        <a class="button" href="application-form.html">受講申込書を表示・印刷</a>
       </div>
     </section>
   </main>
@@ -1166,9 +1240,9 @@
         <h2 id="reservation-title">レッスン予約</h2>
         <p>予約できる期間は、明日から1か月先までです。同じメールアドレスで予約できる今後の予定は、最大4枠までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
         <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
-          <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜08:00</span><span class="reservation-time-range">20:30〜21:00</span></dd></div>
-          <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜11:00</span></dd></div>
-          <div><dt>金曜日</dt><dd><span>6:45〜16:00／それ以外は要相談</span></dd></div>
+          <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜09:00</span><span class="reservation-time-range">20:30〜22:00</span></dd></div>
+          <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜12:00</span></dd></div>
+          <div><dt>金曜日</dt><dd><span>06:45〜17:00／それ以外は要相談</span></dd></div>
           <div><dt>土・日</dt><dd><span>土・日：要相談</span></dd></div>
         </dl>
         <p class="price-note">体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
@@ -1199,6 +1273,11 @@
           </select>
         </div>
         <div class="form-field">
+          <label>所要時間</label>
+          <p class="form-note" id="reservation-duration" aria-live="polite">レッスン種別を選択してください</p>
+          <input id="reservation-duration-minutes" name="duration_minutes" type="hidden" value="">
+        </div>
+        <div class="form-field">
           <label for="reservation-date">希望日<span class="required">必須</span></label>
           <input id="reservation-date" name="preferred_date" type="date" required>
         </div>
@@ -1216,6 +1295,10 @@
           <label for="reservation-website">ウェブサイト</label>
           <input id="reservation-website" name="website" type="text" tabindex="-1" autocomplete="off">
         </div>
+        <label class="form-agreement" for="reservation-privacy-agreed">
+          <input id="reservation-privacy-agreed" name="privacy_agreed" type="checkbox" value="同意する" required>
+          <span><a href="../legal/privacy-policy.html" target="_blank" rel="noopener">トランペット教室プライバシーポリシー</a>を確認し、個人情報の取り扱いに同意します。<span class="required">必須</span></span>
+        </label>
         <div class="form-actions">
           <button class="reservation-submit" type="submit">予約希望を送信する</button>
           <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
@@ -1238,11 +1321,19 @@
         </form>
       </details>
     </section>
-    <p class="copyright">© なめがわブラス・ラボ</p>
+    <div class="footer-bottom">
+      <nav class="footer-links" aria-label="フッターナビゲーション">
+        <a href="/lesson/application-form.html">受講申込書</a>
+        <a href="/legal/privacy-policy.html">トランペット教室プライバシーポリシー</a>
+      </nav>
+      <p class="copyright">© なめがわブラス・ラボ</p>
+    </div>
   </footer>
   <script>
     const reservationForm = document.getElementById("reservation-form");
     const reservationType = document.getElementById("reservation-type");
+    const reservationDuration = document.getElementById("reservation-duration");
+    const reservationDurationMinutes = document.getElementById("reservation-duration-minutes");
     const reservationDate = document.getElementById("reservation-date");
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
@@ -1305,11 +1396,11 @@
 
     const timesByDay = {
       0: ["要相談"],
-      1: [...makeTimeRange(6, 45, 8, 0), ...makeTimeRange(20, 30, 21, 0)],
-      2: [...makeTimeRange(6, 45, 8, 0), ...makeTimeRange(20, 30, 21, 0)],
-      3: [...makeTimeRange(6, 45, 8, 0), ...makeTimeRange(20, 30, 21, 0)],
-      4: makeTimeRange(6, 45, 11, 0),
-      5: [...makeTimeRange(6, 45, 16, 0), "要相談"],
+      1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      2: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      3: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      4: makeTimeRange(6, 45, 12, 0),
+      5: [...makeTimeRange(6, 45, 17, 0), "要相談"],
       6: ["要相談"],
     };
 
@@ -1325,6 +1416,16 @@
       "高校生以上": 60,
       "グループ・部活動指導": null,
     };
+
+    function updateReservationDuration() {
+      const durationMinutes = lessonDurations[reservationType.value];
+      reservationDuration.textContent = durationMinutes
+        ? `${durationMinutes}分`
+        : reservationType.value === "グループ・部活動指導"
+          ? "要相談"
+          : "レッスン種別を選択してください";
+      reservationDurationMinutes.value = durationMinutes || "";
+    }
 
     function availableTimesForLesson(lessonType, day) {
       const dayTimes = timesByDay[day] || [];
@@ -1533,6 +1634,7 @@
 
     reservationDate.addEventListener("change", updateReservationTimeOptions);
     reservationType.addEventListener("change", () => {
+      updateReservationDuration();
       if (reservationDate.value) {
         updateReservationTimeOptions();
       }
@@ -1545,6 +1647,7 @@
       const requestedTime = parameters.get("time") || "";
       if ([...reservationType.options].some((option) => option.value === requestedType)) {
         reservationType.value = requestedType;
+        updateReservationDuration();
       }
       if (requestedDate < reservationDate.min || requestedDate > reservationDate.max) {
         return;
@@ -1632,6 +1735,7 @@
           return;
         }
         reservationForm.reset();
+        updateReservationDuration();
         reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
         reservationTime.disabled = true;
         reservationStatus.dataset.state = "success";
