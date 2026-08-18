@@ -1172,8 +1172,14 @@ def create_app(
                     is (configuration["stripe_mode"] == "live"),
                 )
             )
-        except Exception:
-            app.logger.error("Flow Harmony Stripe price readiness check failed")
+        except Exception as exc:
+            diagnostic_code = str(getattr(exc, "code", "") or type(exc).__name__)
+            if re.fullmatch(r"[A-Za-z0-9_.-]{1,80}", diagnostic_code) is None:
+                diagnostic_code = type(exc).__name__
+            app.logger.error(
+                "Flow Harmony Stripe price readiness check failed: %s",
+                diagnostic_code,
+            )
             return False
 
     def retrieve_flow_harmony_checkout(session_id, configuration):
