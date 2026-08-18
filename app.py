@@ -33,6 +33,10 @@ PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
 PRODUCT_PRICE_YEN = 500
 PRODUCT_REQUIRED_FILES = {"index.html", "README.txt"}
+FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zip"
+FLOW_HARMONY_PRODUCT_ID = "flow-harmony"
+FLOW_HARMONY_PRODUCT_NAME = "Flow Harmony オフライン版"
+FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -847,13 +851,18 @@ def create_app(
         parsed = urlparse(site_url)
         return f"{parsed.scheme}://{parsed.netloc}"
 
-    def checkout_payment_is_valid(checkout, expected_price_yen, expected_livemode):
+    def checkout_payment_is_valid(
+        checkout,
+        expected_price_yen,
+        expected_livemode,
+        expected_product_id=PRODUCT_ID,
+    ):
         metadata = stripe_value(checkout, "metadata", {}) or {}
         payment_intent = stripe_value(checkout, "payment_intent")
         latest_charge = stripe_value(payment_intent, "latest_charge")
         return all(
             (
-                stripe_value(metadata, "product_id", "") == PRODUCT_ID,
+                stripe_value(metadata, "product_id", "") == expected_product_id,
                 stripe_value(checkout, "mode") == "payment",
                 stripe_value(checkout, "status") == "complete",
                 stripe_value(checkout, "payment_status") == "paid",
@@ -1107,6 +1116,99 @@ def create_app(
             product_validation_cache.update(signature=signature, valid=valid)
             return valid
 
+    def flow_harmony_archive_is_valid():
+        try:
+            with ZipFile(FLOW_HARMONY_PRODUCT_FILE) as archive:
+                return (
+                    PRODUCT_REQUIRED_FILES.issubset(archive.namelist())
+                    and archive.testzip() is None
+                )
+        except (BadZipFile, OSError, RuntimeError):
+            return False
+
+    def flow_harmony_configuration():
+        price_text = os.environ.get(
+            "FLOW_HARMONY_PRICE_YEN", str(FLOW_HARMONY_PRODUCT_PRICE_YEN)
+        )
+        try:
+            price_yen = int(price_text)
+        except ValueError:
+            price_yen = FLOW_HARMONY_PRODUCT_PRICE_YEN
+        price_id = os.environ.get("STRIPE_FLOW_HARMONY_PRICE_ID", "").strip()
+        required = {
+            "STRIPE_SECRET_KEY": stripe_secret_mode() != "invalid",
+            "STRIPE_WEBHOOK_SECRET": os.environ.get(
+                "STRIPE_WEBHOOK_SECRET", ""
+            ).strip().startswith("whsec_"),
+            "STRIPE_FLOW_HARMONY_PRICE_ID": price_id.startswith("price_"),
+            "DOWNLOAD_TOKEN_SECRET": len(
+                os.environ.get("DOWNLOAD_TOKEN_SECRET", "").strip()
+            )
+            >= 32,
+            "PUBLIC_SITE_URL": bool(public_site_url()),
+            "FLOW_HARMONY_PRICE_YEN": price_yen == FLOW_HARMONY_PRODUCT_PRICE_YEN,
+        }
+        product_ready = flow_harmony_archive_is_valid()
+        return {
+            "price_yen": price_yen,
+            "price_id": price_id,
+            "site_url": public_site_url(),
+            "stripe_mode": stripe_secret_mode(),
+            "ready": all(required.values()) and product_ready,
+            "missing": [name for name, valid in required.items() if not valid]
+            + ([] if product_ready else ["FLOW_HARMONY_PRODUCT_FILE_INVALID"]),
+        }
+
+    def flow_harmony_price_is_ready(configuration):
+        try:
+            price = stripe_module().Price.retrieve(configuration["price_id"])
+            return all(
+                (
+                    stripe_value(price, "active") is True,
+                    stripe_value(price, "type") == "one_time",
+                    stripe_value(price, "currency") == "jpy",
+                    stripe_value(price, "unit_amount") == configuration["price_yen"],
+                    stripe_value(price, "livemode")
+                    is (configuration["stripe_mode"] == "live"),
+                )
+            )
+        except Exception:
+            app.logger.error("Flow Harmony Stripe price readiness check failed")
+            return False
+
+    def retrieve_flow_harmony_checkout(session_id, configuration):
+        checkout = stripe_module().checkout.Session.retrieve(
+            session_id,
+            expand=["payment_intent.latest_charge"],
+        )
+        if not checkout_payment_is_valid(
+            checkout,
+            configuration["price_yen"],
+            configuration["stripe_mode"] == "live",
+            FLOW_HARMONY_PRODUCT_ID,
+        ):
+            return None
+        return checkout
+
+    def personalized_flow_harmony_product(session_id):
+        license_text = (
+            "Flow Harmony オフライン版 利用ライセンス\n\n"
+            "本商品は購入者本人のみ利用できます。第三者への譲渡、共有、再配布、\n"
+            "販売、公衆送信を禁止します。購入者本人が所有する複数端末では利用できます。\n\n"
+            f"購入参照ID: {purchase_reference(session_id)}\n"
+        ).encode("utf-8")
+        output = io.BytesIO()
+        with ZipFile(FLOW_HARMONY_PRODUCT_FILE) as source, ZipFile(
+            output, "w", compression=ZIP_DEFLATED
+        ) as archive:
+            for item in source.infolist():
+                archive.writestr(item, source.read(item.filename))
+            license_info = ZipInfo("LICENSE.txt", date_time=(2026, 1, 1, 0, 0, 0))
+            license_info.compress_type = ZIP_DEFLATED
+            archive.writestr(license_info, license_text)
+        output.seek(0)
+        return output
+
     def store_configuration():
         price_text = os.environ.get("METRONOME_PRICE_YEN", str(PRODUCT_PRICE_YEN))
         try:
@@ -1162,6 +1264,12 @@ def create_app(
     def favicon():
         return app.response_class(status=204)
 
+    @app.get("/health")
+    def health():
+        response = jsonify({"status": "ok"})
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
     @app.get("/lesson/")
     def lesson():
         response = make_response(render_template("lesson/index.html"))
@@ -1178,6 +1286,16 @@ def create_app(
     @app.get("/products/")
     def products():
         response = make_response(render_template("products/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return response
+
+    @app.get("/download-guide/")
+    def download_guide():
+        return render_template("download-guide/index.html")
+
+    @app.get("/flow-harmony/")
+    def flow_harmony():
+        response = make_response(render_template("flow-harmony/index.html"))
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return response
 
@@ -1250,14 +1368,22 @@ def create_app(
             return with_store_cors(response)
 
         configuration = store_configuration()
+        flow_configuration = flow_harmony_configuration()
         checks = {
             "configuration": configuration["ready"],
             "product_archive": product_archive_is_valid(),
             "public_site_url": bool(configuration["site_url"]),
             "stripe_price": False,
+            "flow_harmony_configuration": flow_configuration["ready"],
+            "flow_harmony_product_archive": flow_harmony_archive_is_valid(),
+            "flow_harmony_stripe_price": False,
         }
         if configuration["ready"]:
             checks["stripe_price"] = stripe_price_is_ready(configuration)
+        if flow_configuration["ready"]:
+            checks["flow_harmony_stripe_price"] = flow_harmony_price_is_ready(
+                flow_configuration
+            )
 
         ready = all(checks.values())
         response = store_json(
@@ -1268,8 +1394,10 @@ def create_app(
                 "stripe_mode": configuration["stripe_mode"],
                 "store_enabled": get_store_settings()["enabled"],
                 "price_yen": configuration["price_yen"],
+                "flow_harmony_price_yen": flow_configuration["price_yen"],
                 "checks": checks,
-                "invalid_configuration": configuration["missing"],
+                "invalid_configuration": configuration["missing"]
+                + flow_configuration["missing"],
             },
             200 if ready else 503,
         )
@@ -1341,6 +1469,145 @@ def create_app(
                 502,
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
+
+    @app.get("/api/store/flow-harmony/product")
+    def flow_harmony_store_product():
+        configuration = flow_harmony_configuration()
+        return store_json(
+            {
+                "product_id": FLOW_HARMONY_PRODUCT_ID,
+                "name": FLOW_HARMONY_PRODUCT_NAME,
+                "price_yen": configuration["price_yen"],
+                "enabled": True,
+                "checkout_available": configuration["ready"]
+                and flow_harmony_price_is_ready(configuration),
+            }
+        )
+
+    @app.route("/api/store/flow-harmony/checkout", methods=["POST", "OPTIONS"])
+    def create_flow_harmony_checkout():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        configuration = flow_harmony_configuration()
+        if not configuration["ready"] or not flow_harmony_price_is_ready(configuration):
+            return store_json({"error": "決済機能を準備中です。"}, 503)
+        payload = request.get_json(silent=True)
+        checkout_request_id = (
+            str(payload.get("checkout_request_id", "")).strip()
+            if isinstance(payload, dict)
+            else ""
+        )
+        try:
+            parsed_request_id = uuid.UUID(checkout_request_id)
+        except (ValueError, TypeError, AttributeError):
+            parsed_request_id = None
+        if parsed_request_id is None or parsed_request_id.version != 4:
+            return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+        try:
+            checkout = stripe_module().checkout.Session.create(
+                mode="payment",
+                line_items=[{"price": configuration["price_id"], "quantity": 1}],
+                client_reference_id=checkout_request_id,
+                metadata={
+                    "product_id": FLOW_HARMONY_PRODUCT_ID,
+                    "checkout_request_id": checkout_request_id,
+                    "price_yen": str(configuration["price_yen"]),
+                    "price_id": configuration["price_id"],
+                },
+                success_url=(
+                    f"{configuration['site_url']}/products/?flow_purchase=success"
+                    "&flow_session_id={CHECKOUT_SESSION_ID}#flow-harmony"
+                ),
+                cancel_url=(
+                    f"{configuration['site_url']}/products/"
+                    "?flow_purchase=cancelled#flow-harmony"
+                ),
+                idempotency_key=(
+                    f"{FLOW_HARMONY_PRODUCT_ID}:{checkout_request_id}"
+                ),
+            )
+        except Exception as exc:
+            app.logger.exception("Flow Harmony Checkout session creation failed")
+            return store_json(
+                {
+                    "error": "決済画面を開始できませんでした。",
+                    "diagnostic_code": type(exc).__name__,
+                },
+                502,
+            )
+        return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
+
+    @app.route(
+        "/api/store/flow-harmony/download-link", methods=["POST", "OPTIONS"]
+    )
+    def create_flow_harmony_download_link():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        payload = request.get_json(silent=True)
+        session_id = (
+            str(payload.get("session_id", "")).strip()
+            if isinstance(payload, dict)
+            else ""
+        )
+        if CHECKOUT_SESSION_PATTERN.fullmatch(session_id) is None:
+            return store_json({"error": "決済情報が正しくありません。"}, 400)
+        serializer = download_serializer()
+        configuration = flow_harmony_configuration()
+        if serializer is None or not configuration["ready"]:
+            return store_json({"error": "ダウンロードを準備中です。"}, 503)
+        try:
+            checkout = retrieve_flow_harmony_checkout(session_id, configuration)
+        except Exception:
+            app.logger.exception("Flow Harmony payment verification failed")
+            return store_json({"error": "決済情報を確認できませんでした。"}, 502)
+        if checkout is None:
+            return store_json({"error": "支払いの完了を確認できません。"}, 403)
+        token = serializer.dumps(
+            {"product_id": FLOW_HARMONY_PRODUCT_ID, "session_id": session_id}
+        )
+        return store_json(
+            {
+                "download_url": (
+                    f"{request.url_root.rstrip('/')}/api/store/flow-harmony/download/{token}"
+                ),
+                "expires_in": 86400,
+            }
+        )
+
+    @app.get("/api/store/flow-harmony/download/<token>")
+    def download_flow_harmony_product(token):
+        serializer = download_serializer()
+        if serializer is None:
+            return store_json({"error": "ダウンロードを準備中です。"}, 503)
+        try:
+            payload = serializer.loads(token, max_age=86400)
+        except SignatureExpired:
+            return store_json({"error": "ダウンロード期限が切れました。"}, 410)
+        except BadSignature:
+            return store_json({"error": "ダウンロードURLが正しくありません。"}, 403)
+        if payload.get("product_id") != FLOW_HARMONY_PRODUCT_ID:
+            return store_json({"error": "商品が見つかりません。"}, 404)
+        session_id = str(payload.get("session_id", "")).strip()
+        configuration = flow_harmony_configuration()
+        try:
+            checkout = retrieve_flow_harmony_checkout(session_id, configuration)
+        except Exception:
+            app.logger.exception("Flow Harmony payment revalidation failed")
+            return store_json({"error": "決済情報を再確認できませんでした。"}, 502)
+        if checkout is None:
+            return store_json({"error": "現在この商品をダウンロードできません。"}, 403)
+        if not download_is_allowed(purchase_reference(session_id)):
+            return store_json({"error": "ダウンロード回数の上限に達しました。"}, 429)
+        response = send_file(
+            personalized_flow_harmony_product(session_id),
+            as_attachment=True,
+            download_name="flow-harmony-offline.zip",
+            mimetype="application/zip",
+            conditional=True,
+        )
+        response.headers["Cache-Control"] = "private, max-age=3600"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        return with_store_cors(response)
 
     @app.post("/api/store/webhook")
     def stripe_webhook():

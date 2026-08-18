@@ -50,8 +50,10 @@ class StoreTest(unittest.TestCase):
             "STRIPE_SECRET_KEY": "sk_test_example",
             "STRIPE_WEBHOOK_SECRET": "whsec_example",
             "STRIPE_METRONOME_PRICE_ID": "price_example",
+            "STRIPE_FLOW_HARMONY_PRICE_ID": "price_flow_harmony",
             "DOWNLOAD_TOKEN_SECRET": "download-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
             "METRONOME_PRICE_YEN": "500",
+            "FLOW_HARMONY_PRICE_YEN": "1000",
             "PUBLIC_SITE_URL": "https://example.com",
         }
         self.environment_patch = patch.dict(os.environ, self.environment, clear=False)
@@ -205,6 +207,74 @@ class StoreTest(unittest.TestCase):
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
+    def test_products_embeds_free_flow_harmony_and_offers_offline_purchase(self):
+        response = self.client.get("/products/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('src="../flow-harmony/?mode=free"', html)
+        self.assertIn('id="flow-purchase-button"', html)
+        self.assertIn("Web版は無料で全機能を体験可能", html)
+
+    def test_flow_harmony_product_uses_one_thousand_yen_price(self):
+        with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
+            response = self.client.get("/api/store/flow-harmony/product")
+
+        self.assertEqual(response.status_code, 200)
+        product = response.get_json()
+        self.assertEqual(product["product_id"], "flow-harmony")
+        self.assertEqual(product["price_yen"], 1000)
+        self.assertFalse(product["checkout_available"])
+
+    def test_flow_harmony_checkout_uses_its_own_stripe_product(self):
+        stripe = self.stripe_module(amount_total=1000)
+        stripe.Price.retrieve.return_value.unit_amount = 1000
+        checkout_request_id = "66e59f96-394e-4df1-9b0b-e80b888d90fc"
+        with patch.dict(
+            os.environ,
+            {
+                "STRIPE_FLOW_HARMONY_PRICE_ID": "price_flow_harmony",
+                "FLOW_HARMONY_PRICE_YEN": "1000",
+            },
+        ), patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/flow-harmony/checkout",
+                json={"checkout_request_id": checkout_request_id},
+            )
+
+        self.assertEqual(response.status_code, 201)
+        create_kwargs = stripe.checkout.Session.create.call_args.kwargs
+        self.assertEqual(create_kwargs["line_items"][0]["price"], "price_flow_harmony")
+        self.assertEqual(create_kwargs["metadata"]["product_id"], "flow-harmony")
+        self.assertEqual(create_kwargs["metadata"]["price_yen"], "1000")
+
+    def test_paid_flow_harmony_session_downloads_personalized_archive(self):
+        stripe = self.stripe_module(amount_total=1000)
+        checkout = stripe.checkout.Session.retrieve.return_value
+        checkout.metadata = {
+            "product_id": "flow-harmony",
+            "price_yen": "1000",
+            "price_id": "price_flow_harmony",
+        }
+        stripe.Price.retrieve.return_value.unit_amount = 1000
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            link_response = self.client.post(
+                "/api/store/flow-harmony/download-link",
+                json={"session_id": "cs_test_paid"},
+            )
+            download_response = self.client.get(
+                urlparse(link_response.get_json()["download_url"]).path
+            )
+
+        self.assertEqual(link_response.status_code, 200)
+        self.assertEqual(download_response.status_code, 200)
+        self.assertEqual(download_response.mimetype, "application/zip")
+        with ZipFile(io.BytesIO(download_response.data)) as archive:
+            self.assertIn("index.html", archive.namelist())
+            license_text = archive.read("LICENSE.txt").decode("utf-8")
+        self.assertIn("Flow Harmony オフライン版 利用ライセンス", license_text)
+        self.assertIn("購入参照ID:", license_text)
+
     def test_products_offers_secure_purchase_recovery(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
@@ -224,6 +294,27 @@ class StoreTest(unittest.TestCase):
         self.assertIn('appPurchaseButton.textContent = "ダウンロード版を使用する"', html)
         self.assertIn("if (!appDownloadLink.hidden)", html)
         self.assertIn("appDownloadLink.click()", html)
+
+    def test_products_links_to_separate_download_guide(self):
+        products_response = self.client.get("/products/")
+        products_html = products_response.get_data(as_text=True)
+
+        self.assertEqual(products_response.status_code, 200)
+        self.assertEqual(products_html.count('href="../download-guide/"'), 2)
+
+        guide_response = self.client.get("/download-guide/")
+        guide_html = guide_response.get_data(as_text=True)
+
+        self.assertEqual(guide_response.status_code, 200)
+        self.assertIn("ダウンロード・使い方ガイド", guide_html)
+        self.assertIn("使いたいアプリを選ぶ", guide_html)
+        self.assertIn("購入ボタンを押す", guide_html)
+        self.assertIn("ZIPファイルをダウンロードする", guide_html)
+        self.assertIn("ZIPファイルを開く", guide_html)
+        self.assertIn("アプリを開く", guide_html)
+        self.assertIn("Androidの場合", guide_html)
+        self.assertIn("iPhone・iPadの場合", guide_html)
+        self.assertEqual(guide_html.count('<details class="device-note">'), 4)
 
     def test_products_retries_download_link_after_checkout_propagation_delay(self):
         response = self.client.get("/products/")
@@ -245,8 +336,26 @@ class StoreTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 401)
 
+    def test_public_health_is_available_without_secrets(self):
+        response = self.client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {"status": "ok"})
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+
     def test_store_health_verifies_test_price_without_exposing_secrets(self):
         stripe = self.stripe_module()
+        metronome_price = stripe.Price.retrieve.return_value
+        flow_price = types.SimpleNamespace(
+            active=True,
+            type="one_time",
+            currency="jpy",
+            unit_amount=1000,
+            livemode=False,
+        )
+        stripe.Price.retrieve.side_effect = lambda price_id: (
+            flow_price if price_id == "price_flow_harmony" else metronome_price
+        )
         with patch.dict(sys.modules, {"stripe": stripe}):
             response = self.client.get(
                 "/api/store/health",
@@ -258,8 +367,30 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(result["ready"])
         self.assertFalse(result["production_ready"])
         self.assertEqual(result["stripe_mode"], "test")
+        self.assertTrue(result["checks"]["flow_harmony_stripe_price"])
         self.assertNotIn("secret", response.get_data(as_text=True).lower())
-        stripe.Price.retrieve.assert_called_once_with("price_example")
+        self.assertEqual(
+            [call.args[0] for call in stripe.Price.retrieve.call_args_list],
+            ["price_example", "price_flow_harmony"],
+        )
+
+    def test_store_health_rejects_missing_flow_harmony_price(self):
+        stripe = self.stripe_module()
+        with patch.dict(
+            os.environ,
+            {"STRIPE_FLOW_HARMONY_PRICE_ID": ""},
+        ), patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.get(
+                "/api/store/health",
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        result = response.get_json()
+        self.assertFalse(result["checks"]["flow_harmony_configuration"])
+        self.assertIn(
+            "STRIPE_FLOW_HARMONY_PRICE_ID", result["invalid_configuration"]
+        )
 
     def test_store_health_rejects_price_amount_mismatch(self):
         stripe = self.stripe_module()
@@ -273,8 +404,45 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(response.status_code, 503)
         self.assertFalse(response.get_json()["checks"]["stripe_price"])
 
+    def test_store_health_rejects_flow_harmony_price_amount_mismatch(self):
+        stripe = self.stripe_module()
+        metronome_price = stripe.Price.retrieve.return_value
+        invalid_flow_price = types.SimpleNamespace(
+            active=True,
+            type="one_time",
+            currency="jpy",
+            unit_amount=1,
+            livemode=False,
+        )
+        stripe.Price.retrieve.side_effect = lambda price_id: (
+            invalid_flow_price
+            if price_id == "price_flow_harmony"
+            else metronome_price
+        )
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.get(
+                "/api/store/health",
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(
+            response.get_json()["checks"]["flow_harmony_stripe_price"]
+        )
+
     def test_store_health_reports_live_configuration_as_production_ready(self):
         stripe = self.stripe_module(livemode=True)
+        metronome_price = stripe.Price.retrieve.return_value
+        flow_price = types.SimpleNamespace(
+            active=True,
+            type="one_time",
+            currency="jpy",
+            unit_amount=1000,
+            livemode=True,
+        )
+        stripe.Price.retrieve.side_effect = lambda price_id: (
+            flow_price if price_id == "price_flow_harmony" else metronome_price
+        )
         with patch.dict(
             os.environ,
             {"STRIPE_SECRET_KEY": "sk_live_example"},

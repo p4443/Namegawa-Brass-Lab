@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="なめがわブラス・ラボのオフライン版アプリを購入、ダウンロードして使い始めるまでのやさしい手順です。">
+  <title>ダウンロード・使い方ガイド | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --navy: #0f2742;
+      --blue: #1a56db;
+      --blue-light: #eaf2ff;
+      --yellow: #f5b700;
+      --ink: #172033;
+      --muted: #526071;
+      --line: #d6e0ea;
+      --surface: #ffffff;
+      --background: #f4f8fb;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: var(--background); font-family: "Hiragino Sans", "Yu Gothic", sans-serif; line-height: 1.8; }
+    a { color: var(--blue); }
+    .page-header { color: #ffffff; background: var(--navy); }
+    .nav, .header-inner, .content { width: min(100% - 32px, 820px); margin: 0 auto; }
+    .nav { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; }
+    .nav a { color: #ffffff; font-size: 0.84rem; font-weight: 800; text-decoration: none; }
+    .header-inner { padding: 48px 0 52px; }
+    .eyebrow { margin: 0 0 8px; color: var(--yellow); font-size: 0.78rem; font-weight: 800; }
+    h1 { margin: 0; font-size: clamp(1.8rem, 6vw, 2.8rem); line-height: 1.35; }
+    .mobile-title-break { display: none; }
+    .header-copy { max-width: 650px; margin: 14px 0 0; color: #d9e7f5; }
+    .content { padding: 32px 0 64px; }
+    .before-start { padding: 20px 22px; border-left: 5px solid var(--yellow); background: #fff9df; }
+    .before-start h2 { margin-top: 0; }
+    h2 { margin: 0 0 12px; color: var(--navy); font-size: 1.3rem; line-height: 1.5; }
+    p { margin: 0; }
+    .steps { display: grid; gap: 16px; margin: 28px 0; padding: 0; list-style: none; counter-reset: guide-step; }
+    .step { position: relative; padding: 22px 22px 22px 76px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); counter-increment: guide-step; }
+    .step::before { position: absolute; top: 22px; left: 20px; display: grid; width: 40px; height: 40px; place-items: center; border-radius: 50%; color: #ffffff; background: var(--blue); font-weight: 900; content: counter(guide-step); }
+    .step h2 { font-size: 1.1rem; }
+    .step p + p { margin-top: 8px; }
+    .button-name { padding: 2px 7px; border: 1px solid #b7cdf8; border-radius: 4px; color: #153e93; background: var(--blue-light); font-weight: 800; }
+    .device-notes { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+    .device-note { border: 1px solid var(--line); background: #ffffff; }
+    .device-note summary { position: relative; padding: 16px 44px 16px 16px; color: var(--navy); font-weight: 800; cursor: pointer; list-style: none; }
+    .device-note summary::-webkit-details-marker { display: none; }
+    .device-note summary::after { position: absolute; top: 50%; right: 16px; color: var(--blue); font-size: 1.25rem; content: "+"; transform: translateY(-50%); }
+    .device-note[open] summary { border-bottom: 1px solid var(--line); background: var(--blue-light); }
+    .device-note[open] summary::after { content: "−"; }
+    .device-note summary:focus-visible { outline: 3px solid rgba(26, 86, 219, 0.3); outline-offset: -3px; }
+    .device-note p { padding: 14px 16px 16px; }
+    .help { margin-top: 28px; padding: 24px; color: #ffffff; background: var(--navy); }
+    .help h2 { color: #ffffff; }
+    .help a { display: inline-flex; min-height: 44px; align-items: center; margin-top: 16px; padding: 9px 16px; border-radius: 6px; color: var(--navy); background: var(--yellow); font-weight: 800; text-decoration: none; }
+    .footer { padding: 24px 16px; color: #a9bad0; background: #091a2d; font-size: 0.78rem; text-align: center; }
+
+    @media (max-width: 600px) {
+      .header-inner { padding: 36px 0 40px; }
+      .mobile-title-break { display: block; }
+      .step { padding: 70px 18px 20px; }
+      .step::before { top: 18px; left: 18px; }
+      .device-notes { grid-template-columns: 1fr; }
+    }
+
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <nav class="nav" aria-label="ページナビゲーション">
+      <a href="../">なめがわブラス・ラボ</a>
+      <a href="../products/">アプリ説明へ戻る</a>
+    </nav>
+    <div class="header-inner">
+      <p class="eyebrow">DOWNLOAD GUIDE</p>
+      <h1>ダウンロード・<span class="mobile-title-break"></span>使い方ガイド</h1>
+      <p class="header-copy">オフライン版アプリを買ってから使い始めるまでを、順番に説明します。むずかしい操作はありません。</p>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="before-start" aria-labelledby="before-title">
+      <h2 id="before-title">始める前に用意するもの</h2>
+      <p>インターネットにつながるパソコン、スマートフォンまたはタブレットと、支払いに使うカードなどを用意してください。購入に使ったメールアドレスも、あとで確認できるようにしておきましょう。</p>
+    </section>
+
+    <ol class="steps" aria-label="ダウンロード手順">
+      <li class="step">
+        <h2>使いたいアプリを選ぶ</h2>
+        <p><a href="../products/">アプリ説明のページ</a>で、使いたいアプリを選びます。無料のWeb版を先に試すと、自分のパソコンで動くか確認できます。</p>
+      </li>
+      <li class="step">
+        <h2>購入ボタンを押す</h2>
+        <p>アプリ説明にある <span class="button-name">オフライン版を購入</span> ボタンを押します。開いた支払い画面に、必要な情報を入力してください。</p>
+      </li>
+      <li class="step">
+        <h2>ZIPファイルをダウンロードする</h2>
+        <p>支払いが終わると、アプリ説明のページにダウンロードボタンが表示されます。ボタンを押して、ZIPファイルを使っている端末に保存します。</p>
+        <p><strong>大切：</strong>ダウンロードリンクが使えるのは、発行されてから24時間です。</p>
+      </li>
+      <li class="step">
+        <h2>ZIPファイルを開く</h2>
+        <p>まず、保存したZIPファイルを見つけます。ファイル名の最後に <strong>.zip</strong> と付いているものが目印です。ZIPファイルから中身を取り出す操作を「展開」または「解凍」といいます。</p>
+        <div class="device-notes">
+          <details class="device-note">
+            <summary>Windowsの場合</summary>
+            <p>「ダウンロード」フォルダを開きます。ZIPファイルを右クリックし、「すべて展開」→「展開」の順に選びます。</p>
+          </details>
+          <details class="device-note">
+            <summary>Macの場合</summary>
+            <p>Finderの「ダウンロード」を開き、ZIPファイルをダブルクリックします。同じ場所に新しいフォルダができます。</p>
+          </details>
+          <details class="device-note">
+            <summary>Androidの場合</summary>
+            <p>「Files」または「Files by Google」アプリを開き、「ダウンロード」からZIPファイルを選びます。「解凍」を押し、終わったら「完了」を押します。</p>
+          </details>
+          <details class="device-note">
+            <summary>iPhone・iPadの場合</summary>
+            <p>「ファイル」アプリを開き、「ブラウズ」→「ダウンロード」の順に進みます。ZIPファイルを1回タップすると、同じ場所に新しいフォルダができます。</p>
+          </details>
+        </div>
+      </li>
+      <li class="step">
+        <h2>アプリを開く</h2>
+        <p>取り出したフォルダを開き、中にある <strong>index.html</strong> を選びます。Windows・Macではダブルクリック、Android・iPhone・iPadでは1回タップしてください。ブラウザが開いたら準備完了です。次からも同じファイルを開いて使います。</p>
+      </li>
+    </ol>
+
+    <section class="before-start" aria-labelledby="again-title">
+      <h2 id="again-title">ダウンロードボタンが消えたとき</h2>
+      <p>アプリ説明の「購入済みの方：ダウンロードを再表示」に、購入時のメールアドレスとStripe領収書番号または決済IDを入力してください。購入から30日以内なら、新しいリンクの発行を試せます。</p>
+    </section>
+
+    <section class="help" aria-labelledby="help-title">
+      <h2 id="help-title">うまくいかないとき</h2>
+      <p>どの手順で止まったか、画面に出た言葉、使っている端末がWindows、Mac、Android、iPhone・iPadのどれかを書いてお問い合わせください。</p>
+      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener">お問い合わせフォームへ</a>
+    </section>
+  </main>
+
+  <footer class="footer">© 2026 なめがわブラス・ラボ</footer>
+</body>
+</html>

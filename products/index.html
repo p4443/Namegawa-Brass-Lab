@@ -56,6 +56,15 @@
     .section-title { color: var(--primary-color); font-size: 2rem; text-align: center; }
     .section-desc { margin: 8px 0 40px; color: var(--text-muted); text-align: center; }
 
+    .catalog-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
+    .catalog-heading .section-title, .catalog-heading .section-desc { text-align: left; }
+    .catalog-heading .section-desc { margin-bottom: 0; }
+    .carousel-controls { display: flex; flex: 0 0 auto; gap: 8px; }
+    .carousel-button { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--primary-color); border-radius: 50%; color: var(--primary-color); background: var(--bg-white); font-size: 1.1rem; cursor: pointer; }
+    .carousel-button:hover, .carousel-button:focus-visible { color: #ffffff; background: var(--primary-color); }
+    .carousel-button:disabled { cursor: default; opacity: 0.35; }
+    .product-track { display: flex; align-items: flex-start; gap: 24px; overflow-x: auto; padding: 2px 2px 18px; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-color: var(--accent-color) var(--border-color); scrollbar-width: thin; }
+
     .upcoming-app {
       display: grid;
       grid-template-columns: minmax(0, 1fr) auto;
@@ -79,7 +88,7 @@
     .upcoming-app-price-note { display: block; margin-top: 2px; color: var(--text-muted); font-size: 0.7rem; }
     .upcoming-app-status { display: inline-block; margin-top: 12px; padding: 7px 11px; border-radius: 4px; color: #92400e; background: #fef3c7; font-size: 0.78rem; font-weight: 800; }
 
-    .product-feature { overflow: hidden; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); box-shadow: var(--shadow-md); }
+    .product-feature { overflow: hidden; flex: 0 0 calc(96% - 2px); border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); box-shadow: var(--shadow-md); scroll-snap-align: start; }
     .product-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 30px; border-bottom: 1px solid var(--border-color); }
     .product-label { display: inline-block; margin-bottom: 5px; color: var(--accent-hover); font-size: 0.76rem; font-weight: 800; }
     .product-heading h2 { color: #0f172a; font-size: 1.45rem; }
@@ -88,6 +97,7 @@
     .launch-link:hover { color: #ffffff; background: var(--primary-color); }
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
+    .flow-harmony-window { height: 1500px; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -95,6 +105,8 @@
     .store-benefits { display: grid; gap: 8px; margin-top: 18px; padding: 0; list-style: none; }
     .store-benefits li { color: var(--text-muted); font-size: 0.86rem; }
     .store-benefits li::before { margin-right: 8px; color: var(--primary-color); font-weight: 800; content: "✓"; }
+    .download-guide-link { display: inline-flex; min-height: 42px; align-items: center; margin-top: 18px; padding: 9px 14px; border: 1px solid #bfdbfe; border-radius: 6px; color: var(--primary-hover); background: #eff6ff; font-size: 0.84rem; font-weight: 800; }
+    .download-guide-link:hover { border-color: var(--primary-color); background: #dbeafe; }
 
     .store-actions { display: grid; align-content: start; gap: 10px; }
     .store-button, .download-link, .recovery-button, .sales-save { min-height: 46px; border: 0; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-weight: 800; cursor: pointer; }
@@ -134,6 +146,7 @@
       .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
+      .flow-harmony-window { height: 1800px; }
     }
 
     @media (max-width: 520px) {
@@ -147,6 +160,11 @@
       .hero-copy { margin-top: 14px; font-size: 0.94rem; line-height: 1.75; }
       .hero-mark strong { font-size: 3rem; }
       .catalog, .future-products { padding: 60px 0; }
+      .catalog-heading { align-items: center; }
+      .catalog-heading .section-title { font-size: 1.35rem; }
+      .catalog-heading .section-desc { margin-top: 4px; font-size: 0.8rem; }
+      .carousel-button { width: 38px; height: 38px; }
+      .product-feature { flex-basis: calc(94% - 2px); }
       .product-heading, .store-panel { padding: 20px; }
       .product-heading { gap: 16px; }
       .product-heading h2 { font-size: 1.2rem; line-height: 1.45; }
@@ -183,29 +201,56 @@
 
     <section class="catalog" id="products" aria-labelledby="products-title">
       <div class="container">
-        <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
-        <p class="section-desc">公開中・公開予定のアプリをご案内します</p>
-
-        <article class="upcoming-app" id="flow-harmony">
+        <div class="catalog-heading">
           <div>
-            <span class="upcoming-app-label">COMING SOON</span>
-            <h2>Flow Harmony（フロー・ハーモニー）</h2>
-            <p>演奏した音をリアルタイムで検知し、自分の音色に寄り添うハーモニーを返すトランペット練習アプリです。</p>
-            <ul class="upcoming-app-features" aria-label="主な機能">
-              <li>12音程ハーモニー</li>
-              <li>My Tone音色分析</li>
-              <li>演奏録音</li>
-              <li>Bluetooth連携</li>
-            </ul>
+            <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
+            <p class="section-desc">右へスクロールしてアプリを選べます</p>
           </div>
-          <div class="upcoming-app-meta" aria-label="販売予定情報">
-            <span class="upcoming-app-price">1,980円</span>
-            <span class="upcoming-app-price-note">永久ライセンス予定価格</span>
-            <span class="upcoming-app-status">公開準備中</span>
+          <div class="carousel-controls" aria-label="アプリ商品のスクロール操作">
+            <button class="carousel-button" type="button" data-carousel-prev="product-track" aria-label="前の商品">←</button>
+            <button class="carousel-button" type="button" data-carousel-next="product-track" aria-label="次の商品">→</button>
           </div>
-        </article>
+        </div>
 
-        <article class="product-feature" id="metronome">
+        <div class="product-track" id="product-track" aria-labelledby="products-title" tabindex="0">
+          <article class="product-feature" id="flow-harmony">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">公開中のアプリ・Web版無料</span>
+              <h2>Flow Harmony（フロー・ハーモニー）</h2>
+              <p>入力音の上下へハーモニーを重ね、1/fゆらぎや自分の音色を使って練習できるアプリです。</p>
+            </div>
+            <a class="launch-link" href="../flow-harmony/?mode=free" target="_blank" rel="noopener">別画面で試す</a>
+          </header>
+
+          <iframe class="app-window flow-harmony-window" src="../flow-harmony/?mode=free" title="Flow Harmony" loading="lazy" allow="microphone; autoplay; bluetooth"></iframe>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>オフライン版</h3>
+              <p>インターネット接続なしで、購入者本人の端末からFlow Harmonyを利用できます。</p>
+              <ul class="store-benefits">
+                <li>Web版は無料で全機能を体験可能</li>
+                <li>上下12音程ハーモニーと1/fゆらぎを収録</li>
+                <li>決済確認後、24時間有効のリンクを発行</li>
+              </ul>
+              <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
+              <nav class="store-legal" aria-label="Flow Harmony購入に関する情報">
+                <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
+                <a href="../legal/#license">利用ライセンス</a>
+                <a href="../legal/#refund">返金方針</a>
+                <a href="../legal/#contact">購入に関するお問い合わせ</a>
+              </nav>
+            </div>
+            <div class="store-actions">
+              <button class="store-button" id="flow-purchase-button" type="button" disabled>販売状況を確認中</button>
+              <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
+              <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
+            </div>
+          </div>
+          </article>
+
+          <article class="product-feature" id="metronome">
           <header class="product-heading">
             <div>
               <span class="product-label">公開中のアプリ・Web版無料</span>
@@ -226,6 +271,7 @@
                 <li>購入者本人の所有端末で利用可能</li>
                 <li>決済確認後、24時間有効のリンクを発行</li>
               </ul>
+              <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
               <nav class="store-legal" aria-label="購入に関する情報">
                 <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
                 <a href="../legal/#license">利用ライセンス</a>
@@ -258,7 +304,8 @@
               </details>
             </div>
           </div>
-        </article>
+          </article>
+        </div>
       </div>
     </section>
 
@@ -286,6 +333,48 @@
   <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
   <script>
+    const flowHarmonyWindow = document.querySelector(".flow-harmony-window");
+    const resizeFlowHarmonyWindow = () => {
+      const frameDocument = flowHarmonyWindow?.contentDocument;
+      if (!frameDocument) return;
+      flowHarmonyWindow.style.height = "1px";
+      const contentHeight = Math.max(
+        frameDocument.documentElement.scrollHeight,
+        frameDocument.body.scrollHeight,
+      );
+      if (contentHeight > 0) flowHarmonyWindow.style.height = `${contentHeight}px`;
+    };
+
+    flowHarmonyWindow?.addEventListener("load", () => {
+      resizeFlowHarmonyWindow();
+      const frameDocument = flowHarmonyWindow.contentDocument;
+      if (frameDocument && "ResizeObserver" in window) {
+        new ResizeObserver(resizeFlowHarmonyWindow).observe(frameDocument.body);
+      }
+    });
+    window.addEventListener("resize", resizeFlowHarmonyWindow);
+
+    document.querySelectorAll(".product-track").forEach((track) => {
+      const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
+      const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
+      if (!previousButton || !nextButton) return;
+
+      const updateButtons = () => {
+        previousButton.disabled = track.scrollLeft <= 1;
+        nextButton.disabled = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+      };
+      const move = (direction) => track.scrollBy({
+        left: direction * track.clientWidth * 0.96,
+        behavior: "smooth",
+      });
+
+      previousButton.addEventListener("click", () => move(-1));
+      nextButton.addEventListener("click", () => move(1));
+      track.addEventListener("scroll", updateButtons, { passive: true });
+      window.addEventListener("resize", updateButtons);
+      updateButtons();
+    });
+
     const renderStoreBase = "https://namegawa-brass-lab.onrender.com/api/store";
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
@@ -305,6 +394,9 @@
     const appSalesPassword = document.getElementById("app-sales-password");
     const appSalesEnabled = document.getElementById("app-sales-enabled");
     const appSalesSave = document.getElementById("app-sales-save");
+    const flowPurchaseButton = document.getElementById("flow-purchase-button");
+    const flowDownloadLink = document.getElementById("flow-download-link");
+    const flowStoreStatus = document.getElementById("flow-store-status");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -551,7 +643,76 @@
       }
     }
 
+    function renderFlowProduct(product) {
+      flowPurchaseButton.disabled = !product.checkout_available;
+      flowPurchaseButton.textContent = product.checkout_available
+        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
+        : "オフライン版 販売準備中";
+      flowStoreStatus.textContent = product.checkout_available
+        ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
+        : "Web版は無料で全機能を利用できます。";
+    }
+
+    async function loadFlowProduct() {
+      try {
+        renderFlowProduct(await requestStore("flow-harmony/product"));
+      } catch (error) {
+        flowPurchaseButton.textContent = "オフライン版 販売準備中";
+        flowStoreStatus.textContent = error.message;
+      }
+    }
+
+    flowPurchaseButton.addEventListener("click", async () => {
+      flowPurchaseButton.disabled = true;
+      flowStoreStatus.textContent = "安全な決済画面を準備しています…";
+      try {
+        const result = await requestStore("flow-harmony/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
+        });
+        location.href = result.checkout_url;
+      } catch (error) {
+        flowStoreStatus.textContent = error.message;
+        await loadFlowProduct();
+      }
+    });
+
+    async function provideFlowDownload(sessionId) {
+      const result = await requestStore("flow-harmony/download-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ session_id: sessionId }),
+      });
+      flowDownloadLink.href = result.download_url;
+      flowDownloadLink.hidden = false;
+      flowPurchaseButton.hidden = true;
+      flowStoreStatus.textContent = "お支払いを確認しました。リンクは24時間有効です。";
+    }
+
+    async function applyFlowPurchaseResult() {
+      const parameters = new URLSearchParams(location.search);
+      if (parameters.get("flow_purchase") === "cancelled") {
+        flowStoreStatus.textContent = "決済はキャンセルされました。Web版は無料で利用できます。";
+        return;
+      }
+      const sessionId = parameters.get("flow_session_id") || "";
+      if (parameters.get("flow_purchase") !== "success" || !sessionId.startsWith("cs_")) return;
+      flowStoreStatus.textContent = "お支払いを確認しています…";
+      for (let attempt = 1; attempt <= 5; attempt += 1) {
+        try {
+          await provideFlowDownload(sessionId);
+          history.replaceState(null, "", `${location.pathname}#flow-harmony`);
+          return;
+        } catch (error) {
+          if (attempt === 5) flowStoreStatus.textContent = error.message;
+          else await new Promise((resolve) => setTimeout(resolve, 1500));
+        }
+      }
+    }
+
     loadStoreProduct().then(applyPurchaseResult);
+    loadFlowProduct().then(applyFlowPurchaseResult);
   </script>
 </body>
 </html>

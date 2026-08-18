@@ -9,11 +9,13 @@ COPY app.py index.html build_product.py ./
 COPY data ./data
 COPY lesson ./lesson
 COPY products ./products
+COPY download-guide ./download-guide
 COPY legal ./legal
 COPY schedule ./schedule
 COPY pdf ./pdf
 COPY video ./video
 COPY ["music App", "./music App"]
+COPY flow-harmony ./flow-harmony
 
 RUN python build_product.py
 
@@ -22,4 +24,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "2", "--worker-class", "gthread", "--threads", "4", "--timeout", "60", "--access-logfile", "-", "app:app"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --worker-class gthread --threads 4 --timeout 60 --access-logfile - app:app"]

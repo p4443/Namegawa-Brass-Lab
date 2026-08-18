@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Harmony - 歌うように吹くトランペット練習アプリ</title>
+  <style>
+    :root {
+      --bg-color: #080a0b;
+      --card-bg: #111416;
+      --panel-bg: #171b1d;
+      --primary-color: #00d8ff;
+      --primary-light: #1b2528;
+      --secondary-color: #f4f7f8;
+      --accent-color: #a8ff3e;
+      --danger-color: #ff3f5f;
+      --text-color: #e8edef;
+      --text-muted: #849095;
+      --line-color: #2d3538;
+      --border-radius: 8px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Avenir Next", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background-color: var(--bg-color);
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        radial-gradient(circle at 50% 0%, #182225 0%, #080a0b 52%);
+      background-size: 32px 32px, 32px 32px, 100% 100%;
+      color: var(--text-color);
+      margin: 0;
+      padding: 42px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 620px;
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      border: 0;
+      border-top: 3px solid var(--primary-color);
+      border-bottom: 1px solid #30373a;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      animation: interfaceIn 0.55s ease-out both;
+    }
+
+    .app-container::before {
+      content: "";
+      position: absolute;
+      inset: 12px -1px;
+      background:
+        linear-gradient(var(--primary-color), var(--primary-color)) left top / 2px 32% no-repeat,
+        linear-gradient(var(--accent-color), var(--accent-color)) left 72% / 2px 15% no-repeat,
+        linear-gradient(var(--accent-color), var(--accent-color)) right 18% / 2px 18% no-repeat,
+        linear-gradient(var(--primary-color), var(--primary-color)) right bottom / 2px 36% no-repeat;
+      filter: drop-shadow(0 0 7px rgba(0, 216, 255, 0.38));
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .app-container::after {
+      content: "";
+      position: absolute;
+      top: -1px;
+      right: 28px;
+      width: 72px;
+      height: 3px;
+      background: var(--accent-color);
+      box-shadow: 0 0 18px rgba(168, 255, 62, 0.65);
+      pointer-events: none;
+    }
+
+    @keyframes interfaceIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      text-align: left;
+      margin-bottom: 30px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line-color);
+    }
+
+    .header h1 {
+      font-size: clamp(2rem, 7vw, 3.15rem);
+      color: var(--secondary-color);
+      margin: 0 0 4px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .purchase-panel {
+      margin-bottom: 28px;
+      padding: 18px;
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--primary-color);
+      border-radius: 4px;
+    }
+
+    .purchase-heading {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .purchase-heading strong {
+      color: var(--secondary-color);
+      font-size: 0.9rem;
+    }
+
+    .product-price {
+      color: var(--accent-color);
+      font-size: 1rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .purchase-status {
+      margin: 0 0 14px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      line-height: 1.6;
+    }
+
+    .license-result {
+      display: none;
+      margin: 12px 0;
+      padding: 12px;
+      background: #090c0d;
+      border: 1px solid var(--accent-color);
+      border-radius: 3px;
+      color: var(--accent-color);
+      font-size: 0.8rem;
+      overflow-wrap: anywhere;
+    }
+
+    .license-form {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .license-form input {
+      min-width: 0;
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    .license-form .btn-tone {
+      flex: 0 0 auto;
+    }
+
+    .app-feature {
+      transition: opacity 0.2s ease;
+    }
+
+    .license-locked .app-feature {
+      opacity: 0.35;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .section {
+      margin-bottom: 26px;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--secondary-color);
+      margin-bottom: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+    }
+
+    .tone-box {
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 4px;
+      padding: 16px;
+      text-align: left;
+    }
+
+    .btn-tone {
+      background: transparent;
+      color: var(--accent-color);
+      border: 1px solid var(--accent-color);
+      border-radius: 4px;
+      padding: 9px 14px;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn-tone:hover {
+      background: var(--accent-color);
+      color: #0a0d0b;
+      box-shadow: 0 0 22px rgba(168, 255, 62, 0.2);
+    }
+
+    .bluetooth-box {
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+      padding: 14px;
+    }
+
+    .bluetooth-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bluetooth-row .btn-tone {
+      flex: 0 0 auto;
+    }
+
+    .bluetooth-status {
+      min-width: 0;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .bluetooth-settings {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line-color);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .bluetooth-settings summary {
+      cursor: pointer;
+    }
+
+    .bluetooth-settings input {
+      width: 100%;
+      margin-top: 5px;
+      padding: 9px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font-size: 0.75rem;
+    }
+
+    .bluetooth-settings label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .grid-direction {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-option {
+      background: var(--primary-light);
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+      min-height: 62px;
+      padding: 10px 8px;
+      font: inherit;
+      font-size: 0.78rem;
+      color: var(--secondary-color);
+      cursor: pointer;
+      transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+      font-weight: 600;
+    }
+
+    .btn-option:hover {
+      border-color: #586569;
+      background: #222b2e;
+    }
+
+    .btn-option.active {
+      border-color: var(--primary-color);
+      background-color: rgba(0, 216, 255, 0.09);
+      color: var(--primary-color);
+      box-shadow: inset 0 -2px 0 var(--primary-color), 0 0 18px rgba(0, 216, 255, 0.1);
+    }
+
+    .harmony-direction-status {
+      margin-top: 9px;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+    }
+
+    .harmony-card-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .harmony-card {
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      transition: border-color 0.18s ease, transform 0.18s ease;
+    }
+
+    .harmony-card:hover {
+      border-color: #586569;
+      transform: translateX(3px);
+    }
+
+    .harmony-card.active {
+      border-color: var(--accent-color);
+      background-color: rgba(168, 255, 62, 0.06);
+      box-shadow: inset 3px 0 0 var(--accent-color);
+    }
+
+    .flow-monitor {
+      height: 92px;
+      background-color: #090c0d;
+      background-image: linear-gradient(rgba(0, 216, 255, 0.05) 1px, transparent 1px);
+      background-size: 100% 18px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #324247;
+    }
+
+    .flow-wave {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent 0%, rgba(0, 216, 255, 0.25) 48%, rgba(168, 255, 62, 0.38) 50%, transparent 100%);
+      transform: translateX(-100%);
+    }
+
+    .flow-wave.animating {
+      animation: waveMove 2.5s infinite linear;
+    }
+
+    @keyframes waveMove {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .pitch-tag {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      text-shadow: 0 0 16px rgba(0, 216, 255, 0.5);
+      z-index: 1;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn-main {
+      width: 100%;
+      min-height: 52px;
+      padding: 13px 18px;
+      border: 1px solid var(--primary-color);
+      border-radius: 4px;
+      background: var(--primary-color);
+      color: #071012;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 0 26px rgba(0, 216, 255, 0.16);
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn-main:hover {
+      background: transparent;
+      color: var(--primary-color);
+      box-shadow: 0 0 32px rgba(0, 216, 255, 0.24);
+    }
+
+    .btn-main:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .btn-rec {
+      background: transparent;
+      border-color: #566065;
+      color: var(--text-muted);
+      box-shadow: none;
+    }
+
+    .btn-rec.recording {
+      background: var(--danger-color);
+      border-color: var(--danger-color);
+      color: #ffffff;
+      box-shadow: 0 0 28px rgba(255, 63, 95, 0.25);
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px 10px;
+      }
+
+      .app-container {
+        padding: 24px 18px;
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .grid-direction {
+        grid-template-columns: 1fr;
+      }
+
+      .bluetooth-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .purchase-heading,
+      .license-form {
+        align-items: stretch;
+        flex-direction: column;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container license-locked">
+  <div class="header">
+    <h1>Flow Harmony</h1>
+    <p>自分の音色と溶け合う、理想のハモりパートナー</p>
+  </div>
+
+  <section class="purchase-panel" id="purchasePanel" aria-labelledby="purchaseTitle">
+    <div class="purchase-heading">
+      <strong id="purchaseTitle">永久ライセンス</strong>
+      <span class="product-price" id="productPrice">読み込み中</span>
+    </div>
+    <p class="purchase-status" id="purchaseStatus">購入済みの方はライセンスキーを入力してください。</p>
+    <div id="paypalButtons"></div>
+    <div class="license-result" id="licenseResult" role="status"></div>
+    <div class="license-form">
+      <input id="licenseKey" type="text" placeholder="FLOW-XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" aria-label="ライセンスキー">
+      <button class="btn-tone" id="licenseButton" type="button" onclick="verifyLicense()">認証</button>
+    </div>
+  </section>
+
+  <div class="app-feature">
+
+  <!-- マイ・トーン サンプリング -->
+  <div class="section">
+    <div class="section-title">
+      <span>My Tone サンプリング (自分の音をモデル化)</span>
+    </div>
+    <div class="tone-box">
+      <button class="btn-tone" id="sampleBtn" onclick="sampleMyTone()">音色を分析して自分専用にする</button>
+      <div id="toneStatus" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">
+        ※ボタンを押して音を長く伸ばすと、自分の音質がハモりに反映されます
+      </div>
+    </div>
+  </div>
+
+  <!-- Bluetooth デバイス連携 -->
+  <div class="section">
+    <div class="section-title">
+      <span>Bluetooth 波デバイス</span>
+    </div>
+    <div class="bluetooth-box">
+      <div class="bluetooth-row">
+        <button class="btn-tone" id="bluetoothBtn" onclick="toggleBluetooth()">デバイスを接続</button>
+        <span class="bluetooth-status" id="bluetoothStatus">未接続</span>
+      </div>
+      <details class="bluetooth-settings">
+        <summary>BLE通信設定</summary>
+        <label>
+          Service UUID
+          <input id="serviceUuid" value="6e400001-b5a3-f393-e0a9-e50e24dcca9e" spellcheck="false">
+        </label>
+        <label>
+          Write Characteristic UUID
+          <input id="characteristicUuid" value="6e400002-b5a3-f393-e0a9-e50e24dcca9e" spellcheck="false">
+        </label>
+      </details>
+    </div>
+  </div>
+
+  <!-- ハモり音程設定 (12音インターバル) -->
+  <div class="section">
+    <div class="section-title">
+      <span>ハモり音程</span>
+    </div>
+    <div class="grid-direction" aria-label="ハーモニー方向">
+      <button class="btn-option" onclick="setHarmonyDirection('upper', this)">上ハモり</button>
+      <button class="btn-option" onclick="setHarmonyDirection('lower', this)">下ハモり</button>
+      <button class="btn-option active" onclick="setHarmonyDirection('both', this)">上下ハモり</button>
+    </div>
+    <div class="grid-3">
+      <button class="btn-option active" onclick="setHarmony('major3rd', this)">長3度 (+4半音)</button>
+      <button class="btn-option" onclick="setHarmony('perfect5th', this)">完全5度 (+7半音)</button>
+      <button class="btn-option" onclick="setHarmony('octave', this)">1オクターブ (+12半音)</button>
+      <button class="btn-option" onclick="setHarmony('semitone', this)">半音 (+1半音)</button>
+      <button class="btn-option" onclick="setHarmony('whole', this)">全音 (+2半音)</button>
+      <button class="btn-option" onclick="setHarmony('minor3rd', this)">短3度 (+3半音)</button>
+      <button class="btn-option" onclick="setHarmony('perfect4th', this)">完全4度 (+5半音)</button>
+      <button class="btn-option" onclick="setHarmony('tritone', this)">増4度/減5度 (+6半音)</button>
+      <button class="btn-option" onclick="setHarmony('minor6th', this)">短6度 (+8半音)</button>
+      <button class="btn-option" onclick="setHarmony('major6th', this)">長6度 (+9半音)</button>
+      <button class="btn-option" onclick="setHarmony('minor7th', this)">短7度 (+10半音)</button>
+      <button class="btn-option" onclick="setHarmony('major7th', this)">長7度 (+11半音)</button>
+    </div>
+    <p class="harmony-direction-status" id="harmonyDirectionStatus">入力音の上下に長3度（±4半音）を重ねます</p>
+  </div>
+
+  <!-- コード展開パターン -->
+  <div class="section">
+    <div class="section-title">
+      <span>1/f ゆらぎ・伴奏パターン</span>
+    </div>
+    <div class="harmony-card-group">
+      <div class="harmony-card active" onclick="selectChordPattern(this, 'warm')">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--secondary-color);">Warm Breeze <span style="color:var(--text-muted); font-size:0.75rem;">穏やかな1/fゆらぎ</span></div>
+      </div>
+      <div class="harmony-card" onclick="selectChordPattern(this, 'floating')">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--secondary-color);">Floating Flow <span style="color:var(--text-muted); font-size:0.75rem;">深い1/fゆらぎ</span></div>
+      </div>
+      <div class="harmony-card" onclick="selectChordPattern(this, 'off')">
+        <div style="font-size:0.85rem; font-weight:600; color:var(--secondary-color);">Stable <span style="color:var(--text-muted); font-size:0.75rem;">ゆらぎなし</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 演奏検知モニター -->
+  <div class="section">
+    <div class="section-title">
+      <span>演奏検知 ＆ フロー (A4 = 442Hz)</span>
+    </div>
+    <div class="flow-monitor">
+      <div class="flow-wave" id="flowWave"></div>
+      <div class="pitch-tag" id="pitchDisplay">--</div>
+      <span id="statusText" style="font-size:0.75rem; color:var(--text-muted); z-index:1;">セッションを開始してください</span>
+    </div>
+  </div>
+
+  <!-- メイン操作 -->
+  <div class="controls">
+    <button class="btn-main" id="startBtn" onclick="toggleAudio()">マイク入力＆ハーモニー開始</button>
+    <button class="btn-main btn-rec" id="recBtn" onclick="toggleRecording()" disabled>録音スタート</button>
+    <audio id="audioPlayback" controls style="display:none;"></audio>
+  </div>
+  </div>
+</div>
+
+<script>
+  const LICENSE_STORAGE_KEY = 'flowHarmonyLicense';
+  const IS_FREE_WEB_MODE = new URLSearchParams(location.search).get('mode') === 'free';
+  const IS_OFFLINE_MODE = location.protocol === 'file:';
+  let audioCtx;
+  let micStream;
+  let isRunning = false;
+  let isRecording = false;
+  let mediaRecorder;
+  let recordedChunks = [];
+  let bluetoothDevice = null;
+  let bluetoothCharacteristic = null;
+
+  let currentInterval = 4;
+  let harmonyDirection = 'both';
+  let currentPattern = 'warm';
+  let customWaveform = null;
+  let lastTriggeredPitch = null;
+  let lastTriggerTime = 0;
+  const pinkNoiseRows = new Float32Array(8);
+  let pinkNoiseCounter = 0;
+
+  // 基準周波数設定
+  const A4_FREQ = 442;
+
+  // 12音階参照テーブル
+  const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+  function setPurchaseStatus(message, isError = false) {
+    const status = document.getElementById('purchaseStatus');
+    status.innerText = message;
+    status.style.color = isError ? 'var(--danger-color)' : 'var(--text-muted)';
+  }
+
+  function unlockApp(licenseKey) {
+    document.querySelector('.app-container').classList.remove('license-locked');
+    if (licenseKey) {
+      document.getElementById('licenseKey').value = licenseKey;
+      localStorage.setItem(LICENSE_STORAGE_KEY, licenseKey);
+    }
+    setPurchaseStatus('ライセンス認証済みです。すべての機能を利用できます。');
+  }
+
+  function enableIncludedAccess() {
+    document.getElementById('purchasePanel').hidden = true;
+    unlockApp('');
+  }
+
+  async function validateLicense(licenseKey) {
+    const response = await fetch('/api/licenses/validate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ license_key: licenseKey })
+    });
+    if (!response.ok) throw new Error('ライセンスを確認できませんでした');
+    return response.json();
+  }
+
+  async function verifyLicense() {
+    const button = document.getElementById('licenseButton');
+    const licenseKey = document.getElementById('licenseKey').value.trim();
+    if (!licenseKey) {
+      setPurchaseStatus('ライセンスキーを入力してください。', true);
+      return;
+    }
+
+    button.disabled = true;
+    try {
+      const result = await validateLicense(licenseKey);
+      if (!result.valid) {
+        localStorage.removeItem(LICENSE_STORAGE_KEY);
+        setPurchaseStatus('ライセンスキーが正しくありません。', true);
+        return;
+      }
+      unlockApp(licenseKey);
+    } catch (error) {
+      setPurchaseStatus(error.message, true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function loadPayPal(clientId, currency) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(clientId)}&currency=${encodeURIComponent(currency)}`;
+      script.onload = resolve;
+      script.onerror = () => reject(new Error('PayPalを読み込めませんでした'));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function initializeCommerce() {
+    if (IS_FREE_WEB_MODE || IS_OFFLINE_MODE) {
+      enableIncludedAccess();
+      return;
+    }
+
+    const savedLicense = localStorage.getItem(LICENSE_STORAGE_KEY);
+    if (savedLicense) {
+      try {
+        const result = await validateLicense(savedLicense);
+        if (result.valid) unlockApp(savedLicense);
+      } catch (error) {
+        setPurchaseStatus('保存済みライセンスを確認できませんでした。', true);
+      }
+    }
+
+    try {
+      const response = await fetch('/api/config');
+      if (!response.ok) throw new Error('商品情報を取得できませんでした');
+      const config = await response.json();
+      document.getElementById('purchaseTitle').innerText = config.productName;
+      document.getElementById('productPrice').innerText = `${Number(config.price).toLocaleString('ja-JP')} ${config.currency}`;
+
+      if (!config.paypalClientId) {
+        setPurchaseStatus('現在、購入受付の準備中です。PayPal設定をご確認ください。', true);
+        return;
+      }
+
+      await loadPayPal(config.paypalClientId, config.currency);
+      window.paypal.Buttons({
+        style: { layout: 'vertical', shape: 'rect', label: 'pay' },
+        createOrder: async () => {
+          const orderResponse = await fetch('/api/paypal/orders', { method: 'POST' });
+          const order = await orderResponse.json();
+          if (!orderResponse.ok) throw new Error(order.detail || '注文を作成できませんでした');
+          return order.orderId;
+        },
+        onApprove: async (data) => {
+          setPurchaseStatus('決済を確認しています。画面を閉じないでください。');
+          const captureResponse = await fetch('/api/paypal/capture', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ order_id: data.orderID })
+          });
+          const capture = await captureResponse.json();
+          if (!captureResponse.ok) throw new Error(capture.detail || '決済を確認できませんでした');
+
+          const result = document.getElementById('licenseResult');
+          result.style.display = 'block';
+          result.innerText = `ライセンスキー: ${capture.licenseKey}\n紛失しないよう保管してください。`;
+          unlockApp(capture.licenseKey);
+        },
+        onError: (error) => setPurchaseStatus(error.message || 'PayPal決済でエラーが発生しました。', true),
+        onCancel: () => setPurchaseStatus('購入手続きはキャンセルされました。')
+      }).render('#paypalButtons');
+    } catch (error) {
+      setPurchaseStatus(error.message, true);
+    }
+  }
+
+  window.addEventListener('DOMContentLoaded', initializeCommerce);
+
+  function updateBluetoothStatus(message, connected = false) {
+    const status = document.getElementById('bluetoothStatus');
+    const button = document.getElementById('bluetoothBtn');
+    status.innerText = message;
+    button.innerText = connected ? "切断" : "デバイスを接続";
+  }
+
+  function handleBluetoothDisconnect() {
+    bluetoothCharacteristic = null;
+    bluetoothDevice = null;
+    updateBluetoothStatus("未接続");
+  }
+
+  async function toggleBluetooth() {
+    if (bluetoothDevice?.gatt?.connected) {
+      bluetoothDevice.gatt.disconnect();
+      return;
+    }
+
+    if (!navigator.bluetooth) {
+      updateBluetoothStatus("このブラウザはWeb Bluetoothに対応していません");
+      return;
+    }
+
+    const serviceUuid = document.getElementById('serviceUuid').value.trim();
+    const characteristicUuid = document.getElementById('characteristicUuid').value.trim();
+    if (!serviceUuid || !characteristicUuid) {
+      updateBluetoothStatus("UUIDを入力してください");
+      return;
+    }
+
+    try {
+      updateBluetoothStatus("デバイスを選択してください...");
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [serviceUuid]
+      });
+      device.addEventListener('gattserverdisconnected', handleBluetoothDisconnect);
+
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(serviceUuid);
+      bluetoothCharacteristic = await service.getCharacteristic(characteristicUuid);
+      bluetoothDevice = device;
+      updateBluetoothStatus(`${device.name || "BLEデバイス"} 接続中`, true);
+    } catch (error) {
+      bluetoothCharacteristic = null;
+      bluetoothDevice = null;
+      updateBluetoothStatus(error.name === 'NotFoundError' ? "接続をキャンセルしました" : "接続できませんでした。UUIDを確認してください");
+    }
+  }
+
+  async function sendBluetoothHarmony(noteNumber, harmonyFrequency, interval) {
+    if (!bluetoothCharacteristic || !bluetoothDevice?.gatt?.connected) return;
+
+    const payload = new TextEncoder().encode(`${noteNumber},${harmonyFrequency.toFixed(1)},${interval}\n`);
+    try {
+      if (bluetoothCharacteristic.properties.writeWithoutResponse) {
+        await bluetoothCharacteristic.writeValueWithoutResponse(payload);
+      } else {
+        await bluetoothCharacteristic.writeValueWithResponse(payload);
+      }
+    } catch (error) {
+      updateBluetoothStatus("データ送信に失敗しました", true);
+    }
+  }
+
+  function setHarmony(type, element) {
+    const intervals = {
+      'semitone': 1,
+      'whole': 2,
+      'minor3rd': 3,
+      'major3rd': 4,
+      'perfect4th': 5,
+      'tritone': 6,
+      'perfect5th': 7,
+      'minor6th': 8,
+      'major6th': 9,
+      'minor7th': 10,
+      'major7th': 11,
+      'octave': 12
+    };
+    currentInterval = intervals[type] || 4;
+
+    document.querySelectorAll('.grid-3 .btn-option').forEach(btn => btn.classList.remove('active'));
+    element.classList.add('active');
+    updateHarmonyDirectionStatus();
+  }
+
+  function setHarmonyDirection(direction, element) {
+    harmonyDirection = direction;
+    document.querySelectorAll('.grid-direction .btn-option').forEach(btn => btn.classList.remove('active'));
+    element.classList.add('active');
+    updateHarmonyDirectionStatus();
+  }
+
+  function getHarmonyIntervals() {
+    if (harmonyDirection === 'upper') return [currentInterval];
+    if (harmonyDirection === 'lower') return [-currentInterval];
+    return [-currentInterval, currentInterval];
+  }
+
+  function updateHarmonyDirectionStatus() {
+    const directionLabels = { upper: '上に', lower: '下に', both: '上下に' };
+    const intervalText = harmonyDirection === 'both' ? `±${currentInterval}` : `${harmonyDirection === 'lower' ? '-' : '+'}${currentInterval}`;
+    document.getElementById('harmonyDirectionStatus').innerText = `入力音の${directionLabels[harmonyDirection]}${intervalText}半音を重ねます`;
+  }
+
+  function selectChordPattern(element, pattern) {
+    currentPattern = pattern;
+    document.querySelectorAll('.harmony-card').forEach(card => card.classList.remove('active'));
+    element.classList.add('active');
+  }
+
+  function nextPinkNoise() {
+    pinkNoiseCounter = (pinkNoiseCounter + 1) % 256;
+    let changedBits = pinkNoiseCounter ^ (pinkNoiseCounter - 1);
+    for (let row = 0; row < pinkNoiseRows.length; row++) {
+      if (changedBits & (1 << row)) pinkNoiseRows[row] = Math.random() * 2 - 1;
+    }
+    const sum = pinkNoiseRows.reduce((total, value) => total + value, 0);
+    return sum / pinkNoiseRows.length;
+  }
+
+  function fluctuationSettings() {
+    if (currentPattern === 'off') return { cents: 0, gain: 0.16, duration: 1 };
+    const depth = currentPattern === 'floating' ? 1 : 0.55;
+    return {
+      cents: nextPinkNoise() * 18 * depth,
+      gain: 0.14 + nextPinkNoise() * 0.035 * depth,
+      duration: 0.9 + (nextPinkNoise() + 1) * 0.18 * depth
+    };
+  }
+
+  // 自分の音色をキャプチャ・倍音解析する処理
+  async function sampleMyTone() {
+    const toneStatus = document.getElementById('toneStatus');
+    try {
+      const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const source = tempCtx.createMediaStreamSource(stream);
+      const analyser = tempCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      toneStatus.innerText = "キャプチャ中... トランペットの音を伸ばしてください";
+
+      setTimeout(() => {
+        const freqData = new Float32Array(analyser.frequencyBinCount);
+        analyser.getFloatFrequencyData(freqData);
+
+        const real = new Float32Array(16);
+        const imag = new Float32Array(16);
+        for (let i = 1; i < 16; i++) {
+          let val = Math.pow(10, freqData[i] / 20);
+          real[i] = isNaN(val) || !isFinite(val) ? 0.1 : val;
+        }
+
+        customWaveform = tempCtx.createPeriodicWave(real, imag);
+        toneStatus.innerText = "✓ My Tone の生成完了！あなたの音色が反映されます";
+        stream.getTracks().forEach(track => track.stop());
+      }, 2500);
+
+    } catch (e) {
+      alert("マイク設定を確認してください");
+    }
+  }
+
+  // 自己相関法（Autocorrelation）による正確なピッチ検出アルゴリズム
+  function autoCorrelate(buf, sampleRate) {
+    let SIZE = buf.length;
+    let rms = 0;
+
+    for (let i = 0; i < SIZE; i++) {
+      let val = buf[i];
+      rms += val * val;
+    }
+    rms = Math.sqrt(rms / SIZE);
+    if (rms < 0.03) return -1; // ノイズフロア以下は無視
+
+    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+    for (let i = 0; i < SIZE / 2; i++) {
+      if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+    }
+    for (let i = 1; i < SIZE / 2; i++) {
+      if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+    }
+
+    buf = buf.slice(r1, r2);
+    SIZE = buf.length;
+
+    let c = new Array(SIZE).fill(0);
+    for (let i = 0; i < SIZE; i++) {
+      for (let j = 0; j < SIZE - i; j++) {
+        c[i] = c[i] + buf[j] * buf[j + i];
+      }
+    }
+
+    let d = 0;
+    while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < SIZE; i++) {
+      if (c[i] > maxval) {
+        maxval = c[i];
+        maxpos = i;
+      }
+    }
+    let T0 = maxpos;
+
+    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    let a = (x1 + x3 - 2 * x2) / 2;
+    let b = (x3 - x1) / 2;
+    if (a) T0 = T0 - b / (2 * a);
+
+    return sampleRate / T0;
+  }
+
+  // 周波数をノートナンバーに変換（基準：442Hz）
+  function noteFromFrequency(frequency) {
+    const noteNum = 12 * (Math.log(frequency / A4_FREQ) / Math.log(2));
+    return Math.round(noteNum) + 69;
+  }
+
+  // 選択した方向のハーモニーへ1/f特性のゆらぎを加えて再生する
+  function playHarmonyTone(inputFreq) {
+    if (!audioCtx) return;
+
+    const now = audioCtx.currentTime;
+    const intervals = getHarmonyIntervals();
+
+    intervals.forEach((interval) => {
+      const settings = fluctuationSettings();
+      const harmonyFreq = inputFreq * Math.pow(2, interval / 12);
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      if (customWaveform) osc.setPeriodicWave(customWaveform);
+      else osc.type = 'sine';
+
+      osc.frequency.setValueAtTime(harmonyFreq, now);
+      osc.detune.setValueAtTime(-settings.cents * 0.45, now);
+      osc.detune.linearRampToValueAtTime(settings.cents, now + settings.duration * 0.5);
+      osc.detune.linearRampToValueAtTime(settings.cents * -0.3, now + settings.duration);
+
+      gainNode.gain.setValueAtTime(0.001, now);
+      gainNode.gain.exponentialRampToValueAtTime(Math.max(0.04, settings.gain / intervals.length), now + 0.05);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + settings.duration);
+
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + settings.duration);
+    });
+  }
+
+  async function toggleAudio() {
+    const startBtn = document.getElementById('startBtn');
+    const recBtn = document.getElementById('recBtn');
+    const pitchDisplay = document.getElementById('pitchDisplay');
+    const statusText = document.getElementById('statusText');
+    const flowWave = document.getElementById('flowWave');
+
+    if (!isRunning) {
+      try {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        
+        const source = audioCtx.createMediaStreamSource(micStream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        startBtn.innerText = "セッション終了";
+        recBtn.disabled = false;
+        flowWave.classList.add('animating');
+        statusText.innerText = "演奏を検知中... (A4 = 442Hz)";
+        isRunning = true;
+
+        const buf = new Float32Array(2048);
+        
+        function processAudio() {
+          if (!isRunning) return;
+          analyser.getFloatTimeDomainData(buf);
+          
+          const freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+          if (freq !== -1 && freq > 100 && freq < 2000) {
+            const noteNum = noteFromFrequency(freq);
+            const noteName = noteStrings[noteNum % 12];
+            const octave = Math.floor(noteNum / 12) - 1;
+
+            pitchDisplay.innerText = `${noteName}${octave} (${Math.round(freq)}Hz)`;
+
+            const nowTime = Date.now();
+            if (lastTriggeredPitch !== noteNum || (nowTime - lastTriggerTime > 600)) {
+              playHarmonyTone(freq);
+              getHarmonyIntervals().forEach((interval) => {
+                const harmonyFreq = freq * Math.pow(2, interval / 12);
+                sendBluetoothHarmony(noteNum + interval, harmonyFreq, interval);
+              });
+              lastTriggeredPitch = noteNum;
+              lastTriggerTime = nowTime;
+            }
+          } else {
+            pitchDisplay.innerText = "--";
+          }
+          requestAnimationFrame(processAudio);
+        }
+        processAudio();
+
+      } catch (err) {
+        alert("マイクのアクセス許可が必要です");
+      }
+    } else {
+      if (audioCtx) audioCtx.close();
+      if (micStream) micStream.getTracks().forEach(track => track.stop());
+      startBtn.innerText = "マイク入力＆ハーモニー開始";
+      recBtn.disabled = true;
+      pitchDisplay.innerText = "--";
+      statusText.innerText = "セッションを開始してください";
+      flowWave.classList.remove('animating');
+      isRunning = false;
+    }
+  }
+
+  function toggleRecording() {
+    const recBtn = document.getElementById('recBtn');
+    const audioPlayback = document.getElementById('audioPlayback');
+
+    if (!isRecording) {
+      recordedChunks = [];
+      mediaRecorder = new MediaRecorder(micStream);
+      mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+        audioPlayback.src = URL.createObjectURL(blob);
+        audioPlayback.style.display = 'block';
+      };
+      mediaRecorder.start();
+      recBtn.innerText = "録音停止";
+      recBtn.classList.add('recording');
+      isRecording = true;
+    } else {
+      mediaRecorder.stop();
+      recBtn.innerText = "録音スタート";
+      recBtn.classList.remove('recording');
+      isRecording = false;
+    }
+  }
+</script>
+
+</body>
+</html>

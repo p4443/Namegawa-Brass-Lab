@@ -34,9 +34,20 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 初回接続時にテーブルが自動作成され、`data/updates.txt`の既存情報が取り込まれます。以後の追加・変更・削除はデータベースへ保存されます。
 
+`render.yaml`にはDocker Web Service、`/health`による死活監視、必要な環境変数が定義されています。新規環境ではRender Dashboardの「New +」→「Blueprint」からこのリポジトリを接続します。既存のWeb Serviceでは、Blueprintを新しく作成せず、後述の環境変数を現在のServiceへ登録してください。
+
 ## 練習アプリのStripe販売
 
 教室ページではWeb版を無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は初期値OFFで、教室ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
+
+アプリ・商品ページのFlow HarmonyもWeb版を無料公開し、希望者だけが1,000円のオフライン版を購入できます。Stripeで1回払い・1,000円・JPYの商品価格を作成し、Renderへ次の環境変数を追加してください。Price IDを設定するまでは購入ボタンが「販売準備中」となり、無料Web版だけを利用できます。
+
+```text
+STRIPE_FLOW_HARMONY_PRICE_ID=price_...
+FLOW_HARMONY_PRICE_YEN=1000
+```
+
+デプロイ後は`/products/`でFlow Harmonyを無料操作できること、購入ボタンが「1,000円でオフライン版を購入」になること、Stripeテスト決済後に`flow-harmony-offline.zip`をダウンロードできることを確認します。StripeのPriceは既存ストアと同じテスト・本番モードへ揃えてください。
 
 ### 管理者向け・説明付き設定ウィザード
 
@@ -47,10 +58,11 @@ cd /Users/kazuuu/hp
 ./setup-store-env.sh
 ```
 
-事前にStripe Dashboardで次の2画面を開いておくと、入力がスムーズです。
+事前にStripe Dashboardで次の画面を開いておくと、入力がスムーズです。
 
 - 「開発者」→「APIキー」: `sk_test_`または`sk_live_`から始まる秘密鍵
 - 「商品カタログ」: 500円・JPY・1回払いの`price_`から始まるPrice ID
+- 「商品カタログ」: Flow Harmony用の1,000円・JPY・1回払いの別のPrice ID
 - 「開発者」→「Webhook」: `/api/store/webhook`送信先の`whsec_`から始まる署名シークレット
 
 初回はウィザードの「1: テストモード」を選択してください。入力形式が正しくない場合や、本番・テストの鍵を取り違えた場合は保存前に停止します。ローカルの`.env`へ保存した後、同じ変数名をRender DashboardのEnvironmentにも登録してください。秘密値そのものはREADME、HTML、Git、チャットへ貼り付けないでください。
@@ -64,8 +76,10 @@ cd /Users/kazuuu/hp
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_METRONOME_PRICE_ID=price_...
+STRIPE_FLOW_HARMONY_PRICE_ID=price_...
 DOWNLOAD_TOKEN_SECRET=十分に長いランダム文字列
 METRONOME_PRICE_YEN=500
+FLOW_HARMONY_PRICE_YEN=1000
 PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 ```
 
@@ -96,11 +110,12 @@ curl -sS 'https://公開APIのドメイン/api/store/health' \
 	-H 'X-Editor-Password: 編集用パスワード' | python -m json.tool
 ```
 
-テストモードでは`ready: true`かつ`production_ready: false`が正常です。テスト用カードで決済し、教室ページへ戻った後にダウンロードできること、同じリンクの再ダウンロード、期限切れ再発行を確認します。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ、教室ページの「管理者用：販売設定」から販売ONへ切り替えます。
+テストモードでは`ready: true`かつ`production_ready: false`が正常です。`checks.flow_harmony_configuration`、`checks.flow_harmony_product_archive`、`checks.flow_harmony_stripe_price`もすべて`true`になることを確認します。テスト用カードで2商品をそれぞれ決済し、Flow Harmonyでは`flow-harmony-offline.zip`をダウンロードできることを確認してください。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ販売を開始します。
 
 販売ON前の確認項目:
 
 - Stripe DashboardのPriceが有効・一回払い・500円・JPYである
+- Flow HarmonyのPriceが有効・一回払い・1,000円・JPYで、メトロノームとは別のPrice IDである
 - Webhookの送信先が`https://公開APIのドメイン/api/store/webhook`で、署名検証付きのテスト送信がHTTP 200になる
 - 診断APIが`production_ready: true`を返す
 - テストモードで正常決済、キャンセル、未払い、再ダウンロードを確認済みである

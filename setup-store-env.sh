@@ -63,6 +63,7 @@ fi
 current_stripe_secret_key="$(env_value STRIPE_SECRET_KEY)"
 current_stripe_webhook_secret="$(env_value STRIPE_WEBHOOK_SECRET)"
 current_stripe_price_id="$(env_value STRIPE_METRONOME_PRICE_ID)"
+current_flow_harmony_price_id="$(env_value STRIPE_FLOW_HARMONY_PRICE_ID)"
 current_download_token_secret="$(env_value DOWNLOAD_TOKEN_SECRET)"
 current_public_site_url="$(env_value PUBLIC_SITE_URL)"
 current_editor_password="$(env_value EDITOR_PASSWORD)"
@@ -101,7 +102,7 @@ case "$stripe_mode_selection" in
     ;;
 esac
 
-print_header "1/6 Stripe秘密鍵"
+print_header "1/7 Stripe秘密鍵"
 print -r -- "Stripe Dashboardの「開発者」→「APIキー」で取得します。
 入力する値は ${secret_key_prefix} から始まります。
 現在と同じモードなら、Enterだけで既存値を保持できます。"
@@ -135,14 +136,22 @@ except Exception as exc:
   printf '有効なStripe秘密鍵を保存しました。\n'
 fi
 
-print_header "2/6 Stripe Price ID"
+print_header "2/7 メトロノーム Stripe Price ID"
 print -r -- 'Stripe Dashboardの「商品カタログ」で、500円・JPY・1回払いの価格を開いて取得します。
 入力する値は price_ から始まります。商品ID（prod_）ではありません。'
 read_visible stripe_price_id "STRIPE_METRONOME_PRICE_ID（Enterで既存値を保持）: "
 stripe_price_id="${stripe_price_id:-$current_stripe_price_id}"
 [[ "$stripe_price_id" == price_* ]] || fail "Price IDはprice_から始まる値を入力してください。"
 
-print_header "3/6 Webhook署名シークレット"
+print_header "3/7 Flow Harmony Stripe Price ID"
+print -r -- 'Stripe Dashboardの「商品カタログ」で、1000円・JPY・1回払いの価格を開いて取得します。
+入力する値は price_ から始まります。メトロノームとは別のPrice IDを指定してください。'
+read_visible flow_harmony_price_id "STRIPE_FLOW_HARMONY_PRICE_ID（Enterで既存値を保持）: "
+flow_harmony_price_id="${flow_harmony_price_id:-$current_flow_harmony_price_id}"
+[[ "$flow_harmony_price_id" == price_* ]] || fail "Flow HarmonyのPrice IDはprice_から始まる値を入力してください。"
+[[ "$flow_harmony_price_id" != "$stripe_price_id" ]] || fail "Flow Harmonyにはメトロノームとは別のPrice IDを入力してください。"
+
+print_header "4/7 Webhook署名シークレット"
 print -r -- '通常は何も入力せずEnterを押してください。
 Webhookが未登録なら、このウィザードが自動作成します。
 すでに作成済みの場合だけ、whsec_から始まる署名シークレットを入力します。'
@@ -152,7 +161,7 @@ if [[ -n "$stripe_webhook_secret" && "$stripe_webhook_secret" != whsec_* ]]; the
   fail "Webhook署名シークレットはwhsec_から始まる値を入力してください。"
 fi
 
-print_header "4/6 公開サイトURL"
+print_header "5/7 公開サイトURL"
 print -r -- '購入画面が表示されるサイトの公開ベースURLを入力します。
 例: https://example.com
 GitHub Pagesのプロジェクトサイト例: https://user.github.io/repository
@@ -164,14 +173,14 @@ public_site_url="${public_site_url:-$current_public_site_url}"
 [[ "$public_site_url" != *\?* && "$public_site_url" != *\#* ]] || fail "公開サイトURLにクエリや#を含めないでください。"
 [[ "$store_api_url" == https://* && "$store_api_url" != */ ]] || fail "STORE_API_URLは末尾の/を除いたHTTPS URLにしてください。"
 
-print_header "5/6 管理者パスワード"
+print_header "6/7 管理者パスワード"
 print -r -- '販売ON/OFFと診断APIで使う管理者専用パスワードです。
 推測されにくい16文字以上を新しく決めて入力してください。'
 read_secret editor_password "EDITOR_PASSWORD（Enterで既存値を保持）: "
 editor_password="${editor_password:-$current_editor_password}"
 (( ${#editor_password} >= 16 )) || fail "管理者パスワードは16文字以上にしてください。"
 
-print_header "6/6 ダウンロード署名鍵"
+print_header "7/7 ダウンロード署名鍵"
 print -r -- '24時間ダウンロードURLの改ざん防止に使う内部秘密値です。
 Enterだけ押すと、安全なランダム値を自動生成します。
 通常は自動生成を選んでください。'
@@ -188,11 +197,12 @@ fi
 (( ${#download_token_secret} >= 32 )) || fail "ダウンロード署名鍵は32文字以上にしてください。"
 
 print_header "Stripe接続確認"
-printf 'APIキー、500円Price、Webhook登録を確認しています...\n'
+printf 'APIキー、500円Price、1000円Price、Webhook登録を確認しています...\n'
 if [[ "${STORE_SKIP_STRIPE_VALIDATION:-}" != "1" ]]; then
   stripe_validation_result=""
   if ! stripe_validation_result="$(PYTHONWARNINGS="ignore" STRIPE_SECRET_KEY_VALUE="$stripe_secret_key" \
   STRIPE_PRICE_ID_VALUE="$stripe_price_id" \
+  STRIPE_FLOW_HARMONY_PRICE_ID_VALUE="$flow_harmony_price_id" \
   STRIPE_EXPECTED_MODE="$stripe_mode" \
   PUBLIC_SITE_URL_VALUE="$public_site_url" \
   STORE_API_URL_VALUE="$store_api_url" \
@@ -205,15 +215,21 @@ import stripe
 
 stripe.api_key = os.environ["STRIPE_SECRET_KEY_VALUE"]
 try:
-  price = stripe.Price.retrieve(os.environ["STRIPE_PRICE_ID_VALUE"])
+  metronome_price = stripe.Price.retrieve(os.environ["STRIPE_PRICE_ID_VALUE"])
+  flow_harmony_price = stripe.Price.retrieve(
+    os.environ["STRIPE_FLOW_HARMONY_PRICE_ID_VALUE"]
+  )
   expected_live = os.environ["STRIPE_EXPECTED_MODE"] == "live"
-  price_valid = all((
-    price.active is True,
-    price.type == "one_time",
-    price.currency == "jpy",
-    price.unit_amount == 500,
-    price.livemode is expected_live,
-  ))
+  def price_is_valid(price, expected_amount):
+    return all((
+      price.active is True,
+      price.type == "one_time",
+      price.currency == "jpy",
+      price.unit_amount == expected_amount,
+      price.livemode is expected_live,
+    ))
+  metronome_price_valid = price_is_valid(metronome_price, 500)
+  flow_harmony_price_valid = price_is_valid(flow_harmony_price, 1000)
   target = os.environ["STORE_API_URL_VALUE"] + "/api/store/webhook"
   endpoints = stripe.WebhookEndpoint.list(limit=100).data
   endpoint = next((item for item in endpoints if item.url == target), None)
@@ -232,8 +248,11 @@ try:
 except Exception as exc:
   print(f"Stripe接続エラー: {exc.user_message or exc}", file=sys.stderr)
   raise SystemExit(1)
-if not price_valid:
+if not metronome_price_valid:
   print("Stripe Priceが500円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
+  raise SystemExit(1)
+if not flow_harmony_price_valid:
+  print("Flow HarmonyのStripe Priceが1000円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
   raise SystemExit(1)
 if not webhook_valid:
   print(f"Webhookを有効化できませんでした: {target}", file=sys.stderr)
@@ -255,7 +274,8 @@ printf 'Stripe接続確認: OK\n'
 
 print_header "保存前の確認"
 printf 'モード                 : %s\n' "$stripe_mode"
-printf '販売価格               : 500円（JPY・1回払い）\n'
+printf 'メトロノーム販売価格   : 500円（JPY・1回払い）\n'
+printf 'Flow Harmony販売価格   : 1000円（JPY・1回払い）\n'
 printf '公開サイト             : %s\n' "$public_site_url"
 printf 'Stripe秘密値           : 入力済み（非表示）\n'
 printf '管理者パスワード       : 入力済み（非表示）\n'
@@ -267,6 +287,7 @@ read_visible confirmation "確認 [y/N]: "
 STRIPE_SECRET_KEY_VALUE="$stripe_secret_key" \
 STRIPE_WEBHOOK_SECRET_VALUE="$stripe_webhook_secret" \
 STRIPE_PRICE_ID_VALUE="$stripe_price_id" \
+STRIPE_FLOW_HARMONY_PRICE_ID_VALUE="$flow_harmony_price_id" \
 DOWNLOAD_TOKEN_SECRET_VALUE="$download_token_secret" \
 PUBLIC_SITE_URL_VALUE="$public_site_url" \
 EDITOR_PASSWORD_VALUE="$editor_password" \
@@ -282,8 +303,10 @@ values = {
   "STRIPE_SECRET_KEY": os.environ["STRIPE_SECRET_KEY_VALUE"],
   "STRIPE_WEBHOOK_SECRET": os.environ["STRIPE_WEBHOOK_SECRET_VALUE"],
   "STRIPE_METRONOME_PRICE_ID": os.environ["STRIPE_PRICE_ID_VALUE"],
+  "STRIPE_FLOW_HARMONY_PRICE_ID": os.environ["STRIPE_FLOW_HARMONY_PRICE_ID_VALUE"],
   "DOWNLOAD_TOKEN_SECRET": os.environ["DOWNLOAD_TOKEN_SECRET_VALUE"],
   "METRONOME_PRICE_YEN": "500",
+  "FLOW_HARMONY_PRICE_YEN": "1000",
   "PUBLIC_SITE_URL": os.environ["PUBLIC_SITE_URL_VALUE"],
   "EDITOR_PASSWORD": os.environ["EDITOR_PASSWORD_VALUE"],
 }
@@ -292,14 +315,15 @@ for key, value in values.items():
 path.chmod(0o600)
 ' "$ENV_FILE"
 
-unset stripe_secret_key stripe_webhook_secret download_token_secret editor_password
+unset stripe_secret_key stripe_webhook_secret stripe_price_id flow_harmony_price_id
+unset download_token_secret editor_password
 
 print_header "保存完了"
 print -r -- '.envへ設定を保存しました（ファイル権限: 管理者のみ読み書き）。
 
 次の作業:
 1. ローカル確認: .venv/bin/flask --app app run --host 127.0.0.1 --port 5001
-2. Render DashboardのEnvironmentへ、.envと同名の7項目を登録
+2. Render DashboardのEnvironmentへ、.envと同名の9項目を登録
 3. Renderを再デプロイ
 4. /api/store/health がready=trueになることを確認
 5. テストモードで決済確認後にだけ本番モードへ切り替え
