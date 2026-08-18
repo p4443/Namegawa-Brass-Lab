@@ -1061,6 +1061,13 @@ class StoreTest(unittest.TestCase):
 
         self.assertEqual(archived_app, product_builder.SOURCE_FILE.read_bytes())
 
+    def test_metronome_bpm_counts_the_selected_denominator_note(self):
+        html = product_builder.SOURCE_FILE.read_text(encoding="utf-8")
+
+        self.assertIn("function beatUnitLength(bpmValue)", html)
+        self.assertIn("return 60000 / bpmValue;", html)
+        self.assertNotIn("(4 / beatUnit)", html)
+
     def test_product_builder_keeps_existing_archive_when_source_is_missing(self):
         source_file = self.base_path / "missing.html"
         output_file = self.base_path / "existing-product.zip"

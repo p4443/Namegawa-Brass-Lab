@@ -538,7 +538,7 @@
 
   <!-- TEMPO (BPM) 設定 -->
   <div class="control-group">
-    <label for="bpmSlider">テンポ（BPM）</label>
+    <label for="bpmSlider">テンポ（BPM・選択した分母音符の回数）</label>
     <div class="bpm-control">
       <input type="range" id="bpmSlider" min="40" max="180" value="80">
       <div class="bpm-display" id="bpmVal">80</div>
@@ -766,8 +766,8 @@
     return `${subdivisions}連符`;
   }
 
-  function beatUnitLength(bpmValue, beatUnit) {
-    return (60000 / bpmValue) * (4 / beatUnit);
+  function beatUnitLength(bpmValue) {
+    return 60000 / bpmValue;
   }
 
   function updateSubdivisionLabels() {
@@ -1039,7 +1039,7 @@
   function scheduleNextBeat() {
     if (!isRunning) return;
     const beatLength = normalModeToggle.checked
-      ? beatUnitLength(bpm, Number(meterDenominator.value))
+      ? beatUnitLength(bpm)
       : 60000 / bpm;
     const step = breathPattern[stepIdx];
     const delay = normalModeToggle.checked
