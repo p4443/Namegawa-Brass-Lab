@@ -1064,9 +1064,17 @@ class StoreTest(unittest.TestCase):
     def test_metronome_bpm_uses_quarter_note_as_one_beat(self):
         html = product_builder.SOURCE_FILE.read_text(encoding="utf-8")
 
-        self.assertIn("function beatUnitLength(bpmValue, beatUnit)", html)
+        self.assertIn(
+            "function beatUnitLength(bpmValue, beatsPerMeasure, beatUnit)", html
+        )
         self.assertIn("(60000 / bpmValue) * (4 / beatUnit)", html)
         self.assertIn("BPM・四分音符を1拍", html)
+
+    def test_metronome_six_eight_measure_equals_two_quarter_notes(self):
+        html = product_builder.SOURCE_FILE.read_text(encoding="utf-8")
+
+        self.assertIn("beatsPerMeasure === 6 && beatUnit === 8", html)
+        self.assertIn("(60000 / bpmValue) * (2 / 6)", html)
 
     def test_product_builder_keeps_existing_archive_when_source_is_missing(self):
         source_file = self.base_path / "missing.html"

@@ -766,7 +766,10 @@
     return `${subdivisions}連符`;
   }
 
-  function beatUnitLength(bpmValue, beatUnit) {
+  function beatUnitLength(bpmValue, beatsPerMeasure, beatUnit) {
+    if (beatsPerMeasure === 6 && beatUnit === 8) {
+      return (60000 / bpmValue) * (2 / 6);
+    }
     return (60000 / bpmValue) * (4 / beatUnit);
   }
 
@@ -1039,7 +1042,11 @@
   function scheduleNextBeat() {
     if (!isRunning) return;
     const beatLength = normalModeToggle.checked
-      ? beatUnitLength(bpm, Number(meterDenominator.value))
+      ? beatUnitLength(
+          bpm,
+          Number(meterNumerator.value),
+          Number(meterDenominator.value),
+        )
       : 60000 / bpm;
     const step = breathPattern[stepIdx];
     const delay = normalModeToggle.checked
