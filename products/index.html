@@ -216,7 +216,7 @@
           <article class="product-feature" id="flow-harmony">
           <header class="product-heading">
             <div>
-              <span class="product-label">公開中のアプリ・Web版無料</span>
+              <span class="product-label">近日公開・Web版無料体験</span>
               <h2>Flow Harmony（フロー・ハーモニー）</h2>
               <p>入力音の上下へハーモニーを重ね、1/fゆらぎや自分の音色を使って練習できるアプリです。</p>
             </div>
@@ -227,12 +227,12 @@
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>オフライン版</h3>
-              <p>インターネット接続なしで、購入者本人の端末からFlow Harmonyを利用できます。</p>
+              <h3>オフライン版は近日公開</h3>
+              <p>現在は無料Web版をお試しいただけます。オフライン版は公開準備中です。</p>
               <ul class="store-benefits">
                 <li>Web版は無料で全機能を体験可能</li>
                 <li>上下12音程ハーモニーと1/fゆらぎを収録</li>
-                <li>決済確認後、24時間有効のリンクを発行</li>
+                <li>オフライン版は近日公開予定</li>
               </ul>
               <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
               <nav class="store-legal" aria-label="Flow Harmony購入に関する情報">
@@ -243,7 +243,7 @@
               </nav>
             </div>
             <div class="store-actions">
-              <button class="store-button" id="flow-purchase-button" type="button" disabled>販売状況を確認中</button>
+              <button class="store-button" id="flow-purchase-button" type="button" disabled>近日公開</button>
               <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
               <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
             </div>
@@ -643,40 +643,7 @@
       }
     }
 
-    function renderFlowProduct(product) {
-      flowPurchaseButton.disabled = !product.checkout_available;
-      flowPurchaseButton.textContent = product.checkout_available
-        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
-        : "オフライン版 販売準備中";
-      flowStoreStatus.textContent = product.checkout_available
-        ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
-        : "Web版は無料で全機能を利用できます。";
-    }
-
-    async function loadFlowProduct() {
-      try {
-        renderFlowProduct(await requestStore("flow-harmony/product"));
-      } catch (error) {
-        flowPurchaseButton.textContent = "オフライン版 販売準備中";
-        flowStoreStatus.textContent = error.message;
-      }
-    }
-
-    flowPurchaseButton.addEventListener("click", async () => {
-      flowPurchaseButton.disabled = true;
-      flowStoreStatus.textContent = "安全な決済画面を準備しています…";
-      try {
-        const result = await requestStore("flow-harmony/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
-        });
-        location.href = result.checkout_url;
-      } catch (error) {
-        flowStoreStatus.textContent = error.message;
-        await loadFlowProduct();
-      }
-    });
+    flowStoreStatus.textContent = "無料Web版を体験できます。オフライン版は近日公開予定です。";
 
     async function provideFlowDownload(sessionId) {
       const result = await requestStore("flow-harmony/download-link", {
@@ -712,7 +679,7 @@
     }
 
     loadStoreProduct().then(applyPurchaseResult);
-    loadFlowProduct().then(applyFlowPurchaseResult);
+    applyFlowPurchaseResult();
   </script>
 </body>
 </html>

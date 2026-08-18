@@ -207,14 +207,15 @@ class StoreTest(unittest.TestCase):
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
-    def test_products_embeds_free_flow_harmony_and_offers_offline_purchase(self):
+    def test_products_embeds_free_flow_harmony_as_coming_soon(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('src="../flow-harmony/?mode=free"', html)
-        self.assertIn('id="flow-purchase-button"', html)
+        self.assertIn('id="flow-purchase-button" type="button" disabled>近日公開', html)
         self.assertIn("Web版は無料で全機能を体験可能", html)
+        self.assertNotIn('requestStore("flow-harmony/checkout"', html)
 
     def test_flow_harmony_product_uses_one_thousand_yen_price(self):
         with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
@@ -226,7 +227,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(product["price_yen"], 1000)
         self.assertFalse(product["checkout_available"])
 
-    def test_flow_harmony_checkout_uses_its_own_stripe_product(self):
+    def test_flow_harmony_checkout_is_unavailable_before_release(self):
         stripe = self.stripe_module(amount_total=1000)
         stripe.Price.retrieve.return_value.unit_amount = 1000
         checkout_request_id = "66e59f96-394e-4df1-9b0b-e80b888d90fc"
@@ -242,11 +243,9 @@ class StoreTest(unittest.TestCase):
                 json={"checkout_request_id": checkout_request_id},
             )
 
-        self.assertEqual(response.status_code, 201)
-        create_kwargs = stripe.checkout.Session.create.call_args.kwargs
-        self.assertEqual(create_kwargs["line_items"][0]["price"], "price_flow_harmony")
-        self.assertEqual(create_kwargs["metadata"]["product_id"], "flow-harmony")
-        self.assertEqual(create_kwargs["metadata"]["price_yen"], "1000")
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["error"], "近日公開予定です。")
+        stripe.checkout.Session.create.assert_not_called()
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):
         stripe = self.stripe_module(amount_total=1000)
