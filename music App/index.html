@@ -565,7 +565,7 @@
         </select>
       </div>
       <div>
-        <label for="meterDenominator">分母（基準音符）</label>
+        <label for="meterDenominator">分母（1拍の音符）</label>
         <select id="meterDenominator">
           <option value="2">2分音符</option>
           <option value="4" selected>4分音符</option>
@@ -761,11 +761,25 @@
     return value === 0.5 ? '½' : String(value);
   }
 
-  function subdivisionLabel(subdivisions) {
-    if (subdivisions === 1) return '4分音符';
-    if (subdivisions === 2) return '8分音符';
-    if (subdivisions === 4) return '16分音符';
+  function subdivisionLabel(subdivisions, beatUnit) {
+    if ([1, 2, 4, 8].includes(subdivisions)) return `${beatUnit * subdivisions}分音符`;
     return `${subdivisions}連符`;
+  }
+
+  function beatUnitLength(bpmValue, beatUnit) {
+    return (60000 / bpmValue) * (4 / beatUnit);
+  }
+
+  function updateSubdivisionLabels() {
+    const beatUnit = Number(meterDenominator.value);
+    Array.from(subdivisionSelect.options).forEach((option) => {
+      const subdivisions = Number(option.value);
+      option.textContent = subdivisions === 1
+        ? `${beatUnit}分音符（分割なし）`
+        : [2, 4, 8].includes(subdivisions)
+          ? `${beatUnit * subdivisions}分音符（${subdivisions}分割）`
+          : `${subdivisions}連符`;
+    });
   }
 
   function renderAccentButtons() {
@@ -832,7 +846,7 @@
       beatCounter.classList.add('normal-counter');
       currentBeat.textContent = normalBeat;
       maxBeat.textContent = beatsPerMeasure;
-      progressText.textContent = `${measureCount}小節 ｜ ${subdivisionLabel(subdivisions)} ${normalSubdivision}/${subdivisions} ｜ ${beatsPerMeasure}/${beatUnit}拍子`;
+      progressText.textContent = `${measureCount}小節 ｜ ${subdivisionLabel(subdivisions, beatUnit)} ${normalSubdivision}/${subdivisions} ｜ ${beatsPerMeasure}/${beatUnit}拍子`;
       return;
     }
 
@@ -1024,7 +1038,9 @@
 
   function scheduleNextBeat() {
     if (!isRunning) return;
-    const beatLength = 60000 / bpm;
+    const beatLength = normalModeToggle.checked
+      ? beatUnitLength(bpm, Number(meterDenominator.value))
+      : 60000 / bpm;
     const step = breathPattern[stepIdx];
     const delay = normalModeToggle.checked
       ? beatLength / Number(subdivisionSelect.value)
@@ -1106,6 +1122,7 @@
     control.addEventListener('change', () => {
       if (isRunning) stopPractice();
       if (control === meterNumerator) renderAccentButtons();
+      if (control === meterDenominator) updateSubdivisionLabels();
       normalBeat = 1;
       normalSubdivision = 1;
       measureCount = 1;
@@ -1149,6 +1166,7 @@
   });
 
   startBtn.setAttribute('aria-pressed', 'false');
+  updateSubdivisionLabels();
   renderAccentButtons();
   renderStep();
   updateActionControls();

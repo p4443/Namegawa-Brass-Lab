@@ -191,7 +191,7 @@
 
     .feature-list {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(2, 1fr);
       gap: 12px;
       margin: 0;
       padding: 0;
@@ -219,6 +219,107 @@
       display: block;
       margin-bottom: 8px;
       font-size: 1.5rem;
+    }
+
+    .app-shelf {
+      margin-top: 12px;
+      padding: 18px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(11, 37, 69, 0.06);
+      scroll-margin-top: 24px;
+    }
+
+    .app-shelf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .app-shelf-title {
+      color: var(--navy);
+      font-size: 1rem;
+    }
+
+    .carousel-controls {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .carousel-button {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid var(--navy);
+      border-radius: 50%;
+      color: var(--navy);
+      background: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .carousel-button:hover,
+    .carousel-button:focus-visible {
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .carousel-button:disabled {
+      cursor: default;
+      opacity: 0.35;
+    }
+
+    .app-track {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 2px 2px 10px;
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      scrollbar-color: var(--gold) var(--line);
+      scrollbar-width: thin;
+    }
+
+    .lesson-app-card {
+      display: grid;
+      flex: 0 0 min(78vw, 680px);
+      min-height: 128px;
+      align-content: center;
+      gap: 5px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      color: var(--navy);
+      background: var(--background);
+      scroll-snap-align: start;
+      text-decoration: none;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .lesson-app-card:hover,
+    .lesson-app-card:focus-visible {
+      border-color: var(--navy);
+      background: #fff;
+    }
+
+    .lesson-app-card:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: -3px;
+    }
+
+    .lesson-app-card strong {
+      font-size: 1rem;
+    }
+
+    .lesson-app-card span {
+      color: var(--muted);
+      font-size: 0.8rem;
     }
 
     .price-list {
@@ -856,6 +957,13 @@
       background: var(--surface);
     }
 
+    .app-shelf {
+      margin-top: 24px;
+      padding: 24px;
+      border-top: 3px solid var(--gold);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
     .feature-icon {
       color: var(--navy);
     }
@@ -1176,8 +1284,26 @@
       <ul class="feature-list">
         <li><span class="feature-icon" aria-hidden="true">♪</span>初めての音出しから音大受験まで対応</li>
         <li><span class="feature-icon" aria-hidden="true">◎</span>演奏・指導経験を生かした個別レッスン</li>
-        <li><span class="feature-icon" aria-hidden="true">♬</span>練習ツールも活用した分かりやすい指導</li>
       </ul>
+      <div class="app-shelf" id="lesson-apps">
+        <div class="app-shelf-header">
+          <h3 class="app-shelf-title" id="lesson-apps-title">練習ツールも活用した分かりやすい指導</h3>
+          <div class="carousel-controls" aria-label="練習アプリのスクロール操作">
+            <button class="carousel-button" type="button" data-carousel-prev="lesson-app-track" aria-label="前のアプリ">←</button>
+            <button class="carousel-button" type="button" data-carousel-next="lesson-app-track" aria-label="次のアプリ">→</button>
+          </div>
+        </div>
+        <div class="app-track" id="lesson-app-track" aria-labelledby="lesson-apps-title" tabindex="0">
+          <a class="lesson-app-card" href="../music%20App/" target="_blank" rel="noopener">
+            <strong>トランペット練習メトロノーム</strong>
+            <span>呼吸・テンポ・連符をまとめて練習</span>
+          </a>
+          <a class="lesson-app-card" href="../flow-harmony/?mode=free" target="_blank" rel="noopener">
+            <strong>Flow Harmony</strong>
+            <span>自分の音にハーモニーを重ねて練習</span>
+          </a>
+        </div>
+      </div>
     </section>
 
     <section class="section" aria-labelledby="price-title">
@@ -1330,6 +1456,34 @@
     </div>
   </footer>
   <script>
+    document.querySelectorAll(".lesson-app-card").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        history.replaceState(history.state, "", `${location.pathname}${location.search}#lesson-apps`);
+      });
+    });
+
+    document.querySelectorAll("[data-carousel-next], [data-carousel-prev]").forEach((button) => {
+      const targetId = button.dataset.carouselNext || button.dataset.carouselPrev;
+      const track = document.getElementById(targetId);
+      if (!track) return;
+
+      const updateButtons = () => {
+        const atStart = track.scrollLeft <= 1;
+        const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+        document.querySelector(`[data-carousel-prev="${targetId}"]`).disabled = atStart;
+        document.querySelector(`[data-carousel-next="${targetId}"]`).disabled = atEnd;
+      };
+
+      button.addEventListener("click", () => {
+        const direction = button.dataset.carouselNext ? 1 : -1;
+        track.scrollBy({ left: direction * track.clientWidth * 0.85, behavior: "smooth" });
+      });
+      track.addEventListener("scroll", updateButtons, { passive: true });
+      window.addEventListener("resize", updateButtons);
+      updateButtons();
+    });
+
     const reservationForm = document.getElementById("reservation-form");
     const reservationType = document.getElementById("reservation-type");
     const reservationDuration = document.getElementById("reservation-duration");
