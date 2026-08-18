@@ -1061,12 +1061,12 @@ class StoreTest(unittest.TestCase):
 
         self.assertEqual(archived_app, product_builder.SOURCE_FILE.read_bytes())
 
-    def test_metronome_bpm_counts_the_selected_denominator_note(self):
+    def test_metronome_bpm_uses_quarter_note_as_one_beat(self):
         html = product_builder.SOURCE_FILE.read_text(encoding="utf-8")
 
-        self.assertIn("function beatUnitLength(bpmValue)", html)
-        self.assertIn("return 60000 / bpmValue;", html)
-        self.assertNotIn("(4 / beatUnit)", html)
+        self.assertIn("function beatUnitLength(bpmValue, beatUnit)", html)
+        self.assertIn("(60000 / bpmValue) * (4 / beatUnit)", html)
+        self.assertIn("BPM・四分音符を1拍", html)
 
     def test_product_builder_keeps_existing_archive_when_source_is_missing(self):
         source_file = self.base_path / "missing.html"
