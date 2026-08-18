@@ -207,15 +207,32 @@ class StoreTest(unittest.TestCase):
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
-    def test_products_embeds_free_flow_harmony_as_coming_soon(self):
+    def test_flow_harmony_free_version_is_unavailable(self):
+        response = self.client.get("/flow-harmony/?mode=free")
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("現在公開を停止", response.get_data(as_text=True))
+        self.assertEqual(response.headers["Retry-After"], "86400")
+        self.assertEqual(self.client.get("/flow-harmony/index.html").status_code, 404)
+
+    def test_products_shows_flow_harmony_as_unavailable(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('src="../flow-harmony/?mode=free"', html)
-        self.assertIn('id="flow-purchase-button" type="button" disabled>近日公開', html)
-        self.assertIn("Web版は無料で全機能を体験可能", html)
+        self.assertNotIn('../flow-harmony/?mode=free', html)
+        self.assertIn('id="flow-purchase-button" type="button" disabled>公開停止中', html)
+        self.assertIn("無料Web版とオフライン版は、どちらも現在ご利用いただけません", html)
         self.assertNotIn('requestStore("flow-harmony/checkout"', html)
+
+    def test_lesson_page_does_not_link_to_flow_harmony(self):
+        response = self.client.get("/lesson/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn('../flow-harmony/?mode=free', html)
+        self.assertIn("Flow Harmony", html)
+        self.assertIn("現在公開を停止しています", html)
 
     def test_flow_harmony_product_uses_one_thousand_yen_price(self):
         with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
@@ -244,7 +261,7 @@ class StoreTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.get_json()["error"], "近日公開予定です。")
+        self.assertEqual(response.get_json()["error"], "現在公開を停止しています。")
         stripe.checkout.Session.create.assert_not_called()
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):

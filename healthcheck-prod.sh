@@ -114,7 +114,7 @@ if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/flow-harmony/product returned HTTP ${status_code}: ${response_body}"
 fi
 if [[ "$response_body" != *'"enabled":false'* || "$response_body" != *'"checkout_available":false'* ]]; then
-  fail "Flow Harmony is not in coming-soon mode: ${response_body}"
+  fail "Flow Harmony is not in unpublished mode: ${response_body}"
 fi
 pass "GET /api/store/flow-harmony/product"
 

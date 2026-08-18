@@ -97,7 +97,6 @@
     .launch-link:hover { color: #ffffff; background: var(--primary-color); }
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
-    .flow-harmony-window { height: 1500px; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -146,7 +145,6 @@
       .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
-      .flow-harmony-window { height: 1800px; }
     }
 
     @media (max-width: 520px) {
@@ -216,23 +214,19 @@
           <article class="product-feature" id="flow-harmony">
           <header class="product-heading">
             <div>
-              <span class="product-label">近日公開・Web版無料体験</span>
+              <span class="product-label">公開停止中</span>
               <h2>Flow Harmony（フロー・ハーモニー）</h2>
               <p>入力音の上下へハーモニーを重ね、1/fゆらぎや自分の音色を使って練習できるアプリです。</p>
             </div>
-            <a class="launch-link" href="../flow-harmony/?mode=free" target="_blank" rel="noopener">別画面で試す</a>
           </header>
-
-          <iframe class="app-window flow-harmony-window" src="../flow-harmony/?mode=free" title="Flow Harmony" loading="lazy" allow="microphone; autoplay; bluetooth"></iframe>
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>オフライン版は近日公開</h3>
-              <p>現在は無料Web版をお試しいただけます。オフライン版は公開準備中です。</p>
+              <h3>現在公開を停止しています</h3>
+              <p>無料Web版とオフライン版は、どちらも現在ご利用いただけません。</p>
               <ul class="store-benefits">
-                <li>Web版は無料で全機能を体験可能</li>
                 <li>上下12音程ハーモニーと1/fゆらぎを収録</li>
-                <li>オフライン版は近日公開予定</li>
+                <li>再公開時期は未定です</li>
               </ul>
               <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
               <nav class="store-legal" aria-label="Flow Harmony購入に関する情報">
@@ -243,7 +237,7 @@
               </nav>
             </div>
             <div class="store-actions">
-              <button class="store-button" id="flow-purchase-button" type="button" disabled>近日公開</button>
+              <button class="store-button" id="flow-purchase-button" type="button" disabled>公開停止中</button>
               <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
               <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
             </div>
@@ -333,27 +327,6 @@
   <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
   <script>
-    const flowHarmonyWindow = document.querySelector(".flow-harmony-window");
-    const resizeFlowHarmonyWindow = () => {
-      const frameDocument = flowHarmonyWindow?.contentDocument;
-      if (!frameDocument) return;
-      flowHarmonyWindow.style.height = "1px";
-      const contentHeight = Math.max(
-        frameDocument.documentElement.scrollHeight,
-        frameDocument.body.scrollHeight,
-      );
-      if (contentHeight > 0) flowHarmonyWindow.style.height = `${contentHeight}px`;
-    };
-
-    flowHarmonyWindow?.addEventListener("load", () => {
-      resizeFlowHarmonyWindow();
-      const frameDocument = flowHarmonyWindow.contentDocument;
-      if (frameDocument && "ResizeObserver" in window) {
-        new ResizeObserver(resizeFlowHarmonyWindow).observe(frameDocument.body);
-      }
-    });
-    window.addEventListener("resize", resizeFlowHarmonyWindow);
-
     document.querySelectorAll(".product-track").forEach((track) => {
       const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
       const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
@@ -643,7 +616,7 @@
       }
     }
 
-    flowStoreStatus.textContent = "無料Web版を体験できます。オフライン版は近日公開予定です。";
+    flowStoreStatus.textContent = "無料Web版とオフライン版は現在公開を停止しています。";
 
     async function provideFlowDownload(sessionId) {
       const result = await requestStore("flow-harmony/download-link", {

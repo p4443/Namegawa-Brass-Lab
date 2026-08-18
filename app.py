@@ -1296,8 +1296,9 @@ def create_app(
 
     @app.get("/flow-harmony/")
     def flow_harmony():
-        response = make_response(render_template("flow-harmony/index.html"))
+        response = make_response("Flow Harmonyは現在公開を停止しています。", 503)
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Retry-After"] = "86400"
         return response
 
     @app.get("/legal/")
@@ -1491,7 +1492,7 @@ def create_app(
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
         if not FLOW_HARMONY_SALES_ENABLED:
-            return store_json({"error": "近日公開予定です。"}, 503)
+            return store_json({"error": "現在公開を停止しています。"}, 503)
         configuration = flow_harmony_configuration()
         if not configuration["ready"] or not flow_harmony_price_is_ready(configuration):
             return store_json({"error": "決済機能を準備中です。"}, 503)
