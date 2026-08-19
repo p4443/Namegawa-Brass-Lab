@@ -292,7 +292,9 @@
           const response = await fetch(endpoint, { ...fetchOptions, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
-          const responseError = new Error(result.error || "サーバーに接続できません。");
+          const errorDetail = result.delivery_error || result.detail;
+          const errorMessage = result.error || "サーバーに接続できません。";
+          const responseError = new Error(errorDetail ? `${errorMessage} (${errorDetail})` : errorMessage);
           responseError.isHttpError = true;
           throw responseError;
         } catch (error) {
@@ -539,7 +541,10 @@
       const failures = [];
       for (const editor of editors) {
         try {
-          const result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
+          let result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
+          if (!result || result.error) {
+            result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
+          }
           if (!result || result.error) {
             failures.push(`${editor.reservation.reservation_id}: ${result?.error || "原因不明"}`);
             continue;
