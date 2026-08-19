@@ -18,7 +18,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";
+var SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -155,7 +155,7 @@ function doPost(event) {
       var from = String(data.from || "").trim();
       var to = String(data.to || "").trim();
       var slots = listSlotStatuses(slotSheet, sheet, from, to);
-      var confirmedCounts = confirmedReservationCounts(sheet, from, to);
+      var confirmedCounts = confirmedReservationCounts(sheet, slotSheet, from, to);
       return jsonResponse({ ok: true, slots: slots, confirmedCounts: confirmedCounts });
     }
 
@@ -184,7 +184,7 @@ function doPost(event) {
         endTime,
         status,
         note,
-        "admin"
+        createAdminSlotSource()
       );
       return jsonResponse({ ok: true, updatedCount: updatedCount });
     }
@@ -714,24 +714,79 @@ function activeReservationSlotStatuses(sheet) {
   return statuses;
 }
 
-function confirmedReservationCounts(sheet, fromDateText, toDateText) {
+function confirmedReservationCounts(sheet, slotSheet, fromDateText, toDateText) {
   var counts = {};
   var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) {
+  if (lastRow > 1) {
+    var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    values.forEach(function (row) {
+      if (String(row[2] || "").trim() !== "確定") {
+        return;
+      }
+      var dateText = normalizeReservationDate(row[7]);
+      if (!dateText || (fromDateText && dateText < fromDateText) || (toDateText && dateText > toDateText)) {
+        return;
+      }
+      counts[dateText] = (counts[dateText] || 0) + 1;
+    });
+  }
+
+  var slotLastRow = slotSheet.getLastRow();
+  if (slotLastRow <= 1) {
     return counts;
   }
-  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  values.forEach(function (row) {
-    if (String(row[2] || "").trim() !== "確定") {
+  var slotValues = slotSheet.getRange(2, 1, slotLastRow - 1, SLOT_HEADERS.length).getValues();
+  var adminBookings = {};
+  var legacyAdminTimes = {};
+  slotValues.forEach(function (row) {
+    if (String(row[2] || "").trim() !== "予約済") {
       return;
     }
-    var dateText = normalizeReservationDate(row[7]);
+    var dateText = toDateText_(row[0]);
     if (!dateText || (fromDateText && dateText < fromDateText) || (toDateText && dateText > toDateText)) {
       return;
     }
+    var source = String(row[5] || "").trim();
+    if (source.indexOf("admin:") !== 0 && source !== "admin") {
+      return;
+    }
+    if (source === "admin") {
+      if (!legacyAdminTimes[dateText]) {
+        legacyAdminTimes[dateText] = [];
+      }
+      legacyAdminTimes[dateText].push(normalizeReservationTime(row[1]));
+      return;
+    }
+    adminBookings[dateText + "|" + source] = dateText;
+  });
+  Object.keys(adminBookings).forEach(function (bookingKey) {
+    var dateText = adminBookings[bookingKey];
     counts[dateText] = (counts[dateText] || 0) + 1;
   });
+  Object.keys(legacyAdminTimes).forEach(function (dateText) {
+    var minuteValues = [];
+    var consultationCount = 0;
+    legacyAdminTimes[dateText].forEach(function (timeText) {
+      if (timeText === "要相談") {
+        consultationCount = 1;
+        return;
+      }
+      var minutes = toMinutes(timeText);
+      if (minutes >= 0 && minuteValues.indexOf(minutes) === -1) {
+        minuteValues.push(minutes);
+      }
+    });
+    minuteValues.sort(function (left, right) { return left - right; });
+    var blockCount = minuteValues.reduce(function (total, minutes, index) {
+      return total + (index === 0 || minutes - minuteValues[index - 1] > 15 ? 1 : 0);
+    }, 0);
+    counts[dateText] = (counts[dateText] || 0) + blockCount + consultationCount;
+  });
   return counts;
+}
+
+function createAdminSlotSource() {
+  return "admin:" + Utilities.getUuid();
 }
 
 function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {

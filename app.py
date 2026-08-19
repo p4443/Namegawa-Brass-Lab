@@ -76,7 +76,7 @@ CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 40
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
-LESSON_APPS_SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19"
 
 
 def current_japan_date():

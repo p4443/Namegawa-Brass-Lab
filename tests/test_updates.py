@@ -261,7 +261,12 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19";', script)
+        self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
+        self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
+        self.assertIn('return "admin:" + Utilities.getUuid();', script)
+        self.assertIn("legacyAdminTimes[dateText].push", script)
+        self.assertIn("minutes - minuteValues[index - 1] > 15", script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -645,6 +650,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
         self.assertIn('id="reservation-retry"', page)
         self.assertIn('id="reservation-save-all"', page)
+        self.assertIn('id="admin-slot-calendar"', page)
+        self.assertIn('id="admin-slot-list"', page)
+        self.assertIn("function renderAdminSlotCalendar()", page)
+        self.assertIn("function renderAdminSlotDetails(value)", page)
+        self.assertIn("scheduleSlots = result.slots || []", page)
         self.assertIn('reservationRetry.addEventListener("click"', page)
         self.assertIn('reservationSaveAll.addEventListener("click"', page)
         self.assertIn("for (const editor of editors)", page)
@@ -729,7 +739,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-20-confirmed-counts-v18",
+                "version": "2026-08-20-admin-confirmed-counts-v19",
                 "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
