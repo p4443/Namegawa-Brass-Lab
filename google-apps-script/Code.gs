@@ -210,6 +210,12 @@ function doPost(event) {
       var nextLessonType = Object.prototype.hasOwnProperty.call(data, "lesson_type")
         ? String(data.lesson_type || "").trim()
         : currentReservation.lessonType;
+      var nextName = Object.prototype.hasOwnProperty.call(data, "name")
+        ? String(data.name || "").trim()
+        : currentReservation.name;
+      var nextEmail = Object.prototype.hasOwnProperty.call(data, "email")
+        ? String(data.email || "").trim()
+        : currentReservation.email;
       var nextDurationMinutes = Object.prototype.hasOwnProperty.call(data, "duration_minutes")
         ? getLessonDuration(nextLessonType, data.duration_minutes)
         : currentReservation.durationMinutes;
@@ -259,8 +265,8 @@ function doPost(event) {
       var confirmationEmailSent = null;
       if (nextStatus === "確定" && currentReservation.status !== "確定") {
         confirmationEmailSent = sendReservationConfirmation({
-          name: currentReservation.name,
-          email: currentReservation.email,
+          name: nextName,
+          email: nextEmail,
           lesson_type: nextLessonType,
           preferred_date: nextDate,
           preferred_time: nextTime,

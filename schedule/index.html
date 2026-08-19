@@ -182,6 +182,7 @@
           <section class="admin-section">
             <h3>予約者一覧</h3>
             <button class="retry-button" id="reservation-retry" type="button">予約一覧を再読み込み</button>
+            <button class="button" id="reservation-save-all" type="button" disabled>変更した予約をまとめて更新</button>
             <div class="reservation-list" id="reservation-list"></div>
           </section>
           <section class="admin-section">
@@ -432,11 +433,17 @@
     const dashboard = document.getElementById("admin-dashboard");
     const reservationList = document.getElementById("reservation-list");
     const reservationRetry = document.getElementById("reservation-retry");
+    const reservationSaveAll = document.getElementById("reservation-save-all");
+    const reservationEditors = new Map();
+    const changedReservationIds = new Set();
     let adminPassword = "";
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
       reservationList.replaceChildren();
+      reservationEditors.clear();
+      changedReservationIds.clear();
+      reservationSaveAll.disabled = true;
       if (!activeReservations.length) { reservationList.textContent = "予約はありません。"; return; }
       activeReservations.forEach((reservation) => {
         const item = document.createElement("article"); item.className = "reservation-item";
@@ -455,10 +462,18 @@
         const durationInput = document.createElement("input"); durationInput.type = "number"; durationInput.min = "15"; durationInput.max = "480"; durationInput.step = "15"; durationInput.setAttribute("aria-label", "所要時間（分）");
         if (durationMinutes) durationInput.value = String(durationMinutes);
         durationInput.disabled = reservation.lesson_type !== "グループ・部活動指導";
+        const markChanged = () => {
+          changedReservationIds.add(reservation.reservation_id);
+          reservationSaveAll.disabled = false;
+        };
+        status.addEventListener("change", markChanged);
+        timeInput.addEventListener("change", markChanged);
+        durationInput.addEventListener("change", markChanged);
         const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
         save.addEventListener("click", () => updateReservation(reservation, status, timeInput, durationInput));
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
+        reservationEditors.set(reservation.reservation_id, { reservation, status, timeInput, durationInput });
         actions.append(status, timeInput, durationInput, save, remove); item.append(when, person, actions); reservationList.append(item);
       });
     }
@@ -467,7 +482,7 @@
       renderReservations(result.reservations || []);
     }
     setInterval(() => {
-      if (adminPassword && !dashboard.hidden && !document.hidden) {
+      if (adminPassword && !dashboard.hidden && !document.hidden && changedReservationIds.size === 0) {
         loadReservations().catch(() => {});
       }
     }, 30000);
@@ -476,7 +491,7 @@
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
       catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
     });
-    async function updateReservation(reservation, statusSelect, timeInput, durationInput) {
+    async function updateReservation(reservation, statusSelect, timeInput, durationInput, refresh = true) {
       adminStatus.textContent = "更新しています…";
       const payload = { status: statusSelect.value, ...(timeInput.value ? { preferred_time: timeInput.value } : {}) };
       if (reservation.lesson_type === "グループ・部活動指導" && timeInput.value !== "" && durationInput.value === "") {
@@ -500,9 +515,35 @@
       } else {
         adminStatus.textContent = updateMessage;
       }
+      changedReservationIds.delete(reservation.reservation_id);
+      reservationSaveAll.disabled = changedReservationIds.size === 0;
+      if (refresh) {
+        await loadReservations();
+        await loadSchedule();
+      }
+      return result;
+    }
+    reservationSaveAll.addEventListener("click", async () => {
+      const editors = [...changedReservationIds]
+        .map((id) => reservationEditors.get(id))
+        .filter(Boolean);
+      if (!editors.length) return;
+      reservationSaveAll.disabled = true;
+      let updatedCount = 0;
+      let emailCount = 0;
+      for (const editor of editors) {
+        const result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
+        if (!result) {
+          reservationSaveAll.disabled = false;
+          return;
+        }
+        updatedCount += 1;
+        if (result.confirmation_email_sent === true) emailCount += 1;
+      }
       await loadReservations();
       await loadSchedule();
-    }
+      adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailCount ? ` ${emailCount}件の確定メールを送信しました。` : ""}`;
+    });
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
       adminStatus.textContent = "削除しています…";
