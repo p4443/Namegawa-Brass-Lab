@@ -571,7 +571,10 @@
     }
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
       event.preventDefault(); const loginForm = event.currentTarget; adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
-      try { await requestApi("/api/editor", { headers: adminHeaders() }); }
+      try {
+        await requestApi("/api/editor", { headers: adminHeaders() });
+        await requestApi("/api/lesson-admin-health", { headers: adminHeaders(), timeoutMs: 30000 });
+      }
       catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }
       dashboard.hidden = false; loginForm.hidden = true; adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }

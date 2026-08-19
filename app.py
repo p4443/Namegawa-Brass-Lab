@@ -76,6 +76,7 @@ CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 25
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
+LESSON_APPS_SCRIPT_VERSION = "2026-08-19-admin-reservation-email-v16"
 
 
 def current_japan_date():
@@ -2035,7 +2036,10 @@ def create_app(
                 action="health",
             )
             capabilities = set(result.get("capabilities", []))
-            if not required_capabilities.issubset(capabilities):
+            if (
+                not required_capabilities.issubset(capabilities)
+                or result.get("version") != LESSON_APPS_SCRIPT_VERSION
+            ):
                 raise LessonReservationDeliveryError("OUTDATED_DEPLOYMENT")
             return lesson_reservation_json(
                 {

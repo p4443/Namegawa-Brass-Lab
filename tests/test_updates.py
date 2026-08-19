@@ -632,7 +632,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="admin-login-form"', page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
-        self.assertNotIn('requestApi("/api/lesson-admin-health"', page)
+        self.assertIn('requestApi("/api/lesson-admin-health"', page)
         self.assertIn('catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }', page)
         self.assertIn("const loginForm = event.currentTarget", page)
         self.assertIn("loginForm.hidden = true", page)
@@ -717,7 +717,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-12-admin-v1",
+                "version": "2026-08-19-admin-reservation-email-v16",
                 "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
@@ -725,6 +725,28 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["ready"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "health")
+
+    def test_lesson_admin_health_rejects_wrong_apps_script_version(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "version": "2026-08-18-admin-v15",
+                "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
+            }
+            response = client.get("/api/lesson-admin-health", headers=headers)
+
+        self.assertEqual(response.status_code, 503)
+        self.assertIn("古いデプロイ", response.json["error"])
 
     def test_lesson_admin_health_rejects_outdated_apps_script_deployment(self):
         client = create_app().test_client()
