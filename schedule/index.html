@@ -224,6 +224,7 @@
       : blockedStatuses.has(status);
     const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "グループ・部活動指導": null };
     const statusMap = new Map();
+    const confirmedCounts = new Map();
     const nowText = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const today = new Date(`${nowText}T00:00:00`);
     const firstDate = new Date(today); firstDate.setDate(firstDate.getDate() + 1);
@@ -368,6 +369,7 @@
         const value = dateText(date);
         const total = availableTimesForLesson(scheduleLessonType.value, date.getDay()).length;
         const available = availabilityFor(date);
+        const confirmed = confirmedCounts.get(value) || 0;
         const button = document.createElement("button"); button.type = "button"; button.className = "day";
         button.disabled = !hasLessonType || date < firstDate || date > lastDate || total === 0;
         button.setAttribute("aria-pressed", String(selectedDate === value));
@@ -375,7 +377,7 @@
         const summary = document.createElement("span");
         summary.className = `day-summary${hasLessonType && scheduleReady ? (available ? "" : " busy") : " unknown"}`;
         summary.textContent = hasLessonType
-          ? (scheduleReady ? (total ? (available ? `空き ${available}` : "満席") : "休み") : (total ? "受付日" : "休み"))
+          ? (scheduleReady ? (total ? `${available ? `空き ${available}` : "満席"}${confirmed ? ` / 予約済 ${confirmed}件` : ""}` : "休み") : (total ? "受付日" : "休み"))
           : "";
         button.append(number, summary); button.addEventListener("click", () => {
           renderSlots(value);
@@ -402,7 +404,9 @@
       try {
         const result = await requestApi(`/api/lesson-slot-statuses?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
         statusMap.clear();
+        confirmedCounts.clear();
         (result.slots || []).forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
+        Object.entries(result.confirmed_counts || {}).forEach(([date, count]) => confirmedCounts.set(date, Number(count) || 0));
         scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar();
         if (scheduleLessonType.value) {
           renderSlots(selectedDate || dateText(firstDate));

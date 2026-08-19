@@ -18,7 +18,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-20-reservation-slot-batch-v17";
+var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -155,7 +155,8 @@ function doPost(event) {
       var from = String(data.from || "").trim();
       var to = String(data.to || "").trim();
       var slots = listSlotStatuses(slotSheet, sheet, from, to);
-      return jsonResponse({ ok: true, slots: slots });
+      var confirmedCounts = confirmedReservationCounts(sheet, from, to);
+      return jsonResponse({ ok: true, slots: slots, confirmedCounts: confirmedCounts });
     }
 
     if (action === "list") {
@@ -711,6 +712,26 @@ function activeReservationSlotStatuses(sheet) {
     });
   });
   return statuses;
+}
+
+function confirmedReservationCounts(sheet, fromDateText, toDateText) {
+  var counts = {};
+  var lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    return counts;
+  }
+  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  values.forEach(function (row) {
+    if (String(row[2] || "").trim() !== "確定") {
+      return;
+    }
+    var dateText = normalizeReservationDate(row[7]);
+    if (!dateText || (fromDateText && dateText < fromDateText) || (toDateText && dateText > toDateText)) {
+      return;
+    }
+    counts[dateText] = (counts[dateText] || 0) + 1;
+  });
+  return counts;
 }
 
 function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {

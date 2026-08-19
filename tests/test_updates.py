@@ -261,7 +261,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-20-reservation-slot-batch-v17";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -661,6 +661,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("予約は削除済みです。一覧の再読み込みに失敗しました", page)
         self.assertIn('summary.textContent = hasLessonType', page)
         self.assertIn('available ? `空き ${available}` : "満席"', page)
+        self.assertIn('` / 予約済 ${confirmed}件`', page)
+        self.assertIn("result.confirmed_counts || {}", page)
         self.assertIn('(total ? "受付日" : "休み")', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
@@ -727,7 +729,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-20-reservation-slot-batch-v17",
+                "version": "2026-08-20-confirmed-counts-v18",
                 "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
@@ -1243,6 +1245,7 @@ class UpdatesTest(unittest.TestCase):
             send_reservation.return_value = {
                 "ok": True,
                 "slots": [{"date": "2026-08-20", "time": "09:00", "status": "予約済"}],
+                "confirmedCounts": {"2026-08-20": 1},
             }
             response = client.get("/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20")
 
@@ -1250,6 +1253,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
         self.assertEqual(len(response.json["slots"]), 1)
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
+        self.assertEqual(response.json["confirmed_counts"], {"2026-08-20": 1})
         self.assertEqual(send_reservation.call_args.kwargs["action"], "get_slot_statuses")
 
     def test_lesson_slot_statuses_normalizes_apps_script_date_times(self):

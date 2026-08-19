@@ -76,7 +76,7 @@ CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 40
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
-LESSON_APPS_SCRIPT_VERSION = "2026-08-20-reservation-slot-batch-v17"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18"
 
 
 def current_japan_date():
@@ -2086,7 +2086,10 @@ def create_app(
                 action="get_slot_statuses",
             )
             return lesson_reservation_json(
-                {"slots": normalize_slot_statuses(result.get("slots", []))},
+                {
+                    "slots": normalize_slot_statuses(result.get("slots", [])),
+                    "confirmed_counts": result.get("confirmedCounts", {}),
+                },
                 200,
             )
         except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
