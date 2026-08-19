@@ -465,6 +465,7 @@
         const markChanged = () => {
           changedReservationIds.add(reservation.reservation_id);
           reservationSaveAll.disabled = false;
+          reservationSaveAll.textContent = `変更した予約をまとめて更新（${changedReservationIds.size}件）`;
         };
         status.addEventListener("change", markChanged);
         timeInput.addEventListener("change", markChanged);
@@ -517,8 +518,11 @@
       }
       changedReservationIds.delete(reservation.reservation_id);
       reservationSaveAll.disabled = changedReservationIds.size === 0;
+      reservationSaveAll.textContent = changedReservationIds.size
+        ? `変更した予約をまとめて更新（${changedReservationIds.size}件）`
+        : "変更した予約をまとめて更新";
       if (refresh) {
-        await loadReservations();
+        if (changedReservationIds.size === 0) await loadReservations();
         await loadSchedule();
       }
       return result;
@@ -531,18 +535,29 @@
       reservationSaveAll.disabled = true;
       let updatedCount = 0;
       let emailCount = 0;
+      const failedIds = [];
       for (const editor of editors) {
-        const result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
-        if (!result) {
-          reservationSaveAll.disabled = false;
-          return;
+        try {
+          const result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
+          if (!result) {
+            failedIds.push(editor.reservation.reservation_id);
+            continue;
+          }
+          updatedCount += 1;
+          if (result.confirmation_email_sent === true) emailCount += 1;
+        } catch (error) {
+          failedIds.push(editor.reservation.reservation_id);
         }
-        updatedCount += 1;
-        if (result.confirmation_email_sent === true) emailCount += 1;
       }
-      await loadReservations();
-      await loadSchedule();
-      adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailCount ? ` ${emailCount}件の確定メールを送信しました。` : ""}`;
+      if (updatedCount) await loadSchedule();
+      if (!failedIds.length) await loadReservations();
+      reservationSaveAll.disabled = changedReservationIds.size === 0;
+      reservationSaveAll.textContent = changedReservationIds.size
+        ? `変更した予約をまとめて更新（${changedReservationIds.size}件）`
+        : "変更した予約をまとめて更新";
+      const emailMessage = emailCount ? ` ${emailCount}件の確定メールを送信しました。` : "";
+      const failureMessage = failedIds.length ? ` 更新できなかった予約: ${failedIds.join("、")}` : "";
+      adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailMessage}${failureMessage}`;
     });
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
