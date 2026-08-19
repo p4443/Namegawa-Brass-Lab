@@ -17,7 +17,8 @@ var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
-var SCRIPT_VERSION = "2026-08-14-hide-cancelled-v15";
+var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
+var SCRIPT_VERSION = "2026-08-19-admin-reservation-email-v16";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -982,7 +983,8 @@ function sendReservationAutoReply(data, reservationId) {
     GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
       htmlBody: htmlBody,
       name: "なめがわブラス・ラボ",
-      replyTo: "zuomuj924@gmail.com"
+      replyTo: ADMIN_NOTIFICATION_EMAIL,
+      bcc: ADMIN_NOTIFICATION_EMAIL
     });
     return true;
   } catch (error) {

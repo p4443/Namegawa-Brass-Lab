@@ -22,6 +22,13 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_explicit_empty_database_url_disables_database_initialization(self):
+        with patch.dict(os.environ, {"DATABASE_URL": "postgresql://example/db"}):
+            with patch("app.initialize_database") as initialize_database:
+                create_app(database_url="")
+
+        initialize_database.assert_not_called()
+
     def test_missing_favicon_is_handled_without_a_404(self):
         test_app = create_app(database_url="")
         response = test_app.test_client().get("/favicon.ico")
@@ -249,7 +256,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-14-hide-cancelled-v15";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-19-admin-reservation-email-v16";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -267,6 +274,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("htmlBody:", function)
         self.assertIn("sanitizeMailHeader(data.email)", function)
         self.assertIn("sanitizeMailHeader", script)
+        self.assertIn('var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";', script)
+        self.assertIn("bcc: ADMIN_NOTIFICATION_EMAIL", function)
 
     def test_apps_script_sends_confirmation_email_on_first_confirmed_transition(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -650,7 +659,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("}, 30000);", page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
-        self.assertIn('5: [...makeRange(6,45,16,0), "要相談"]', page)
+        self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', page)
         self.assertIn('6: ["要相談"]', page)
         self.assertIn('time === "要相談"', page)
         self.assertIn('status === "お休み"', page)
@@ -1346,6 +1355,23 @@ class UpdatesTest(unittest.TestCase):
                 ).status_code,
                 201,
             )
+
+    def test_schedule_uses_the_reservation_weekday_hours(self):
+        schedule_source = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("makeRange(6,45,9,0), ...makeRange(20,30,22,0)", schedule_source)
+        self.assertIn("4: makeRange(6,45,12,0)", schedule_source)
+        self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', schedule_source)
+
+    def test_schedule_clamps_one_month_limit_at_month_end(self):
+        schedule_source = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("const targetMonth = lastDate.getMonth() + 1", schedule_source)
+        self.assertIn("lastDate.setDate(Math.min(today.getDate(), lastDate.getDate()))", schedule_source)
 
     def test_lesson_reservation_manage_requires_editor_password(self):
         client = create_app().test_client()

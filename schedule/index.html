@@ -226,7 +226,12 @@
     const nowText = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     const today = new Date(`${nowText}T00:00:00`);
     const firstDate = new Date(today); firstDate.setDate(firstDate.getDate() + 1);
-    const lastDate = new Date(today); lastDate.setMonth(lastDate.getMonth() + 1);
+    const lastDate = new Date(today);
+    const targetMonth = lastDate.getMonth() + 1;
+    lastDate.setDate(1);
+    lastDate.setMonth(targetMonth + 1);
+    lastDate.setDate(0);
+    lastDate.setDate(Math.min(today.getDate(), lastDate.getDate()));
     let visibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedDate = "";
     let scheduleReady = false;
@@ -241,11 +246,11 @@
     };
     const timesByDay = {
       0: ["要相談"],
-      1: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
-      2: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
-      3: [...makeRange(6,45,8,0), ...makeRange(20,30,21,0)],
-      4: makeRange(6,45,11,0),
-      5: [...makeRange(6,45,16,0), "要相談"],
+      1: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
+      2: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
+      3: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
+      4: makeRange(6,45,12,0),
+      5: [...makeRange(6,45,17,0), "要相談"],
       6: ["要相談"],
     };
     const availableTimesForLesson = (lessonType, day) => {

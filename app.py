@@ -738,7 +738,9 @@ def create_app(
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-    configured_database_url = database_url or os.environ.get("DATABASE_URL", "")
+    configured_database_url = (
+        os.environ.get("DATABASE_URL", "") if database_url is None else database_url
+    )
     verified_purchase_cache = {}
     purchase_verifications_in_flight = {}
     verified_purchase_cache_lock = threading.Lock()
