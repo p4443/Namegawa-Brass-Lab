@@ -89,6 +89,10 @@
       line-height: 1.12;
     }
 
+    .mobile-title-break {
+      display: none;
+    }
+
     .event-detail {
       display: flex;
       margin: 14px 0 0;
@@ -135,9 +139,9 @@
       border-radius: 6px;
       color: #071014;
       background: var(--gold);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
       font: 800 1rem/1 "Hiragino Sans", "Yu Gothic", sans-serif;
       cursor: pointer;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     }
 
     .credit-telop {
@@ -190,8 +194,12 @@
       }
 
       h1 {
-        font-size: 1.65rem;
+        font-size: 1.6rem;
         line-height: 1.3;
+      }
+
+      .mobile-title-break {
+        display: block;
       }
 
       .event-detail {
@@ -249,7 +257,7 @@
     <header class="title-telop">
       <a class="back-link" href="../#features">← 3つの輪へ戻る</a>
       <p class="event-label">NAMEGAWA FUREAI CONCERT</p>
-      <h1>滑川町ふれあいコンサート</h1>
+      <h1>滑川町ふれあい<span class="mobile-title-break"></span>コンサート</h1>
       <p class="event-detail">
         <span>2026年5月10日（日）</span>
         <span>滑川町コミュニティセンターにて</span>

@@ -78,7 +78,7 @@ class UpdatesTest(unittest.TestCase):
             )
 
         self.assertTrue(result["ok"])
-        self.assertEqual(urlopen.call_args.kwargs["timeout"], 25)
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 40)
 
     def test_apps_script_request_retries_temporary_html_response(self):
         html_response = MagicMock()
@@ -643,8 +643,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('reservationRetry.addEventListener("click"', page)
         self.assertIn('reservationSaveAll.addEventListener("click"', page)
         self.assertIn("for (const editor of editors)", page)
-        self.assertIn("const failedIds = []", page)
-        self.assertIn('failedIds.join("、")', page)
+        self.assertIn("const failures = []", page)
+        self.assertIn('failures.join(" / ")', page)
+        self.assertIn('result?.error || "原因不明"', page)
         self.assertIn("if (changedReservationIds.size === 0) await loadReservations()", page)
         self.assertIn("changedReservationIds.size === 0", page)
         self.assertIn('["受付","調整中","確認中","確定","キャンセル"]', page)
@@ -661,7 +662,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const { timeoutMs = 30000, ...fetchOptions } = options", page)
         self.assertIn("responseError.isHttpError = true", page)
         self.assertIn("if (error.isHttpError) throw error", page)
-        self.assertGreaterEqual(page.count("timeoutMs: 60000"), 3)
+        self.assertGreaterEqual(page.count("timeoutMs: 60000"), 1)
+        self.assertGreaterEqual(page.count("timeoutMs: 120000"), 2)
         self.assertIn('requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 })', page)
         self.assertIn('reservation.status !== "キャンセル"', page)
         self.assertIn("setInterval(() =>", page)

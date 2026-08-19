@@ -496,15 +496,16 @@
       adminStatus.textContent = "更新しています…";
       const payload = { status: statusSelect.value, ...(timeInput.value ? { preferred_time: timeInput.value } : {}) };
       if (reservation.lesson_type === "グループ・部活動指導" && timeInput.value !== "" && durationInput.value === "") {
-        adminStatus.textContent = "グループ指導の所要時間を15分単位で入力してください。";
-        return;
+        const errorMessage = "グループ指導の所要時間を15分単位で入力してください。";
+        adminStatus.textContent = errorMessage;
+        return { error: errorMessage };
       }
       if (reservation.lesson_type === "グループ・部活動指導" && durationInput.value) {
         payload.duration_minutes = Number(durationInput.value);
       }
       let result;
-      try { result = await requestApi(`/api/lesson-reservations/${reservation.reservation_id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify(payload), timeoutMs: 60000 }); }
-      catch (error) { adminStatus.textContent = error.message; return; }
+      try { result = await requestApi(`/api/lesson-reservations/${reservation.reservation_id}`, { method: "PUT", headers: adminHeaders(), body: JSON.stringify(payload), timeoutMs: 120000 }); }
+      catch (error) { adminStatus.textContent = error.message; return { error: error.message }; }
       statusSelect.value = result.status || statusSelect.value;
       const updateMessage = timeInput.value
         ? `予約時間を「${timeInput.value}」、状態を「${statusSelect.value}」へ更新しました。`
@@ -535,34 +536,34 @@
       reservationSaveAll.disabled = true;
       let updatedCount = 0;
       let emailCount = 0;
-      const failedIds = [];
+      const failures = [];
       for (const editor of editors) {
         try {
           const result = await updateReservation(editor.reservation, editor.status, editor.timeInput, editor.durationInput, false);
-          if (!result) {
-            failedIds.push(editor.reservation.reservation_id);
+          if (!result || result.error) {
+            failures.push(`${editor.reservation.reservation_id}: ${result?.error || "原因不明"}`);
             continue;
           }
           updatedCount += 1;
           if (result.confirmation_email_sent === true) emailCount += 1;
         } catch (error) {
-          failedIds.push(editor.reservation.reservation_id);
+          failures.push(`${editor.reservation.reservation_id}: ${error.message}`);
         }
       }
       if (updatedCount) await loadSchedule();
-      if (!failedIds.length) await loadReservations();
+      if (!failures.length) await loadReservations();
       reservationSaveAll.disabled = changedReservationIds.size === 0;
       reservationSaveAll.textContent = changedReservationIds.size
         ? `変更した予約をまとめて更新（${changedReservationIds.size}件）`
         : "変更した予約をまとめて更新";
       const emailMessage = emailCount ? ` ${emailCount}件の確定メールを送信しました。` : "";
-      const failureMessage = failedIds.length ? ` 更新できなかった予約: ${failedIds.join("、")}` : "";
+      const failureMessage = failures.length ? ` 更新できなかった予約: ${failures.join(" / ")}` : "";
       adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailMessage}${failureMessage}`;
     });
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
       adminStatus.textContent = "削除しています…";
-      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 60000 }); }
+      try { await requestApi(`/api/lesson-reservations/${id}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 120000 }); }
       catch (error) { adminStatus.textContent = error.message; return; }
       adminStatus.textContent = "予約を削除しました。";
       try { await loadReservations(); }
