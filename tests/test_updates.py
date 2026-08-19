@@ -66,6 +66,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("python-dotenv==", requirements)
 
     def test_apps_script_requests_allow_slow_write_operations(self):
+        dockerfile = (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
+        self.assertIn("--timeout 120", dockerfile)
+
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{"ok": true}'
 
