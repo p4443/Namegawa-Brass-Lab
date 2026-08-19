@@ -79,6 +79,7 @@
     .admin-heading h2 { margin: 0; font-size: 1rem; }
     .admin-heading p { margin: 3px 0 0; color: rgba(255,255,255,.72); font-size: .76rem; }
     .admin-body { padding: 20px; }
+    .admin-session-bar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
     .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
     .field { display: grid; gap: 4px; }
     .field.wide { grid-column: span 2; }
@@ -191,6 +192,7 @@
         </form>
         <p class="admin-status" id="admin-status" role="status"></p>
         <div id="admin-dashboard" hidden>
+          <div class="admin-session-bar"><button class="button secondary" id="admin-logout" type="button">ログアウト</button></div>
           <section class="admin-section">
             <h3>予約枠状況カレンダー</h3>
             <div class="admin-calendar-layout">
@@ -472,6 +474,7 @@
     const reservationList = document.getElementById("reservation-list");
     const reservationRetry = document.getElementById("reservation-retry");
     const reservationSaveAll = document.getElementById("reservation-save-all");
+    const adminLogout = document.getElementById("admin-logout");
     const adminSlotCalendar = document.getElementById("admin-slot-calendar");
     const adminCalendarMonth = document.getElementById("admin-calendar-month");
     const adminSlotDate = document.getElementById("admin-slot-date");
@@ -526,6 +529,21 @@
     }
     document.getElementById("admin-previous-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() - 1); renderAdminSlotCalendar(); });
     document.getElementById("admin-next-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() + 1); renderAdminSlotCalendar(); });
+    adminLogout.addEventListener("click", () => {
+      adminPassword = "";
+      changedReservationIds.clear();
+      reservationEditors.clear();
+      reservationList.replaceChildren();
+      reservationSaveAll.disabled = true;
+      reservationSaveAll.textContent = "変更した予約をまとめて更新";
+      dashboard.hidden = true;
+      const loginForm = document.getElementById("admin-login-form");
+      const passwordInput = document.getElementById("admin-password");
+      loginForm.hidden = false;
+      loginForm.reset();
+      adminStatus.textContent = "ログアウトしました。";
+      passwordInput.focus();
+    });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
       reservationList.replaceChildren();

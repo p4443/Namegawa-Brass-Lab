@@ -89,3 +89,5 @@ curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
 curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
 [FAIL] STORE_HEALTH_EDITOR_PASSWORD is unset
 curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
