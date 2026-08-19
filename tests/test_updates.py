@@ -190,7 +190,7 @@ class UpdatesTest(unittest.TestCase):
         )[0]
 
         self.assertIn('if (time === "要相談")', create_action)
-        self.assertIn('if (time === "要相談")', update_action)
+        self.assertIn('nextTimes[0] !== "要相談"', update_action)
         self.assertIn('times[index] === "要相談" && slot.status !== "お休み"', conflict_function)
         self.assertIn('if (startTime === "要相談")', active_statuses_function)
 
@@ -218,6 +218,8 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn("reservationSlotsMatch(", update_action)
         self.assertIn('nextSlotStatus === "空き" || keepsCurrentSlots', update_action)
+        self.assertIn('if (!keepsCurrentSlots || nextSlotStatus === "空き")', update_action)
+        self.assertIn("upsertSlotStatusRange(", update_action)
         self.assertIn('slot.note === "受付自動設定"', release_function)
         self.assertIn("slot.source !== reservationId && !isLegacyReservationSlot", release_function)
 
@@ -259,7 +261,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-19-admin-reservation-email-v16";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-20-reservation-slot-batch-v17";', script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -725,7 +727,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-19-admin-reservation-email-v16",
+                "version": "2026-08-20-reservation-slot-batch-v17",
                 "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)

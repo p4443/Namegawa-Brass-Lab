@@ -18,7 +18,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-19-admin-reservation-email-v16";
+var SCRIPT_VERSION = "2026-08-20-reservation-slot-batch-v17";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -246,21 +246,20 @@ function doPost(event) {
       if (updatedFields.length === 0) {
         return adminActionResponse({ ok: false, error: "No fields to update" }, requestId);
       }
-      releaseReservationSlots(slotSheet, currentReservation.date, currentTimes, reservationId);
-      if (nextSlotStatus !== "空き") {
-        nextTimes.forEach(function (time) {
-          if (time === "要相談") {
-            return;
-          }
-          upsertSlotStatus(
-            slotSheet,
-            nextDate,
-            time,
-            nextSlotStatus,
-            nextDurationMinutes + "分レッスン更新",
-            reservationId
-          );
-        });
+      if (!keepsCurrentSlots || nextSlotStatus === "空き") {
+        releaseReservationSlots(slotSheet, currentReservation.date, currentTimes, reservationId);
+      }
+      if (nextSlotStatus !== "空き" && nextTimes[0] !== "要相談") {
+        upsertSlotStatusRange(
+          slotSheet,
+          nextDate,
+          nextDate,
+          nextTimes[0],
+          nextTimes[nextTimes.length - 1],
+          nextSlotStatus,
+          nextDurationMinutes + "分レッスン更新",
+          reservationId
+        );
       }
       var confirmationEmailSent = null;
       if (nextStatus === "確定" && currentReservation.status !== "確定") {
