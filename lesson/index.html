@@ -360,6 +360,70 @@
       font-size: 0.82rem;
     }
 
+    .elementary-lesson-link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 7px 16px;
+      border: 1px solid var(--navy);
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--navy);
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .elementary-lesson-link::after {
+      content: "詳細を見る ＋";
+      font-size: 0.76rem;
+    }
+
+    .elementary-lesson-link[aria-expanded="true"]::after {
+      content: "閉じる −";
+    }
+
+    .elementary-lesson-link:hover,
+    .elementary-lesson-link:focus-visible {
+      color: var(--navy);
+      background: #ffffff;
+    }
+
+    .elementary-trial {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 24px;
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: var(--background);
+      scroll-margin-top: 110px;
+    }
+
+    .elementary-trial[hidden] {
+      display: none;
+    }
+
+    .elementary-trial h3 {
+      margin: 0 0 12px;
+      color: var(--navy);
+      font-size: 1.12rem;
+    }
+
+    .elementary-trial p {
+      margin: 0;
+    }
+
+    .elementary-trial ol {
+      margin: 14px 0;
+      padding-left: 1.5rem;
+    }
+
+    .elementary-trial li + li {
+      margin-top: 6px;
+    }
+
     .instructor-panel {
       padding: 24px;
       border-left: 4px solid var(--gold);
@@ -1145,6 +1209,22 @@
         grid-template-columns: 1fr;
       }
 
+      .carousel-controls {
+        display: none;
+      }
+
+      .app-track {
+        display: grid;
+        overflow-x: visible;
+        padding-bottom: 2px;
+        scroll-snap-type: none;
+      }
+
+      .lesson-app-card {
+        width: 100%;
+        min-height: 112px;
+      }
+
       .price-card {
         grid-template-columns: 1fr;
         gap: 8px;
@@ -1311,10 +1391,21 @@
       <div class="price-list">
         <article class="price-card">
           <div>
-            <h3>小学生</h3>
+            <h3><button class="elementary-lesson-link" id="elementary-lesson-toggle" type="button" aria-expanded="false" aria-controls="elementary-trial">小学生</button></h3>
             <p>個人レッスン（1回30分）</p>
           </div>
           <div class="price">月2回：3,000円</div>
+          <aside class="elementary-trial" id="elementary-trial" aria-labelledby="elementary-trial-title" hidden>
+            <h3 id="elementary-trial-title">トランペット体験レッスン！憧れの音を鳴らしてみよう♪</h3>
+            <p>初めてでも大丈夫！段階を踏んで自分のペースで挑戦できます。</p>
+            <ol>
+              <li><strong>カッコいい構え方</strong>（基本の姿勢からスタート）</li>
+              <li><strong>息出しのコツ</strong>（焦らず音を出す準備）</li>
+              <li><strong>音出しチャレンジ</strong>（鳴らなくてもOK！感覚を掴もう）</li>
+              <li><strong>メロディに挑戦</strong>（指使いを覚えて一歩ずつ）</li>
+            </ol>
+            <p>鳴らなくても大丈夫。「音が出た！」の喜びを焦らず一緒に体験してみませんか？</p>
+          </aside>
         </article>
         <article class="price-card">
           <div>
@@ -1456,6 +1547,17 @@
     </div>
   </footer>
   <script>
+    const elementaryLessonToggle = document.getElementById("elementary-lesson-toggle");
+    const elementaryTrial = document.getElementById("elementary-trial");
+    elementaryLessonToggle.setAttribute("aria-expanded", "false");
+    elementaryTrial.hidden = true;
+    elementaryLessonToggle.addEventListener("click", () => {
+      const isOpen = elementaryLessonToggle.getAttribute("aria-expanded") === "true";
+      elementaryLessonToggle.setAttribute("aria-expanded", String(!isOpen));
+      elementaryTrial.hidden = isOpen;
+      if (!isOpen) elementaryTrial.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+
     document.querySelectorAll(".lesson-app-card").forEach((link) => {
       link.addEventListener("click", (event) => {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
