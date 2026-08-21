@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from io import BytesIO
 from base64 import b64encode
 from datetime import date
 from pathlib import Path
@@ -1989,8 +1990,137 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('<a href="cafe-live-plan-1.pdf">cafe-live-plan-1.pdf</a>', page)
-        self.assertIn('<a href="dayservice.pdf">dayservice.pdf</a>', page)
+        self.assertIn('id="adminToggle"', page)
+        self.assertIn('id="adminLoginForm"', page)
+        self.assertIn('id="pdfUploadForm" hidden', page)
+        self.assertIn('id="deleteStepOne"', page)
+        self.assertIn('id="deleteStepTwo" hidden', page)
+        self.assertNotIn("sessionStorage", page)
+        expected_documents = {
+            "dayservice.pdf": "音でつながる！懐かしのメロディと呼吸のストレッチ",
+            "gakudou.pdf": "学童向け トランペット・ミニコンサート＆ワークショップ",
+            "hoikuen.pdf": "見て・聴いて・あそんで楽しむ！トランペット・ミニコンサート＆リズム体験ワークショップ",
+            "shukatsu.pdf": "カフェで紡ぐ「思い出のメロディ」ライブ【スタンダードプラン】",
+            "cafe-live-plan-1.pdf": "音のパスポート ～トランペットで巡る 世界の街角と名曲たち～",
+            "cafe-live-plan-2.pdf": "カフェ・ド・トランペット ～午後の紅茶と、心ひろがる名曲の旅～",
+            "cafe-live-plan-3.pdf": "ノスタルジック・ノーツ ～トランペットの音色でたどる 昭和・ジャズ・名画の旅～",
+        }
+        for filename, title in expected_documents.items():
+            with self.subTest(filename=filename):
+                self.assertIn(f'<a href="{filename}">{title}</a>', page)
+                self.assertNotIn(f'>{filename}</a>', page)
+
+    def test_admin_can_upload_and_delete_event_pdf_from_server_replicas(self):
+        with tempfile.TemporaryDirectory() as static_directory, tempfile.TemporaryDirectory() as upload_directory, tempfile.TemporaryDirectory() as replica_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="",
+                pdf_dir=Path(static_directory),
+                pdf_upload_dir=Path(upload_directory),
+                pdf_replica_dirs=(Path(replica_directory),),
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+
+            uploaded = client.post(
+                "/api/event-pdfs",
+                data={
+                    "title": "新しいイベント企画書",
+                    "pdf": (BytesIO(b"%PDF-1.4\n%%EOF"), "proposal.pdf"),
+                },
+                headers=headers,
+                content_type="multipart/form-data",
+            )
+
+            self.assertEqual(uploaded.status_code, 201)
+            filename = uploaded.json["document"]["filename"]
+            upload_path = Path(upload_directory) / filename
+            replica_path = Path(replica_directory) / filename
+            self.assertTrue(upload_path.is_file())
+            replica_path.write_bytes(upload_path.read_bytes())
+            page = client.get("/pdf/").get_data(as_text=True)
+            self.assertIn(f'<a href="{filename}">新しいイベント企画書</a>', page)
+            served = client.get(f"/pdf/{filename}")
+            self.assertEqual(served.status_code, 200)
+            self.assertEqual(served.mimetype, "application/pdf")
+
+            rejected = client.delete(
+                f"/api/event-pdfs/{filename}",
+                json={"confirmation_filename": "wrong.pdf"},
+                headers=headers,
+            )
+            self.assertEqual(rejected.status_code, 400)
+            self.assertTrue(upload_path.is_file())
+            deleted = client.delete(
+                f"/api/event-pdfs/{filename}",
+                json={"confirmation_filename": filename},
+                headers=headers,
+            )
+            self.assertEqual(deleted.status_code, 200)
+            self.assertEqual(deleted.json["deleted_count"], 2)
+            self.assertFalse(upload_path.exists())
+            self.assertFalse(replica_path.exists())
+            self.assertEqual(client.get(f"/pdf/{filename}").status_code, 404)
+            manifest = json.loads(
+                (Path(upload_directory) / "documents.json").read_text(encoding="utf-8")
+            )
+            self.assertIn(filename, manifest["__deleted__"])
+
+    def test_deleted_bundled_pdf_stays_hidden_when_server_file_returns(self):
+        with tempfile.TemporaryDirectory() as static_directory, tempfile.TemporaryDirectory() as upload_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            static_path = Path(static_directory) / "dayservice.pdf"
+            static_path.write_bytes(b"%PDF-1.4\n%%EOF")
+            client = create_app(
+                database_url="",
+                pdf_dir=Path(static_directory),
+                pdf_upload_dir=Path(upload_directory),
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+
+            deleted = client.delete(
+                "/api/event-pdfs/dayservice.pdf",
+                json={"confirmation_filename": "dayservice.pdf"},
+                headers=headers,
+            )
+            self.assertEqual(deleted.status_code, 200)
+            static_path.write_bytes(b"%PDF-1.4\n%%EOF")
+
+            self.assertNotIn("dayservice.pdf", client.get("/pdf/").get_data(as_text=True))
+            self.assertEqual(client.get("/pdf/dayservice.pdf").status_code, 404)
+
+    def test_event_pdf_management_requires_admin_password_and_valid_pdf(self):
+        with tempfile.TemporaryDirectory() as upload_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", pdf_upload_dir=Path(upload_directory)
+            ).test_client()
+            invalid_upload = {
+                "title": "不正ファイル",
+                "pdf": (BytesIO(b"not a pdf"), "invalid.pdf"),
+            }
+
+            self.assertEqual(
+                client.post(
+                    "/api/event-pdfs",
+                    data=invalid_upload,
+                    content_type="multipart/form-data",
+                ).status_code,
+                401,
+            )
+            response = client.post(
+                "/api/event-pdfs",
+                data={
+                    "title": "不正ファイル",
+                    "pdf": (BytesIO(b"not a pdf"), "invalid.pdf"),
+                },
+                headers={"X-Editor-Password": "editor-secret"},
+                content_type="multipart/form-data",
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("正しいPDF", response.json["error"])
 
     def test_index_uses_sticky_responsive_navigation(self):
         client = create_app().test_client()

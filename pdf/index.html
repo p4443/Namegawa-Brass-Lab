@@ -9,6 +9,7 @@
       color-scheme: light;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       padding: 32px 20px 48px;
@@ -20,31 +21,249 @@
       max-width: 760px;
       margin: 0 auto;
       background: #fff;
-      border-radius: 20px;
+      border-radius: 8px;
       box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
       padding: 24px 28px;
     }
+    .heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
     h1 { margin: 0 0 12px; font-size: 1.6rem; }
     p { margin: 0 0 16px; color: #556; }
-    ul { padding-left: 20px; }
-    li { margin-bottom: 10px; }
+    ul { margin: 24px 0 0; padding: 0; list-style: none; }
+    li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-bottom: 1px solid #dbe2ea; }
     a { color: #0a5cff; text-decoration: none; }
     a:hover { text-decoration: underline; }
+    button, input { font: inherit; }
+    button { min-height: 40px; padding: 8px 12px; border: 1px solid #9aabc0; border-radius: 6px; color: #17365d; background: #fff; font-weight: 700; cursor: pointer; }
+    button:hover, button:focus-visible { background: #edf4ff; }
+    .primary { border-color: #0a5cff; color: #fff; background: #0a5cff; }
+    .danger { border-color: #fecaca; color: #b91c1c; }
+    .admin { margin-top: 24px; padding-top: 20px; border-top: 1px solid #dbe2ea; }
+    .admin-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .admin h2 { margin: 0 0 14px; font-size: 1.1rem; }
+    .form { display: grid; gap: 12px; }
+    .field { display: grid; gap: 6px; font-weight: 700; }
+    input { width: 100%; min-height: 42px; padding: 8px 10px; border: 1px solid #9aabc0; border-radius: 6px; }
+    .status { min-height: 1.5em; margin-top: 12px; color: #556; }
+    .status[data-state="error"] { color: #b91c1c; }
+    .status[data-state="success"] { color: #047857; font-weight: 700; }
+    dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.28); }
+    dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+    .dialog-body { padding: 24px; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+    @media (max-width: 600px) {
+      body { padding: 16px 12px 32px; }
+      .card { padding: 20px 16px; }
+      .heading, li { align-items: flex-start; }
+    }
   </style>
 </head>
 <body>
   <main class="card">
-    <h1>PDF資料一覧</h1>
-    <p>このページはディレクトリリスティングではなく、PDF資料への入口です。</p>
-    <ul>
-      <li><a href="dayservice.pdf">dayservice.pdf</a></li>
-      <li><a href="gakudou.pdf">gakudou.pdf</a></li>
-      <li><a href="hoikuen.pdf">hoikuen.pdf</a></li>
-      <li><a href="shukatsu.pdf">shukatsu.pdf</a></li>
-      <li><a href="cafe-live-plan-1.pdf">cafe-live-plan-1.pdf</a></li>
-      <li><a href="cafe-live-plan-2.pdf">cafe-live-plan-2.pdf</a></li>
-      <li><a href="cafe-live-plan-3.pdf">cafe-live-plan-3.pdf</a></li>
+    <div class="heading">
+      <h1>PDF資料一覧</h1>
+      <button id="adminToggle" type="button" aria-expanded="false" aria-controls="pdfAdmin">管理者モード</button>
+    </div>
+    <p>イベント企画資料を選択すると、PDFで内容を確認できます。</p>
+    <ul id="pdfList">
+      {% for document in pdf_documents %}
+      <li data-filename="{{ document.filename }}">
+        <a href="{{ document.filename }}">{{ document.title }}</a>
+        <button class="danger delete-pdf" type="button" hidden>削除</button>
+      </li>
+      {% else %}
+      <li id="emptyPdfList">公開中のPDF資料はありません。</li>
+      {% endfor %}
     </ul>
+
+    <section class="admin" id="pdfAdmin" aria-labelledby="pdfAdminTitle" hidden>
+      <div class="admin-header">
+        <h2 id="pdfAdminTitle">PDF管理</h2>
+        <button id="adminLogout" type="button" hidden>戻る（ログアウト）</button>
+      </div>
+      <form class="form" id="adminLoginForm">
+        <label class="field">管理者パスワード
+          <input id="adminPassword" type="password" autocomplete="current-password" required>
+        </label>
+        <button class="primary" type="submit">ログイン</button>
+      </form>
+      <form class="form" id="pdfUploadForm" hidden>
+        <label class="field">PDF内の表示タイトル
+          <input id="pdfTitle" name="title" type="text" maxlength="160" required>
+        </label>
+        <label class="field">PDFファイル（15MB以内）
+          <input id="pdfFile" name="pdf" type="file" accept="application/pdf,.pdf" required>
+        </label>
+        <button class="primary" type="submit">PDFをアップロード</button>
+      </form>
+      <p class="status" id="adminStatus" role="status" aria-live="polite"></p>
+    </section>
   </main>
+
+  <dialog id="deleteDialog" aria-labelledby="deleteTitle">
+    <div class="dialog-body">
+      <section id="deleteStepOne">
+        <h2 id="deleteTitle">PDFを削除しますか？</h2>
+        <p id="deleteSummary"></p>
+        <p>公開ファイルとサーバー内の同名データを削除します。この操作は取り消せません。</p>
+        <div class="dialog-actions">
+          <button id="cancelDelete" type="button">キャンセル</button>
+          <button class="danger" id="continueDelete" type="button">第2確認へ</button>
+        </div>
+      </section>
+      <section id="deleteStepTwo" hidden>
+        <h2>PDFファイル名を入力</h2>
+        <p id="deleteFilenameHint"></p>
+        <label class="field">確認用ファイル名
+          <input id="deleteFilename" type="text" autocomplete="off">
+        </label>
+        <p class="status" id="deleteError" role="alert"></p>
+        <div class="dialog-actions">
+          <button id="backDelete" type="button">第1確認へ戻る</button>
+          <button class="danger" id="confirmDelete" type="button">完全に削除</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <script>
+    const adminToggle = document.getElementById('adminToggle');
+    const pdfAdmin = document.getElementById('pdfAdmin');
+    const loginForm = document.getElementById('adminLoginForm');
+    const passwordInput = document.getElementById('adminPassword');
+    const uploadForm = document.getElementById('pdfUploadForm');
+    const adminLogout = document.getElementById('adminLogout');
+    const adminStatus = document.getElementById('adminStatus');
+    const pdfList = document.getElementById('pdfList');
+    const deleteDialog = document.getElementById('deleteDialog');
+    const deleteStepOne = document.getElementById('deleteStepOne');
+    const deleteStepTwo = document.getElementById('deleteStepTwo');
+    const deleteFilename = document.getElementById('deleteFilename');
+    const deleteError = document.getElementById('deleteError');
+    let adminPassword = '';
+    let pendingDeleteItem = null;
+
+    function setStatus(message, state = '') {
+      adminStatus.textContent = message;
+      adminStatus.dataset.state = state;
+    }
+
+    function setAuthenticated(authenticated) {
+      loginForm.hidden = authenticated;
+      uploadForm.hidden = !authenticated;
+      adminLogout.hidden = !authenticated;
+      document.querySelectorAll('.delete-pdf').forEach(button => { button.hidden = !authenticated; });
+      if (authenticated) loginForm.reset();
+    }
+
+    function addDocument(document) {
+      window.document.getElementById('emptyPdfList')?.remove();
+      const item = window.document.createElement('li');
+      item.dataset.filename = document.filename;
+      const link = window.document.createElement('a');
+      link.href = document.filename;
+      link.textContent = document.title;
+      const remove = window.document.createElement('button');
+      remove.className = 'danger delete-pdf';
+      remove.type = 'button';
+      remove.textContent = '削除';
+      item.append(link, remove);
+      pdfList.append(item);
+    }
+
+    function showDeleteStep(step) {
+      deleteStepOne.hidden = step !== 1;
+      deleteStepTwo.hidden = step !== 2;
+      deleteError.textContent = '';
+      if (step === 2) deleteFilename.focus();
+    }
+
+    adminToggle.addEventListener('click', () => {
+      pdfAdmin.hidden = !pdfAdmin.hidden;
+      adminToggle.setAttribute('aria-expanded', String(!pdfAdmin.hidden));
+      if (!pdfAdmin.hidden) passwordInput.focus();
+    });
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      const password = passwordInput.value;
+      try {
+        const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
+        if (!response.ok) throw new Error('管理者パスワードが違います。');
+        adminPassword = password;
+        setAuthenticated(true);
+        setStatus('PDFを追加・削除できます。', 'success');
+      } catch (error) {
+        setStatus(error.message || 'ログインできませんでした。', 'error');
+        passwordInput.select();
+      }
+    });
+
+    adminLogout.addEventListener('click', () => {
+      adminPassword = '';
+      setAuthenticated(false);
+      setStatus('');
+      pdfAdmin.hidden = true;
+      adminToggle.setAttribute('aria-expanded', 'false');
+      adminToggle.focus();
+    });
+
+    uploadForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      setStatus('アップロードしています...');
+      try {
+        const response = await fetch('/api/event-pdfs', {
+          method: 'POST',
+          headers: { 'X-Editor-Password': adminPassword },
+          body: new FormData(uploadForm)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'PDFをアップロードできませんでした。');
+        addDocument(result.document);
+        uploadForm.reset();
+        setStatus('PDFをアップロードしました。', 'success');
+      } catch (error) {
+        setStatus(error.message || 'PDFをアップロードできませんでした。', 'error');
+      }
+    });
+
+    pdfList.addEventListener('click', event => {
+      const button = event.target.closest('.delete-pdf');
+      if (!button) return;
+      pendingDeleteItem = button.closest('li');
+      const filename = pendingDeleteItem.dataset.filename;
+      document.getElementById('deleteSummary').textContent = pendingDeleteItem.querySelector('a').textContent;
+      document.getElementById('deleteFilenameHint').textContent = filename;
+      deleteFilename.value = '';
+      showDeleteStep(1);
+      deleteDialog.showModal();
+    });
+
+    document.getElementById('cancelDelete').addEventListener('click', () => deleteDialog.close());
+    document.getElementById('continueDelete').addEventListener('click', () => showDeleteStep(2));
+    document.getElementById('backDelete').addEventListener('click', () => showDeleteStep(1));
+    document.getElementById('confirmDelete').addEventListener('click', async () => {
+      const filename = pendingDeleteItem?.dataset.filename || '';
+      const confirmationFilename = deleteFilename.value.trim();
+      if (confirmationFilename !== filename) {
+        deleteError.textContent = 'PDFファイル名が一致しません。';
+        return;
+      }
+      try {
+        const response = await fetch(`/api/event-pdfs/${encodeURIComponent(filename)}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json', 'X-Editor-Password': adminPassword },
+          body: JSON.stringify({ confirmation_filename: confirmationFilename })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'PDFを削除できませんでした。');
+        pendingDeleteItem.remove();
+        pendingDeleteItem = null;
+        deleteDialog.close();
+        setStatus('PDFとサーバー内の同名データを削除しました。', 'success');
+      } catch (error) {
+        deleteError.textContent = error.message || 'PDFを削除できませんでした。';
+      }
+    });
+  </script>
 </body>
 </html>

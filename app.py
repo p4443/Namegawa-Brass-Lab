@@ -31,6 +31,10 @@ load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
 STORE_FILE = BASE_DIR / "data" / "store.json"
 SERVER_CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
+SERVER_PDF_DIR = BASE_DIR / "pdf"
+PDF_UPLOAD_DIR = Path(
+    os.environ.get("PDF_UPLOAD_DIR", BASE_DIR / "data" / "event-pdfs")
+).expanduser()
 CONTRACTS_DIR = Path(
     os.environ.get(
         "CONTRACTS_DIR",
@@ -143,6 +147,17 @@ CONSULTATION_ATTACHMENT_MIME_TYPES = {
     "application/octet-stream",
 }
 CONSULTATION_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+EVENT_PDF_MAX_BYTES = 15 * 1024 * 1024
+EVENT_PDF_MANIFEST = "documents.json"
+EVENT_PDF_TITLES = {
+    "dayservice.pdf": "音でつながる！懐かしのメロディと呼吸のストレッチ",
+    "gakudou.pdf": "学童向け トランペット・ミニコンサート＆ワークショップ",
+    "hoikuen.pdf": "見て・聴いて・あそんで楽しむ！トランペット・ミニコンサート＆リズム体験ワークショップ",
+    "shukatsu.pdf": "カフェで紡ぐ「思い出のメロディ」ライブ【スタンダードプラン】",
+    "cafe-live-plan-1.pdf": "音のパスポート ～トランペットで巡る 世界の街角と名曲たち～",
+    "cafe-live-plan-2.pdf": "カフェ・ド・トランペット ～午後の紅茶と、心ひろがる名曲の旅～",
+    "cafe-live-plan-3.pdf": "ノスタルジック・ノーツ ～トランペットの音色でたどる 昭和・ジャズ・名画の旅～",
+}
 CONTRACT_TYPES = {
     "master": {"department": "基本契約", "directory": "master", "keys": set()},
     "typeA": {
@@ -777,6 +792,121 @@ def delete_contract(
     return deleted_count
 
 
+def load_event_pdf_manifest(pdf_upload_dir=PDF_UPLOAD_DIR):
+    manifest_path = Path(pdf_upload_dir) / EVENT_PDF_MANIFEST
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+    return manifest if isinstance(manifest, dict) else {}
+
+
+def save_event_pdf_manifest(manifest, pdf_upload_dir=PDF_UPLOAD_DIR):
+    upload_dir = Path(pdf_upload_dir)
+    upload_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    manifest_path = upload_dir / EVENT_PDF_MANIFEST
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=upload_dir, delete=False
+    ) as temporary_file:
+        json.dump(manifest, temporary_file, ensure_ascii=False, indent=2)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, manifest_path)
+
+
+def list_event_pdfs(pdf_dir=SERVER_PDF_DIR, pdf_upload_dir=PDF_UPLOAD_DIR):
+    manifest = load_event_pdf_manifest(pdf_upload_dir)
+    deleted_filenames = set(manifest.get("__deleted__", []))
+    documents = []
+    seen = set()
+    upload_dir = Path(pdf_upload_dir)
+    static_dir = Path(pdf_dir)
+    for filename, title in manifest.items():
+        if (
+            isinstance(filename, str)
+            and not filename.startswith("__")
+            and filename not in deleted_filenames
+            and isinstance(title, str)
+            and title.strip()
+            and ((upload_dir / filename).is_file() or (static_dir / filename).is_file())
+        ):
+            documents.append({"filename": filename, "title": title.strip()})
+            seen.add(filename)
+    for filename, title in EVENT_PDF_TITLES.items():
+        if (
+            filename not in seen
+            and filename not in deleted_filenames
+            and (static_dir / filename).is_file()
+        ):
+            documents.append({"filename": filename, "title": title})
+    return documents
+
+
+def save_event_pdf(upload, title, pdf_upload_dir=PDF_UPLOAD_DIR):
+    title = str(title).strip()
+    if not title or len(title) > 160:
+        raise ValueError("PDF内の表示タイトルを160文字以内で入力してください。")
+    original_name = str(getattr(upload, "filename", "") or "").strip()
+    if Path(original_name).suffix.lower() != ".pdf":
+        raise ValueError("PDFファイルを選択してください。")
+    content = upload.stream.read(EVENT_PDF_MAX_BYTES + 1)
+    if len(content) > EVENT_PDF_MAX_BYTES:
+        raise ValueError("PDFファイルは15MB以内にしてください。")
+    if not content.startswith(b"%PDF-"):
+        raise ValueError("正しいPDFファイルを選択してください。")
+    upload_dir = Path(pdf_upload_dir)
+    upload_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    filename = f"event-{uuid.uuid4().hex}.pdf"
+    target_path = upload_dir / filename
+    with tempfile.NamedTemporaryFile("wb", dir=upload_dir, delete=False) as temporary_file:
+        temporary_file.write(content)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, target_path)
+    manifest = load_event_pdf_manifest(upload_dir)
+    manifest[filename] = title
+    save_event_pdf_manifest(manifest, upload_dir)
+    return {"filename": filename, "title": title}
+
+
+def delete_event_pdf(
+    filename,
+    confirmation_filename,
+    pdf_dir=SERVER_PDF_DIR,
+    pdf_upload_dir=PDF_UPLOAD_DIR,
+    replica_dirs=(),
+):
+    filename = str(filename).strip()
+    confirmation_filename = str(confirmation_filename).strip()
+    if not hmac.compare_digest(filename, confirmation_filename):
+        raise ValueError("確認用のPDFファイル名が一致しません。")
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.pdf", filename) is None:
+        return 0
+    storage_roots = {
+        Path(pdf_dir).expanduser().resolve(),
+        Path(pdf_upload_dir).expanduser().resolve(),
+    }
+    storage_roots.update(Path(directory).expanduser().resolve() for directory in replica_dirs)
+    deleted_count = 0
+    for storage_root in storage_roots:
+        pdf_path = storage_root / filename
+        try:
+            pdf_path.unlink()
+            deleted_count += 1
+        except FileNotFoundError:
+            pass
+        manifest = load_event_pdf_manifest(storage_root)
+        if filename in manifest:
+            del manifest[filename]
+            save_event_pdf_manifest(manifest, storage_root)
+    if deleted_count:
+        manifest = load_event_pdf_manifest(pdf_upload_dir)
+        manifest.pop(filename, None)
+        deleted_filenames = set(manifest.get("__deleted__", []))
+        deleted_filenames.add(filename)
+        manifest["__deleted__"] = sorted(deleted_filenames)
+        save_event_pdf_manifest(manifest, pdf_upload_dir)
+    return deleted_count
+
+
 def validate_lesson_reservation(payload):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
@@ -1040,6 +1170,9 @@ def create_app(
     product_file=PRODUCT_FILE,
     contracts_dir=CONTRACTS_DIR,
     contract_replica_dirs=(SERVER_CONTRACTS_DIR,),
+    pdf_dir=SERVER_PDF_DIR,
+    pdf_upload_dir=PDF_UPLOAD_DIR,
+    pdf_replica_dirs=(),
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -1671,6 +1804,64 @@ def create_app(
         if not contract:
             return jsonify({"error": "保存済み契約書が見つかりません。"}), 404
         return jsonify({"contract": contract})
+
+    @app.post("/api/event-pdfs")
+    def upload_event_pdf():
+        error = require_editor()
+        if error:
+            return error
+        upload = request.files.get("pdf")
+        if upload is None:
+            return jsonify({"error": "PDFファイルを選択してください。"}), 400
+        try:
+            document = save_event_pdf(upload, request.form.get("title", ""), pdf_upload_dir)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"saved": True, "document": document}), 201
+
+    @app.delete("/api/event-pdfs/<filename>")
+    def remove_event_pdf(filename):
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        confirmation_filename = (
+            payload.get("confirmation_filename", "") if isinstance(payload, dict) else ""
+        )
+        try:
+            deleted_count = delete_event_pdf(
+                filename,
+                confirmation_filename,
+                pdf_dir,
+                pdf_upload_dir,
+                pdf_replica_dirs,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        if not deleted_count:
+            return jsonify({"error": "PDFファイルが見つかりません。"}), 404
+        return jsonify({"deleted": True, "deleted_count": deleted_count, "filename": filename})
+
+    @app.get("/pdf/")
+    def event_pdf_index():
+        return render_template(
+            "pdf/index.html",
+            pdf_documents=list_event_pdfs(pdf_dir, pdf_upload_dir),
+        )
+
+    @app.get("/pdf/<path:filename>")
+    def event_pdf_file(filename):
+        if Path(filename).name != filename:
+            return app.response_class(status=404)
+        deleted_filenames = set(
+            load_event_pdf_manifest(pdf_upload_dir).get("__deleted__", [])
+        )
+        if filename in deleted_filenames:
+            return app.response_class(status=404)
+        for directory in (Path(pdf_upload_dir), Path(pdf_dir)):
+            if (directory / filename).is_file():
+                return send_from_directory(directory, filename)
+        return app.response_class(status=404)
 
     @app.get("/legal/")
     def legal():
