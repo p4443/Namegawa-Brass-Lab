@@ -30,6 +30,7 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
 STORE_FILE = BASE_DIR / "data" / "store.json"
+CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
 PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
 PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
@@ -136,6 +137,24 @@ CONSULTATION_ATTACHMENT_MIME_TYPES = {
     "application/octet-stream",
 }
 CONSULTATION_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+CONTRACT_TYPES = {
+    "master": {"department": "基本契約", "directory": "master", "keys": set()},
+    "typeA": {
+        "department": "音楽指導・支援",
+        "directory": "music-support",
+        "keys": {"work", "amount", "term", "special_terms"},
+    },
+    "typeB": {
+        "department": "楽器輸送",
+        "directory": "transport",
+        "keys": {"cargo", "value", "route", "special_terms"},
+    },
+    "typeC": {
+        "department": "WEB・アプリ",
+        "directory": "web-app",
+        "keys": {"deliverable", "amount", "deadline", "special_terms"},
+    },
+}
 LESSON_APPS_SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21"
 
 
@@ -634,6 +653,94 @@ def validate_consultation(payload):
     return values
 
 
+def validate_contract(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("契約書の入力内容を確認してください。")
+    doc_type = str(payload.get("doc_type", "")).strip()
+    configuration = CONTRACT_TYPES.get(doc_type)
+    if not configuration:
+        raise ValueError("契約書の種類を選択してください。")
+    client_name = str(payload.get("client_name", "")).strip()
+    client_representative = str(payload.get("client_representative", "")).strip()
+    contract_date = str(payload.get("contract_date", "")).strip()
+    if not client_name or len(client_name) > 120:
+        raise ValueError("取引先名を120文字以内で入力してください。")
+    if len(client_representative) > 80:
+        raise ValueError("代表者名を80文字以内で入力してください。")
+    try:
+        datetime.strptime(contract_date, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("契約締結日を正しく入力してください。") from exc
+    raw_values = payload.get("values", {})
+    if not isinstance(raw_values, dict):
+        raise ValueError("契約条件を確認してください。")
+    values = {}
+    for key in configuration["keys"]:
+        value = str(raw_values.get(key, "")).strip()
+        maximum_length = 3000 if key == "special_terms" else 500
+        if not value or len(value) > maximum_length:
+            raise ValueError(
+                f"契約条件は{maximum_length}文字以内で入力してください。"
+            )
+        values[key] = value
+    return {
+        "doc_type": doc_type,
+        "department": configuration["department"],
+        "client_name": client_name,
+        "client_representative": client_representative,
+        "contract_date": contract_date,
+        "values": values,
+    }
+
+
+def save_contract(values, contracts_dir=CONTRACTS_DIR):
+    configuration = CONTRACT_TYPES[values["doc_type"]]
+    department_dir = Path(contracts_dir) / configuration["directory"]
+    department_dir.mkdir(parents=True, exist_ok=True)
+    contract_id = (
+        f'{values["doc_type"]}-{values["contract_date"].replace("-", "")}-'
+        f'{uuid.uuid4().hex[:8]}'
+    )
+    saved_at = datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
+    contract = {"contract_id": contract_id, "saved_at": saved_at, **values}
+    target_path = department_dir / f"{contract_id}.json"
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=department_dir, delete=False
+    ) as temporary_file:
+        json.dump(contract, temporary_file, ensure_ascii=False, indent=2)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, target_path)
+    return contract
+
+
+def list_contracts(contracts_dir=CONTRACTS_DIR):
+    contracts = []
+    for configuration in CONTRACT_TYPES.values():
+        department_dir = Path(contracts_dir) / configuration["directory"]
+        for contract_path in department_dir.glob("*.json") if department_dir.exists() else []:
+            try:
+                contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(contract, dict):
+                contracts.append(contract)
+    return sorted(contracts, key=lambda item: str(item.get("saved_at", "")), reverse=True)
+
+
+def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
+    contract_id = str(contract_id).strip()
+    match = re.fullmatch(r"(master|typeA|typeB|typeC)-\d{8}-[a-f0-9]{8}", contract_id)
+    if not match:
+        return None
+    configuration = CONTRACT_TYPES[match.group(1)]
+    contract_path = Path(contracts_dir) / configuration["directory"] / f"{contract_id}.json"
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return None
+    return contract if isinstance(contract, dict) else None
+
+
 def validate_lesson_reservation(payload):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
@@ -895,6 +1002,7 @@ def create_app(
     database_url=None,
     store_file=STORE_FILE,
     product_file=PRODUCT_FILE,
+    contracts_dir=CONTRACTS_DIR,
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -1421,7 +1529,11 @@ def create_app(
 
     @app.get("/")
     def index():
-        return render_template("index.html")
+        response = make_response(render_template("index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.get("/favicon.ico")
     def favicon():
@@ -1468,6 +1580,30 @@ def create_app(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         response.headers["X-Robots-Tag"] = "noindex, nofollow"
         return response
+
+    @app.route("/api/contracts", methods=["GET", "POST"])
+    def contracts_api():
+        error = require_editor()
+        if error:
+            return error
+        if request.method == "GET":
+            return jsonify({"contracts": list_contracts(contracts_dir)})
+        try:
+            values = validate_contract(request.get_json(silent=True))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        contract = save_contract(values, contracts_dir)
+        return jsonify(contract), 201
+
+    @app.get("/api/contracts/<contract_id>")
+    def contract_api(contract_id):
+        error = require_editor()
+        if error:
+            return error
+        contract = load_contract(contract_id, contracts_dir)
+        if not contract:
+            return jsonify({"error": "保存済み契約書が見つかりません。"}), 404
+        return jsonify({"contract": contract})
 
     @app.get("/legal/")
     def legal():

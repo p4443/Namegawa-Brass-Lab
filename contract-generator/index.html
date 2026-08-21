@@ -107,6 +107,7 @@
       background: #ffffff;
     }
     .field textarea { min-height: 90px; resize: vertical; }
+    .field textarea[data-contract-key="special_terms"] { min-height: 260px; }
     .field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--primary); }
 
     .sidebar-note {
@@ -120,6 +121,36 @@
     }
 
     .print-button { width: 100%; margin-top: 6px; }
+
+    .save-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .secondary-button {
+      min-height: 44px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      color: var(--primary);
+      background: #ffffff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .secondary-button:hover, .secondary-button:focus-visible { background: #eff6ff; }
+    .save-status { min-height: 1.5em; margin: 9px 0 0; color: var(--muted); font-size: 0.8rem; }
+    .save-status[data-state="error"] { color: var(--danger); }
+    .save-status[data-state="success"] { color: #047857; font-weight: 800; }
+
+    .saved-contracts {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .saved-contracts h2 { margin: 0 0 12px; font-size: 1rem; }
 
     .preview-container {
       display: flex;
@@ -147,11 +178,13 @@
     .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 34px; }
     .party-box { min-height: 145px; }
     .party-box + .party-box { padding-left: 20px; border-left: 1px solid #cbd5e1; }
+    .party-trade-name { white-space: nowrap; }
     .sign-area { margin-top: 18px; text-align: right; }
 
     .document table { width: 100%; margin-top: 18px; border-collapse: collapse; }
     .document th, .document td { padding: 9px; border: 1px solid #222222; text-align: left; vertical-align: top; }
     .document th { width: 30%; background: #f1f5f9; }
+    .document td { white-space: pre-wrap; }
 
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
@@ -218,7 +251,22 @@
       <div id="dynamicFields"></div>
 
       <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
-      <button class="primary-button print-button" id="printContract" type="button">PDF出力 / 印刷</button>
+      <div class="save-actions">
+        <button class="primary-button" id="saveContract" type="button">部門別に保存</button>
+        <button class="secondary-button" id="printContract" type="button">PDF出力 / 印刷</button>
+      </div>
+      <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+
+      <section class="saved-contracts" aria-labelledby="savedContractsTitle">
+        <h2 id="savedContractsTitle">保存済み契約書</h2>
+        <div class="field">
+          <label for="savedContractSelect">部門・取引先から選択</label>
+          <select id="savedContractSelect">
+            <option value="">保存済み契約書を選択</option>
+          </select>
+        </div>
+        <button class="secondary-button" id="loadContract" type="button">選択した契約書を開く</button>
+      </section>
     </aside>
 
     <section class="preview-container" aria-label="契約書プレビュー">
@@ -239,12 +287,25 @@
     const contractDate = document.getElementById('contractDate');
     const dynamicFields = document.getElementById('dynamicFields');
     const preview = document.getElementById('documentPreview');
-    let adminPassword = sessionStorage.getItem('updatesEditorPassword') || '';
+    const saveButton = document.getElementById('saveContract');
+    const saveStatus = document.getElementById('saveStatus');
+    const savedContractSelect = document.getElementById('savedContractSelect');
+    const loadButton = document.getElementById('loadContract');
+    let adminPassword = '';
 
     const contractValues = {
-      typeA: { work: '管楽器指導、および地域クラブ移行支援', amount: '30,000円（交通費別途）', term: '実施日または別途定める期間' },
-      typeB: { cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路' },
-      typeC: { deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日' }
+      typeA: {
+        work: '管楽器指導、および地域クラブ移行支援', amount: '30,000円（交通費別途）', term: '実施日または別途定める期間',
+        special_terms: '1. 本業務は善良な管理者の注意をもって行う準委任業務であり、技能向上、進学、受賞その他特定の成果を保証するものではない。\n2. 甲は、会場、設備、参加者情報、緊急連絡体制その他安全な実施に必要な環境を整える。未成年者が参加する場合、甲は保護者同意、引渡し、撮影・公開の可否および健康上の配慮事項を管理する。\n3. 甲乙は、事故、災害、感染症、気象、交通障害その他安全な実施が困難な事情がある場合、延期、中止または実施方法の変更を協議する。緊急時は人命および安全を優先する。\n4. 参加者へのハラスメント、差別、暴力、危険行為その他信頼関係を損なう行為を禁止し、改善されない場合、乙は業務を中断または終了できる。\n5. 日程、人数、会場、業務範囲および教材利用の変更ならびにキャンセル料、交通費、宿泊費等は、実施前に電磁的方法を含む記録可能な方法で合意する。'
+      },
+      typeB: {
+        cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
+        special_terms: '1. 甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. 引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. 補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. 天候、災害、道路事情、車両故障、行政上の要請その他安全または適法な運行が困難な場合、乙は経路・日時の変更または運送中止を判断できる。甲乙は代替手段および費用を速やかに協議する。\n5. 運送主体、必要な許認可、積卸しの担当範囲、待機時間、保管、再委託および追加費用は事前に明確化し、法令および運送主体の約款が適用される場合はこれを優先する。'
+      },
+      typeC: {
+        deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
+        special_terms: '1. 成果物、対応環境、受入基準、検査期間および納品方法は仕様書等で定める。検査期間内に具体的な不適合の通知がない場合の取扱いは個別に合意し、乙は合意した仕様への適合を保証するが、障害が一切生じないことを保証しない。\n2. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。\n3. 既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。成果物固有部分の知的財産権、利用許諾、ソースコードの引渡しおよび実績公開の可否は個別に定める。\n4. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とし、代替対応、移行および追加費用は協議する。甲は必要なアカウントおよび利用権限を適法に準備する。\n5. 甲乙は、個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。保守、監視、バックアップ、更新およびサポートは、別途合意した範囲に限る。'
+      }
     };
 
     function escapeHtml(value) {
@@ -264,9 +325,9 @@
       }).format(new Date(year, month - 1, day));
     }
 
-    function field(label, key, value, multiline = false) {
+    function field(label, key, value, multiline = false, maximumLength = 500) {
       const element = multiline
-        ? `<textarea data-contract-key="${key}" maxlength="500">${escapeHtml(value)}</textarea>`
+        ? `<textarea data-contract-key="${key}" maxlength="${maximumLength}">${escapeHtml(value)}</textarea>`
         : `<input data-contract-key="${key}" type="text" maxlength="160" value="${escapeHtml(value)}">`;
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
@@ -281,15 +342,18 @@
       if (type === 'typeA') {
         dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
           + field('委託料', 'amount', values.amount)
-          + field('契約期間・実施日', 'term', values.term);
+          + field('契約期間・実施日', 'term', values.term)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else if (type === 'typeB') {
         dynamicFields.innerHTML = field('輸送対象物', 'cargo', values.cargo, true)
           + field('対象物の総評価額', 'value', values.value)
-          + field('運行経路・実施条件', 'route', values.route, true);
+          + field('運行経路・実施条件', 'route', values.route, true)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else {
         dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
           + field('委託料', 'amount', values.amount)
-          + field('納期', 'deadline', values.deadline);
+          + field('納期', 'deadline', values.deadline)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       }
     }
 
@@ -299,7 +363,7 @@
       return `
         <div class="doc-parties">
           <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
-          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p>屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
+          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
         </div>`;
     }
 
@@ -317,11 +381,20 @@
           <h1>業務委託基本契約書</h1><p class="doc-date">${date}</p>
           <p>${safeClient}（以下「甲」という）と、なめがわブラス・ラボ 代表 佐々木 久和（以下「乙」という）は、甲が乙に委託する業務について、次のとおり基本契約を締結する。</p>
           <h2>第1条（目的および適用範囲）</h2><p>本契約は、甲乙間の継続的な業務委託取引に関する基本事項を定め、個別契約に共通して適用する。</p>
-          <h2>第2条（個別契約）</h2><p>業務内容、委託料、履行時期その他の条件は個別契約で定める。個別契約と本契約が異なる場合は、個別契約を優先する。</p>
-          <h2>第3条（委託料および費用）</h2><p>甲は、個別契約に定める委託料および合意した実費を、指定された期日までに支払う。</p>
-          <h2>第4条（秘密保持）</h2><p>甲および乙は、業務上知り得た相手方の非公開情報を、相手方の承諾なく第三者へ開示しない。</p>
-          <h2>第5条（損害賠償）</h2><p>乙の責めに帰すべき事由による損害賠償額は、故意または重過失がある場合を除き、原因となった個別契約の委託料を上限とする。</p>
-          <h2>第6条（協議）</h2><p>本契約に定めのない事項または疑義が生じた場合は、甲乙誠実に協議して解決する。</p>${parties}`;
+          <h2>第2条（個別契約および優先順位）</h2><p>業務内容、成果物、委託料、履行時期、検査その他の条件は、見積書、申込書、仕様書その他記録可能な方法による合意（以下「個別契約」という）で定める。本契約と個別契約が異なる場合は個別契約を優先し、複数の文書間に矛盾がある場合は、後に成立した個別の合意を優先する。</p>
+          <h2>第3条（協力義務および変更管理）</h2><p>甲乙は、業務に必要な情報、資料、承認および環境を合理的な時期までに提供する。前提条件、業務範囲、法令等の制定または改廃その他契約条件に影響する事情が変化した場合は速やかに通知し、費用、納期および責任分担の変更を記録可能な方法で協議し合意する。</p>
+          <h2>第4条（委託料、費用および支払）</h2><p>甲は、個別契約に定める委託料、消費税等および合意した実費を指定期日までに支払う。甲の都合による延期、中止または追加作業の取扱いは個別契約に定め、定めがない場合は既履行分および取消不能な費用を甲が負担する。</p>
+          <h2>第5条（再委託）</h2><p>乙は、業務遂行に合理的に必要な範囲で、適切な能力および管理体制を有する第三者へ業務の全部または一部を再委託できる。この場合、乙は再委託先に本契約上必要な義務を課し、その履行について甲に対して責任を負う。</p>
+          <h2>第6条（秘密保持および個人情報）</h2><p>甲乙は、業務上知り得た相手方の非公開情報を契約目的以外に利用せず、法令上必要な場合を除き第三者へ開示しない。ただし、公知の情報、受領前から適法に保有する情報、正当な権限を有する第三者から取得した情報および独自に開発した情報を除く。個人情報は目的の範囲で取り扱い、合理的な安全管理措置を講じる。</p>
+          <h2>第7条（知的財産権）</h2><p>契約締結前から各当事者または第三者が保有する知的財産権は従前の権利者に留保される。業務により新たに生じる成果物の権利帰属および利用条件は個別契約に定め、定めがない場合、甲は委託料完済後、契約目的に必要な範囲で成果物を利用できる。</p>
+          <h2>第8条（法令遵守および反社会的勢力の排除）</h2><p>甲乙は、業務に適用される法令、許認可、施設規則および第三者の権利を尊重する。甲乙は、自らおよび実質的に関与する者が反社会的勢力に該当せず、これと関係を有しないことを表明し、違反した相手方との契約を催告なく解除できる。</p>
+          <h2>第9条（不可抗力）</h2><p>災害、感染症、戦争、騒乱、行政措置、通信・交通・エネルギー障害、第三者サービスの広範な停止その他合理的な支配を超える不可抗力により履行が遅延または不能となった当事者は、その責任を負わない。当事者は影響軽減に努め、長期化する場合は延期、代替または終了を協議する。</p>
+          <h2>第10条（解除）</h2><p>当事者が契約上の重大な義務に違反し、相当期間を定めた是正要求後も改善しない場合、相手方は本契約または個別契約を解除できる。支払停止、破産手続開始その他信用を著しく害する事由が生じた場合は催告を要しない。</p>
+          <h2>第11条（損害賠償）</h2><p>当事者は、自己の責めに帰すべき事由により相手方に現実かつ直接に生じた通常損害を賠償する。乙の賠償総額は、乙の故意または重過失、生命・身体への損害その他法令上制限できない場合を除き、原因となった個別契約で乙が受領した委託料を上限とする。</p>
+          <h2>第12条（契約期間および存続）</h2><p>本契約の期間は締結日から1年間とし、期間満了日の30日前までに書面または電磁的方法による終了通知がない場合は同一条件で1年間更新する。秘密保持、知的財産権、未払金、損害賠償および紛争解決に関する条項は、性質上必要な範囲で契約終了後も存続する。</p>
+          <h2>第13条（通知および電磁的記録）</h2><p>契約に関する通知、承認および合意は、書面、電子メールその他内容を保存・再現できる電磁的方法により行うことができる。連絡先を変更した当事者は速やかに通知し、未通知により生じた不利益を負担する。</p>
+          <h2>第14条（分離可能性および権利不放棄）</h2><p>本契約の一部が無効または執行不能となっても、その他の条項は影響を受けない。権利を直ちに行使しないことは、その権利の放棄を意味しない。</p>
+          <h2>第15条（準拠法、管轄および協議）</h2><p>本契約は日本法に準拠する。本契約に定めのない事項または疑義については甲乙誠実に協議し、解決しない場合は、法令上認められる範囲で乙の主たる事業所所在地を管轄する裁判所を第一審の合意管轄裁判所とする。</p>${parties}`;
         return;
       }
 
@@ -329,19 +402,106 @@
       if (type === 'typeA') {
         preview.innerHTML = `<h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['委託業務の内容', values.work], ['委託料', values.amount], ['契約期間・実施日', values.term],
-          ['特記事項', '本業務は準委任契約であり、乙は特定の成果を保証しない。会場管理者の指示および安全上必要な措置に甲乙双方が協力する。']
+          ['特記事項', values.special_terms]
         ])}${parties}`;
       } else if (type === 'typeB') {
         preview.innerHTML = `<h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
-          ['特記事項', '補償内容および引受可否は保険契約の条件による。甲は対象物、評価額、梱包状態その他必要事項を正確に申告し、法令上必要な運送体制は個別に確認する。']
+          ['特記事項', values.special_terms]
         ])}${parties}`;
       } else {
         preview.innerHTML = `<h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
-          ['特記事項', '仕様変更、第三者サービス利用料、保守運用および知的財産権の取扱いは、見積書または別紙仕様書に定める。']
+          ['特記事項', values.special_terms]
         ])}${parties}`;
       }
+    }
+
+    function contractPayload() {
+      return {
+        doc_type: docType.value,
+        client_name: clientName.value,
+        client_representative: clientRepresentative.value,
+        contract_date: contractDate.value,
+        values: docType.value === 'master' ? {} : { ...contractValues[docType.value] }
+      };
+    }
+
+    function adminHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Editor-Password': adminPassword };
+    }
+
+    async function readApiError(response, fallback) {
+      try {
+        const result = await response.json();
+        return result.error || fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    async function loadSavedContracts(selectedId = '') {
+      const response = await fetch('/api/contracts', { headers: adminHeaders() });
+      if (!response.ok) throw new Error(await readApiError(response, '保存済み契約書を取得できませんでした。'));
+      const result = await response.json();
+      savedContractSelect.replaceChildren(new Option('保存済み契約書を選択', ''));
+      const groups = new Map();
+      result.contracts.forEach(contract => {
+        if (!groups.has(contract.department)) groups.set(contract.department, []);
+        groups.get(contract.department).push(contract);
+      });
+      groups.forEach((contracts, department) => {
+        const group = document.createElement('optgroup');
+        group.label = department;
+        contracts.forEach(contract => {
+          const option = new Option(
+            `${contract.contract_date} / ${contract.client_name}`,
+            contract.contract_id
+          );
+          group.appendChild(option);
+        });
+        savedContractSelect.appendChild(group);
+      });
+      savedContractSelect.value = selectedId;
+    }
+
+    async function saveCurrentContract() {
+      if (!clientName.value.trim()) {
+        clientName.focus();
+        throw new Error('取引先名を入力してください。');
+      }
+      saveButton.disabled = true;
+      const response = await fetch('/api/contracts', {
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify(contractPayload())
+      });
+      if (!response.ok) {
+        saveButton.disabled = false;
+        throw new Error(await readApiError(response, '契約書を保存できませんでした。'));
+      }
+      const contract = await response.json();
+      await loadSavedContracts(contract.contract_id);
+      saveButton.disabled = false;
+      return contract;
+    }
+
+    async function openSavedContract() {
+      const contractId = savedContractSelect.value;
+      if (!contractId) throw new Error('保存済み契約書を選択してください。');
+      const response = await fetch(`/api/contracts/${encodeURIComponent(contractId)}`, {
+        headers: adminHeaders()
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '契約書を開けませんでした。'));
+      const { contract } = await response.json();
+      docType.value = contract.doc_type;
+      clientName.value = contract.client_name;
+      clientRepresentative.value = contract.client_representative;
+      contractDate.value = contract.contract_date;
+      if (contract.doc_type !== 'master') {
+        contractValues[contract.doc_type] = { ...contractValues[contract.doc_type], ...contract.values };
+      }
+      renderDynamicFields();
+      renderPreview();
+      return contract;
     }
 
     function showGenerator() {
@@ -350,13 +510,16 @@
       contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
       renderDynamicFields();
       renderPreview();
+      loadSavedContracts().catch(error => {
+        saveStatus.textContent = error.message;
+        saveStatus.dataset.state = 'error';
+      });
     }
 
     async function authenticate(password) {
       const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
       if (!response.ok) throw new Error('管理者パスワードが違います。');
       adminPassword = password;
-      sessionStorage.setItem('updatesEditorPassword', password);
       showGenerator();
     }
 
@@ -373,7 +536,6 @@
 
     logoutButton.addEventListener('click', () => {
       adminPassword = '';
-      sessionStorage.removeItem('updatesEditorPassword');
       generator.hidden = true;
       loginScreen.hidden = false;
       passwordInput.value = '';
@@ -389,13 +551,32 @@
       renderPreview();
     });
     document.getElementById('printContract').addEventListener('click', () => window.print());
+    saveButton.addEventListener('click', async () => {
+      saveStatus.textContent = '保存しています...';
+      saveStatus.dataset.state = '';
+      try {
+        const contract = await saveCurrentContract();
+        saveStatus.textContent = `${contract.department}フォルダへ保存しました。`;
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        saveButton.disabled = false;
+        saveStatus.textContent = error.message || '契約書を保存できませんでした。';
+        saveStatus.dataset.state = 'error';
+      }
+    });
+    loadButton.addEventListener('click', async () => {
+      saveStatus.textContent = '';
+      saveStatus.dataset.state = '';
+      try {
+        const contract = await openSavedContract();
+        saveStatus.textContent = `${contract.department}の契約書を開きました。`;
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        saveStatus.textContent = error.message || '契約書を開けませんでした。';
+        saveStatus.dataset.state = 'error';
+      }
+    });
 
-    if (adminPassword) {
-      authenticate(adminPassword).catch(() => {
-        adminPassword = '';
-        sessionStorage.removeItem('updatesEditorPassword');
-      });
-    }
   </script>
 </body>
 </html>

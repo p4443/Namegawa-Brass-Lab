@@ -144,11 +144,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("orgNameExamples", page)
 
     def test_index_links_admin_contract_generator_from_services_heading(self):
-        page = create_app(database_url="").test_client().get("/").get_data(as_text=True)
+        response = create_app(database_url="").test_client().get("/")
+        page = response.get_data(as_text=True)
 
+        self.assertIn("no-store", response.headers["Cache-Control"])
         self.assertIn('class="services-heading"', page)
         self.assertIn('href="contract-generator/"', page)
         self.assertIn("契約書作成", page)
+        self.assertNotIn('class="services-admin-link" href="contract-generator/" target="_blank"', page)
 
     def test_contract_generator_requires_editor_login_in_page(self):
         response = create_app(database_url="").test_client().get("/contract-generator/")
@@ -161,12 +164,77 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="contractGenerator"', page)
         self.assertIn("/api/editor", page)
         self.assertIn("X-Editor-Password", page)
+        self.assertIn("let adminPassword = '';", page)
+        self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
         self.assertIn('id="docType"', page)
         self.assertIn('value="master"', page)
         self.assertIn('value="typeA"', page)
         self.assertIn('value="typeB"', page)
         self.assertIn('value="typeC"', page)
         self.assertIn("window.print()", page)
+        self.assertIn("法令等の制定または改廃", page)
+        self.assertIn("電磁的記録", page)
+        self.assertIn("反社会的勢力", page)
+        self.assertIn("不可抗力", page)
+        self.assertIn("未成年者", page)
+        self.assertIn("ハラスメント", page)
+        self.assertIn("運送中止", page)
+        self.assertIn("事故、滅失、毀損または遅延", page)
+        self.assertIn("変更管理", page)
+        self.assertIn("脆弱性", page)
+        self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
+        self.assertIn(".party-trade-name { white-space: nowrap; }", page)
+
+    def test_contract_api_saves_and_lists_by_department(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+            payload = {
+                "doc_type": "typeB",
+                "client_name": "〇〇楽団",
+                "client_representative": "代表 山田 太郎",
+                "contract_date": "2026-08-21",
+                "values": {
+                    "cargo": "管楽器一式",
+                    "value": "金 1,000万円",
+                    "route": "滑川町から会場まで",
+                    "special_terms": "申告内容と補償条件を事前に確認する。",
+                },
+            }
+
+            saved = client.post("/api/contracts", json=payload, headers=headers)
+            listed = client.get("/api/contracts", headers=headers)
+
+            self.assertEqual(saved.status_code, 201)
+            self.assertRegex(saved.json["contract_id"], r"^typeB-20260821-[a-f0-9]{8}$")
+            contract_path = Path(temporary_directory) / "transport" / f'{saved.json["contract_id"]}.json'
+            self.assertTrue(contract_path.is_file())
+            self.assertEqual(listed.status_code, 200)
+            self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
+            self.assertEqual(listed.json["contracts"][0]["client_name"], "〇〇楽団")
+
+            loaded = client.get(
+                f'/api/contracts/{saved.json["contract_id"]}', headers=headers
+            )
+            self.assertEqual(loaded.status_code, 200)
+            self.assertEqual(loaded.json["contract"]["values"]["cargo"], "管楽器一式")
+
+    def test_contract_api_requires_editor_password(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+
+            self.assertEqual(client.get("/api/contracts").status_code, 401)
+            self.assertEqual(
+                client.post("/api/contracts", json={}).status_code, 401
+            )
 
     def test_explicit_empty_database_url_disables_database_initialization(self):
         with patch.dict(os.environ, {"DATABASE_URL": "postgresql://example/db"}):

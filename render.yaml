@@ -6,6 +6,10 @@ services:
     dockerContext: .
     healthCheckPath: /health
     autoDeployTrigger: commit
+    disk:
+      name: site-data
+      mountPath: /app/data
+      sizeGB: 1
     envVars:
       - key: DATABASE_URL
         sync: false
