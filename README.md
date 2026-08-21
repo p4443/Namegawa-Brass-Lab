@@ -38,16 +38,16 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 ## 練習アプリのStripe販売
 
-教室ページではWeb版を無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は初期値OFFで、教室ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
+練習アプリのWeb版は無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。メトロノームの販売状態は初期値OFFで、商品ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
 
-Flow Harmonyは無料Web版とオフライン版の公開を停止しています。商品ページの起動リンクと埋め込みを外し、直接URLとCheckout APIも`503`で停止しています。再公開準備ではStripeに1回払い・1,000円・JPYの商品価格を作成し、Renderへ次の環境変数を追加してください。
+Flow Harmonyは無料Web版で全機能を公開し、オフライン版のみ1,000円で販売します。商品ページは設定と商品ZIPの検証が通った場合だけ購入ボタンを有効にします。Renderへ次の環境変数を追加してください。
 
 ```text
 STRIPE_FLOW_HARMONY_PRICE_ID=price_...
 FLOW_HARMONY_PRICE_YEN=1000
 ```
 
-デプロイ後は`/products/`でFlow Harmonyが「公開停止中」と表示されること、`/flow-harmony/`とCheckout APIが`503`を返すことを確認します。販売開始時はStripeのPriceを既存ストアと同じテスト・本番モードへ揃えてください。
+デプロイ後は`/flow-harmony/`がHTTP 200で表示され、`/products/`の無料版リンクと埋め込みが動作することを確認します。オフライン版の購入ボタンはStripeのPriceを既存ストアと同じテスト・本番モードへ揃えた場合だけ有効になります。
 
 ### 管理者向け・説明付き設定ウィザード
 

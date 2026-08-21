@@ -1,5 +1,6 @@
 var SHEET_NAME = "レッスン予約";
 var SLOT_SHEET_NAME = "予約枠状態";
+var CONSULTATION_SHEET_NAME = "企画・輸送相談";
 var HEADERS = [
   "受付日時",
   "受付番号",
@@ -14,11 +15,26 @@ var HEADERS = [
   "所要時間（分）"
 ];
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
+var CONSULTATION_HEADERS = [
+  "受付日時",
+  "受付番号",
+  "サービス種別",
+  "団体名・お申込者名",
+  "メールアドレス",
+  "実施予定日",
+  "サポート内容",
+  "楽器総評価額",
+  "企画種別",
+  "搬送概要",
+  "相談詳細",
+  "添付ファイル名",
+  "添付ファイルURL"
+];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19";
+var SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -49,19 +65,19 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["list", "update", "delete", "cancel", "upsert_slot_status_range"]
+        capabilities: ["consultation", "list", "update", "delete", "cancel", "upsert_slot_status_range"]
       });
     }
 
     var requestId = String(data.request_id || "").trim();
-    if ((action === "update" || action === "delete" || action === "cancel") && requestId) {
+    if ((action === "consultation" || action === "update" || action === "delete" || action === "cancel") && requestId) {
       var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
       if (cachedResult) {
         return jsonResponse(JSON.parse(cachedResult));
       }
     }
 
-    var writeActions = ["create", "upsert_slot_status_range", "update", "delete", "cancel"];
+    var writeActions = ["create", "consultation", "upsert_slot_status_range", "update", "delete", "cancel"];
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
@@ -71,6 +87,33 @@ function doPost(event) {
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
+    if (action === "consultation") {
+      var consultationSheet = getConsultationSheet(spreadsheet);
+      var consultationNow = new Date();
+      var consultationId = createConsultationId(consultationNow);
+      var consultationAttachmentUrl = saveConsultationAttachment(data, consultationId);
+      consultationSheet.appendRow([
+        consultationNow,
+        consultationId,
+        safeCell(data.service_mode),
+        safeCell(data.org_name),
+        safeCell(data.email),
+        safeCell(data.event_date),
+        safeCell(data.support_content),
+        safeCell(data.instrument_value),
+        safeCell(data.planning_type),
+        safeCell(data.cargo_detail),
+        safeCell(data.message),
+        safeCell(data.attachment_name),
+        safeCell(consultationAttachmentUrl)
+      ]);
+      var consultationAutoReplySent = sendConsultationAutoReply(data, consultationId);
+      return adminActionResponse({
+        ok: true,
+        consultationId: consultationId,
+        autoReplySent: consultationAutoReplySent
+      }, requestId);
+    }
     if (action === "create") {
       var now = new Date();
       var duplicate = findDuplicateReservation(sheet, data, now);
@@ -420,6 +463,51 @@ function getSlotStatusSheet(spreadsheet) {
     sheet.autoResizeColumns(1, SLOT_HEADERS.length);
   }
   return sheet;
+}
+
+function getConsultationSheet(spreadsheet) {
+  var sheet = spreadsheet.getSheetByName(CONSULTATION_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(CONSULTATION_SHEET_NAME);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(CONSULTATION_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  sheet.getRange(1, 1, 1, CONSULTATION_HEADERS.length)
+    .setValues([CONSULTATION_HEADERS])
+    .setBackground("#1a56db")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold");
+  sheet.getRange("A:A").setNumberFormat("yyyy/mm/dd hh:mm:ss");
+  sheet.autoResizeColumns(1, CONSULTATION_HEADERS.length);
+  return sheet;
+}
+
+function saveConsultationAttachment(data, consultationId) {
+  var attachmentData = String(data.attachment_data || "").trim();
+  var attachmentName = String(data.attachment_name || "").trim();
+  if (!attachmentData || !attachmentName) {
+    return "";
+  }
+  var attachmentType = String(data.attachment_type || "application/octet-stream").trim();
+  var folders = DriveApp.getFoldersByName("企画・輸送相談添付");
+  var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("企画・輸送相談添付");
+  var blob = Utilities.newBlob(
+    Utilities.base64Decode(attachmentData),
+    attachmentType,
+    consultationId + "_" + attachmentName
+  );
+  return folder.createFile(blob).getUrl();
+}
+
+function createConsultationId(date) {
+  var datePart = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
+  var propertyKey = "CONSULTATION_SEQUENCE_" + datePart;
+  var properties = PropertiesService.getScriptProperties();
+  var sequence = (Number(properties.getProperty(propertyKey)) || 0) + 1;
+  properties.setProperty(propertyKey, String(sequence));
+  return "C-" + datePart + "-" + zeroPad(sequence, 3);
 }
 
 function createReservationId(date, sheet) {
@@ -1062,6 +1150,53 @@ function sendReservationAutoReply(data, reservationId) {
 
   try {
     GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
+      htmlBody: htmlBody,
+      name: "なめがわブラス・ラボ",
+      replyTo: ADMIN_NOTIFICATION_EMAIL,
+      bcc: ADMIN_NOTIFICATION_EMAIL
+    });
+    return true;
+  } catch (error) {
+    Logger.log(error);
+    return false;
+  }
+}
+
+function sendConsultationAutoReply(data, consultationId) {
+  var email = sanitizeMailHeader(data.email).trim();
+  if (!email || email.indexOf("@") <= 0) {
+    return false;
+  }
+
+  var name = sanitizeMailHeader(data.org_name).trim() || "お客様";
+  var serviceMode = String(data.service_mode || "").trim();
+  var body = [
+    name + " 様",
+    "",
+    "イベント企画・輸送のご相談ありがとうございます。",
+    "以下の内容で確かに受け付けました。",
+    "",
+    "受付番号: " + consultationId,
+    "サービス種別: " + serviceMode,
+    "",
+    "内容を確認後、担当よりお見積りと進め方をご連絡します。",
+    "このメールは自動送信です。"
+  ].join("\n");
+  var htmlBody = [
+    "<!doctype html>",
+    '<html><head><meta charset="UTF-8"></head><body>',
+    "<p>" + escapeHtml(name) + " 様</p>",
+    "<p>イベント企画・輸送のご相談ありがとうございます。<br>",
+    "以下の内容で確かに受け付けました。</p>",
+    "<p>受付番号: " + escapeHtml(consultationId) + "<br>",
+    "サービス種別: " + escapeHtml(serviceMode) + "</p>",
+    "<p>内容を確認後、担当よりお見積りと進め方をご連絡します。<br>",
+    "このメールは自動送信です。</p>",
+    "</body></html>"
+  ].join("");
+
+  try {
+    GmailApp.sendEmail(email, "【なめがわブラス・ラボ】企画・輸送相談受付完了", body, {
       htmlBody: htmlBody,
       name: "なめがわブラス・ラボ",
       replyTo: ADMIN_NOTIFICATION_EMAIL,

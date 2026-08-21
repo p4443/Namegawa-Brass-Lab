@@ -7,13 +7,37 @@
 			"path": "data"
 		},
 		{
+			"path": "download-guide"
+		},
+		{
+			"path": "flow-harmony"
+		},
+		{
 			"path": "google-apps-script"
+		},
+		{
+			"path": "legal"
 		},
 		{
 			"path": "lesson"
 		},
 		{
+			"path": "logs"
+		},
+		{
+			"path": "music App"
+		},
+		{
 			"path": "pdf"
+		},
+		{
+			"path": "private"
+		},
+		{
+			"path": "products"
+		},
+		{
+			"path": "schedule"
 		},
 		{
 			"path": "tests"
@@ -21,9 +45,5 @@
 		{
 			"path": "video"
 		}
-	],
-	"settings": {
-		"liveServer.settings.multiRootWorkspaceName": "certs",
-		"liveServer.settings.port": 5501
-	}
+	]
 }

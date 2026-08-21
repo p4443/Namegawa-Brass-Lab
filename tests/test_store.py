@@ -207,32 +207,43 @@ class StoreTest(unittest.TestCase):
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
-    def test_flow_harmony_free_version_is_unavailable(self):
+    def test_flow_harmony_free_version_is_available(self):
         response = self.client.get("/flow-harmony/?mode=free")
 
-        self.assertEqual(response.status_code, 503)
-        self.assertIn("現在公開を停止", response.get_data(as_text=True))
-        self.assertEqual(response.headers["Retry-After"], "86400")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Fiow Harmony（フロー・ハーモニー）", response.get_data(as_text=True))
+        self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
         self.assertEqual(self.client.get("/flow-harmony/index.html").status_code, 404)
 
-    def test_products_shows_flow_harmony_as_unavailable(self):
+    def test_products_offers_free_and_offline_flow_harmony(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn('../flow-harmony/?mode=free', html)
-        self.assertIn('id="flow-purchase-button" type="button" disabled>公開停止中', html)
-        self.assertIn("無料Web版とオフライン版は、どちらも現在ご利用いただけません", html)
-        self.assertNotIn('requestStore("flow-harmony/checkout"', html)
+        self.assertIn('../flow-harmony/?mode=free', html)
+        self.assertIn('id="flow-purchase-button" type="button" disabled>販売状況を確認中', html)
+        self.assertIn("録音した演奏から、吹きやすい二重奏とB♭トランペット譜を生成", html)
+        self.assertIn("Web版は無料で全機能を利用できます", html)
+        self.assertIn('requestStore("flow-harmony/checkout"', html)
 
-    def test_lesson_page_does_not_link_to_flow_harmony(self):
+    def test_products_stack_vertically_on_smartphones(self):
+        response = self.client.get("/products/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<span class="mobile-scroll-copy">下へスクロール</span>', html)
+        self.assertIn(".desktop-scroll-copy, .carousel-controls { display: none; }", html)
+        self.assertIn("scroll-snap-type: none;", html)
+        self.assertIn(".product-feature { width: 100%; min-width: 0;", html)
+
+    def test_lesson_page_links_to_free_flow_harmony(self):
         response = self.client.get("/lesson/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn('../flow-harmony/?mode=free', html)
+        self.assertIn('../flow-harmony/?mode=free', html)
         self.assertIn("Flow Harmony", html)
-        self.assertIn("現在公開を停止しています", html)
+        self.assertIn("無料で体験", html)
 
     def test_flow_harmony_product_uses_one_thousand_yen_price(self):
         with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
@@ -244,7 +255,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(product["price_yen"], 1000)
         self.assertFalse(product["checkout_available"])
 
-    def test_flow_harmony_checkout_is_unavailable_before_release(self):
+    def test_flow_harmony_checkout_uses_configured_price(self):
         stripe = self.stripe_module(amount_total=1000)
         stripe.Price.retrieve.return_value.unit_amount = 1000
         checkout_request_id = "66e59f96-394e-4df1-9b0b-e80b888d90fc"
@@ -260,9 +271,13 @@ class StoreTest(unittest.TestCase):
                 json={"checkout_request_id": checkout_request_id},
             )
 
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.get_json()["error"], "現在公開を停止しています。")
-        stripe.checkout.Session.create.assert_not_called()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["checkout_url"], "https://checkout.example/session")
+        stripe.checkout.Session.create.assert_called_once()
+        checkout_arguments = stripe.checkout.Session.create.call_args.kwargs
+        self.assertEqual(checkout_arguments["line_items"], [{"price": "price_flow_harmony", "quantity": 1}])
+        self.assertEqual(checkout_arguments["metadata"]["product_id"], "flow-harmony")
+        self.assertEqual(checkout_arguments["metadata"]["price_yen"], "1000")
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):
         stripe = self.stripe_module(amount_total=1000)

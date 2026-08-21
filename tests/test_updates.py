@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from base64 import b64encode
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -15,6 +16,7 @@ from app import (
     parse_update_line,
     reservation_slot_times,
     send_lesson_reservation,
+    validate_consultation,
     validate_lesson_reservation,
     validate_lesson_reservation_update,
     validate_update,
@@ -22,6 +24,123 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_consultation_validation_requires_mode_specific_fields(self):
+        valid = {
+            "service_mode": "allinone",
+            "org_name": "〇〇高等学校吹奏楽部",
+            "email": "music@example.com",
+            "event_date": "2026-10-10",
+            "support_content": "コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）",
+            "instrument_value": "1000",
+            "message": "見積りを希望します。",
+            "terms_agree": True,
+        }
+
+        values = validate_consultation(valid)
+
+        self.assertEqual(values["service_mode"], "オールインワン依頼（指導・セッティング・運搬一式）")
+        self.assertEqual(values["instrument_value"], "300万円〜1,000万円")
+        with self.assertRaisesRegex(ValueError, "実施予定日"):
+            validate_consultation({**valid, "event_date": ""})
+
+    def test_consultation_validation_accepts_safe_attachment_and_other_planning(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域イベント実行委員会",
+            "email": "event@example.com",
+            "planning_type": "その他",
+            "message": "屋外ライブの運営支援について相談したいです。",
+            "attachment": {
+                "name": "plan.pdf",
+                "type": "application/pdf",
+                "data": b64encode(b"%PDF-1.4 test").decode("ascii"),
+            },
+            "terms_agree": True,
+        }
+
+        values = validate_consultation(payload)
+
+        self.assertEqual(values["planning_type"], "その他")
+        self.assertEqual(values["attachment_name"], "plan.pdf")
+        self.assertEqual(values["attachment_type"], "application/pdf")
+        self.assertEqual(values["attachment_data"], payload["attachment"]["data"])
+        with self.assertRaisesRegex(ValueError, "概略・要望事項"):
+            validate_consultation({**payload, "message": ""})
+        with self.assertRaisesRegex(ValueError, "添付できない"):
+            validate_consultation(
+                {
+                    **payload,
+                    "attachment": {
+                        "name": "script.html",
+                        "type": "text/html",
+                        "data": b64encode(b"<script></script>").decode("ascii"),
+                    },
+                }
+            )
+
+    def test_consultation_api_sends_validated_request_to_apps_script(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_request:
+            send_request.return_value = {
+                "ok": True,
+                "consultationId": "C-20260821-001",
+                "autoReplySent": True,
+            }
+
+            response = create_app(database_url="").test_client().post(
+                "/api/consultation", json=payload
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["consultation_id"], "C-20260821-001")
+        self.assertEqual(send_request.call_args.kwargs["action"], "consultation")
+        self.assertEqual(
+            send_request.call_args.args[2]["service_mode"],
+            "イベント企画・プロデュースのみ",
+        )
+
+    def test_apps_script_stores_consultation_attachment_in_drive(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"添付ファイル名"', script)
+        self.assertIn('"添付ファイルURL"', script)
+        self.assertIn("saveConsultationAttachment(data, consultationId)", script)
+        self.assertIn('DriveApp.getFoldersByName("企画・輸送相談添付")', script)
+        self.assertIn("Utilities.base64Decode(attachmentData)", script)
+        self.assertIn("folder.createFile(blob).getUrl()", script)
+
+    def test_index_embeds_event_consultation_form(self):
+        page = create_app(database_url="").test_client().get("/").get_data(as_text=True)
+
+        self.assertIn('href="#event-consultation"', page)
+        self.assertIn('id="event-consultation"', page)
+        self.assertIn('id="nblConsultationForm"', page)
+        self.assertIn('data-mode="allinone"', page)
+        self.assertIn('data-mode="planning"', page)
+        self.assertIn('data-mode="cargo"', page)
+        self.assertIn("fetch('/api/consultation'", page)
+        self.assertIn('href="legal/privacy-policy.html"', page)
+        self.assertIn('id="consultationAttachment"', page)
+        self.assertIn('演奏会・ライブ等のプロデュース', page)
+        self.assertIn('<option value="その他">その他</option>', page)
+        self.assertIn('id="consultationPlanningOtherHint"', page)
+        self.assertIn("orgNameExamples", page)
+
     def test_explicit_empty_database_url_disables_database_initialization(self):
         with patch.dict(os.environ, {"DATABASE_URL": "postgresql://example/db"}):
             with patch("app.initialize_database") as initialize_database:
@@ -249,7 +368,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var writeActions = ["create", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
+        self.assertIn('var writeActions = ["create", "consultation", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
         self.assertIn("if (writeActions.indexOf(action) !== -1)", do_post)
         self.assertIn("var spreadsheet = getSpreadsheet();", do_post)
         self.assertIn("getReservationSheet(spreadsheet)", do_post)
@@ -261,7 +380,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21";', script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
         self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
         self.assertIn('return "admin:" + Utilities.getUuid();', script)
@@ -763,8 +882,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-20-admin-confirmed-counts-v19",
-                "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                "version": "2026-08-21-consultation-attachment-v21",
+                "capabilities": ["consultation", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 

@@ -871,6 +871,225 @@
       font-weight: bold;
     }
 
+    .event-consultation {
+      padding: 80px 0;
+      background: #f1f5f9;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .consultation-form-shell {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: var(--shadow-md);
+    }
+
+    .consultation-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .consultation-tab {
+      min-height: 74px;
+      padding: 12px 10px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--primary-color);
+      background: #f8fafc;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .consultation-tab span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+
+    .consultation-tab[aria-selected="true"] {
+      border-color: var(--primary-color);
+      color: #ffffff;
+      background: var(--primary-color);
+    }
+
+    .consultation-tab[aria-selected="true"] span {
+      color: #dbeafe;
+    }
+
+    .consultation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .consultation-field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .consultation-field-wide,
+    .consultation-mode-section,
+    .consultation-notice,
+    .consultation-actions {
+      grid-column: 1 / -1;
+    }
+
+    .consultation-field label,
+    .consultation-consent {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .consultation-required {
+      margin-left: 4px;
+      color: #b91c1c;
+    }
+
+    .consultation-field input,
+    .consultation-field select,
+    .consultation-field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: var(--text-main);
+      background: #ffffff;
+      font: inherit;
+    }
+
+    .consultation-field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .consultation-field-note {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      line-height: 1.55;
+    }
+
+    .consultation-field-note[hidden] {
+      display: none;
+    }
+
+    .consultation-field input:focus,
+    .consultation-field select:focus,
+    .consultation-field textarea:focus {
+      outline: 3px solid #bfdbfe;
+      border-color: var(--primary-color);
+    }
+
+    .consultation-mode-section {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .consultation-mode-section[hidden] {
+      display: none;
+    }
+
+    .consultation-notice {
+      padding: 14px 16px;
+      border-left: 4px solid #0284c7;
+      border-radius: 6px;
+      color: #0c4a6e;
+      background: #e0f2fe;
+      font-size: 0.86rem;
+      line-height: 1.65;
+    }
+
+    .consultation-notice-warning {
+      border-left-color: #d97706;
+      color: #78350f;
+      background: #fef3c7;
+    }
+
+    .insurance-estimate {
+      grid-column: 1 / -1;
+      padding: 14px 16px;
+      border: 1px dashed var(--primary-color);
+      border-radius: 6px;
+      background: #eff6ff;
+      font-size: 0.86rem;
+    }
+
+    .insurance-estimate strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #b91c1c;
+      font-size: 1rem;
+    }
+
+    .consultation-consent {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      cursor: pointer;
+    }
+
+    .consultation-consent input {
+      width: 18px;
+      height: 18px;
+      margin-top: 3px;
+      flex: 0 0 auto;
+    }
+
+    .consultation-consent a {
+      color: var(--primary-color);
+      text-decoration: underline;
+    }
+
+    .consultation-submit {
+      width: 100%;
+      min-height: 50px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #c2410c;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .consultation-submit:hover,
+    .consultation-submit:focus-visible {
+      background: #9a3412;
+    }
+
+    .consultation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .consultation-status {
+      min-height: 1.7em;
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .consultation-status[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    .consultation-status[data-state="success"] {
+      color: #047857;
+      font-weight: 700;
+    }
+
     /* ----------------------------------
        3. BODY - SECTION 3 (店舗・アクセス)
     ---------------------------------- */
@@ -1276,6 +1495,24 @@
     }
 
     @media (max-width: 600px) {
+      .event-consultation {
+        padding: 56px 0;
+      }
+
+      .consultation-form-shell {
+        padding: 20px 16px;
+      }
+
+      .consultation-tabs,
+      .consultation-grid,
+      .consultation-mode-section {
+        grid-template-columns: 1fr;
+      }
+
+      .consultation-tab {
+        min-height: 62px;
+      }
+
       .events-service-layout {
         grid-template-columns: minmax(0, 1.35fr) minmax(108px, 0.65fr);
         gap: 12px;
@@ -1694,7 +1931,7 @@
             </figure>
           </div>
           <a href="pdf/" class="btn btn-primary" style="margin-top:15px;">イベント企画PDFを見る</a>
-          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
+          <a href="#event-consultation" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
         </div>
 
         <div class="service-card" id="web">
@@ -1708,6 +1945,121 @@
           </div>
           <a href="products/" class="btn btn-primary" style="margin-top:15px;">アプリ・商品を見る</a>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="event-consultation" id="event-consultation" aria-labelledby="consultation-title">
+    <div class="container">
+      <h2 class="section-title" id="consultation-title">イベント企画・輸送のご相談</h2>
+      <p class="section-desc">内容を確認後、担当よりお見積りと進め方をご連絡します。</p>
+      <div class="consultation-form-shell">
+        <div class="consultation-tabs" role="tablist" aria-label="ご希望のサービス">
+          <button type="button" class="consultation-tab" role="tab" aria-selected="true" aria-controls="consultation-allinone" data-mode="allinone">
+            オールインワン依頼<span>指導・セッティング・運搬一式</span>
+          </button>
+          <button type="button" class="consultation-tab" role="tab" aria-selected="false" aria-controls="consultation-planning" data-mode="planning">
+            イベント企画のみ<span>プロデュース・講師手配</span>
+          </button>
+          <button type="button" class="consultation-tab" role="tab" aria-selected="false" aria-controls="consultation-cargo" data-mode="cargo">
+            一般輸送・単体搬送<span>機材・資材等の移動</span>
+          </button>
+        </div>
+
+        <form id="nblConsultationForm" class="consultation-grid" action="/api/consultation" method="post">
+          <input type="hidden" id="selectedServiceMode" name="service_mode" value="allinone">
+          <div class="sr-only" aria-hidden="true">
+            <label for="consultationWebsite">ウェブサイト</label>
+            <input type="text" id="consultationWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="consultation-field">
+            <label for="consultationOrgName">団体名・お申込者名<span class="consultation-required">*</span></label>
+            <input type="text" id="consultationOrgName" name="org_name" maxlength="100" autocomplete="organization" placeholder="例：〇〇高等学校吹奏楽部 / 山田 太郎" required>
+          </div>
+          <div class="consultation-field">
+            <label for="consultationEmail">メールアドレス<span class="consultation-required">*</span></label>
+            <input type="email" id="consultationEmail" name="email" autocomplete="email" placeholder="example@domain.com" required>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-allinone" role="tabpanel" data-section="allinone">
+            <div class="consultation-notice">
+              <strong>サービスの性質について</strong><br>
+              吹奏楽指導・調整・現場セッティングと機材搬送を組み合わせた包括型サポートです。高額な楽器を含む場合は、申告内容をもとに受託物動産保険等の手配可否と費用を個別に確認します。
+            </div>
+            <div class="consultation-field">
+              <label for="consultationEventDate">実施予定日<span class="consultation-required">*</span></label>
+              <input type="date" id="consultationEventDate" name="event_date" required>
+            </div>
+            <div class="consultation-field">
+              <label for="consultationSupportContent">ご希望のサポート内容<span class="consultation-required">*</span></label>
+              <select id="consultationSupportContent" name="support_content" required>
+                <option value="">選択してください</option>
+                <option value="コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）">コンクール・演奏会当日フルサポート</option>
+                <option value="合宿・出張レッスン統合サポート">合宿・出張レッスン統合サポート</option>
+                <option value="定期レッスン＋楽器点検・セッティング">定期レッスン＋楽器点検・セッティング</option>
+              </select>
+            </div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationInstrumentValue">移動・お預かり対象の楽器総評価額（概算）<span class="consultation-required">*</span></label>
+              <select id="consultationInstrumentValue" name="instrument_value" required>
+                <option value="300">〜300万円まで</option>
+                <option value="1000">300万円〜1,000万円</option>
+                <option value="3000">1,000万円〜3,000万円</option>
+                <option value="over3000">3,000万円超</option>
+              </select>
+            </div>
+            <div class="insurance-estimate" aria-live="polite">
+              概算スポット補償費用
+              <strong id="insuranceEstimate">基本料金に含む（追加費用なし）</strong>
+              正式な補償内容・保険料・引受可否は、対象物と輸送条件の確認後にご案内します。
+            </div>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-planning" role="tabpanel" data-section="planning" hidden>
+            <div class="consultation-notice">吹奏楽イベント、演奏会、講師派遣など、搬送を伴わない企画のご相談を承ります。</div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationPlanningType">企画・プロデュースのご相談種別<span class="consultation-required">*</span></label>
+              <select id="consultationPlanningType" name="planning_type" aria-describedby="consultationPlanningOtherHint" disabled required>
+                <option value="演奏会・ライブ等のプロデュース">演奏会・ライブ等のプロデュース</option>
+                <option value="外部講師・指導者派遣の調整">外部講師・指導者派遣の調整</option>
+                <option value="ワークショップ・講習会の企画">ワークショップ・講習会の企画</option>
+                <option value="その他">その他</option>
+              </select>
+              <p class="consultation-field-note" id="consultationPlanningOtherHint" hidden>「その他」を選択した場合は、ご相談詳細・特記事項に概略とご要望事項をご記入ください。</p>
+            </div>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-cargo" role="tabpanel" data-section="cargo" hidden>
+            <div class="consultation-notice consultation-notice-warning">
+              <strong>一般輸送をご希望の方へ</strong><br>
+              指導・セッティングを伴わない貨物運送は、内容に応じて提携する一般貨物自動車運送事業者による対応等をご案内します。高額な精密楽器はオールインワン依頼もご検討ください。
+            </div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationCargoDetail">搬送希望のお荷物・機材概要<span class="consultation-required">*</span></label>
+              <textarea id="consultationCargoDetail" name="cargo_detail" maxlength="1000" placeholder="荷物の種類、数量、搬出入地の条件等をご記入ください。" disabled required></textarea>
+            </div>
+          </div>
+
+          <div class="consultation-field consultation-field-wide">
+            <label for="consultationMessage">ご相談詳細・特記事項</label>
+            <textarea id="consultationMessage" name="message" maxlength="1000" placeholder="具体的なご要望やスケジュール、ご質問等をご記入ください。"></textarea>
+          </div>
+          <div class="consultation-field consultation-field-wide">
+            <label for="consultationAttachment">参考データの添付</label>
+            <input type="file" id="consultationAttachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip">
+            <p class="consultation-field-note">PDF、画像、Word、Excel、PowerPoint、テキスト、CSV、ZIPを1ファイル、5MBまで添付できます。</p>
+          </div>
+
+          <div class="consultation-actions">
+            <label class="consultation-consent" for="consultationTermsAgree">
+              <input type="checkbox" id="consultationTermsAgree" name="terms_agree" required>
+              <span><a href="legal/privacy-policy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します。<span class="consultation-required">*</span></span>
+            </label>
+            <button type="submit" class="consultation-submit" id="consultationSubmit">相談・お見積り依頼を送信</button>
+            <p class="consultation-status" id="consultationStatus" role="status" aria-live="polite"></p>
+          </div>
+        </form>
       </div>
     </div>
   </section>
@@ -2133,6 +2485,117 @@
         actions.hidden = true;
       });
       setUpdatesEditorStatus('');
+    });
+
+    const consultationForm = document.getElementById('nblConsultationForm');
+    const consultationTabs = [...document.querySelectorAll('.consultation-tab')];
+    const consultationSections = [...document.querySelectorAll('.consultation-mode-section')];
+    const consultationMode = document.getElementById('selectedServiceMode');
+    const consultationOrgName = document.getElementById('consultationOrgName');
+    const consultationDate = document.getElementById('consultationEventDate');
+    const consultationPlanningType = document.getElementById('consultationPlanningType');
+    const consultationPlanningOtherHint = document.getElementById('consultationPlanningOtherHint');
+    const consultationMessage = document.getElementById('consultationMessage');
+    const consultationAttachment = document.getElementById('consultationAttachment');
+    const instrumentValue = document.getElementById('consultationInstrumentValue');
+    const insuranceEstimate = document.getElementById('insuranceEstimate');
+    const consultationSubmit = document.getElementById('consultationSubmit');
+    const consultationStatus = document.getElementById('consultationStatus');
+
+    if (consultationDate) consultationDate.min = todayInJapan();
+
+    const orgNameExamples = {
+      allinone: '例：〇〇高等学校吹奏楽部 / 〇〇楽団 / 山田 太郎',
+      planning: '例：〇〇イベント実行委員会 / 株式会社〇〇 / 山田 太郎',
+      cargo: '例：株式会社〇〇 / 〇〇楽団 / 山田 太郎'
+    };
+
+    consultationTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const mode = tab.dataset.mode;
+        consultationMode.value = mode;
+        consultationOrgName.placeholder = orgNameExamples[mode];
+        consultationTabs.forEach(button => {
+          button.setAttribute('aria-selected', String(button === tab));
+        });
+        consultationSections.forEach(section => {
+          const active = section.dataset.section === mode;
+          section.hidden = !active;
+          section.querySelectorAll('input, select, textarea').forEach(field => {
+            field.disabled = !active;
+          });
+        });
+        consultationStatus.textContent = '';
+        consultationStatus.dataset.state = '';
+      });
+    });
+
+    consultationPlanningType?.addEventListener('change', () => {
+      const isOther = consultationPlanningType.value === 'その他';
+      consultationPlanningOtherHint.hidden = !isOther;
+      consultationMessage.placeholder = isOther
+        ? 'ご相談の概略と具体的なご要望事項をご記入ください。'
+        : '具体的なご要望やスケジュール、ご質問等をご記入ください。';
+      consultationMessage.required = isOther;
+    });
+
+    instrumentValue?.addEventListener('change', () => {
+      const estimates = {
+        300: '基本料金に含む（追加費用なし）',
+        1000: '約5,000円〜10,000円',
+        3000: '約15,000円〜30,000円',
+        over3000: '要個別手配'
+      };
+      insuranceEstimate.textContent = estimates[instrumentValue.value];
+    });
+
+    consultationForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!consultationForm.reportValidity()) return;
+      consultationSubmit.disabled = true;
+      consultationSubmit.textContent = '送信中...';
+      consultationStatus.textContent = '';
+      consultationStatus.dataset.state = '';
+      const payload = Object.fromEntries(new FormData(consultationForm));
+      delete payload.attachment;
+      payload.terms_agree = document.getElementById('consultationTermsAgree').checked;
+      try {
+        const attachment = consultationAttachment.files[0];
+        if (attachment) {
+          if (attachment.size > 5 * 1024 * 1024) {
+            throw new Error('添付データは5MB以内にしてください。');
+          }
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => resolve(reader.result));
+            reader.addEventListener('error', () => reject(new Error('添付データを読み取れませんでした。')));
+            reader.readAsDataURL(attachment);
+          });
+          payload.attachment = {
+            name: attachment.name,
+            type: attachment.type || 'application/octet-stream',
+            data: String(dataUrl).split(',', 2)[1]
+          };
+        }
+        const response = await fetch('/api/consultation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '送信できませんでした。');
+        consultationStatus.textContent = `送信しました。受付番号：${result.consultation_id}`;
+        consultationStatus.dataset.state = 'success';
+        consultationForm.reset();
+        consultationTabs.find(tab => tab.dataset.mode === consultationMode.value)?.click();
+        instrumentValue.dispatchEvent(new Event('change'));
+      } catch (error) {
+        consultationStatus.textContent = error.message || '通信できませんでした。時間をおいて再度お試しください。';
+        consultationStatus.dataset.state = 'error';
+      } finally {
+        consultationSubmit.disabled = false;
+        consultationSubmit.textContent = '相談・お見積り依頼を送信';
+      }
     });
 
   </script>

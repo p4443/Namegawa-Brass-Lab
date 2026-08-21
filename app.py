@@ -9,6 +9,8 @@ import tempfile
 import threading
 import time
 import uuid
+from base64 import b64decode
+from binascii import Error as Base64Error
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -37,7 +39,7 @@ FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zi
 FLOW_HARMONY_PRODUCT_ID = "flow-harmony"
 FLOW_HARMONY_PRODUCT_NAME = "Flow Harmony オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
-FLOW_HARMONY_SALES_ENABLED = False
+FLOW_HARMONY_SALES_ENABLED = True
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -76,7 +78,65 @@ CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 40
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
-LESSON_APPS_SCRIPT_VERSION = "2026-08-20-admin-confirmed-counts-v19"
+CONSULTATION_MODES = {
+    "allinone": "オールインワン依頼（指導・セッティング・運搬一式）",
+    "planning": "イベント企画・プロデュースのみ",
+    "cargo": "一般輸送・単体搬送",
+}
+CONSULTATION_SUPPORT_TYPES = {
+    "コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）",
+    "合宿・出張レッスン統合サポート",
+    "定期レッスン＋楽器点検・セッティング",
+}
+CONSULTATION_PLANNING_TYPES = {
+    "演奏会・ライブ等のプロデュース",
+    "外部講師・指導者派遣の調整",
+    "ワークショップ・講習会の企画",
+    "その他",
+}
+CONSULTATION_INSTRUMENT_VALUES = {
+    "300": "〜300万円まで",
+    "1000": "300万円〜1,000万円",
+    "3000": "1,000万円〜3,000万円",
+    "over3000": "3,000万円超",
+}
+CONSULTATION_ATTACHMENT_EXTENSIONS = {
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".csv",
+    ".zip",
+}
+CONSULTATION_ATTACHMENT_MIME_TYPES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/csv",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/octet-stream",
+}
+CONSULTATION_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+LESSON_APPS_SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21"
 
 
 def current_japan_date():
@@ -475,6 +535,105 @@ def validate_update(payload):
     return values
 
 
+def validate_consultation(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    mode = str(payload.get("service_mode", "")).strip()
+    values = {
+        "service_mode": CONSULTATION_MODES.get(mode, ""),
+        "org_name": str(payload.get("org_name", "")).strip(),
+        "email": str(payload.get("email", "")).strip(),
+        "event_date": "",
+        "support_content": "",
+        "instrument_value": "",
+        "planning_type": "",
+        "cargo_detail": "",
+        "message": str(payload.get("message", "")).strip(),
+        "attachment_name": "",
+        "attachment_type": "",
+        "attachment_data": "",
+    }
+    if not values["service_mode"]:
+        raise ValueError("サービス種別を選択してください。")
+    if not values["org_name"] or len(values["org_name"]) > 100:
+        raise ValueError("団体名・お申込者名を100文字以内で入力してください。")
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", values["email"]):
+        raise ValueError("メールアドレスを正しく入力してください。")
+    if len(values["message"]) > 1000:
+        raise ValueError("ご相談詳細は1,000文字以内で入力してください。")
+    if payload.get("terms_agree") is not True:
+        raise ValueError("プライバシーポリシーへの同意が必要です。")
+
+    attachment = payload.get("attachment")
+    if attachment:
+        if not isinstance(attachment, dict):
+            raise ValueError("添付データを確認してください。")
+        attachment_name = str(attachment.get("name", "")).strip()
+        attachment_type = str(attachment.get("type", "")).strip().lower()
+        attachment_data = str(attachment.get("data", "")).strip()
+        extension = Path(attachment_name).suffix.lower()
+        if (
+            not attachment_name
+            or len(attachment_name) > 120
+            or Path(attachment_name).name != attachment_name
+            or extension not in CONSULTATION_ATTACHMENT_EXTENSIONS
+            or attachment_type not in CONSULTATION_ATTACHMENT_MIME_TYPES
+        ):
+            raise ValueError("添付できない形式のデータです。")
+        try:
+            decoded_attachment = b64decode(attachment_data, validate=True)
+        except (Base64Error, ValueError) as exc:
+            raise ValueError("添付データを読み取れません。") from exc
+        if not decoded_attachment:
+            raise ValueError("添付データが空です。")
+        if len(decoded_attachment) > CONSULTATION_ATTACHMENT_MAX_BYTES:
+            raise ValueError("添付データは5MB以内にしてください。")
+        values.update(
+            {
+                "attachment_name": attachment_name,
+                "attachment_type": attachment_type,
+                "attachment_data": attachment_data,
+            }
+        )
+
+    if mode == "allinone":
+        event_date = str(payload.get("event_date", "")).strip()
+        try:
+            parsed_event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError("実施予定日を正しく入力してください。") from exc
+        if parsed_event_date < current_japan_date():
+            raise ValueError("実施予定日は本日以降の日付を指定してください。")
+        support_content = str(payload.get("support_content", "")).strip()
+        if support_content not in CONSULTATION_SUPPORT_TYPES:
+            raise ValueError("ご希望の指導・サポート内容を選択してください。")
+        instrument_value = str(payload.get("instrument_value", "")).strip()
+        if instrument_value not in CONSULTATION_INSTRUMENT_VALUES:
+            raise ValueError("楽器総評価額を選択してください。")
+        values.update(
+            {
+                "event_date": event_date,
+                "support_content": support_content,
+                "instrument_value": CONSULTATION_INSTRUMENT_VALUES[instrument_value],
+            }
+        )
+    elif mode == "planning":
+        planning_type = str(payload.get("planning_type", "")).strip()
+        if planning_type not in CONSULTATION_PLANNING_TYPES:
+            raise ValueError("企画・プロデュースのご相談種別を選択してください。")
+        if planning_type == "その他" and not values["message"]:
+            raise ValueError("ご相談詳細・特記事項に概略・要望事項を記入してください。")
+        values["planning_type"] = planning_type
+    else:
+        cargo_detail = str(payload.get("cargo_detail", "")).strip()
+        if not cargo_detail or len(cargo_detail) > 1000:
+            raise ValueError("搬送希望のお荷物・機材概要を1,000文字以内で入力してください。")
+        values["cargo_detail"] = cargo_detail
+
+    return values
+
+
 def validate_lesson_reservation(payload):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
@@ -676,7 +835,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -1299,9 +1458,8 @@ def create_app(
 
     @app.get("/flow-harmony/")
     def flow_harmony():
-        response = make_response("Flow Harmonyは現在公開を停止しています。", 503)
+        response = make_response(render_template("flow-harmony/index.html"))
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        response.headers["Retry-After"] = "86400"
         return response
 
     @app.get("/legal/")
@@ -1897,6 +2055,53 @@ def create_app(
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
+            },
+            201,
+        )
+
+    @app.route("/api/consultation", methods=["POST", "OPTIONS"])
+    def create_consultation():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(app.response_class(status=204))
+        payload = request.get_json(silent=True)
+        if isinstance(payload, dict) and payload.get("website"):
+            return lesson_reservation_json({"saved": True}, 201)
+        try:
+            values = validate_consultation(payload)
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {
+                    "error": "現在、Webフォームを利用できません。メールまたは電話でお問い合わせください。"
+                },
+                503,
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url, script_secret, values, action="consultation"
+            )
+        except (
+            LessonReservationDeliveryError,
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            urllib_error.URLError,
+        ):
+            app.logger.exception("Failed to send consultation")
+            return lesson_reservation_json(
+                {"error": "送信に失敗しました。時間をおいて再度お試しください。"},
+                502,
+            )
+
+        return lesson_reservation_json(
+            {
+                "saved": True,
+                "consultation_id": result.get("consultationId", ""),
+                "auto_reply_sent": bool(result.get("autoReplySent", False)),
             },
             201,
         )
