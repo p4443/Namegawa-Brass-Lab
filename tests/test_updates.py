@@ -129,6 +129,8 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn('href="#event-consultation"', page)
         self.assertIn('id="event-consultation"', page)
+        self.assertIn('class="consultation-disclosure"', page)
+        self.assertIn('<summary', page)
         self.assertIn('id="nblConsultationForm"', page)
         self.assertIn('data-mode="allinone"', page)
         self.assertIn('data-mode="planning"', page)
@@ -140,6 +142,31 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('<option value="その他">その他</option>', page)
         self.assertIn('id="consultationPlanningOtherHint"', page)
         self.assertIn("orgNameExamples", page)
+
+    def test_index_links_admin_contract_generator_from_services_heading(self):
+        page = create_app(database_url="").test_client().get("/").get_data(as_text=True)
+
+        self.assertIn('class="services-heading"', page)
+        self.assertIn('href="contract-generator/"', page)
+        self.assertIn("契約書作成", page)
+
+    def test_contract_generator_requires_editor_login_in_page(self):
+        response = create_app(database_url="").test_client().get("/contract-generator/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
+        page = response.get_data(as_text=True)
+        self.assertIn('id="contractLoginForm"', page)
+        self.assertIn('id="contractGenerator"', page)
+        self.assertIn("/api/editor", page)
+        self.assertIn("X-Editor-Password", page)
+        self.assertIn('id="docType"', page)
+        self.assertIn('value="master"', page)
+        self.assertIn('value="typeA"', page)
+        self.assertIn('value="typeB"', page)
+        self.assertIn('value="typeC"', page)
+        self.assertIn("window.print()", page)
 
     def test_explicit_empty_database_url_disables_database_initialization(self):
         with patch.dict(os.environ, {"DATABASE_URL": "postgresql://example/db"}):

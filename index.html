@@ -791,6 +791,38 @@
       gap: 25px;
     }
 
+    .services-heading {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 20px;
+    }
+
+    .services-heading-copy {
+      grid-column: 2;
+    }
+
+    .services-admin-link {
+      display: inline-flex;
+      grid-column: 3;
+      align-items: center;
+      justify-self: end;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--primary-color);
+      background: #ffffff;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .services-admin-link:hover,
+    .services-admin-link:focus-visible {
+      border-color: var(--primary-color);
+      background: #eff6ff;
+    }
+
     .service-card {
       background: var(--bg-light);
       border-radius: 12px;
@@ -886,6 +918,51 @@
       border-radius: 8px;
       background: #ffffff;
       box-shadow: var(--shadow-md);
+    }
+
+    .consultation-disclosure {
+      max-width: 880px;
+      margin: 0 auto;
+    }
+
+    .consultation-disclosure > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 14px 18px;
+      border: 1px solid var(--primary-color);
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--primary-color);
+      font-weight: 800;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .consultation-disclosure > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .consultation-disclosure > summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .consultation-disclosure[open] > summary {
+      border-radius: 8px 8px 0 0;
+    }
+
+    .consultation-disclosure[open] > summary::after {
+      content: "−";
+    }
+
+    .consultation-disclosure .consultation-form-shell {
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
     }
 
     .consultation-tabs {
@@ -1495,6 +1572,21 @@
     }
 
     @media (max-width: 600px) {
+      .services-heading {
+        grid-template-columns: 1fr;
+      }
+
+      .services-heading-copy,
+      .services-admin-link {
+        grid-column: 1;
+      }
+
+      .services-admin-link {
+        justify-self: center;
+        margin-top: -30px;
+        margin-bottom: 36px;
+      }
+
       .event-consultation {
         padding: 56px 0;
       }
@@ -1875,8 +1967,13 @@
   <!-- 3. Body Section 2: 事業内容（カード比較形式） -->
   <section class="services" id="trumpet">
     <div class="container">
-      <h2 class="section-title">事業・サービス案内</h2>
-      <p class="section-desc">音楽・地域連携・イベント・デジタルをつなぐ5つの事業</p>
+      <div class="services-heading">
+        <div class="services-heading-copy">
+          <h2 class="section-title">事業・サービス案内</h2>
+          <p class="section-desc">音楽・地域連携・イベント・デジタルをつなぐ5つの事業</p>
+        </div>
+        <a class="services-admin-link" href="contract-generator/" target="_blank" rel="noopener">管理者用 契約書作成</a>
+      </div>
       <div class="services-grid">
         <div class="service-card">
           <div>
@@ -1953,7 +2050,9 @@
     <div class="container">
       <h2 class="section-title" id="consultation-title">イベント企画・輸送のご相談</h2>
       <p class="section-desc">内容を確認後、担当よりお見積りと進め方をご連絡します。</p>
-      <div class="consultation-form-shell">
+      <details class="consultation-disclosure">
+        <summary>イベント企画・輸送業務 お問い合わせフォームを開く</summary>
+        <div class="consultation-form-shell">
         <div class="consultation-tabs" role="tablist" aria-label="ご希望のサービス">
           <button type="button" class="consultation-tab" role="tab" aria-selected="true" aria-controls="consultation-allinone" data-mode="allinone">
             オールインワン依頼<span>指導・セッティング・運搬一式</span>
@@ -2060,7 +2159,8 @@
             <p class="consultation-status" id="consultationStatus" role="status" aria-live="polite"></p>
           </div>
         </form>
-      </div>
+        </div>
+      </details>
     </div>
   </section>
 

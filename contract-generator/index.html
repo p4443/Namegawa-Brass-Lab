@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>契約書作成 | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-dark: #1e40af;
+      --text: #1f2937;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --surface: #ffffff;
+      --canvas: #e9eef4;
+      --danger: #b91c1c;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background: var(--canvas);
+      font-family: "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    [hidden] { display: none !important; }
+
+    .login-screen {
+      display: grid;
+      min-height: 100vh;
+      padding: 24px;
+      place-items: center;
+    }
+
+    .login-panel {
+      width: min(100%, 420px);
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .login-panel h1 { margin: 0 0 8px; color: var(--primary-dark); font-size: 1.4rem; }
+    .login-panel p { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; }
+
+    .login-form { display: grid; gap: 12px; }
+    .login-form label { font-size: 0.85rem; font-weight: 800; }
+    .login-form input { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 6px; }
+    .login-status { min-height: 1.5em; margin: 0 !important; color: var(--danger) !important; }
+
+    .primary-button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--primary);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .primary-button:hover, .primary-button:focus-visible { background: var(--primary-dark); }
+
+    .generator {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 3px 0 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    .sidebar h1 { margin: 0; color: var(--primary-dark); font-size: 1.35rem; }
+
+    .logout-button {
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .field { display: grid; gap: 6px; margin-bottom: 15px; }
+    .field label { font-size: 0.82rem; font-weight: 800; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      background: #ffffff;
+    }
+    .field textarea { min-height: 90px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--primary); }
+
+    .sidebar-note {
+      margin: 18px 0;
+      padding: 12px;
+      border-left: 3px solid #d97706;
+      color: #78350f;
+      background: #fffbeb;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+
+    .print-button { width: 100%; margin-top: 6px; }
+
+    .preview-container {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      overflow: auto;
+    }
+
+    .document {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 18mm 20mm;
+      color: #222222;
+      background: #ffffff;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.15);
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+      font-size: 10.5pt;
+      line-height: 1.75;
+    }
+
+    .document h1 { margin: 0 0 26px; text-align: center; font-size: 20pt; letter-spacing: 0; }
+    .document h2 { margin: 18px 0 5px; font-size: 11pt; }
+    .document p { margin: 0 0 9px; }
+    .doc-date { margin-bottom: 18px !important; text-align: right; }
+    .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 34px; }
+    .party-box { min-height: 145px; }
+    .party-box + .party-box { padding-left: 20px; border-left: 1px solid #cbd5e1; }
+    .sign-area { margin-top: 18px; text-align: right; }
+
+    .document table { width: 100%; margin-top: 18px; border-collapse: collapse; }
+    .document th, .document td { padding: 9px; border: 1px solid #222222; text-align: left; vertical-align: top; }
+    .document th { width: 30%; background: #f1f5f9; }
+
+    @media (max-width: 900px) {
+      .generator { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .preview-container { justify-content: flex-start; padding: 20px; }
+      .document { min-width: 210mm; }
+    }
+
+    @page { size: A4; margin: 0; }
+
+    @media print {
+      .sidebar { display: none; }
+      body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
+      .document { width: 210mm; min-height: 297mm; padding: 18mm 20mm; box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login-screen" id="loginScreen">
+    <section class="login-panel" aria-labelledby="loginTitle">
+      <h1 id="loginTitle">管理者用 契約書作成</h1>
+      <p>お知らせ管理と同じ管理者パスワードを入力してください。</p>
+      <form class="login-form" id="contractLoginForm">
+        <label for="contractPassword">管理者パスワード</label>
+        <input id="contractPassword" type="password" autocomplete="current-password" required>
+        <button class="primary-button" type="submit">開く</button>
+        <p class="login-status" id="loginStatus" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <main class="generator" id="contractGenerator" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>契約書作成</h1>
+        <button class="logout-button" id="contractLogout" type="button">閉じる</button>
+      </div>
+
+      <div class="field">
+        <label for="docType">契約書の種類</label>
+        <select id="docType">
+          <option value="master">業務委託基本契約書</option>
+          <option value="typeA">個別契約書 A（音楽指導・支援）</option>
+          <option value="typeB">個別契約書 B（楽器輸送）</option>
+          <option value="typeC">個別契約書 C（WEB・アプリ）</option>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="clientName">取引先名（甲）</label>
+        <input type="text" id="clientName" maxlength="120" placeholder="例：〇〇高等学校吹奏楽部">
+      </div>
+
+      <div class="field">
+        <label for="clientRepresentative">代表者名</label>
+        <input type="text" id="clientRepresentative" maxlength="80" placeholder="例：代表 山田 太郎">
+      </div>
+
+      <div class="field">
+        <label for="contractDate">契約締結日</label>
+        <input type="date" id="contractDate">
+      </div>
+
+      <div id="dynamicFields"></div>
+
+      <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
+      <button class="primary-button print-button" id="printContract" type="button">PDF出力 / 印刷</button>
+    </aside>
+
+    <section class="preview-container" aria-label="契約書プレビュー">
+      <article class="document" id="documentPreview"></article>
+    </section>
+  </main>
+
+  <script>
+    const loginScreen = document.getElementById('loginScreen');
+    const loginForm = document.getElementById('contractLoginForm');
+    const passwordInput = document.getElementById('contractPassword');
+    const loginStatus = document.getElementById('loginStatus');
+    const generator = document.getElementById('contractGenerator');
+    const logoutButton = document.getElementById('contractLogout');
+    const docType = document.getElementById('docType');
+    const clientName = document.getElementById('clientName');
+    const clientRepresentative = document.getElementById('clientRepresentative');
+    const contractDate = document.getElementById('contractDate');
+    const dynamicFields = document.getElementById('dynamicFields');
+    const preview = document.getElementById('documentPreview');
+    let adminPassword = sessionStorage.getItem('updatesEditorPassword') || '';
+
+    const contractValues = {
+      typeA: { work: '管楽器指導、および地域クラブ移行支援', amount: '30,000円（交通費別途）', term: '実施日または別途定める期間' },
+      typeB: { cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路' },
+      typeC: { deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日' }
+    };
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatJapaneseDate(value) {
+      if (!value) return '令和　年　月　日';
+      const [year, month, day] = value.split('-').map(Number);
+      return new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }).format(new Date(year, month - 1, day));
+    }
+
+    function field(label, key, value, multiline = false) {
+      const element = multiline
+        ? `<textarea data-contract-key="${key}" maxlength="500">${escapeHtml(value)}</textarea>`
+        : `<input data-contract-key="${key}" type="text" maxlength="160" value="${escapeHtml(value)}">`;
+      return `<div class="field"><label>${label}${element}</label></div>`;
+    }
+
+    function renderDynamicFields() {
+      const type = docType.value;
+      if (type === 'master') {
+        dynamicFields.replaceChildren();
+        return;
+      }
+      const values = contractValues[type];
+      if (type === 'typeA') {
+        dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
+          + field('委託料', 'amount', values.amount)
+          + field('契約期間・実施日', 'term', values.term);
+      } else if (type === 'typeB') {
+        dynamicFields.innerHTML = field('輸送対象物', 'cargo', values.cargo, true)
+          + field('対象物の総評価額', 'value', values.value)
+          + field('運行経路・実施条件', 'route', values.route, true);
+      } else {
+        dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
+          + field('委託料', 'amount', values.amount)
+          + field('納期', 'deadline', values.deadline);
+      }
+    }
+
+    function partyHtml() {
+      const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || '代表者 ＿＿＿＿＿＿＿＿');
+      return `
+        <div class="doc-parties">
+          <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
+          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p>屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
+        </div>`;
+    }
+
+    function contractTable(rows) {
+      return `<table>${rows.map(row => `<tr><th>${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</table>`;
+    }
+
+    function renderPreview() {
+      const type = docType.value;
+      const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+      const date = formatJapaneseDate(contractDate.value);
+      const parties = partyHtml();
+      if (type === 'master') {
+        preview.innerHTML = `
+          <h1>業務委託基本契約書</h1><p class="doc-date">${date}</p>
+          <p>${safeClient}（以下「甲」という）と、なめがわブラス・ラボ 代表 佐々木 久和（以下「乙」という）は、甲が乙に委託する業務について、次のとおり基本契約を締結する。</p>
+          <h2>第1条（目的および適用範囲）</h2><p>本契約は、甲乙間の継続的な業務委託取引に関する基本事項を定め、個別契約に共通して適用する。</p>
+          <h2>第2条（個別契約）</h2><p>業務内容、委託料、履行時期その他の条件は個別契約で定める。個別契約と本契約が異なる場合は、個別契約を優先する。</p>
+          <h2>第3条（委託料および費用）</h2><p>甲は、個別契約に定める委託料および合意した実費を、指定された期日までに支払う。</p>
+          <h2>第4条（秘密保持）</h2><p>甲および乙は、業務上知り得た相手方の非公開情報を、相手方の承諾なく第三者へ開示しない。</p>
+          <h2>第5条（損害賠償）</h2><p>乙の責めに帰すべき事由による損害賠償額は、故意または重過失がある場合を除き、原因となった個別契約の委託料を上限とする。</p>
+          <h2>第6条（協議）</h2><p>本契約に定めのない事項または疑義が生じた場合は、甲乙誠実に協議して解決する。</p>${parties}`;
+        return;
+      }
+
+      const values = contractValues[type];
+      if (type === 'typeA') {
+        preview.innerHTML = `<h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['委託業務の内容', values.work], ['委託料', values.amount], ['契約期間・実施日', values.term],
+          ['特記事項', '本業務は準委任契約であり、乙は特定の成果を保証しない。会場管理者の指示および安全上必要な措置に甲乙双方が協力する。']
+        ])}${parties}`;
+      } else if (type === 'typeB') {
+        preview.innerHTML = `<h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
+          ['特記事項', '補償内容および引受可否は保険契約の条件による。甲は対象物、評価額、梱包状態その他必要事項を正確に申告し、法令上必要な運送体制は個別に確認する。']
+        ])}${parties}`;
+      } else {
+        preview.innerHTML = `<h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
+          ['特記事項', '仕様変更、第三者サービス利用料、保守運用および知的財産権の取扱いは、見積書または別紙仕様書に定める。']
+        ])}${parties}`;
+      }
+    }
+
+    function showGenerator() {
+      loginScreen.hidden = true;
+      generator.hidden = false;
+      contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+      renderDynamicFields();
+      renderPreview();
+    }
+
+    async function authenticate(password) {
+      const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
+      if (!response.ok) throw new Error('管理者パスワードが違います。');
+      adminPassword = password;
+      sessionStorage.setItem('updatesEditorPassword', password);
+      showGenerator();
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginStatus.textContent = '';
+      try {
+        await authenticate(passwordInput.value);
+      } catch (error) {
+        loginStatus.textContent = error.message || 'ログインできませんでした。';
+        passwordInput.select();
+      }
+    });
+
+    logoutButton.addEventListener('click', () => {
+      adminPassword = '';
+      sessionStorage.removeItem('updatesEditorPassword');
+      generator.hidden = true;
+      loginScreen.hidden = false;
+      passwordInput.value = '';
+      passwordInput.focus();
+    });
+
+    docType.addEventListener('change', () => { renderDynamicFields(); renderPreview(); });
+    [clientName, clientRepresentative, contractDate].forEach(input => input.addEventListener('input', renderPreview));
+    dynamicFields.addEventListener('input', event => {
+      const key = event.target.dataset.contractKey;
+      if (!key) return;
+      contractValues[docType.value][key] = event.target.value;
+      renderPreview();
+    });
+    document.getElementById('printContract').addEventListener('click', () => window.print());
+
+    if (adminPassword) {
+      authenticate(adminPassword).catch(() => {
+        adminPassword = '';
+        sessionStorage.removeItem('updatesEditorPassword');
+      });
+    }
+  </script>
+</body>
+</html>

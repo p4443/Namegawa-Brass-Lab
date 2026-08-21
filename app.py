@@ -1462,6 +1462,13 @@ def create_app(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return response
 
+    @app.get("/contract-generator/")
+    def contract_generator():
+        response = make_response(render_template("contract-generator/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
     @app.get("/legal/")
     def legal():
         return render_template(
