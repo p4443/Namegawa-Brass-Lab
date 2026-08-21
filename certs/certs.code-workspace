@@ -4,6 +4,9 @@
 			"path": "."
 		},
 		{
+			"path": "../contract-generator"
+		},
+		{
 			"path": "../data"
 		},
 		{

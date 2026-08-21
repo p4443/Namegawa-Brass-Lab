@@ -185,6 +185,13 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
         self.assertIn(".party-trade-name { white-space: nowrap; }", page)
 
+    def test_docker_image_includes_contract_generator(self):
+        dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("COPY contract-generator ./contract-generator", dockerfile)
+
     def test_contract_api_saves_and_lists_by_department(self):
         with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
             os.environ, {"EDITOR_PASSWORD": "editor-secret"}

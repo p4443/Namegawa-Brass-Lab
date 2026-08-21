@@ -16,6 +16,7 @@ COPY pdf ./pdf
 COPY video ./video
 COPY ["music App", "./music App"]
 COPY flow-harmony ./flow-harmony
+COPY contract-generator ./contract-generator
 
 RUN python build_product.py
 
