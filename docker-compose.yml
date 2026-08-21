@@ -17,8 +17,10 @@ services:
       METRONOME_PRICE_YEN: ${METRONOME_PRICE_YEN:-500}
       FLOW_HARMONY_PRICE_YEN: ${FLOW_HARMONY_PRICE_YEN:-1000}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-}
+      CONTRACTS_DIR: /contracts
     volumes:
       - ./data:/app/data
+      - ${HOME}/Documents/なめがわブラス・ラボ/契約書管理:/contracts
     restart: unless-stopped
 
   web:

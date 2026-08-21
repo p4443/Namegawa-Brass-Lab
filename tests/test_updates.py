@@ -166,6 +166,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("X-Editor-Password", page)
         self.assertIn("let adminPassword = '';", page)
         self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
+        self.assertIn('id="contractLogout" type="button" data-history-back', page)
+        self.assertIn('data-fallback="../#web">戻る（ログアウト）</button>', page)
+        self.assertIn("passwordInput.value = '';", page)
+        self.assertIn('id="contractStoragePath"', page)
+        self.assertIn('id="deleteContract"', page)
+        self.assertIn('id="deleteConfirmStep"', page)
+        self.assertIn('id="deleteIdStep" hidden', page)
+        self.assertIn("deleteDialog.showModal()", page)
+        self.assertIn("method: 'DELETE'", page)
+        self.assertIn("PC内・サーバー内の保存済み契約書を削除しました。", page)
         self.assertIn('id="docType"', page)
         self.assertIn('value="master"', page)
         self.assertIn('value="typeA"', page)
@@ -185,19 +195,59 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
         self.assertIn(".party-trade-name { white-space: nowrap; }", page)
 
+    def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
+        client = create_app(database_url="").test_client()
+        index_page = client.get("/").get_data(as_text=True)
+        schedule_page = client.get("/schedule/").get_data(as_text=True)
+
+        self.assertIn('id="updates-editor-logout" type="button" data-history-back', index_page)
+        self.assertIn("let updatesEditorKey = '';", index_page)
+        self.assertNotIn("updatesEditorPassword', password", index_page)
+        self.assertIn("updatesEditorLogin.reset();", index_page)
+        self.assertIn('id="admin-logout" type="button" data-history-back', schedule_page)
+        self.assertIn('passwordInput.value = "";', schedule_page)
+
+    def test_all_back_links_use_shared_previous_page_navigation(self):
+        client = create_app(database_url="").test_client()
+        page_paths = (
+            "/lesson/",
+            "/lesson/application-form.html",
+            "/products/",
+            "/download-guide/",
+            "/legal/",
+            "/legal/privacy-policy.html",
+            "/schedule/",
+            "/video/",
+        )
+
+        for page_path in page_paths:
+            with self.subTest(page_path=page_path):
+                page = client.get(page_path).get_data(as_text=True)
+                self.assertIn("data-history-back", page)
+                self.assertIn('src="../back-navigation.js"', page)
+
     def test_docker_image_includes_contract_generator(self):
         dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
             encoding="utf-8"
         )
 
         self.assertIn("COPY contract-generator ./contract-generator", dockerfile)
+        self.assertIn("COPY app.py index.html back-navigation.js build_product.py ./", dockerfile)
+
+        compose = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("CONTRACTS_DIR: /contracts", compose)
+        self.assertIn("契約書管理:/contracts", compose)
 
     def test_contract_api_saves_and_lists_by_department(self):
-        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+        with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as server_directory, patch.dict(
             os.environ, {"EDITOR_PASSWORD": "editor-secret"}
         ):
             client = create_app(
-                database_url="", contracts_dir=Path(temporary_directory)
+                database_url="",
+                contracts_dir=Path(temporary_directory),
+                contract_replica_dirs=(Path(server_directory),),
             ).test_client()
             headers = {"X-Editor-Password": "editor-secret"}
             payload = {
@@ -221,6 +271,7 @@ class UpdatesTest(unittest.TestCase):
             contract_path = Path(temporary_directory) / "transport" / f'{saved.json["contract_id"]}.json'
             self.assertTrue(contract_path.is_file())
             self.assertEqual(listed.status_code, 200)
+            self.assertEqual(listed.json["storage_path"], str(Path(temporary_directory).resolve()))
             self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
             self.assertEqual(listed.json["contracts"][0]["client_name"], "〇〇楽団")
 
@@ -229,6 +280,31 @@ class UpdatesTest(unittest.TestCase):
             )
             self.assertEqual(loaded.status_code, 200)
             self.assertEqual(loaded.json["contract"]["values"]["cargo"], "管楽器一式")
+
+            server_contract_path = (
+                Path(server_directory) / "transport" / f'{saved.json["contract_id"]}.json'
+            )
+            server_contract_path.parent.mkdir(parents=True)
+            server_contract_path.write_text(contract_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+            first_confirmation = client.delete(
+                f'/api/contracts/{saved.json["contract_id"]}',
+                json={"confirmation_id": "incorrect-id"},
+                headers=headers,
+            )
+            self.assertEqual(first_confirmation.status_code, 400)
+            self.assertTrue(contract_path.is_file())
+            deleted = client.delete(
+                f'/api/contracts/{saved.json["contract_id"]}',
+                json={"confirmation_id": saved.json["contract_id"]},
+                headers=headers,
+            )
+
+            self.assertEqual(deleted.status_code, 200)
+            self.assertTrue(deleted.json["deleted"])
+            self.assertEqual(deleted.json["deleted_count"], 2)
+            self.assertFalse(contract_path.exists())
+            self.assertFalse(server_contract_path.exists())
 
     def test_contract_api_requires_editor_password(self):
         with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
@@ -241,6 +317,13 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(client.get("/api/contracts").status_code, 401)
             self.assertEqual(
                 client.post("/api/contracts", json={}).status_code, 401
+            )
+            self.assertEqual(
+                client.delete(
+                    "/api/contracts/typeB-20260821-1234abcd",
+                    json={"confirmation_id": "typeB-20260821-1234abcd"},
+                ).status_code,
+                401,
             )
 
     def test_explicit_empty_database_url_disables_database_initialization(self):
@@ -256,6 +339,16 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.data, b"")
+
+    def test_shared_back_navigation_script_is_served(self):
+        response = create_app(database_url="").test_client().get("/back-navigation.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/javascript")
+        script = response.get_data(as_text=True)
+        self.assertIn("window.history.back()", script)
+        self.assertIn("[data-history-back]", script)
+        self.assertIn("window.siteHistoryBack = goBack", script)
 
     def test_static_app_directory_urls_serve_index_without_exposing_data_root(self):
         test_app = create_app(database_url="")
@@ -2017,7 +2110,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("updatesEditorSave.disabled = true", page)
         self.assertIn("updatesEditorSave.disabled = false", page)
         self.assertIn("timeZone: 'Asia/Tokyo'", page)
-        self.assertIn("sessionStorage.removeItem('updatesEditorPassword')", page)
+        self.assertNotIn("sessionStorage.setItem('updatesEditorPassword'", page)
         self.assertIn("通信できませんでした。時間をおいて再度お試しください。", page)
         self.assertIn("zuomuj924@gmail.com", page)
         self.assertNotIn("info@example.com", page)

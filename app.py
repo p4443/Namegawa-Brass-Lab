@@ -30,7 +30,13 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
 STORE_FILE = BASE_DIR / "data" / "store.json"
-CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
+SERVER_CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
+CONTRACTS_DIR = Path(
+    os.environ.get(
+        "CONTRACTS_DIR",
+        Path.home() / "Documents" / "なめがわブラス・ラボ" / "契約書管理",
+    )
+).expanduser()
 PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
 PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
@@ -695,8 +701,11 @@ def validate_contract(payload):
 
 def save_contract(values, contracts_dir=CONTRACTS_DIR):
     configuration = CONTRACT_TYPES[values["doc_type"]]
-    department_dir = Path(contracts_dir) / configuration["directory"]
-    department_dir.mkdir(parents=True, exist_ok=True)
+    contracts_root = Path(contracts_dir)
+    department_dir = contracts_root / configuration["directory"]
+    department_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    contracts_root.chmod(0o700)
+    department_dir.chmod(0o700)
     contract_id = (
         f'{values["doc_type"]}-{values["contract_date"].replace("-", "")}-'
         f'{uuid.uuid4().hex[:8]}'
@@ -739,6 +748,33 @@ def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
     except (FileNotFoundError, OSError, json.JSONDecodeError):
         return None
     return contract if isinstance(contract, dict) else None
+
+
+def delete_contract(
+    contract_id,
+    confirmation_id,
+    contracts_dir=CONTRACTS_DIR,
+    replica_dirs=(SERVER_CONTRACTS_DIR,),
+):
+    contract_id = str(contract_id).strip()
+    confirmation_id = str(confirmation_id).strip()
+    if not hmac.compare_digest(contract_id, confirmation_id):
+        raise ValueError("確認用の契約書IDが一致しません。")
+    match = re.fullmatch(r"(master|typeA|typeB|typeC)-\d{8}-[a-f0-9]{8}", contract_id)
+    if not match:
+        return 0
+    configuration = CONTRACT_TYPES[match.group(1)]
+    storage_roots = {Path(contracts_dir).expanduser().resolve()}
+    storage_roots.update(Path(directory).expanduser().resolve() for directory in replica_dirs)
+    deleted_count = 0
+    for storage_root in storage_roots:
+        contract_path = storage_root / configuration["directory"] / f"{contract_id}.json"
+        try:
+            contract_path.unlink()
+            deleted_count += 1
+        except FileNotFoundError:
+            continue
+    return deleted_count
 
 
 def validate_lesson_reservation(payload):
@@ -1003,6 +1039,7 @@ def create_app(
     store_file=STORE_FILE,
     product_file=PRODUCT_FILE,
     contracts_dir=CONTRACTS_DIR,
+    contract_replica_dirs=(SERVER_CONTRACTS_DIR,),
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -1539,6 +1576,10 @@ def create_app(
     def favicon():
         return app.response_class(status=204)
 
+    @app.get("/back-navigation.js")
+    def back_navigation_script():
+        return send_file(BASE_DIR / "back-navigation.js", mimetype="application/javascript")
+
     @app.get("/health")
     def health():
         response = jsonify({"status": "ok"})
@@ -1587,7 +1628,12 @@ def create_app(
         if error:
             return error
         if request.method == "GET":
-            return jsonify({"contracts": list_contracts(contracts_dir)})
+            return jsonify(
+                {
+                    "contracts": list_contracts(contracts_dir),
+                    "storage_path": str(Path(contracts_dir).expanduser().resolve()),
+                }
+            )
         try:
             values = validate_contract(request.get_json(silent=True))
         except ValueError as exc:
@@ -1595,11 +1641,32 @@ def create_app(
         contract = save_contract(values, contracts_dir)
         return jsonify(contract), 201
 
-    @app.get("/api/contracts/<contract_id>")
+    @app.route("/api/contracts/<contract_id>", methods=["GET", "DELETE"])
     def contract_api(contract_id):
         error = require_editor()
         if error:
             return error
+        if request.method == "DELETE":
+            payload = request.get_json(silent=True)
+            confirmation_id = payload.get("confirmation_id", "") if isinstance(payload, dict) else ""
+            try:
+                deleted_count = delete_contract(
+                    contract_id,
+                    confirmation_id,
+                    contracts_dir,
+                    contract_replica_dirs,
+                )
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
+            if not deleted_count:
+                return jsonify({"error": "保存済み契約書が見つかりません。"}), 404
+            return jsonify(
+                {
+                    "deleted": True,
+                    "deleted_count": deleted_count,
+                    "contract_id": contract_id,
+                }
+            )
         contract = load_contract(contract_id, contracts_dir)
         if not contract:
             return jsonify({"error": "保存済み契約書が見つかりません。"}), 404

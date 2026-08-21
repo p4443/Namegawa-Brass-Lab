@@ -1863,7 +1863,7 @@
       <section class="updates-editor" id="updates-editor" aria-labelledby="updates-editor-title" hidden>
         <div class="updates-editor-header">
           <h3 id="updates-editor-title">お知らせ管理</h3>
-          <button id="updates-editor-logout" type="button" hidden>ログアウト</button>
+          <button id="updates-editor-logout" type="button" data-history-back data-fallback="#updates" hidden>戻る（ログアウト）</button>
         </div>
         <form class="updates-editor-login" id="updates-editor-login">
           <input id="updates-editor-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
@@ -2233,6 +2233,7 @@
     </div>
   </footer>
 
+  <script src="back-navigation.js"></script>
   <!-- JavaScript for Hamburger Menu -->
   <script>
     const hamburgerBtn = document.getElementById('hamburgerBtn');
@@ -2267,7 +2268,7 @@
     const updatesEditorMediaUrl = document.getElementById('updates-editor-media-url');
     const updatesEditorSave = document.getElementById('updates-editor-save');
     const updatesEditorCancel = document.getElementById('updates-editor-cancel');
-    let updatesEditorKey = sessionStorage.getItem('updatesEditorPassword') || '';
+    let updatesEditorKey = '';
     const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
     const updatesApiCandidates = location.hostname.endsWith('github.io') || location.protocol === 'file:'
       ? [renderUpdatesApi]
@@ -2442,6 +2443,7 @@
 
     function showAuthenticatedEditor() {
       updatesEditorLogin.hidden = true;
+      updatesEditorLogin.reset();
       updatesEditorForm.hidden = false;
       updatesEditorLogout.hidden = false;
       document.querySelectorAll('.update-admin-actions').forEach(actions => {
@@ -2495,20 +2497,16 @@
     updatesAdminToggle?.addEventListener('click', async () => {
       updatesEditor.hidden = !updatesEditor.hidden;
       updatesAdminToggle.setAttribute('aria-expanded', String(!updatesEditor.hidden));
-      if (updatesEditor.hidden) return;
-      if (updatesEditorKey) {
-        try {
-          const response = await fetch('/api/editor', { headers: editorHeaders() });
-          if (response.ok) {
-            showAuthenticatedEditor();
-            return;
-          }
-        } catch {
-          setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
-          return;
-        }
+      if (updatesEditor.hidden) {
         updatesEditorKey = '';
-        sessionStorage.removeItem('updatesEditorPassword');
+        updatesEditorLogin.hidden = false;
+        updatesEditorForm.hidden = true;
+        updatesEditorLogout.hidden = true;
+        updatesEditorLogin.reset();
+        document.querySelectorAll('.update-admin-actions').forEach(actions => {
+          actions.hidden = true;
+        });
+        return;
       }
       updatesEditorLogin.hidden = false;
       updatesEditorForm.hidden = true;
@@ -2529,7 +2527,6 @@
           return;
         }
         updatesEditorKey = password;
-        sessionStorage.setItem('updatesEditorPassword', password);
         setUpdatesEditorStatus('編集できます。');
         showAuthenticatedEditor();
       } catch {
@@ -2577,14 +2574,17 @@
 
     updatesEditorLogout?.addEventListener('click', () => {
       updatesEditorKey = '';
-      sessionStorage.removeItem('updatesEditorPassword');
       updatesEditorLogin.hidden = false;
+      updatesEditorLogin.reset();
       updatesEditorForm.hidden = true;
       updatesEditorLogout.hidden = true;
       document.querySelectorAll('.update-admin-actions').forEach(actions => {
         actions.hidden = true;
       });
       setUpdatesEditorStatus('');
+      updatesEditor.hidden = true;
+      updatesAdminToggle.setAttribute('aria-expanded', 'false');
+      updatesAdminToggle.focus();
     });
 
     const consultationForm = document.getElementById('nblConsultationForm');

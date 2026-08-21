@@ -141,7 +141,7 @@
   <header class="topbar">
     <div class="topbar-inner">
       <a class="brand" href="../">なめがわブラス・ラボ</a>
-      <a class="back" href="../lesson/">教室案内・予約へ</a>
+      <a class="back" href="../lesson/" data-history-back>教室案内・予約へ戻る</a>
     </div>
   </header>
   <main>
@@ -192,7 +192,7 @@
         </form>
         <p class="admin-status" id="admin-status" role="status"></p>
         <div id="admin-dashboard" hidden>
-          <div class="admin-session-bar"><button class="button secondary" id="admin-logout" type="button">ログアウト</button></div>
+          <div class="admin-session-bar"><button class="button secondary" id="admin-logout" type="button" data-history-back data-fallback="../lesson/">戻る（ログアウト）</button></div>
           <section class="admin-section">
             <h3>予約枠状況カレンダー</h3>
             <div class="admin-calendar-layout">
@@ -233,6 +233,7 @@
       </div>
     </section>
   </main>
+  <script src="../back-navigation.js"></script>
   <script>
     const renderBase = "https://namegawa-brass-lab.onrender.com";
     const apiCandidates = (path) => {
@@ -680,13 +681,13 @@
       loadSchedule();
     }
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
-      event.preventDefault(); const loginForm = event.currentTarget; adminPassword = document.getElementById("admin-password").value; adminStatus.textContent = "確認しています…";
+      event.preventDefault(); const loginForm = event.currentTarget; const passwordInput = document.getElementById("admin-password"); adminPassword = passwordInput.value; adminStatus.textContent = "確認しています…";
       try {
         await requestApi("/api/editor", { headers: adminHeaders() });
         await requestApi("/api/lesson-admin-health", { headers: adminHeaders(), timeoutMs: 30000 });
       }
       catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }
-      dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
+      passwordInput.value = ""; dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
       catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
     });

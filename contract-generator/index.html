@@ -151,6 +151,16 @@
     }
 
     .saved-contracts h2 { margin: 0 0 12px; font-size: 1rem; }
+    .storage-path { margin: 0 0 12px; color: var(--muted); font-size: 0.75rem; overflow-wrap: anywhere; }
+    .saved-contract-actions { display: grid; gap: 8px; }
+    .danger-button { border-color: #fecaca; color: var(--danger); }
+    .danger-button:hover, .danger-button:focus-visible { background: #fef2f2; }
+    .delete-dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
+    .delete-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+    .delete-dialog-body { padding: 24px; }
+    .delete-dialog h2 { margin: 0 0 10px; font-size: 1.15rem; }
+    .delete-dialog p { line-height: 1.65; }
+    .delete-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
     .preview-container {
       display: flex;
@@ -220,7 +230,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h1>契約書作成</h1>
-        <button class="logout-button" id="contractLogout" type="button">閉じる</button>
+        <button class="logout-button" id="contractLogout" type="button" data-history-back data-fallback="../#web">戻る（ログアウト）</button>
       </div>
 
       <div class="field">
@@ -259,13 +269,17 @@
 
       <section class="saved-contracts" aria-labelledby="savedContractsTitle">
         <h2 id="savedContractsTitle">保存済み契約書</h2>
+        <p class="storage-path" id="contractStoragePath"></p>
         <div class="field">
           <label for="savedContractSelect">部門・取引先から選択</label>
           <select id="savedContractSelect">
             <option value="">保存済み契約書を選択</option>
           </select>
         </div>
-        <button class="secondary-button" id="loadContract" type="button">選択した契約書を開く</button>
+        <div class="saved-contract-actions">
+          <button class="secondary-button" id="loadContract" type="button">選択した契約書を開く</button>
+          <button class="secondary-button danger-button" id="deleteContract" type="button">選択した契約書を削除</button>
+        </div>
       </section>
     </aside>
 
@@ -274,6 +288,34 @@
     </section>
   </main>
 
+  <dialog class="delete-dialog" id="deleteContractDialog" aria-labelledby="deleteContractTitle">
+    <div class="delete-dialog-body">
+      <section id="deleteConfirmStep">
+        <h2 id="deleteContractTitle">契約書を削除しますか？</h2>
+        <p id="deleteContractSummary"></p>
+        <p>この操作は取り消せません。</p>
+        <div class="delete-dialog-actions">
+          <button class="secondary-button" id="cancelDeleteContract" type="button">キャンセル</button>
+          <button class="secondary-button danger-button" id="continueDeleteContract" type="button">第2確認へ</button>
+        </div>
+      </section>
+      <section id="deleteIdStep" hidden>
+        <h2>契約書IDを入力</h2>
+        <p>削除対象の契約書IDを正確に入力してください。</p>
+        <div class="field">
+          <label for="deleteContractId">契約書ID</label>
+          <input id="deleteContractId" type="text" autocomplete="off">
+        </div>
+        <p class="save-status" id="deleteContractError" role="alert"></p>
+        <div class="delete-dialog-actions">
+          <button class="secondary-button" id="backDeleteContract" type="button">第1確認へ戻る</button>
+          <button class="secondary-button danger-button" id="confirmDeleteContract" type="button">完全に削除</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <script src="../back-navigation.js"></script>
   <script>
     const loginScreen = document.getElementById('loginScreen');
     const loginForm = document.getElementById('contractLoginForm');
@@ -291,6 +333,14 @@
     const saveStatus = document.getElementById('saveStatus');
     const savedContractSelect = document.getElementById('savedContractSelect');
     const loadButton = document.getElementById('loadContract');
+    const deleteButton = document.getElementById('deleteContract');
+    const storagePath = document.getElementById('contractStoragePath');
+    const deleteDialog = document.getElementById('deleteContractDialog');
+    const deleteConfirmStep = document.getElementById('deleteConfirmStep');
+    const deleteIdStep = document.getElementById('deleteIdStep');
+    const deleteContractId = document.getElementById('deleteContractId');
+    const deleteContractError = document.getElementById('deleteContractError');
+    let pendingDeleteContractId = '';
     let adminPassword = '';
 
     const contractValues = {
@@ -444,6 +494,7 @@
       const response = await fetch('/api/contracts', { headers: adminHeaders() });
       if (!response.ok) throw new Error(await readApiError(response, '保存済み契約書を取得できませんでした。'));
       const result = await response.json();
+      storagePath.textContent = `このPC内の保存先: ${result.storage_path}`;
       savedContractSelect.replaceChildren(new Option('保存済み契約書を選択', ''));
       const groups = new Map();
       result.contracts.forEach(contract => {
@@ -504,6 +555,23 @@
       return contract;
     }
 
+    async function deleteSavedContract(contractId, confirmationId) {
+      const response = await fetch(`/api/contracts/${encodeURIComponent(contractId)}`, {
+        method: 'DELETE', headers: adminHeaders(), body: JSON.stringify({ confirmation_id: confirmationId })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '契約書を削除できませんでした。'));
+      const result = await response.json();
+      await loadSavedContracts();
+      return result;
+    }
+
+    function showDeleteStep(step) {
+      deleteConfirmStep.hidden = step !== 1;
+      deleteIdStep.hidden = step !== 2;
+      deleteContractError.textContent = '';
+      if (step === 2) deleteContractId.focus();
+    }
+
     function showGenerator() {
       loginScreen.hidden = true;
       generator.hidden = false;
@@ -520,6 +588,7 @@
       const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
       if (!response.ok) throw new Error('管理者パスワードが違います。');
       adminPassword = password;
+      passwordInput.value = '';
       showGenerator();
     }
 
@@ -574,6 +643,40 @@
       } catch (error) {
         saveStatus.textContent = error.message || '契約書を開けませんでした。';
         saveStatus.dataset.state = 'error';
+      }
+    });
+    deleteButton.addEventListener('click', () => {
+      saveStatus.textContent = '';
+      saveStatus.dataset.state = '';
+      pendingDeleteContractId = savedContractSelect.value;
+      if (!pendingDeleteContractId) {
+        saveStatus.textContent = '削除する保存済み契約書を選択してください。';
+        saveStatus.dataset.state = 'error';
+        return;
+      }
+      document.getElementById('deleteContractSummary').textContent = savedContractSelect.selectedOptions[0]?.textContent || pendingDeleteContractId;
+      deleteContractId.value = '';
+      showDeleteStep(1);
+      deleteDialog.showModal();
+    });
+    document.getElementById('cancelDeleteContract').addEventListener('click', () => deleteDialog.close());
+    document.getElementById('continueDeleteContract').addEventListener('click', () => showDeleteStep(2));
+    document.getElementById('backDeleteContract').addEventListener('click', () => showDeleteStep(1));
+    document.getElementById('confirmDeleteContract').addEventListener('click', async () => {
+      const confirmationId = deleteContractId.value.trim();
+      if (confirmationId !== pendingDeleteContractId) {
+        deleteContractError.textContent = '契約書IDが一致しません。';
+        return;
+      }
+      try {
+        const result = await deleteSavedContract(pendingDeleteContractId, confirmationId);
+        deleteDialog.close();
+        saveStatus.textContent = result.deleted_count > 1
+          ? 'PC内・サーバー内の保存済み契約書を削除しました。'
+          : '保存済み契約書をサーバーから削除しました。';
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        deleteContractError.textContent = error.message || '契約書を削除できませんでした。';
       }
     });
 

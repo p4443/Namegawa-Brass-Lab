@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py index.html build_product.py ./
+COPY app.py index.html back-navigation.js build_product.py ./
 COPY data ./data
 COPY lesson ./lesson
 COPY products ./products

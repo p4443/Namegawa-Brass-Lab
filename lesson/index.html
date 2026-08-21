@@ -1308,7 +1308,7 @@
   <header class="page-header">
     <nav class="nav" aria-label="ページナビゲーション">
       <a class="nav-brand" href="../">なめがわブラス・ラボ</a>
-      <a class="back-link" href="../">← トップへ戻る</a>
+      <a class="back-link" href="../" data-history-back>← 1つ前へ戻る</a>
     </nav>
     <div class="hero">
       <div class="hero-content">
@@ -1567,6 +1567,7 @@
       <p class="copyright">© なめがわブラス・ラボ</p>
     </div>
   </footer>
+  <script src="../back-navigation.js"></script>
   <script>
     document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
       const detail = document.getElementById(toggle.getAttribute("aria-controls"));
