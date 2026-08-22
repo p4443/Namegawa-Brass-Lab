@@ -15,7 +15,7 @@ COPY schedule ./schedule
 COPY pdf ./pdf
 COPY video ./video
 COPY ["music App", "./music App"]
-COPY flow-harmony ./flow-harmony
+COPY trumpet-transpose-lab ./trumpet-transpose-lab
 COPY contract-generator ./contract-generator
 
 RUN python build_product.py

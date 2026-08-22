@@ -1,0 +1,3970 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trumpet Transpose Lab</title>
+  <style>
+    :root {
+      --bg-color: #080a0b;
+      --card-bg: #111416;
+      --panel-bg: #171b1d;
+      --primary-color: #00d8ff;
+      --primary-light: #1b2528;
+      --secondary-color: #f4f7f8;
+      --accent-color: #a8ff3e;
+      --danger-color: #ff3f5f;
+      --text-color: #e8edef;
+      --text-muted: #849095;
+      --line-color: #2d3538;
+      --border-radius: 8px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.55);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Avenir Next", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background-color: var(--bg-color);
+      background-image:
+        linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+        radial-gradient(circle at 50% 0%, #182225 0%, #080a0b 52%);
+      background-size: 32px 32px, 32px 32px, 100% 100%;
+      color: var(--text-color);
+      margin: 0;
+      padding: 42px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      min-height: 100vh;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 760px;
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      border: 0;
+      border-top: 3px solid var(--primary-color);
+      border-bottom: 1px solid #30373a;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+      animation: interfaceIn 0.55s ease-out both;
+    }
+
+    .app-container::before {
+      content: "";
+      position: absolute;
+      inset: 12px -1px;
+      background:
+        linear-gradient(var(--primary-color), var(--primary-color)) left top / 2px 32% no-repeat,
+        linear-gradient(var(--accent-color), var(--accent-color)) left 72% / 2px 15% no-repeat,
+        linear-gradient(var(--accent-color), var(--accent-color)) right 18% / 2px 18% no-repeat,
+        linear-gradient(var(--primary-color), var(--primary-color)) right bottom / 2px 36% no-repeat;
+      filter: drop-shadow(0 0 7px rgba(0, 216, 255, 0.38));
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .app-container::after {
+      content: "";
+      position: absolute;
+      top: -1px;
+      right: 28px;
+      width: 72px;
+      height: 3px;
+      background: var(--accent-color);
+      box-shadow: 0 0 18px rgba(168, 255, 62, 0.65);
+      pointer-events: none;
+    }
+
+    @keyframes interfaceIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      text-align: left;
+      margin-bottom: 30px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line-color);
+    }
+
+    .header h1 {
+      font-size: 3.15rem;
+      color: var(--secondary-color);
+      margin: 0 0 4px;
+      font-weight: 800;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .header p {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .section {
+      margin-bottom: 26px;
+    }
+
+    .section-title {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--secondary-color);
+      margin-bottom: 9px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      text-transform: uppercase;
+    }
+
+    .tone-box {
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 4px;
+      padding: 16px;
+      text-align: left;
+    }
+
+    .btn-tone {
+      background: transparent;
+      color: var(--accent-color);
+      border: 1px solid var(--accent-color);
+      border-radius: 4px;
+      padding: 9px 14px;
+      font: inherit;
+      font-size: 0.78rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn-tone:hover {
+      background: var(--accent-color);
+      color: #0a0d0b;
+      box-shadow: 0 0 22px rgba(168, 255, 62, 0.2);
+    }
+
+    .bluetooth-box {
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+      padding: 14px;
+    }
+
+    .bluetooth-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bluetooth-row .btn-tone {
+      flex: 0 0 auto;
+    }
+
+    .bluetooth-status {
+      min-width: 0;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      overflow-wrap: anywhere;
+    }
+
+    .bluetooth-settings {
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line-color);
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .bluetooth-settings summary {
+      cursor: pointer;
+    }
+
+    .bluetooth-settings input {
+      width: 100%;
+      margin-top: 5px;
+      padding: 9px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font-size: 0.75rem;
+    }
+
+    .bluetooth-settings label {
+      display: block;
+      margin-top: 10px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .mode-switch {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+      margin-bottom: 12px;
+      background: #090c0d;
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+    }
+
+    .mode-switch .btn-option {
+      min-height: 42px;
+      padding: 8px;
+    }
+
+    .analysis-stage {
+      background: #090c0d;
+      border: 1px solid #324247;
+      border-left: 3px solid var(--primary-color);
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    .analysis-headline {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr;
+      gap: 14px;
+      align-items: end;
+    }
+
+    .analysis-metric span {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+
+    .analysis-metric strong {
+      color: var(--secondary-color);
+      font-size: 1rem;
+    }
+
+    .analysis-metric:first-child strong {
+      color: var(--accent-color);
+      font-size: 1.65rem;
+      line-height: 1;
+    }
+
+    .progression-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 24px;
+      margin-top: 14px;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    .progression-line strong {
+      color: var(--secondary-color);
+      font-size: 0.78rem;
+      overflow-wrap: anywhere;
+    }
+
+    .pitch-map {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 3px;
+      height: 54px;
+      margin-top: 16px;
+      align-items: end;
+    }
+
+    .pitch-cell {
+      min-width: 0;
+      height: 18px;
+      padding-top: 3px;
+      border-top: 2px solid var(--line-color);
+      color: #5f6a6e;
+      font-size: 0.58rem;
+      text-align: center;
+      transition: height 0.2s ease, color 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .pitch-cell.in-key {
+      height: 30px;
+      border-color: #546268;
+      color: var(--text-muted);
+    }
+
+    .pitch-cell.in-chord {
+      height: 42px;
+      border-color: var(--accent-color);
+      background: rgba(168, 255, 62, 0.08);
+      color: var(--accent-color);
+    }
+
+    .pitch-cell.is-input {
+      border-color: var(--primary-color);
+      background: rgba(0, 216, 255, 0.14);
+      color: var(--primary-color);
+    }
+
+    .analysis-caption {
+      margin: 10px 0 0;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      line-height: 1.5;
+    }
+
+    .manual-settings {
+      padding-top: 2px;
+    }
+
+    .grid-direction {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .btn-option {
+      background: var(--primary-light);
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+      min-height: 62px;
+      padding: 10px 8px;
+      font: inherit;
+      font-size: 0.78rem;
+      color: var(--secondary-color);
+      cursor: pointer;
+      transition: border-color 0.18s ease, background-color 0.18s ease, color 0.18s ease;
+      font-weight: 600;
+    }
+
+    .btn-option:hover {
+      border-color: #586569;
+      background: #222b2e;
+    }
+
+    .btn-option.active {
+      border-color: var(--primary-color);
+      background-color: rgba(0, 216, 255, 0.09);
+      color: var(--primary-color);
+      box-shadow: inset 0 -2px 0 var(--primary-color), 0 0 18px rgba(0, 216, 255, 0.1);
+    }
+
+    .harmony-direction-status {
+      margin-top: 9px;
+      color: var(--text-muted);
+      font-size: 0.74rem;
+    }
+
+    .flow-monitor {
+      height: 92px;
+      background-color: #090c0d;
+      background-image: linear-gradient(rgba(0, 216, 255, 0.05) 1px, transparent 1px);
+      background-size: 100% 18px;
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #324247;
+    }
+
+    .microphone-error {
+      color: var(--danger-color) !important;
+    }
+
+    .flow-wave {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent 0%, rgba(0, 216, 255, 0.25) 48%, rgba(168, 255, 62, 0.38) 50%, transparent 100%);
+      transform: translateX(-100%);
+    }
+
+    .flow-wave.animating {
+      animation: waveMove 2.5s infinite linear;
+    }
+
+    @keyframes waveMove {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    .pitch-tag {
+      font-size: 1.45rem;
+      font-weight: 800;
+      color: var(--primary-color);
+      text-shadow: 0 0 16px rgba(0, 216, 255, 0.5);
+      z-index: 1;
+    }
+
+    .controls {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+
+    .btn-main {
+      width: 100%;
+      min-height: 52px;
+      padding: 13px 18px;
+      border: 1px solid var(--primary-color);
+      border-radius: 4px;
+      background: var(--primary-color);
+      color: #071012;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: 0 0 26px rgba(0, 216, 255, 0.16);
+      transition: background-color 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    .btn-main:hover {
+      background: transparent;
+      color: var(--primary-color);
+      box-shadow: 0 0 32px rgba(0, 216, 255, 0.24);
+    }
+
+    .btn-main.microphone-on {
+      background: transparent;
+      border-color: var(--danger-color);
+      color: var(--danger-color);
+      box-shadow: 0 0 28px rgba(255, 63, 95, 0.18);
+    }
+
+    .btn-main:disabled {
+      cursor: not-allowed;
+      opacity: 0.42;
+    }
+
+    .btn-rec {
+      background: transparent;
+      border-color: #566065;
+      color: var(--text-muted);
+      box-shadow: none;
+    }
+
+    .btn-rec.recording {
+      background: var(--danger-color);
+      border-color: var(--danger-color);
+      color: #ffffff;
+      box-shadow: 0 0 28px rgba(255, 63, 95, 0.25);
+    }
+
+    .beat-guide {
+      min-height: 74px;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: #090c0d;
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+    }
+
+    .beat-orb {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--primary-color);
+      border-radius: 50%;
+      color: var(--primary-color);
+      font-size: 1.1rem;
+      font-weight: 800;
+    }
+
+    .beat-orb.accent {
+      border-color: var(--accent-color);
+      background: var(--accent-color);
+      color: #071012;
+      box-shadow: 0 0 24px rgba(168, 255, 62, 0.32);
+    }
+
+    .beat-copy strong,
+    .beat-copy span {
+      display: block;
+    }
+
+    .beat-copy strong {
+      color: var(--secondary-color);
+      font-size: 0.82rem;
+    }
+
+    .beat-copy span,
+    .beat-tempo {
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 10px;
+    }
+
+    .playback-meter {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      background: #090c0d;
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+    }
+
+    .playback-meter input {
+      width: 100%;
+      accent-color: var(--primary-color);
+    }
+
+    .playback-meter button {
+      width: 72px;
+      min-height: 36px;
+      padding: 7px 10px;
+    }
+
+    .playback-meter span {
+      min-width: 86px;
+      color: var(--secondary-color);
+      font-size: 0.72rem;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+
+    .recording-actions {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 8px;
+      border-top: 1px solid var(--line-color);
+    }
+
+    .recording-actions button {
+      width: auto;
+    }
+
+    .recording-actions label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    .recording-actions select {
+      min-height: 36px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font: inherit;
+    }
+
+    .playback-switch {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 4px;
+      padding: 4px;
+      background: #090c0d;
+      border: 1px solid var(--line-color);
+      border-radius: 4px;
+    }
+
+    .playback-switch .btn-option {
+      min-height: 42px;
+      padding: 8px;
+    }
+
+    .score-panel {
+      margin-top: 22px;
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 4px;
+      padding: 16px;
+    }
+
+    .score-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .score-toolbar strong {
+      color: var(--secondary-color);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+    }
+
+    .score-toolbar-actions,
+    .score-export-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .score-export-actions .btn-tone {
+      min-height: 36px;
+      padding: 7px 10px;
+    }
+
+    .score-settings {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .score-settings label {
+      min-width: 0;
+      color: var(--text-muted);
+      font-size: 0.65rem;
+    }
+
+    .score-settings input,
+    .score-settings select {
+      width: 100%;
+      height: 36px;
+      margin-top: 5px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 0.75rem;
+    }
+
+    .transpose-control {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .transpose-control .btn-tone {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      font-size: 1rem;
+    }
+
+    .transpose-value {
+      min-width: 92px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      text-align: center;
+    }
+
+    .score-edit-tools {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .score-edit-tools .btn-tone {
+      min-width: 36px;
+      min-height: 36px;
+      padding: 7px 10px;
+    }
+
+    .score-edit-tools select {
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 0.72rem;
+    }
+
+    .score-edit-tools span {
+      color: var(--text-muted);
+      font-size: 0.7rem;
+    }
+
+    #scoreSvg .score-note {
+      cursor: pointer;
+    }
+
+    #scoreSvg .score-note.selected ellipse {
+      stroke: #e84764;
+      stroke-width: 3.5;
+    }
+
+    #scoreSvg .score-tie {
+      pointer-events: none;
+    }
+
+    .score-viewport {
+      overflow-x: auto;
+      background: #f5f3eb;
+      border-radius: 3px;
+    }
+
+    .score-viewport svg {
+      display: block;
+      min-width: 100%;
+      height: 260px;
+    }
+
+    .score-empty {
+      margin: 10px 0 0;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+    }
+
+    [hidden] {
+      display: none !important;
+    }
+
+    .duet-controls {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .duet-mode-switch {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+      padding: 5px;
+      background: #090c0d;
+      border: 1px solid var(--line-color);
+      border-radius: 5px;
+    }
+
+    .duet-mode-switch .btn-option {
+      min-height: 48px;
+      padding: 8px;
+    }
+
+    .practice-area {
+      padding: 20px;
+      background: var(--panel-bg);
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--accent-color);
+      border-radius: 6px;
+    }
+
+    .monitor-bar {
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 20px;
+      min-height: 90px;
+      margin-bottom: 14px;
+      padding: 14px 16px;
+      overflow: hidden;
+      background: #090c0d;
+      border: 1px solid #324247;
+      border-radius: 4px;
+    }
+
+    .monitor-label {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--text-muted);
+      font-size: 0.65rem;
+      text-transform: uppercase;
+    }
+
+    .monitor-code {
+      position: relative;
+      z-index: 1;
+      text-align: right;
+    }
+
+    .monitor-code strong {
+      color: var(--accent-color);
+      font-size: 1.5rem;
+    }
+
+    .monitor-status {
+      position: relative;
+      z-index: 1;
+      display: block;
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+    }
+
+    .compact-analysis {
+      margin-bottom: 14px;
+      padding: 12px 14px;
+    }
+
+    .compact-analysis .analysis-headline {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .compact-analysis .analysis-metric:first-child {
+      grid-column: auto;
+    }
+
+    .compact-analysis .analysis-metric:first-child strong {
+      color: var(--secondary-color);
+      font-size: 1rem;
+    }
+
+    .compact-analysis .pitch-map {
+      height: 40px;
+      margin-top: 10px;
+    }
+
+    .record-controls {
+      display: grid;
+      grid-template-columns: 0.8fr 1.2fr;
+      gap: 10px;
+      margin: 12px 0 14px;
+    }
+
+    .practice-area .score-panel {
+      margin-top: 18px;
+      padding: 16px 0 0;
+      background: transparent;
+      border: 0;
+      border-top: 1px solid var(--line-color);
+    }
+
+    .advanced-settings {
+      margin-top: 22px;
+      padding: 14px;
+      background: #0d1011;
+      border: 1px dashed var(--line-color);
+      border-radius: 5px;
+    }
+
+    .advanced-settings > summary {
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .advanced-content {
+      display: grid;
+      gap: 22px;
+      margin-top: 18px;
+    }
+
+    .advanced-block {
+      padding-top: 18px;
+      border-top: 1px solid var(--line-color);
+    }
+
+    .advanced-block:first-child {
+      padding-top: 0;
+      border-top: 0;
+    }
+
+    .practice-area .playback-meter {
+      margin-top: 10px;
+    }
+
+    .practice-area audio {
+      display: none !important;
+    }
+
+    .audio-import {
+      display: block;
+      width: 100%;
+      text-align: center;
+    }
+
+    .audio-import input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    summary:focus-visible {
+      outline: 2px solid var(--accent-color);
+      outline-offset: 3px;
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 16px 10px;
+      }
+
+      .app-container {
+        padding: 24px 18px;
+      }
+
+      .header h1 {
+        font-size: 2.3rem;
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .analysis-headline {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .analysis-metric:first-child {
+        grid-column: 1 / -1;
+      }
+
+      .grid-direction {
+        grid-template-columns: 1fr;
+      }
+
+      .bluetooth-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .score-toolbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .score-toolbar-actions {
+        width: 100%;
+      }
+
+      .score-settings {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .record-controls {
+        grid-template-columns: 1fr;
+      }
+
+      .monitor-bar {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+
+    /* Focused single-card interface */
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --panel-bg: #263449;
+      --primary-color: #38bdf8;
+      --primary-light: #17243a;
+      --secondary-color: #f8fafc;
+      --accent-color: #60a5fa;
+      --danger-color: #ef4444;
+      --text-color: #f1f5f9;
+      --text-muted: #a8b5c7;
+      --line-color: #475569;
+      --border-radius: 16px;
+      --shadow: 0 18px 48px rgba(2, 6, 23, 0.45);
+    }
+
+    body {
+      padding: 32px 18px;
+      background-color: var(--bg-color);
+      background-image: linear-gradient(145deg, #0f172a 0%, #172033 55%, #0b1220 100%);
+    }
+
+    .app-container {
+      max-width: 760px;
+      padding: 30px;
+      border: 1px solid rgba(148, 163, 184, 0.22);
+      border-top: 1px solid rgba(148, 163, 184, 0.22);
+      border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+      border-radius: var(--border-radius);
+      overflow: visible;
+    }
+
+    .app-container::before,
+    .app-container::after {
+      display: none;
+    }
+
+    .header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      color: var(--primary-color);
+      font-size: clamp(1.65rem, 5vw, 2.35rem);
+      line-height: 1.15;
+      text-transform: none;
+    }
+
+    .header p {
+      margin-top: 8px;
+      font-size: 0.82rem;
+    }
+
+    .duet-controls,
+    .monitor-bar,
+    .beat-guide,
+    .advanced-settings,
+    .score-panel,
+    .playback-meter {
+      border-color: rgba(148, 163, 184, 0.25);
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.36);
+    }
+
+    .btn-main,
+    .btn-tone,
+    .btn-option,
+    select,
+    input {
+      border-radius: 8px;
+    }
+
+    .btn-main {
+      min-height: 52px;
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .btn-main:hover {
+      background: #1d4ed8;
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.24);
+    }
+
+    .btn-rec {
+      border-color: var(--danger-color);
+      background: var(--danger-color);
+      color: #fff;
+    }
+
+    .btn-rec:hover,
+    .btn-rec.recording {
+      border-color: #b91c1c;
+      background: #b91c1c;
+      color: #fff;
+    }
+
+    .btn-rec.recording {
+      animation: recordPulse 1.15s ease-in-out infinite;
+    }
+
+    @keyframes recordPulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.62; }
+    }
+
+    .btn-tone {
+      border-color: #60a5fa;
+      color: #dbeafe;
+    }
+
+    .btn-tone:hover {
+      background: #2563eb;
+      color: #fff;
+      box-shadow: none;
+    }
+
+    .btn-option.active {
+      border-color: #38bdf8;
+      background: #0c4a6e;
+      color: #e0f2fe;
+    }
+
+    .tone-box,
+    .analysis-stage,
+    .bluetooth-box {
+      border-left-width: 1px;
+      border-radius: 10px;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .score-panel {
+      border-left-width: 1px;
+    }
+
+    .score-viewport {
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    #scoreSvg {
+      background: #fff;
+    }
+
+    .score-empty,
+    .monitor-status,
+    .status {
+      color: var(--text-muted);
+    }
+
+    @media (max-width: 560px) {
+      body {
+        padding: 14px 10px;
+      }
+
+      .app-container {
+        padding: 18px 14px;
+        border-radius: 12px;
+      }
+
+      .header h1 {
+        font-size: 1.75rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<div class="app-container">
+  <div class="header">
+    <h1>Trumpet Transpose Lab</h1>
+    <p>録音したフレーズを楽譜に変換し、音高・音価・タイミングと移調を一つの画面で整えるトランペット専用ワークスペース</p>
+  </div>
+
+  <div class="app-feature">
+  <details class="advanced-settings">
+    <summary>マイク設定</summary>
+    <div class="advanced-content">
+      <div class="advanced-block">
+        <div class="section-title"><span>マイク安全設定</span></div>
+        <label>自動でオフにする時間
+          <select id="microphoneAutoOffMinutes" onchange="restartMicrophoneAutoOffTimer()">
+            <option value="5">5分</option>
+            <option value="10" selected>10分</option>
+            <option value="15">15分</option>
+            <option value="30">30分</option>
+            <option value="60">60分</option>
+          </select>
+        </label>
+      </div>
+    </div>
+  </details>
+
+  <div class="practice-area">
+
+  <!-- 演奏検知モニター -->
+  <div class="monitor-bar">
+    <div>
+      <span class="monitor-label">現在の音（A4 = 442Hz）</span>
+      <div class="flow-wave" id="flowWave"></div>
+      <div class="pitch-tag" id="pitchDisplay">--</div>
+      <span class="monitor-status" id="statusText">マイクはオフです</span>
+    </div>
+  </div>
+
+  <!-- メイン操作 -->
+  <div class="controls">
+    <details class="advanced-settings rhythm-settings">
+      <summary>テンポ・拍子・採譜設定</summary>
+    <div class="score-settings" id="recordingSettings">
+      <label>拍子・分子
+        <input id="meterNumerator" type="number" min="1" max="32" value="4" onchange="handleScoreSettingsChange()">
+      </label>
+      <label>拍子・分母
+        <select id="meterDenominator" onchange="handleScoreSettingsChange()">
+          <option value="2">2</option>
+          <option value="4" selected>4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </label>
+      <label>テンポ BPM
+        <input id="scoreTempo" type="number" min="30" max="300" value="120" onchange="handleScoreSettingsChange()">
+      </label>
+      <label>テンポ補助
+        <button class="btn-tone tempo-tap" id="tapTempoButton" type="button" onclick="tapTempo()">タップテンポ</button>
+      </label>
+      <label>録音からBPM補正
+        <select id="autoTempoDetection" onchange="handleScoreSettingsChange()">
+          <option value="on" selected>自動</option>
+          <option value="off">手動BPMを維持</option>
+        </select>
+      </label>
+      <label>楽譜の調号
+        <select id="keySignature" onchange="handleKeySignatureChange()">
+          <option value="auto" selected>自動判定</option>
+          <option value="-7">C♭ Major / A♭ Minor</option>
+          <option value="-6">G♭ Major / E♭ Minor</option>
+          <option value="-5">D♭ Major / B♭ Minor</option>
+          <option value="-4">A♭ Major / F Minor</option>
+          <option value="-3">E♭ Major / C Minor</option>
+          <option value="-2">B♭ Major / G Minor</option>
+          <option value="-1">F Major / D Minor</option>
+          <option value="0">C Major / A Minor</option>
+          <option value="1">G Major / E Minor</option>
+          <option value="2">D Major / B Minor</option>
+          <option value="3">A Major / F♯ Minor</option>
+          <option value="4">E Major / C♯ Minor</option>
+          <option value="5">B Major / G♯ Minor</option>
+          <option value="6">F♯ Major / D♯ Minor</option>
+          <option value="7">C♯ Major / A♯ Minor</option>
+        </select>
+      </label>
+      <label>予備カウント小節
+        <input id="countInMeasures" type="number" min="0" max="8" step="0.25" value="1" onchange="handleScoreSettingsChange()">
+      </label>
+      <label>アウフタクト拍
+        <input id="pickupBeats" type="number" min="0" max="31.75" step="0.25" value="0" onchange="handleScoreSettingsChange()">
+      </label>
+      <label>音価補正
+        <select id="quantizeDivision" onchange="handleScoreSettingsChange()">
+          <option value="4">4分音符</option>
+          <option value="8" selected>8分音符</option>
+          <option value="16">16分音符</option>
+          <option value="32">32分音符</option>
+        </select>
+      </label>
+      <label>自動検知の反応
+        <select id="detectionResponse" onchange="handleScoreSettingsChange()">
+          <option value="80">速い</option>
+          <option value="160" selected>標準</option>
+          <option value="280">ゆっくり・安定</option>
+        </select>
+      </label>
+      <label>演奏遅延補正 ms
+        <input id="performanceLag" type="number" min="0" max="500" step="10" value="150" onchange="handleScoreSettingsChange()">
+      </label>
+    </div>
+    </details>
+    <div class="beat-guide" id="beatGuide">
+      <div class="beat-orb" id="beatOrb">–</div>
+      <div class="beat-copy">
+        <strong id="beatGuideTitle">テンポ待機</strong>
+        <span id="beatGuideDetail">録音開始前に1小節、無音でカウントします</span>
+      </div>
+      <span class="beat-tempo" id="beatTempo">♩=120</span>
+    </div>
+    <div class="record-controls">
+      <button class="btn-main" id="micBtn" type="button" aria-pressed="false" onclick="toggleMicrophone()">マイクをオン</button>
+      <button class="btn-main btn-rec" id="recBtn" onclick="toggleRecording()">録音＆採譜スタート</button>
+    </div>
+    <label class="btn-tone audio-import">
+      録音ファイルを読み込んで楽譜化
+      <input id="recordingFileInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.webm" onchange="analyzeSelectedRecording(this)">
+    </label>
+    <button class="btn-tone" id="arrangeDuetButton" type="button" onclick="reanalyzeLatestRecording()" hidden>録音音声を再解析</button>
+    <div id="playbackOptions" hidden></div>
+    <audio id="audioPlayback" controls preload="metadata" style="display:none;"></audio>
+    <div class="playback-meter" id="playbackMeter" hidden>
+      <button class="btn-tone" id="playbackToggle" type="button" onclick="togglePlayback()">再生</button>
+      <input id="playbackProgress" type="range" min="0" max="1" step="0.01" value="0" aria-label="録音の再生位置" oninput="seekPlayback(this.value)">
+      <span id="playbackTime">0:00 / 0:00</span>
+      <div class="recording-actions">
+        <button class="btn-tone" type="button" onclick="downloadRecording()">保存先を選んでWAV保存</button>
+        <label>再生速度
+          <select id="playbackRate" onchange="changePlaybackRate(this.value)">
+            <option value="0.5">0.5倍</option>
+            <option value="0.75">0.75倍</option>
+            <option value="1" selected>1.0倍</option>
+            <option value="1.25">1.25倍</option>
+            <option value="1.5">1.5倍</option>
+          </select>
+        </label>
+        <button class="btn-tone" type="button" onclick="deleteLatestRecording()">録音を閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <section class="score-panel" aria-labelledby="scoreTitle">
+    <div class="score-toolbar">
+      <strong id="scoreTitle">自動採譜（B♭トランペット）</strong>
+      <div class="score-toolbar-actions">
+        <div class="score-export-actions" aria-label="DAW・楽譜ソフトへ書き出し">
+          <button class="btn-tone" type="button" onclick="downloadMidi()">MIDI</button>
+          <button class="btn-tone" type="button" onclick="downloadMusicXml()">MusicXML</button>
+          <button class="btn-tone" type="button" onclick="optimizeTrumpetKey()">演奏しやすい調へ</button>
+        </div>
+        <div class="transpose-control" aria-label="楽譜の移調">
+          <button class="btn-tone" type="button" onclick="changeTranspose(-1)" aria-label="半音下げる">−</button>
+          <span class="transpose-value" id="transposeValue">B♭管 +2</span>
+          <button class="btn-tone" type="button" onclick="changeTranspose(1)" aria-label="半音上げる">＋</button>
+        </div>
+      </div>
+    </div>
+    <div class="score-edit-tools" id="scoreEditTools" hidden>
+      <span id="selectedNoteStatus">音符を選択</span>
+      <label>
+        <span>音の長さ</span>
+        <select id="selectedNoteDuration" onchange="changeSelectedNoteDuration(this.value)" disabled>
+          <option value="4">全音符</option>
+          <option value="3">付点2分音符</option>
+          <option value="2">2分音符</option>
+          <option value="1.5">付点4分音符</option>
+          <option value="1">4分音符</option>
+          <option value="0.75">付点8分音符</option>
+          <option value="0.5">8分音符</option>
+          <option value="0.375">付点16分音符</option>
+          <option value="0.25">16分音符</option>
+        </select>
+      </label>
+      <button class="btn-tone" id="undoScoreEditButton" type="button" onclick="undoScoreEdit()" disabled>元に戻す</button>
+      <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(0, -1)" aria-label="音符を左へ移動">←</button>
+      <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(1, 0)" aria-label="音符を半音上へ移動">↑</button>
+      <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(-1, 0)" aria-label="音符を半音下へ移動">↓</button>
+      <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(0, 1)" aria-label="音符を右へ移動">→</button>
+      <button class="btn-tone" type="button" onclick="deleteSelectedScoreNote()">削除</button>
+    </div>
+    <div class="score-viewport" id="scoreViewport">
+      <svg id="scoreSvg" role="img" aria-label="解析された楽譜"></svg>
+    </div>
+    <p class="score-empty" id="scoreStatus">録音を停止すると、演奏した旋律を自動で記譜します。</p>
+  </section>
+  </div>
+  </div>
+</div>
+
+<script>
+  let audioCtx;
+  let micStream;
+  let microphoneAutoOffTimer = null;
+  let isRunning = false;
+  let isRecording = false;
+  let mediaRecorder;
+  let recordedChunks = [];
+  let recordedBytes = 0;
+  let pcmCaptureContext = null;
+  let pcmCaptureSource = null;
+  let pcmCaptureProcessor = null;
+  let pcmCaptureGain = null;
+  let pcmCaptureChunks = [];
+  let pcmCaptureSampleRate = 44100;
+  let recordingObjectUrl = '';
+  let currentRecordingBlob = null;
+  let recordingFileHandle = null;
+  let recordingFilename = 'trumpet-transpose-lab-recording.wav';
+  let recordingStartedAt = 0;
+  let recordingDurationSeconds = 0;
+  let detectedKeyRoot = 0;
+  let detectedKeyMode = 'major';
+  let pendingDetectedPitch = null;
+  let pendingPitchSince = 0;
+  let activeRecordedNote = null;
+  let scoreNotes = [];
+  let firstPartNotes = [];
+  let duetNotes = [];
+  let selectedScoreNoteId = null;
+  let selectedScoreVoice = 'original';
+  let scoreEditHistory = [];
+  let transposeSemitones = 0;
+  const instrumentTransposeSemitones = 2;
+  let countInProgress = false;
+  let beatGuideTimer = null;
+  let tapTempoTimes = [];
+  let playbackHarmonyEnabled = false;
+  let playbackHarmonyContext = null;
+  let playbackHarmonyVoices = [];
+  let bluetoothDevice = null;
+  let bluetoothCharacteristic = null;
+
+  let harmonyMode = 'auto';
+  let simpleHarmonyMode = 'auto';
+  let currentInterval = 4;
+  let harmonyDirection = 'both';
+  let customWaveform = null;
+  let lastTriggeredPitch = null;
+  let lastTriggerTime = 0;
+  let lastSoundTime = 0;
+  let currentInputLevel = 0;
+  let smoothedHarmonyLevel = 0;
+  let inputLevelBaseline = 0;
+  let inputWasQuiet = true;
+  let pendingArticulation = false;
+  let lastArticulationTime = 0;
+  let activeHarmonySignature = '';
+  let activeHarmonyVoices = [];
+  let lastHarmonyNote = null;
+  let lastHarmonyInterval = null;
+  let lastChordChangeTime = 0;
+  let currentAnalysis = null;
+  const noteHistory = [];
+  const chordProgression = [];
+  let scoreNoteSequence = 0;
+
+  // 基準周波数設定
+  const A4_FREQ = 442;
+
+  // 12音階参照テーブル
+  const noteStrings = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const majorScale = [0, 2, 4, 5, 7, 9, 11];
+  const minorScale = [0, 2, 3, 5, 7, 8, 10];
+  const chordQualities = [
+    { suffix: '', intervals: [0, 4, 7], complexity: 0 },
+    { suffix: 'm', intervals: [0, 3, 7], complexity: 0 },
+    { suffix: '7', intervals: [0, 4, 7, 10], complexity: 0.2 },
+    { suffix: 'maj7', intervals: [0, 4, 7, 11], complexity: 0.15 },
+    { suffix: 'm7', intervals: [0, 3, 7, 10], complexity: 0.1 },
+    { suffix: 'sus2', intervals: [0, 2, 7], complexity: 0.35 },
+    { suffix: 'sus4', intervals: [0, 5, 7], complexity: 0.3 },
+    { suffix: 'add9', intervals: [0, 2, 4, 7], complexity: 0.3 },
+    { suffix: 'dim', intervals: [0, 3, 6], complexity: 0.55 }
+  ];
+
+  function recordingFilenameForNow() {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    return `trumpet-transpose-lab-${timestamp}.wav`;
+  }
+
+  async function chooseRecordingDestination() {
+    recordingFilename = recordingFilenameForNow();
+    recordingFileHandle = null;
+    if (!window.showSaveFilePicker) return true;
+    try {
+      recordingFileHandle = await window.showSaveFilePicker({
+        suggestedName: recordingFilename,
+        types: [{ description: 'WAV音声', accept: { 'audio/wav': ['.wav'] } }]
+      });
+      recordingFilename = recordingFileHandle.name;
+      return true;
+    } catch (error) {
+      if (error?.name === 'AbortError') return false;
+      return true;
+    }
+  }
+
+  async function writeRecordingToDestination(blob) {
+    currentRecordingBlob = blob;
+    if (recordingFileHandle) {
+      const writable = await recordingFileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return recordingFileHandle.name;
+    }
+    downloadFile(blob, recordingFilename);
+    return recordingFilename;
+  }
+
+  async function startPcmCapture(stream) {
+    stopPcmCapture(false);
+    pcmCaptureChunks = [];
+    pcmCaptureContext = new (window.AudioContext || window.webkitAudioContext)();
+    await pcmCaptureContext.resume();
+    pcmCaptureSampleRate = pcmCaptureContext.sampleRate;
+    pcmCaptureSource = pcmCaptureContext.createMediaStreamSource(stream);
+    pcmCaptureProcessor = pcmCaptureContext.createScriptProcessor(4096, 1, 1);
+    pcmCaptureGain = pcmCaptureContext.createGain();
+    pcmCaptureGain.gain.value = 0;
+    pcmCaptureProcessor.onaudioprocess = (event) => {
+      if (isRecording) pcmCaptureChunks.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+    };
+    pcmCaptureSource.connect(pcmCaptureProcessor);
+    pcmCaptureProcessor.connect(pcmCaptureGain);
+    pcmCaptureGain.connect(pcmCaptureContext.destination);
+  }
+
+  function wavRecordingBlob() {
+    const sampleCount = pcmCaptureChunks.reduce((total, chunk) => total + chunk.length, 0);
+    if (!sampleCount) return null;
+    const buffer = new ArrayBuffer(44 + sampleCount * 2);
+    const view = new DataView(buffer);
+    const writeText = (offset, text) => {
+      for (let index = 0; index < text.length; index++) view.setUint8(offset + index, text.charCodeAt(index));
+    };
+    writeText(0, 'RIFF');
+    view.setUint32(4, 36 + sampleCount * 2, true);
+    writeText(8, 'WAVE');
+    writeText(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, pcmCaptureSampleRate, true);
+    view.setUint32(28, pcmCaptureSampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeText(36, 'data');
+    view.setUint32(40, sampleCount * 2, true);
+    let offset = 44;
+    pcmCaptureChunks.forEach((chunk) => {
+      chunk.forEach((sample) => {
+        const clamped = Math.max(-1, Math.min(1, sample));
+        view.setInt16(offset, clamped < 0 ? clamped * 0x8000 : clamped * 0x7fff, true);
+        offset += 2;
+      });
+    });
+    return new Blob([buffer], { type: 'audio/wav' });
+  }
+
+  function estimateRecordedPitch(samples, start, windowSize, sampleRate) {
+    const downsampleFactor = sampleRate >= 32000 ? 4 : 2;
+    const length = Math.floor(windowSize / downsampleFactor);
+    const signal = new Float32Array(length);
+    let mean = 0;
+    let energy = 0;
+    for (let index = 0; index < windowSize; index++) {
+      const sample = samples[start + index] || 0;
+      mean += sample;
+      energy += sample * sample;
+    }
+    const rms = Math.sqrt(energy / windowSize);
+    if (rms < 0.012) return null;
+    mean /= windowSize;
+    for (let index = 0; index < length; index++) {
+      let sum = 0;
+      for (let offset = 0; offset < downsampleFactor; offset++) {
+        sum += samples[start + index * downsampleFactor + offset] || 0;
+      }
+      const window = 0.5 - 0.5 * Math.cos(2 * Math.PI * index / Math.max(1, length - 1));
+      signal[index] = (sum / downsampleFactor - mean) * window;
+    }
+    const reducedSampleRate = sampleRate / downsampleFactor;
+    const minimumLag = Math.max(2, Math.floor(reducedSampleRate / 2000));
+    const maximumLag = Math.min(Math.floor(length / 2), Math.ceil(reducedSampleRate / 100));
+    const difference = new Float32Array(maximumLag + 1);
+    const normalized = new Float32Array(maximumLag + 1);
+    for (let lag = 1; lag <= maximumLag; lag++) {
+      let sum = 0;
+      for (let index = 0; index < length - lag; index++) {
+        const delta = signal[index] - signal[index + lag];
+        sum += delta * delta;
+      }
+      difference[lag] = sum;
+    }
+    let cumulative = 0;
+    normalized[0] = 1;
+    for (let lag = 1; lag <= maximumLag; lag++) {
+      cumulative += difference[lag];
+      normalized[lag] = cumulative ? difference[lag] * lag / cumulative : 1;
+    }
+    let bestLag = -1;
+    for (let lag = minimumLag + 1; lag < maximumLag; lag++) {
+      if (normalized[lag] < 0.16 && normalized[lag] <= normalized[lag - 1] && normalized[lag] < normalized[lag + 1]) {
+        bestLag = lag;
+        break;
+      }
+    }
+    if (bestLag < 0) {
+      bestLag = minimumLag;
+      for (let lag = minimumLag + 1; lag <= maximumLag; lag++) {
+        if (normalized[lag] < normalized[bestLag]) bestLag = lag;
+      }
+    }
+    const confidence = 1 - normalized[bestLag];
+    if (confidence < 0.68) return null;
+    const left = normalized[Math.max(minimumLag, bestLag - 1)];
+    const center = normalized[bestLag];
+    const right = normalized[Math.min(maximumLag, bestLag + 1)];
+    const denominator = left - 2 * center + right;
+    const refinedLag = denominator ? bestLag + 0.5 * (left - right) / denominator : bestLag;
+    const frequency = reducedSampleRate / refinedLag;
+    return frequency >= 100 && frequency <= 2000 ? { frequency, rms, confidence } : null;
+  }
+
+  async function transcribePcmSamples(samples, sampleRate) {
+    const windowSize = 4096;
+    const hopSize = 512;
+    if (samples.length < windowSize) return [];
+    const frames = [];
+    const totalFrames = Math.floor((samples.length - windowSize) / hopSize) + 1;
+    for (let frameIndex = 0; frameIndex < totalFrames; frameIndex++) {
+      const analysis = estimateRecordedPitch(samples, frameIndex * hopSize, windowSize, sampleRate);
+      frames.push({
+        note: analysis ? noteFromFrequency(analysis.frequency) : null,
+        midiFloat: analysis ? 69 + 12 * Math.log2(analysis.frequency / A4_FREQ) : null,
+        rms: analysis?.rms || 0,
+        confidence: analysis?.confidence || 0
+      });
+      if (frameIndex && frameIndex % 120 === 0) await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    const smoothed = frames.map((frame, index) => {
+      if (frame.midiFloat === null || frame.confidence < 0.7) return null;
+      const neighbors = frames.slice(Math.max(0, index - 2), index + 3)
+        .filter(item => Number.isFinite(item.midiFloat) && item.confidence >= 0.7)
+        .sort((left, right) => left.midiFloat - right.midiFloat);
+      if (!neighbors.length) return null;
+      const median = neighbors[Math.floor(neighbors.length / 2)].midiFloat;
+      return Math.round(median);
+    });
+    for (let index = 1; index < smoothed.length - 1; index++) {
+      if (smoothed[index] === null && smoothed[index - 1] === smoothed[index + 1]) {
+        smoothed[index] = smoothed[index - 1];
+      }
+    }
+    for (let index = 2; index < smoothed.length - 2; index++) {
+      if (
+        Number.isFinite(smoothed[index - 2])
+        && smoothed[index - 2] === smoothed[index + 2]
+        && smoothed[index] !== smoothed[index - 2]
+      ) {
+        smoothed[index - 1] = smoothed[index - 2];
+        smoothed[index] = smoothed[index - 2];
+        smoothed[index + 1] = smoothed[index - 2];
+      }
+    }
+    const runs = [];
+    let runStart = 0;
+    for (let index = 1; index <= smoothed.length; index++) {
+      if (index < smoothed.length && smoothed[index] === smoothed[runStart]) continue;
+      if (Number.isFinite(smoothed[runStart])) {
+        const articulationFrames = [];
+        const minimumOnsetGap = Math.max(5, Math.round(0.09 * sampleRate / hopSize));
+        for (let frameIndex = runStart + minimumOnsetGap; frameIndex < index - 1; frameIndex++) {
+          const previousRms = Math.max(frames[frameIndex - 2]?.rms || 0, frames[frameIndex - 1]?.rms || 0, 0.001);
+          const currentRms = frames[frameIndex].rms;
+          const onset = currentRms > previousRms * 1.75 && currentRms - previousRms > 0.012;
+          const farEnough = !articulationFrames.length || frameIndex - articulationFrames.at(-1) >= minimumOnsetGap;
+          if (onset && farEnough) articulationFrames.push(frameIndex);
+        }
+        let segmentStart = runStart;
+        articulationFrames.forEach(frameIndex => {
+          runs.push({ note: smoothed[runStart], startFrame: segmentStart, endFrame: frameIndex, articulated: segmentStart !== runStart });
+          segmentStart = frameIndex;
+        });
+        runs.push({ note: smoothed[runStart], startFrame: segmentStart, endFrame: index, articulated: segmentStart !== runStart });
+      } else {
+        runs.push({ note: null, startFrame: runStart, endFrame: index });
+      }
+      runStart = index;
+    }
+    const minimumDuration = Math.max(70, (Number(document.getElementById('detectionResponse').value) || 160) * 0.45);
+    const notes = [];
+    let previousVoicedRun = null;
+    runs.forEach(run => {
+      if (!Number.isFinite(run.note)) return;
+      const start = run.startFrame * hopSize / sampleRate * 1000;
+      const end = Math.min(samples.length / sampleRate * 1000, ((run.endFrame - 1) * hopSize + windowSize) / sampleRate * 1000);
+      if (end - start < minimumDuration) return;
+      const separatedBySilence = previousVoicedRun && run.startFrame > previousVoicedRun.endFrame;
+      notes.push({
+        note: run.note,
+        start,
+        end,
+        confidence: frames.slice(run.startFrame, run.endFrame).reduce((sum, frame) => sum + frame.confidence, 0)
+          / Math.max(1, run.endFrame - run.startFrame),
+        articulated: Boolean(run.articulated || (separatedBySilence && previousVoicedRun.note === run.note))
+      });
+      previousVoicedRun = run;
+    });
+    return notes;
+  }
+
+  function closestLiveAnalysis(note, liveNotes) {
+    return liveNotes.reduce((closest, candidate) => {
+      const overlap = Math.max(0, Math.min(note.end, candidate.end) - Math.max(note.start, candidate.start));
+      const distance = Math.abs((note.start + note.end) / 2 - (candidate.start + candidate.end) / 2);
+      const score = overlap * 4 - distance;
+      return !closest || score > closest.score ? { candidate, score } : closest;
+    }, null)?.candidate;
+  }
+
+  async function transcribeRecordedBlob(blob) {
+    const liveNotes = scoreNotes.map(note => ({ ...note }));
+    const context = new (window.AudioContext || window.webkitAudioContext)();
+    try {
+      const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      recordingDurationSeconds = buffer.duration;
+      const transcribed = await transcribePcmSamples(buffer.getChannelData(0), buffer.sampleRate);
+      if (!transcribed.length) return 0;
+      if (document.getElementById('autoTempoDetection').value === 'on') {
+        const currentTempo = Number(document.getElementById('scoreTempo').value) || 120;
+        const estimatedTempo = estimatePerformanceTempo(transcribed, currentTempo);
+        document.getElementById('scoreTempo').value = estimatedTempo;
+      }
+      scoreNotes = transcribed.map((note) => {
+        return {
+          id: `note-${Date.now()}-${++scoreNoteSequence}`,
+          ...note,
+          analyzedFromRecording: true
+        };
+      });
+      updateDetectedKeyFromNotes(scoreNotes);
+      firstPartNotes = scoreNotes.map(note => ({ ...note }));
+      duetNotes = [];
+      renderScore();
+      return scoreNotes.length;
+    } finally {
+      await context.close();
+    }
+  }
+
+  async function reanalyzeLatestRecording() {
+    const recording = await readLatestRecording();
+    if (!recording?.blob?.size) return;
+    const status = document.getElementById('scoreStatus');
+    status.innerText = '録音音声を再生データから解析しています...';
+    try {
+      const count = await transcribeRecordedBlob(recording.blob);
+      if (!count) throw new Error('No notes detected');
+      await persistScoreEdits();
+      status.innerText = `録音音声を再解析し、${count}音を記譜しました。`;
+    } catch (error) {
+      status.innerText = '録音音声から音符を検出できませんでした。元の採譜結果は維持しています。';
+    }
+  }
+
+  async function analyzeSelectedRecording(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+    const status = document.getElementById('scoreStatus');
+    status.innerText = `${file.name} を解析しています...`;
+    input.disabled = true;
+    try {
+      scoreNotes = [];
+      firstPartNotes = [];
+      duetNotes = [];
+      const count = await transcribeRecordedBlob(file);
+      if (!count) throw new Error('No notes detected');
+      const audioPlayback = document.getElementById('audioPlayback');
+      if (recordingObjectUrl) URL.revokeObjectURL(recordingObjectUrl);
+      recordingObjectUrl = URL.createObjectURL(file);
+      audioPlayback.src = recordingObjectUrl;
+      audioPlayback.load();
+      audioPlayback.style.display = 'block';
+      document.getElementById('playbackOptions').hidden = false;
+      document.getElementById('playbackMeter').hidden = false;
+      document.getElementById('arrangeDuetButton').hidden = false;
+      currentRecordingBlob = file;
+      recordingFileHandle = null;
+      recordingFilename = file.name;
+      updatePlaybackMeter();
+      status.innerText = `${file.name} から${count}音を解析して記譜しました。`;
+    } catch (error) {
+      status.innerText = '録音ファイルから音符を検出できませんでした。対応形式または録音音量を確認してください。';
+    } finally {
+      input.disabled = false;
+      input.value = '';
+    }
+  }
+
+  function stopPcmCapture(clearChunks = true) {
+    if (pcmCaptureProcessor) pcmCaptureProcessor.onaudioprocess = null;
+    try { pcmCaptureSource?.disconnect(); } catch {}
+    try { pcmCaptureProcessor?.disconnect(); } catch {}
+    try { pcmCaptureGain?.disconnect(); } catch {}
+    if (pcmCaptureContext && pcmCaptureContext.state !== 'closed') pcmCaptureContext.close();
+    pcmCaptureContext = null;
+    pcmCaptureSource = null;
+    pcmCaptureProcessor = null;
+    pcmCaptureGain = null;
+    if (clearChunks) pcmCaptureChunks = [];
+  }
+
+  async function saveLatestRecording(blob) {
+    return writeRecordingToDestination(blob);
+  }
+
+  async function readLatestRecording() {
+    return currentRecordingBlob ? { blob: currentRecordingBlob } : null;
+  }
+
+  async function deleteStoredRecording() {
+    currentRecordingBlob = null;
+    recordingFileHandle = null;
+  }
+
+  function ensureScoreNoteIds(notes) {
+    return notes.map(note => ({ ...note, id: note.id || `note-${Date.now()}-${++scoreNoteSequence}` }));
+  }
+
+  async function persistScoreEdits() {
+    return Promise.resolve();
+  }
+
+  function positiveModulo(value, divisor) {
+    return ((value % divisor) + divisor) % divisor;
+  }
+
+  function recordScorePitch(noteNumber, timestamp, articulated = false) {
+    if (!isRecording) return;
+    const lag = Math.max(0, Math.min(500, Number(document.getElementById('performanceLag').value) || 0));
+    const elapsed = Math.max(0, timestamp - recordingStartedAt - lag);
+    if (
+      activeRecordedNote?.note === noteNumber
+      && !articulated
+    ) {
+      activeRecordedNote.end = elapsed;
+      return;
+    }
+    if (activeRecordedNote) activeRecordedNote.end = elapsed;
+    activeRecordedNote = {
+      id: `note-${Date.now()}-${++scoreNoteSequence}`,
+      note: noteNumber,
+      start: elapsed,
+      end: elapsed + 180,
+      articulated: Boolean(articulated)
+    };
+    scoreNotes.push(activeRecordedNote);
+  }
+
+  function selectScoreNote(noteId, voice) {
+    selectedScoreNoteId = noteId;
+    selectedScoreVoice = voice;
+    renderScore();
+  }
+
+  function rememberScoreEdit() {
+    scoreEditHistory.push({
+      notes: scoreNotes.map(note => ({ ...note })),
+      firstPartNotes: firstPartNotes.map(note => ({ ...note })),
+      duetNotes: duetNotes.map(note => ({ ...note })),
+      selectedNoteId: selectedScoreNoteId,
+      selectedVoice: selectedScoreVoice
+    });
+    if (scoreEditHistory.length > 30) scoreEditHistory.shift();
+    document.getElementById('undoScoreEditButton').disabled = false;
+  }
+
+  async function undoScoreEdit() {
+    const previous = scoreEditHistory.pop();
+    if (!previous) return;
+    scoreNotes = previous.notes.map(note => ({ ...note }));
+    firstPartNotes = (previous.firstPartNotes || previous.notes).map(note => ({ ...note }));
+    duetNotes = (previous.duetNotes || []).map(note => ({ ...note }));
+    selectedScoreNoteId = previous.selectedNoteId;
+    selectedScoreVoice = previous.selectedVoice;
+    document.getElementById('undoScoreEditButton').disabled = scoreEditHistory.length === 0;
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  async function moveSelectedScoreNote(pitchSteps, timeSteps) {
+    const collection = selectedScoreVoice === 'harmony' ? duetNotes : firstPartNotes;
+    const note = collection.find(item => item.id === selectedScoreNoteId);
+    if (!note) return;
+    rememberScoreEdit();
+    if (pitchSteps) {
+      note.note += pitchSteps;
+    }
+    if (timeSteps) {
+      const settings = scoreRhythmSettings();
+      const shiftMilliseconds = settings.gridQuarter * settings.quarterMs * timeSteps;
+      const appliedShift = Math.max(-note.start, shiftMilliseconds);
+      note.start += appliedShift;
+      note.end += appliedShift;
+    }
+    collection.sort((left, right) => left.start - right.start);
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  async function changeSelectedNoteDuration(durationQuarterValue) {
+    const collection = selectedScoreVoice === 'harmony' ? duetNotes : firstPartNotes;
+    const note = collection.find(item => item.id === selectedScoreNoteId);
+    const durationQuarter = Number(durationQuarterValue);
+    if (!note || !Number.isFinite(durationQuarter) || durationQuarter <= 0) return;
+    rememberScoreEdit();
+    note.end = note.start + durationQuarter * scoreRhythmSettings().quarterMs;
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  async function deleteSelectedScoreNote() {
+    const collection = selectedScoreVoice === 'harmony' ? duetNotes : firstPartNotes;
+    const note = collection.find(item => item.id === selectedScoreNoteId);
+    if (!note) return;
+    rememberScoreEdit();
+    if (selectedScoreVoice === 'harmony') duetNotes = duetNotes.filter(item => item.id !== selectedScoreNoteId);
+    else firstPartNotes = firstPartNotes.filter(item => item.id !== selectedScoreNoteId);
+    selectedScoreNoteId = null;
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  function closeRecordedNote(timestamp = Date.now()) {
+    if (!activeRecordedNote) return;
+    const lag = Math.max(0, Math.min(500, Number(document.getElementById('performanceLag').value) || 0));
+    activeRecordedNote.end = Math.max(activeRecordedNote.end, timestamp - recordingStartedAt - lag);
+    activeRecordedNote = null;
+  }
+
+  function stopPlaybackHarmony() {
+    playbackHarmonyVoices.forEach(oscillator => {
+      try { oscillator.stop(); } catch {}
+    });
+    playbackHarmonyVoices = [];
+    if (playbackHarmonyContext && playbackHarmonyContext.state !== 'closed') {
+      playbackHarmonyContext.close();
+    }
+    playbackHarmonyContext = null;
+  }
+
+  async function schedulePlaybackHarmony() {
+    stopPlaybackHarmony();
+    if (!playbackHarmonyEnabled) return;
+    const audioPlayback = document.getElementById('audioPlayback');
+    const notes = duetNotes.filter(note => note.end - note.start >= 100 && note.end > audioPlayback.currentTime * 1000);
+    if (!notes.length) return;
+
+    playbackHarmonyContext = new (window.AudioContext || window.webkitAudioContext)();
+    await playbackHarmonyContext.resume();
+    const context = playbackHarmonyContext;
+    const offsetMilliseconds = audioPlayback.currentTime * 1000;
+    const playbackRate = audioPlayback.playbackRate || 1;
+    notes.forEach(note => {
+      const noteStart = context.currentTime + Math.max(0, (note.start - offsetMilliseconds) / 1000 / playbackRate);
+      const remainingMilliseconds = note.end - Math.max(note.start, offsetMilliseconds);
+      const duration = Math.max(0.1, remainingMilliseconds / 1000 / playbackRate * 0.97);
+      const end = noteStart + duration;
+      const oscillator = context.createOscillator();
+      const gainNode = context.createGain();
+      if (customWaveform) oscillator.setPeriodicWave(customWaveform);
+      else oscillator.type = 'triangle';
+      oscillator.frequency.setValueAtTime(A4_FREQ * Math.pow(2, (note.note - 69) / 12), noteStart);
+      gainNode.gain.setValueAtTime(0.0001, noteStart);
+      gainNode.gain.exponentialRampToValueAtTime(0.075, Math.min(end - 0.03, noteStart + 0.045));
+      gainNode.gain.setValueAtTime(0.075, Math.max(noteStart + 0.05, end - 0.12));
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, end);
+      oscillator.connect(gainNode);
+      gainNode.connect(context.destination);
+      oscillator.start(noteStart);
+      oscillator.stop(end + 0.02);
+      playbackHarmonyVoices.push(oscillator);
+    });
+  }
+
+  function setPlaybackHarmony(enabled, element) {
+    playbackHarmonyEnabled = enabled;
+    document.querySelectorAll('.playback-switch .btn-option').forEach(button => button.classList.remove('active'));
+    element.classList.add('active');
+    const audioPlayback = document.getElementById('audioPlayback');
+    if (audioPlayback.paused) stopPlaybackHarmony();
+    else schedulePlaybackHarmony();
+  }
+
+  function formatPlaybackTime(seconds, roundUp = false) {
+    const safeSeconds = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+    const wholeSeconds = roundUp ? Math.ceil(safeSeconds) : Math.floor(safeSeconds);
+    const minutes = Math.floor(wholeSeconds / 60);
+    return `${minutes}:${String(wholeSeconds % 60).padStart(2, '0')}`;
+  }
+
+  function playbackDuration() {
+    const audioPlayback = document.getElementById('audioPlayback');
+    return Number.isFinite(audioPlayback.duration) && audioPlayback.duration > 0
+      ? audioPlayback.duration
+      : recordingDurationSeconds;
+  }
+
+  function updatePlaybackMeter() {
+    const audioPlayback = document.getElementById('audioPlayback');
+    const progress = document.getElementById('playbackProgress');
+    const duration = playbackDuration();
+    progress.max = Math.max(duration, 1);
+    progress.value = Math.min(audioPlayback.currentTime || 0, duration || 0);
+    document.getElementById('playbackTime').innerText = `${formatPlaybackTime(audioPlayback.currentTime)} / ${formatPlaybackTime(duration, true)}`;
+  }
+
+  function seekPlayback(value) {
+    const audioPlayback = document.getElementById('audioPlayback');
+    const duration = playbackDuration();
+    if (duration > 0) audioPlayback.currentTime = Math.min(Number(value), duration);
+    updatePlaybackMeter();
+  }
+
+  function changePlaybackRate(value) {
+    const audioPlayback = document.getElementById('audioPlayback');
+    audioPlayback.playbackRate = Number(value) || 1;
+    if (!audioPlayback.paused) schedulePlaybackHarmony();
+  }
+
+  async function downloadRecording() {
+    const recording = await readLatestRecording();
+    if (!recording?.blob?.size) {
+      document.getElementById('scoreStatus').innerText = 'ダウンロードできる録音がありません。';
+      return;
+    }
+    if (!await chooseRecordingDestination()) return;
+    try {
+      const savedName = await writeRecordingToDestination(recording.blob);
+      document.getElementById('scoreStatus').innerText = `${savedName} に録音を保存しました。`;
+    } catch (error) {
+      document.getElementById('scoreStatus').innerText = '指定した場所へ録音を保存できませんでした。';
+    }
+  }
+
+  function downloadFile(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function midiVariableLength(value) {
+    let buffer = value & 0x7f;
+    const bytes = [];
+    while ((value >>= 7)) {
+      buffer <<= 8;
+      buffer |= (value & 0x7f) | 0x80;
+    }
+    while (true) {
+      bytes.push(buffer & 0xff);
+      if (buffer & 0x80) buffer >>= 8;
+      else break;
+    }
+    return bytes;
+  }
+
+  function midiChunk(type, data) {
+    const length = data.length;
+    return [
+      ...Array.from(type, character => character.charCodeAt(0)),
+      (length >>> 24) & 0xff,
+      (length >>> 16) & 0xff,
+      (length >>> 8) & 0xff,
+      length & 0xff,
+      ...data
+    ];
+  }
+
+  function midiTrack(name, notes, channel, settings, ticksPerQuarter) {
+    const events = [];
+    const nameBytes = Array.from(new TextEncoder().encode(name));
+    events.push({ tick: 0, priority: 0, bytes: [0xff, 0x03, ...midiVariableLength(nameBytes.length), ...nameBytes] });
+    events.push({ tick: 0, priority: 1, bytes: [0xc0 | channel, 56] });
+    notes.forEach(note => {
+      const startTick = Math.max(0, Math.round(note.start / settings.quarterMs * ticksPerQuarter));
+      const endTick = Math.max(startTick + 1, Math.round(note.end / settings.quarterMs * ticksPerQuarter));
+      const pitch = Math.max(0, Math.min(127, Math.round(note.note + transposeSemitones)));
+      events.push({ tick: startTick, priority: 2, bytes: [0x90 | channel, pitch, 88] });
+      events.push({ tick: endTick, priority: 1, bytes: [0x80 | channel, pitch, 0] });
+    });
+    events.sort((left, right) => left.tick - right.tick || left.priority - right.priority);
+    const data = [];
+    let previousTick = 0;
+    events.forEach(event => {
+      data.push(...midiVariableLength(event.tick - previousTick), ...event.bytes);
+      previousTick = event.tick;
+    });
+    data.push(0, 0xff, 0x2f, 0);
+    return midiChunk('MTrk', data);
+  }
+
+  function downloadMidi() {
+    const melody = finalizedFirstPartNotes();
+    if (!melody.length) {
+      document.getElementById('scoreStatus').innerText = 'MIDIに書き出せる楽譜がありません。';
+      return;
+    }
+    const settings = scoreRhythmSettings();
+    const ticksPerQuarter = 480;
+    const microseconds = Math.round(60000000 / settings.tempo);
+    const denominatorPower = Math.round(Math.log2(settings.denominator));
+    const fifths = keySignatureCountFor(detectedKeyRoot + transposeSemitones, detectedKeyMode);
+    const conductor = midiChunk('MTrk', [
+      0, 0xff, 0x51, 3, (microseconds >>> 16) & 0xff, (microseconds >>> 8) & 0xff, microseconds & 0xff,
+      0, 0xff, 0x58, 4, settings.numerator, denominatorPower, 24, 8,
+      0, 0xff, 0x59, 2, fifths & 0xff, detectedKeyMode === 'minor' ? 1 : 0,
+      0, 0xff, 0x2f, 0
+    ]);
+    const header = midiChunk('MThd', [0, 1, 0, 2, (ticksPerQuarter >>> 8) & 0xff, ticksPerQuarter & 0xff]);
+    const bytes = [
+      ...header,
+      ...conductor,
+      ...midiTrack('Trumpet - Melody', melody, 0, settings, ticksPerQuarter)
+    ];
+    downloadFile(new Blob([new Uint8Array(bytes)], { type: 'audio/midi' }), 'trumpet-transpose-lab-score.mid');
+    document.getElementById('scoreStatus').innerText = '採譜した旋律をMIDIで書き出しました。';
+  }
+
+  function musicXmlPitch(noteNumber, preferFlats) {
+    const spellings = preferFlats
+      ? [['C', 0], ['D', -1], ['D', 0], ['E', -1], ['E', 0], ['F', 0], ['G', -1], ['G', 0], ['A', -1], ['A', 0], ['B', -1], ['B', 0]]
+      : [['C', 0], ['C', 1], ['D', 0], ['D', 1], ['E', 0], ['F', 0], ['F', 1], ['G', 0], ['G', 1], ['A', 0], ['A', 1], ['B', 0]];
+    const midi = Math.max(0, Math.min(127, Math.round(noteNumber)));
+    const [step, alter] = spellings[positiveModulo(midi, 12)];
+    return { step, alter, octave: Math.floor(midi / 12) - 1 };
+  }
+
+  function musicXmlDuration(durationQuarter, divisions) {
+    return Math.max(1, Math.round(durationQuarter * divisions));
+  }
+
+  function musicXmlNote(event, divisions, preferFlats) {
+    const pitch = musicXmlPitch(event.note + instrumentTransposeSemitones + transposeSemitones, preferFlats);
+    const alter = pitch.alter ? `<alter>${pitch.alter}</alter>` : '';
+    const tieStart = event.tiedTo ? '<tie type="start"/>' : '';
+    const tieStop = event.tiedFrom ? '<tie type="stop"/>' : '';
+    const tiedStart = event.tiedTo ? '<tied type="start"/>' : '';
+    const tiedStop = event.tiedFrom ? '<tied type="stop"/>' : '';
+    const articulation = event.articulation === 'staccato'
+      ? '<articulations><staccato/></articulations>'
+      : event.articulation === 'tenuto'
+        ? '<articulations><tenuto/></articulations>'
+        : event.articulation === 'accent'
+          ? '<articulations><accent/></articulations>'
+          : '';
+    const notations = tiedStart || tiedStop || articulation
+      ? `<notations>${tiedStop}${tiedStart}${articulation}</notations>`
+      : '';
+    return `<note><pitch><step>${pitch.step}</step>${alter}<octave>${pitch.octave}</octave></pitch>${tieStop}${tieStart}<duration>${musicXmlDuration(event.endQuarter - event.startQuarter, divisions)}</duration><voice>1</voice>${notations}</note>`;
+  }
+
+  function musicXmlRest(durationQuarter, divisions) {
+    return `<note><rest/><duration>${musicXmlDuration(durationQuarter, divisions)}</duration><voice>1</voice></note>`;
+  }
+
+  function musicXmlPart(partId, notes, settings, totalQuarter, divisions, fifths) {
+    const events = buildScoreModel(notes, settings).events;
+    const boundaries = [0];
+    if (settings.pickupQuarter) boundaries.push(settings.pickupQuarter);
+    while (boundaries[boundaries.length - 1] < totalQuarter - 0.001) {
+      boundaries.push(boundaries[boundaries.length - 1] + settings.measureQuarter);
+    }
+    const preferFlats = fifths < 0;
+    return boundaries.slice(0, -1).map((measureStart, index) => {
+      const measureEnd = Math.min(totalQuarter, boundaries[index + 1]);
+      const measureEvents = events.filter(event => event.startQuarter >= measureStart - 0.001 && event.startQuarter < measureEnd - 0.001);
+      let cursor = measureStart;
+      const contents = [];
+      measureEvents.forEach(event => {
+        if (event.startQuarter > cursor + 0.001) contents.push(musicXmlRest(event.startQuarter - cursor, divisions));
+        contents.push(musicXmlNote(event, divisions, preferFlats));
+        cursor = Math.max(cursor, event.endQuarter);
+      });
+      if (cursor < measureEnd - 0.001) contents.push(musicXmlRest(measureEnd - cursor, divisions));
+      const attributes = index === 0
+        ? `<attributes><divisions>${divisions}</divisions><key><fifths>${fifths}</fifths></key><time><beats>${settings.numerator}</beats><beat-type>${settings.denominator}</beat-type></time><clef><sign>G</sign><line>2</line></clef><transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes><sound tempo="${settings.tempo}"/>`
+        : '';
+      const implicit = index === 0 && settings.pickupQuarter ? ' implicit="yes"' : '';
+      return `<measure number="${index + 1}"${implicit}>${attributes}${contents.join('')}</measure>`;
+    }).join('');
+  }
+
+  function downloadMusicXml() {
+    const melody = finalizedFirstPartNotes();
+    if (!melody.length) {
+      document.getElementById('scoreStatus').innerText = 'MusicXMLに書き出せる楽譜がありません。';
+      return;
+    }
+    const settings = scoreRhythmSettings();
+    const melodyModel = buildScoreModel(melody, settings);
+    const lastQuarter = Math.max(melodyModel.lastQuarter, settings.pickupQuarter || settings.measureQuarter);
+    const scoreOriginQuarter = settings.pickupQuarter || 0;
+    const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
+    const totalQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
+    const fifths = scoreKeySignature();
+    const divisions = 480;
+    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n<score-partwise version="4.0"><work><work-title>Trumpet Transpose Lab Score</work-title></work><identification><encoding><software>Trumpet Transpose Lab</software><encoding-date>${new Date().toISOString().slice(0, 10)}</encoding-date></encoding></identification><part-list><score-part id="P1"><part-name>B-flat Trumpet</part-name><score-instrument id="P1-I1"><instrument-name>Trumpet</instrument-name></score-instrument><midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>57</midi-program></midi-instrument></score-part></part-list><part id="P1">${musicXmlPart('P1', melody, settings, totalQuarter, divisions, fifths)}</part></score-partwise>`;
+    downloadFile(new Blob([xml], { type: 'application/vnd.recordare.musicxml+xml;charset=utf-8' }), 'trumpet-transpose-lab-score.musicxml');
+    document.getElementById('scoreStatus').innerText = '採譜したB♭トランペット譜をMusicXMLで書き出しました。';
+  }
+
+  async function deleteLatestRecording() {
+    if (!confirm('画面上の録音と楽譜を閉じます。保存済みのWAVファイルは削除されません。よろしいですか？')) return;
+    try {
+      await deleteStoredRecording();
+      const audioPlayback = document.getElementById('audioPlayback');
+      audioPlayback.pause();
+      audioPlayback.removeAttribute('src');
+      audioPlayback.load();
+      audioPlayback.style.display = 'none';
+      audioPlayback.playbackRate = 1;
+      document.getElementById('playbackRate').value = '1';
+      if (recordingObjectUrl) URL.revokeObjectURL(recordingObjectUrl);
+      recordingObjectUrl = '';
+      recordingDurationSeconds = 0;
+      scoreNotes = [];
+      firstPartNotes = [];
+      duetNotes = [];
+      activeRecordedNote = null;
+      selectedScoreNoteId = null;
+      selectedScoreVoice = 'original';
+      scoreEditHistory = [];
+      document.getElementById('undoScoreEditButton').disabled = true;
+      document.getElementById('playbackOptions').hidden = true;
+      document.getElementById('playbackMeter').hidden = true;
+      document.getElementById('arrangeDuetButton').hidden = true;
+      document.getElementById('scoreSvg').innerHTML = '';
+      document.getElementById('scoreEditTools').hidden = true;
+      document.getElementById('scoreStatus').innerText = '画面上の録音と楽譜を閉じました。保存先のWAVファイルは残っています。';
+      updatePlaybackButton();
+      updatePlaybackMeter();
+    } catch (error) {
+      document.getElementById('scoreStatus').innerText = '録音を削除できませんでした。もう一度お試しください。';
+    }
+  }
+
+  async function togglePlayback() {
+    const audioPlayback = document.getElementById('audioPlayback');
+    const button = document.getElementById('playbackToggle');
+    if (!audioPlayback.src) return;
+    if (!audioPlayback.paused) {
+      audioPlayback.pause();
+      updatePlaybackButton();
+      return;
+    }
+    if (audioPlayback.currentTime >= playbackDuration() - 0.05) audioPlayback.currentTime = 0;
+    button.disabled = true;
+    try {
+      if (audioPlayback.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+        audioPlayback.load();
+        await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Playback preparation timed out')), 4000);
+          const finish = (callback) => {
+            clearTimeout(timeout);
+            audioPlayback.removeEventListener('canplay', onReady);
+            audioPlayback.removeEventListener('error', onError);
+            callback();
+          };
+          const onReady = () => finish(resolve);
+          const onError = () => finish(() => reject(audioPlayback.error || new Error('Playback failed')));
+          audioPlayback.addEventListener('canplay', onReady, { once: true });
+          audioPlayback.addEventListener('error', onError, { once: true });
+        });
+      }
+      await audioPlayback.play();
+    } catch (error) {
+      document.getElementById('scoreStatus').innerText = '録音を再生できません。新しく録音し直してください。';
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  function updatePlaybackButton() {
+    document.getElementById('playbackToggle').innerText = document.getElementById('audioPlayback').paused ? '再生' : '一時停止';
+  }
+
+  function finalizedScoreNotes() {
+    return scoreNotes
+      .filter(note => note.end - note.start >= 100)
+      .map(note => ({ ...note }));
+  }
+
+  function finalizedFirstPartNotes() {
+    const notes = firstPartNotes.length ? firstPartNotes : scoreNotes;
+    return notes
+      .filter(note => note.end - note.start >= 100)
+      .map(note => ({ ...note }));
+  }
+
+  function scorePitchPosition(noteNumber, preferFlats = false) {
+    const sharpOffsets = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+    const flatOffsets = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
+    const octave = Math.floor(noteNumber / 12) - 1;
+    const offsets = preferFlats ? flatOffsets : sharpOffsets;
+    return (octave - 4) * 7 + offsets[positiveModulo(noteNumber, 12)] - 4;
+  }
+
+  function escapeXml(value) {
+    return String(value).replace(/[&<>"']/g, character => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&apos;'
+    })[character]);
+  }
+
+  function scoreNoteName(noteNumber, preferFlats = false) {
+    const names = preferFlats
+      ? ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'G♭', 'G', 'A♭', 'A', 'B♭', 'B']
+      : ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+    return names[positiveModulo(noteNumber, 12)];
+  }
+
+  function scoreRhythmSettings() {
+    const numerator = Math.max(1, Math.min(32, Number(document.getElementById('meterNumerator').value) || 4));
+    const denominator = Number(document.getElementById('meterDenominator').value) || 4;
+    const tempo = Math.max(30, Math.min(300, Number(document.getElementById('scoreTempo').value) || 120));
+    const countInMeasures = Math.max(0, Math.min(8, Number(document.getElementById('countInMeasures').value) || 0));
+    const division = Number(document.getElementById('quantizeDivision').value) || 8;
+    const pickupLimit = Math.max(0, numerator - 0.25);
+    const pickupBeats = Math.max(0, Math.min(pickupLimit, Number(document.getElementById('pickupBeats').value) || 0));
+    return {
+      numerator,
+      denominator,
+      tempo,
+      countInMeasures,
+      division,
+      pickupBeats,
+      quarterMs: 60000 / tempo,
+      gridQuarter: 4 / division,
+      measureQuarter: numerator * 4 / denominator,
+      pickupQuarter: pickupBeats * 4 / denominator
+    };
+  }
+
+  function tapTempo() {
+    const now = performance.now();
+    if (tapTempoTimes.length && now - tapTempoTimes[tapTempoTimes.length - 1] > 2200) tapTempoTimes = [];
+    tapTempoTimes.push(now);
+    tapTempoTimes = tapTempoTimes.slice(-8);
+    if (tapTempoTimes.length < 2) {
+      document.getElementById('tapTempoButton').innerText = 'もう一度タップ';
+      return;
+    }
+    const intervals = tapTempoTimes.slice(1).map((time, index) => time - tapTempoTimes[index]);
+    const sorted = [...intervals].sort((left, right) => left - right);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const tempo = Math.max(30, Math.min(300, Math.round(60000 / median)));
+    document.getElementById('scoreTempo').value = tempo;
+    document.getElementById('tapTempoButton').innerText = `♩=${tempo}`;
+    handleScoreSettingsChange();
+  }
+
+  function estimatePerformanceTempo(notes, fallbackTempo) {
+    if (notes.length < 4) return fallbackTempo;
+    const intervals = notes.slice(1)
+      .map((note, index) => note.start - notes[index].start)
+      .filter(interval => interval >= 120 && interval <= 2000);
+    if (intervals.length < 3) return fallbackTempo;
+    const candidates = [];
+    for (let tempo = 40; tempo <= 220; tempo++) {
+      const beat = 60000 / tempo;
+      const error = intervals.reduce((sum, interval) => {
+        const subdivision = Math.max(1, Math.min(8, Math.round(interval / (beat / 2))));
+        return sum + Math.abs(interval - subdivision * beat / 2) / beat;
+      }, 0) / intervals.length;
+      const proximity = Math.abs(tempo - fallbackTempo) / 180;
+      candidates.push({ tempo, cost: error + proximity * 0.16 });
+    }
+    candidates.sort((left, right) => left.cost - right.cost);
+    return candidates[0].cost < 0.24 ? candidates[0].tempo : fallbackTempo;
+  }
+
+  function quantizeQuarter(milliseconds, settings) {
+    const quarter = milliseconds / settings.quarterMs;
+    return Math.max(0, Math.round(quarter / settings.gridQuarter) * settings.gridQuarter);
+  }
+
+  function nextScoreBoundary(position, settings) {
+    if (settings.pickupQuarter && position < settings.pickupQuarter - 0.001) {
+      return settings.pickupQuarter;
+    }
+    const measureOrigin = settings.pickupQuarter || 0;
+    const measureIndex = Math.floor((position - measureOrigin) / settings.measureQuarter + 0.001) + 1;
+    return measureOrigin + Math.max(1, measureIndex) * settings.measureQuarter;
+  }
+
+  function buildScoreModel(notes, settings) {
+    const normalized = notes
+      .map((note) => {
+        const startQuarter = quantizeQuarter(note.start, settings);
+        const rawDuration = Math.max(0, note.end - note.start) / settings.quarterMs;
+        const durationQuarter = Math.max(
+          settings.gridQuarter,
+          Math.round(rawDuration / settings.gridQuarter) * settings.gridQuarter
+        );
+        return { ...note, startQuarter, endQuarter: startQuarter + durationQuarter };
+      })
+      .sort((left, right) => left.startQuarter - right.startQuarter || left.start - right.start);
+
+    normalized.forEach((note, index) => {
+      const next = normalized[index + 1];
+      if (next && next.startQuarter >= note.startQuarter + settings.gridQuarter && note.endQuarter > next.startQuarter) {
+        note.endQuarter = next.startQuarter;
+      }
+    });
+
+    const notationValues = [4, 3, 2, 1.5, 1, 0.75, 0.5, 0.375, 0.25, 0.1875, 0.125]
+      .filter(value => value >= settings.gridQuarter - 0.001);
+    const events = normalized.flatMap((note) => {
+      const segments = [];
+      let segmentStart = note.startQuarter;
+      let segmentIndex = 0;
+      while (segmentStart < note.endQuarter - 0.001) {
+        const boundary = Math.min(note.endQuarter, nextScoreBoundary(segmentStart, settings));
+        const available = boundary - segmentStart;
+        const notationDuration = notationValues.find(value => value <= available + 0.001)
+          || Math.min(settings.gridQuarter, available);
+        const segmentEnd = Math.min(boundary, segmentStart + notationDuration);
+        segments.push({
+          ...note,
+          sourceId: note.id,
+          segmentIndex,
+          startQuarter: segmentStart,
+          endQuarter: segmentEnd,
+          tiedFrom: segmentIndex > 0,
+          tiedTo: segmentEnd < note.endQuarter - 0.001
+        });
+        segmentStart = segmentEnd;
+        segmentIndex += 1;
+      }
+      return segments;
+    });
+
+    events.forEach((note, index) => {
+      const previous = events[index - 1];
+      if (
+        previous
+        && previous.note === note.note
+        && previous.harmonyNote === note.harmonyNote
+        && !note.articulated
+        && Math.abs(note.startQuarter - previous.endQuarter) < 0.001
+      ) {
+        previous.tiedTo = true;
+        note.tiedFrom = true;
+      }
+    });
+
+    return {
+      events,
+      lastQuarter: normalized.reduce((maximum, note) => Math.max(maximum, note.endQuarter), 0)
+    };
+  }
+
+  function scoreDurationStyle(durationQuarter) {
+    const values = [
+      { duration: 4, baseDuration: 4, dotted: false },
+      { duration: 3, baseDuration: 2, dotted: true },
+      { duration: 2, baseDuration: 2, dotted: false },
+      { duration: 1.5, baseDuration: 1, dotted: true },
+      { duration: 1, baseDuration: 1, dotted: false },
+      { duration: 0.75, baseDuration: 0.5, dotted: true },
+      { duration: 0.5, baseDuration: 0.5, dotted: false },
+      { duration: 0.375, baseDuration: 0.25, dotted: true },
+      { duration: 0.25, baseDuration: 0.25, dotted: false },
+      { duration: 0.1875, baseDuration: 0.125, dotted: true },
+      { duration: 0.125, baseDuration: 0.125, dotted: false }
+    ];
+    const notation = values.reduce((closest, value) => (
+      Math.abs(value.duration - durationQuarter) < Math.abs(closest.duration - durationQuarter) ? value : closest
+    ), values[0]);
+    const { baseDuration, dotted } = notation;
+    return {
+      baseDuration,
+      dotted,
+      filled: baseDuration < 2,
+      flagCount: baseDuration <= 0.125 ? 3 : baseDuration <= 0.25 ? 2 : baseDuration <= 0.5 ? 1 : 0
+    };
+  }
+
+  function createAccidentalResolver(keySignatureCount, settings) {
+    const preferFlats = keySignatureCount < 0;
+    const pitchOffsets = preferFlats
+      ? [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6]
+      : [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+    const naturalPitchClasses = [0, 2, 4, 5, 7, 9, 11];
+    const keyAlterations = Array(7).fill(0);
+    const sharpOrder = [3, 0, 4, 1, 5, 2, 6];
+    const flatOrder = [6, 2, 5, 1, 4, 0, 3];
+    const order = keySignatureCount > 0 ? sharpOrder : flatOrder;
+    order.slice(0, Math.abs(keySignatureCount)).forEach((step) => {
+      keyAlterations[step] = keySignatureCount > 0 ? 1 : -1;
+    });
+    const measureState = new Map();
+
+    return (noteNumber, startQuarter, tiedFrom) => {
+      if (tiedFrom) return '';
+      const pitchClass = positiveModulo(noteNumber, 12);
+      const step = pitchOffsets[pitchClass];
+      let alteration = pitchClass - naturalPitchClasses[step];
+      if (alteration > 6) alteration -= 12;
+      if (alteration < -6) alteration += 12;
+      const afterPickup = Math.max(0, startQuarter - settings.pickupQuarter);
+      const measureIndex = settings.pickupQuarter && startQuarter < settings.pickupQuarter - 0.001
+        ? 0
+        : Math.floor(afterPickup / settings.measureQuarter + 0.001) + (settings.pickupQuarter ? 1 : 0);
+      const stateKey = `${measureIndex}:${step}`;
+      const currentAlteration = measureState.has(stateKey) ? measureState.get(stateKey) : keyAlterations[step];
+      measureState.set(stateKey, alteration);
+      if (alteration === currentAlteration) return '';
+      if (alteration === 0) return '♮';
+      return alteration > 0 ? '♯' : '♭';
+    };
+  }
+
+  function updateBeatGuide(title, detail, beat, accent, tempo) {
+    const orb = document.getElementById('beatOrb');
+    document.getElementById('beatGuideTitle').innerText = title;
+    document.getElementById('beatGuideDetail').innerText = detail;
+    document.getElementById('beatTempo').innerText = `♩=${tempo}`;
+    orb.innerText = beat;
+    orb.classList.toggle('accent', accent);
+  }
+
+  function resetBeatGuide() {
+    if (beatGuideTimer) clearInterval(beatGuideTimer);
+    beatGuideTimer = null;
+    const settings = scoreRhythmSettings();
+    const countInText = settings.countInMeasures
+      ? `録音開始前に${settings.countInMeasures}小節、無音でカウントします`
+      : '予備カウントなしで録音します';
+    updateBeatGuide('テンポ待機', countInText, '–', false, settings.tempo);
+  }
+
+  function handleScoreSettingsChange() {
+    if (scoreNotes.length) renderScore();
+    if (!isRecording && !countInProgress) resetBeatGuide();
+  }
+
+  function keySignatureCountFor(root, mode) {
+    const majorSignatures = [0, 7, 2, -3, 4, -1, 6, 1, -4, 3, -2, 5];
+    const minorSignatures = [-3, 4, -1, 6, 1, -4, 3, -2, 5, 0, 7, 2];
+    return (mode === 'minor' ? minorSignatures : majorSignatures)[positiveModulo(root, 12)];
+  }
+
+  function updateDetectedKeyFromNotes(notes) {
+    if (!notes.length) return;
+    const pitchWeights = Array(12).fill(0);
+    notes.forEach((note) => {
+      const durationWeight = Math.max(100, note.end - note.start);
+      pitchWeights[positiveModulo(note.note, 12)] += durationWeight;
+    });
+    const profiles = {
+      major: [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
+      minor: [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+    };
+    const candidates = [];
+    for (let root = 0; root < 12; root++) {
+      Object.entries(profiles).forEach(([mode, profile]) => {
+        const fifths = keySignatureCountFor(root + instrumentTransposeSemitones, mode);
+        const profileScore = pitchWeights.reduce((total, weight, pitchClass) => (
+          total + weight * profile[positiveModulo(pitchClass - root, 12)]
+        ), 0);
+        candidates.push({ root, mode, score: profileScore - Math.abs(fifths) * 18 });
+      });
+    }
+    candidates.sort((left, right) => right.score - left.score
+      || Math.abs(keySignatureCountFor(left.root + instrumentTransposeSemitones, left.mode))
+        - Math.abs(keySignatureCountFor(right.root + instrumentTransposeSemitones, right.mode)));
+    detectedKeyRoot = candidates[0].root;
+    detectedKeyMode = candidates[0].mode;
+  }
+
+  function scoreKeySignature() {
+    const selected = document.getElementById('keySignature').value;
+    if (selected !== 'auto') return Number(selected);
+    const notes = finalizedFirstPartNotes();
+    if (notes.length) updateDetectedKeyFromNotes(notes);
+    return keySignatureCountFor(detectedKeyRoot + scoreTransposeSemitones(), detectedKeyMode);
+  }
+
+  function scoreTransposeSemitones() {
+    return instrumentTransposeSemitones + transposeSemitones;
+  }
+
+  function keySignatureLabel(count) {
+    const labels = {
+      '-7': 'C♭ Major / A♭ Minor', '-6': 'G♭ Major / E♭ Minor', '-5': 'D♭ Major / B♭ Minor',
+      '-4': 'A♭ Major / F Minor', '-3': 'E♭ Major / C Minor', '-2': 'B♭ Major / G Minor',
+      '-1': 'F Major / D Minor', '0': 'C Major / A Minor', '1': 'G Major / E Minor',
+      '2': 'D Major / B Minor', '3': 'A Major / F♯ Minor', '4': 'E Major / C♯ Minor',
+      '5': 'B Major / G♯ Minor', '6': 'F♯ Major / D♯ Minor', '7': 'C♯ Major / A♯ Minor'
+    };
+    return labels[String(count)];
+  }
+
+  function handleKeySignatureChange() {
+    if (scoreNotes.length) renderScore();
+  }
+
+  function lockRecordingSettings(locked) {
+    document.querySelectorAll('#recordingSettings input, #recordingSettings select')
+      .forEach(control => { control.disabled = locked; });
+  }
+
+  async function runVisualCountIn(settings) {
+    countInProgress = true;
+    const beatMilliseconds = settings.quarterMs * 4 / settings.denominator;
+    const totalBeats = Math.round(settings.numerator * settings.countInMeasures);
+    for (let beat = 1; beat <= totalBeats; beat++) {
+      if (!countInProgress) return false;
+      const measureBeat = positiveModulo(beat - 1, settings.numerator) + 1;
+      const measure = Math.floor((beat - 1) / settings.numerator) + 1;
+      updateBeatGuide('サイレント予備カウント', `${measure}小節目 ・ ${beat}/${totalBeats}拍`, measureBeat, measureBeat === 1, settings.tempo);
+      await new Promise(resolve => setTimeout(resolve, beatMilliseconds));
+    }
+    countInProgress = false;
+    return true;
+  }
+
+  function startRecordingBeatGuide(settings) {
+    if (beatGuideTimer) clearInterval(beatGuideTimer);
+    const beatMilliseconds = settings.quarterMs * 4 / settings.denominator;
+    let previousBeatIndex = -1;
+    const refresh = () => {
+      const elapsedBeats = (Date.now() - recordingStartedAt) / beatMilliseconds;
+      const beatIndex = Math.floor(elapsedBeats);
+      if (beatIndex === previousBeatIndex) return;
+      previousBeatIndex = beatIndex;
+      if (settings.pickupBeats && elapsedBeats < settings.pickupBeats) {
+        const pickupBeat = beatIndex + 1;
+        updateBeatGuide('録音中・アウフタクト', `弱起 ${pickupBeat} / ${settings.pickupBeats}拍`, pickupBeat, pickupBeat === 1, settings.tempo);
+        return;
+      }
+      const regularBeatIndex = Math.max(0, beatIndex - Math.ceil(settings.pickupBeats));
+      const beat = positiveModulo(regularBeatIndex, settings.numerator) + 1;
+      const measure = Math.floor(regularBeatIndex / settings.numerator) + 1;
+      updateBeatGuide('録音・解析中（無音）', `${measure}小節目 ・ ${beat}/${settings.numerator}拍`, beat, beat === 1, settings.tempo);
+    };
+    refresh();
+    beatGuideTimer = setInterval(refresh, Math.max(30, beatMilliseconds / 6));
+  }
+
+  function renderScore() {
+    const svg = document.getElementById('scoreSvg');
+    const status = document.getElementById('scoreStatus');
+    const notes = finalizedFirstPartNotes();
+    const settings = scoreRhythmSettings();
+    const scoreModel = buildScoreModel(notes, settings);
+    const rhythmicNotes = scoreModel.events;
+    const rhythmicDuetNotes = [];
+    const lastQuarter = scoreModel.lastQuarter;
+    const scoreOriginQuarter = settings.pickupQuarter || 0;
+    const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
+    const scoreEndQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
+    const keySignatureCount = scoreKeySignature();
+    const signatureSize = Math.abs(keySignatureCount);
+    const timeSignatureX = 96 + signatureSize * 13;
+    const scoreStartX = timeSignatureX + 30;
+    const quarterWidth = 72;
+    const width = Math.max(760, scoreStartX + scoreEndQuarter * quarterWidth + 70);
+    svg.setAttribute('viewBox', `0 0 ${width} 260`);
+    svg.setAttribute('width', width);
+
+    if (!notes.length) {
+      svg.innerHTML = '';
+      document.getElementById('scoreEditTools').hidden = true;
+      status.innerText = '解析できる音符がありません。音を長めに演奏して再録音してください。';
+      return;
+    }
+    document.getElementById('scoreEditTools').hidden = false;
+    const selectedNote = notes.find(note => note.id === selectedScoreNoteId);
+    const scoreTranspose = scoreTransposeSemitones();
+    const durationControl = document.getElementById('selectedNoteDuration');
+    durationControl.disabled = !selectedNote;
+    if (selectedNote) {
+      const durationQuarter = Math.max(0, selectedNote.end - selectedNote.start) / settings.quarterMs;
+      const durationValues = Array.from(durationControl.options, option => Number(option.value));
+      const closestDuration = durationValues.reduce((closest, value) => (
+        Math.abs(value - durationQuarter) < Math.abs(closest - durationQuarter) ? value : closest
+      ), durationValues[0]);
+      durationControl.value = String(closestDuration);
+    }
+    document.getElementById('selectedNoteStatus').innerText = selectedNote
+      ? `${noteStrings[positiveModulo(selectedNote.note + scoreTranspose, 12)]} を選択中`
+      : '編集する音符を選択';
+
+    const staffTop = 92;
+    const staffGap = 12;
+    const staffLines = Array.from({ length: 5 }, (_, index) => {
+      const y = staffTop + index * staffGap;
+      return `<line x1="38" y1="${y}" x2="${width - 24}" y2="${y}" stroke="#43474a" stroke-width="1"/>`;
+    }).join('');
+    const sharpPositions = [92, 110, 86, 104, 122, 98, 116];
+    const flatPositions = [116, 98, 122, 104, 128, 110, 134];
+    const signaturePositions = keySignatureCount > 0 ? sharpPositions : flatPositions;
+    const signatureSymbol = keySignatureCount > 0 ? '♯' : '♭';
+    const keySignatureElements = Array.from({ length: signatureSize }, (_, index) => (
+      `<text x="${84 + index * 13}" y="${signaturePositions[index]}" font-size="19" fill="#151719">${signatureSymbol}</text>`
+    )).join('');
+    const firstBoundary = settings.pickupQuarter || settings.measureQuarter;
+    const barlines = [];
+    let measureNumber = settings.pickupQuarter ? 0 : 1;
+    for (let boundary = firstBoundary; boundary < scoreEndQuarter - 0.001; boundary += settings.measureQuarter) {
+      const x = scoreStartX + boundary * quarterWidth;
+      measureNumber += 1;
+      barlines.push(`<line x1="${x}" y1="${staffTop}" x2="${x}" y2="${staffTop + staffGap * 4}" stroke="#24282a" stroke-width="1.25"/><text x="${x + 7}" y="${staffTop - 12}" font-size="10" fill="#777">${measureNumber}</text>`);
+    }
+    const initialBarline = `<line x1="${scoreStartX - 12}" y1="${staffTop}" x2="${scoreStartX - 12}" y2="${staffTop + staffGap * 4}" stroke="#24282a" stroke-width="1.25"/>`;
+    const finalX = scoreStartX + scoreEndQuarter * quarterWidth + 18;
+    const finalBarline = `<line x1="${finalX - 5}" y1="${staffTop}" x2="${finalX - 5}" y2="${staffTop + staffGap * 4}" stroke="#24282a" stroke-width="1.25"/><line x1="${finalX}" y1="${staffTop}" x2="${finalX}" y2="${staffTop + staffGap * 4}" stroke="#24282a" stroke-width="4"/>`;
+    const restSymbols = { 4: '𝄻', 2: '𝄼', 1: '𝄽', 0.5: '𝄾', 0.25: '𝄿', 0.125: '𝅀' };
+    const restEvents = [];
+    const appendRestGap = (start, end) => {
+      let position = start;
+      while (end - position >= 0.124) {
+        const beforePickup = settings.pickupQuarter && position < settings.pickupQuarter - 0.001;
+        const measureOrigin = settings.pickupQuarter || 0;
+        const nextBoundary = beforePickup
+          ? settings.pickupQuarter
+          : measureOrigin + (Math.floor((position - measureOrigin) / settings.measureQuarter + 0.001) + 1) * settings.measureQuarter;
+        const available = Math.min(end - position, nextBoundary - position);
+        const duration = [4, 2, 1, 0.5, 0.25, 0.125].find(value => value <= available + 0.001) || 0.125;
+        restEvents.push({ startQuarter: position, duration });
+        position += duration;
+      }
+    };
+    let occupiedUntil = 0;
+    rhythmicNotes.forEach((note) => {
+      appendRestGap(occupiedUntil, note.startQuarter);
+      occupiedUntil = Math.max(occupiedUntil, note.endQuarter);
+    });
+    appendRestGap(occupiedUntil, scoreEndQuarter);
+    const restElements = restEvents.map((rest) => {
+      const x = scoreStartX + (rest.startQuarter + rest.duration / 2) * quarterWidth;
+      return `<text x="${x}" y="${staffTop + 34}" text-anchor="middle" font-size="25" font-family="Apple Symbols, Noto Music, serif" fill="#151719">${restSymbols[rest.duration]}</text>`;
+    }).join('');
+    const resolveOriginalAccidental = createAccidentalResolver(keySignatureCount, settings);
+    const noteElements = rhythmicNotes.map((note) => {
+      const transposed = note.note + scoreTranspose;
+      const x = scoreStartX + note.startQuarter * quarterWidth + 14;
+      const preferFlats = keySignatureCount < 0;
+      const y = staffTop + staffGap * 3 - scorePitchPosition(transposed, preferFlats) * 6;
+      const durationQuarter = note.endQuarter - note.startQuarter;
+      const accidentalSymbol = resolveOriginalAccidental(transposed, note.startQuarter, note.tiedFrom);
+      const accidental = accidentalSymbol
+        ? `<text x="${x - 19}" y="${y + 6}" font-size="18" font-family="serif">${accidentalSymbol}</text>`
+        : '';
+      const { baseDuration, dotted, filled, flagCount } = scoreDurationStyle(durationQuarter);
+      const stemDown = y <= staffTop + staffGap * 2;
+      const stemX = stemDown ? x - 7 : x + 7;
+      const stemEndY = stemDown ? y + 35 : y - 35;
+      const stem = baseDuration < 4 ? `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemEndY}" stroke="#151719" stroke-width="2"/>` : '';
+      const flags = Array.from({ length: flagCount }, (_, index) => {
+        const offset = index * (stemDown ? -8 : 8);
+        return stemDown
+          ? `<path d="M ${stemX} ${stemEndY + offset} C ${stemX + 10} ${stemEndY - 3 + offset}, ${stemX + 12} ${stemEndY - 12 + offset}, ${stemX + 6} ${stemEndY - 18 + offset}" fill="none" stroke="#151719" stroke-width="2.6" stroke-linecap="round"/>`
+          : `<path d="M ${stemX} ${stemEndY + offset} C ${stemX + 10} ${stemEndY + 3 + offset}, ${stemX + 12} ${stemEndY + 12 + offset}, ${stemX + 6} ${stemEndY + 18 + offset}" fill="none" stroke="#151719" stroke-width="2.6" stroke-linecap="round"/>`;
+      }).join('');
+      const dot = dotted ? `<circle cx="${x + 14}" cy="${y - 1}" r="2.2" fill="#151719"/>` : '';
+      const ledgerLines = [];
+      const staffBottom = staffTop + staffGap * 4;
+      for (let ledgerY = staffTop - staffGap; ledgerY >= y - 3; ledgerY -= staffGap) ledgerLines.push(ledgerY);
+      for (let ledgerY = staffBottom + staffGap; ledgerY <= y + 3; ledgerY += staffGap) ledgerLines.push(ledgerY);
+      const ledgers = ledgerLines.map(ledgerY => `<line x1="${x - 13}" y1="${ledgerY}" x2="${x + 13}" y2="${ledgerY}" stroke="#151719" stroke-width="1.2"/>`).join('');
+      const selected = note.id === selectedScoreNoteId && selectedScoreVoice === 'original' ? ' selected' : '';
+      const tieEndX = scoreStartX + note.endQuarter * quarterWidth + 14;
+      const tie = note.tiedTo
+        ? `<path class="score-tie original-tie" d="M ${x + 7} ${y + 8} Q ${(x + tieEndX) / 2} ${y + 20} ${tieEndX - 7} ${y + 8}" fill="none" stroke="#151719" stroke-width="1.6"/>`
+        : '';
+      return `<g class="score-note original${selected}" onclick="selectScoreNote('${note.id}', 'original')">${ledgers}${accidental}<ellipse cx="${x}" cy="${y}" rx="8.5" ry="5.8" transform="rotate(-18 ${x} ${y})" fill="${filled ? '#151719' : '#f5f3eb'}" stroke="#151719" stroke-width="1.8"/>${stem}${flags}${dot}</g>${tie}`;
+    }).join('');
+
+    const resolveHarmonyAccidental = createAccidentalResolver(keySignatureCount, settings);
+    const harmonyElements = rhythmicDuetNotes.map((note) => {
+      const harmonyPitch = note.note + scoreTranspose;
+      const y = staffTop + staffGap * 3 - scorePitchPosition(harmonyPitch, keySignatureCount < 0) * 6;
+      const overlappingOriginal = rhythmicNotes.find(original => (
+        original.startQuarter < note.endQuarter && original.endQuarter > note.startQuarter
+      ));
+      const originalY = overlappingOriginal
+        ? staffTop + staffGap * 3 - scorePitchPosition(overlappingOriginal.note + scoreTranspose, keySignatureCount < 0) * 6
+        : y - 24;
+      const closeVoices = Math.abs(y - originalY) <= 12;
+      const x = scoreStartX + note.startQuarter * quarterWidth + 14 + (closeVoices ? 20 : 0);
+      const durationQuarter = note.endQuarter - note.startQuarter;
+      const { baseDuration, dotted, filled, flagCount } = scoreDurationStyle(durationQuarter);
+      const accidentalSymbol = resolveHarmonyAccidental(harmonyPitch, note.startQuarter, note.tiedFrom);
+      const accidental = accidentalSymbol
+        ? `<text x="${x - 18}" y="${y + 6}" font-size="17" font-family="serif" fill="#087f91">${accidentalSymbol}</text>`
+        : '';
+      const stemDown = y > originalY;
+      const stemX = stemDown ? x - 7 : x + 7;
+      const stemEndY = stemDown ? y + 32 : y - 32;
+      const stem = baseDuration < 4 ? `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemEndY}" stroke="#087f91" stroke-width="1.8"/>` : '';
+      const flags = Array.from({ length: flagCount }, (_, index) => {
+        const offset = index * (stemDown ? -7 : 7);
+        return stemDown
+          ? `<path d="M ${stemX} ${stemEndY + offset} C ${stemX + 9} ${stemEndY - 3 + offset}, ${stemX + 11} ${stemEndY - 11 + offset}, ${stemX + 6} ${stemEndY - 16 + offset}" fill="none" stroke="#087f91" stroke-width="2.3" stroke-linecap="round"/>`
+          : `<path d="M ${stemX} ${stemEndY + offset} C ${stemX + 9} ${stemEndY + 3 + offset}, ${stemX + 11} ${stemEndY + 11 + offset}, ${stemX + 6} ${stemEndY + 16 + offset}" fill="none" stroke="#087f91" stroke-width="2.3" stroke-linecap="round"/>`;
+      }).join('');
+      const dot = dotted ? `<circle cx="${x + 13}" cy="${y - 1}" r="2" fill="#087f91"/>` : '';
+      const ledgerLines = [];
+      const staffBottom = staffTop + staffGap * 4;
+      for (let ledgerY = staffTop - staffGap; ledgerY >= y - 3; ledgerY -= staffGap) ledgerLines.push(ledgerY);
+      for (let ledgerY = staffBottom + staffGap; ledgerY <= y + 3; ledgerY += staffGap) ledgerLines.push(ledgerY);
+      const ledgers = ledgerLines.map(ledgerY => `<line x1="${x - 12}" y1="${ledgerY}" x2="${x + 12}" y2="${ledgerY}" stroke="#087f91" stroke-width="1.2"/>`).join('');
+      const selected = note.sourceId === selectedScoreNoteId && selectedScoreVoice === 'harmony' ? ' selected' : '';
+      const tieEndX = scoreStartX + note.endQuarter * quarterWidth + 14 + (closeVoices ? 20 : 0);
+      const tie = note.tiedTo
+        ? `<path class="score-tie harmony-tie" d="M ${x + 7} ${y - 8} Q ${(x + tieEndX) / 2} ${y - 20} ${tieEndX - 7} ${y - 8}" fill="none" stroke="#087f91" stroke-width="1.6"/>`
+        : '';
+      return `<g class="score-note harmony${selected}" onclick="selectScoreNote('${note.sourceId}', 'harmony')">${ledgers}${accidental}<ellipse cx="${x}" cy="${y}" rx="7.5" ry="5" transform="rotate(-18 ${x} ${y})" fill="${filled ? '#087f91' : '#f8f7f2'}" stroke="#087f91" stroke-width="2"/>${stem}${flags}${dot}</g>${tie}`;
+    }).join('');
+
+    const pickupLabel = settings.pickupBeats
+      ? ` / PICKUP ${settings.pickupBeats} BEAT${settings.pickupBeats === 1 ? '' : 'S'}`
+      : '';
+    const keySource = document.getElementById('keySignature').value === 'auto' ? 'AUTO' : 'MANUAL';
+    svg.innerHTML = `<rect width="${width}" height="260" fill="#f8f7f2"/><text x="38" y="31" font-size="12" font-weight="600" fill="#555b5e">B♭ TRUMPET · ト音記号 · ${settings.numerator}/${settings.denominator} · ♩=${settings.tempo} · ${keySignatureLabel(keySignatureCount)} (${keySource})${pickupLabel}</text>${staffLines}${initialBarline}${barlines.join('')}${finalBarline}<text x="43" y="136" font-size="58" font-family="Apple Symbols, Noto Music, serif" fill="#151719" aria-label="ト音記号">𝄞</text>${keySignatureElements}<text x="${timeSignatureX}" y="109" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.numerator}</text><text x="${timeSignatureX}" y="132" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.denominator}</text>${restElements}${noteElements}`;
+    const pickupStatus = settings.pickupBeats ? `、アウフタクト${settings.pickupBeats}拍` : '';
+    status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}で${notes.length}音を記譜しました。`;
+  }
+
+  function changeTranspose(amount) {
+    transposeSemitones = Math.max(-12, Math.min(12, transposeSemitones + amount));
+    const scoreTranspose = scoreTransposeSemitones();
+    const sign = scoreTranspose > 0 ? '+' : '';
+    document.getElementById('transposeValue').innerText = transposeSemitones === 0
+      ? 'B♭管 +2'
+      : `B♭管 ${sign}${scoreTranspose}`;
+    renderScore();
+  }
+
+  async function optimizeTrumpetKey() {
+    const notes = finalizedScoreNotes();
+    if (!notes.length) return;
+    const idealCenter = 67;
+    const candidates = [];
+    for (let shift = -6; shift <= 6; shift++) {
+      const writtenPitches = notes.map(note => note.note + instrumentTransposeSemitones + shift);
+      const sorted = [...writtenPitches].sort((left, right) => left - right);
+      const median = sorted[Math.floor(sorted.length / 2)];
+      const rangePenalty = writtenPitches.reduce((total, pitch) => (
+        total + Math.max(0, 55 - pitch) * 5 + Math.max(0, pitch - 80) * 6
+      ), 0);
+      const fifths = keySignatureCountFor(detectedKeyRoot + instrumentTransposeSemitones + shift, detectedKeyMode);
+      const keyPenalty = Math.abs(fifths) <= 1 ? Math.abs(fifths) * 0.35 : 1.5 + (Math.abs(fifths) - 1) * 1.25;
+      candidates.push({ shift, cost: rangePenalty + Math.abs(median - idealCenter) * 0.7 + keyPenalty });
+    }
+    candidates.sort((left, right) => left.cost - right.cost || Math.abs(left.shift) - Math.abs(right.shift));
+    transposeSemitones = candidates[0].shift;
+    const scoreTranspose = scoreTransposeSemitones();
+    document.getElementById('transposeValue').innerText = `B♭管 ${scoreTranspose > 0 ? '+' : ''}${scoreTranspose}`;
+    renderScore();
+    await persistScoreEdits();
+    document.getElementById('scoreStatus').innerText = `調号とテッシトゥーラから、B♭管 ${scoreTranspose > 0 ? '+' : ''}${scoreTranspose} の記譜へ調整しました。`;
+  }
+
+  function rememberPitch(noteNumber, timestamp = Date.now()) {
+    const previous = noteHistory[noteHistory.length - 1];
+    if (!previous || previous.note !== noteNumber || timestamp - previous.time > 450) {
+      noteHistory.push({ note: noteNumber, time: timestamp });
+    } else {
+      previous.time = timestamp;
+    }
+    while (noteHistory.length && timestamp - noteHistory[0].time > 12000) noteHistory.shift();
+  }
+
+  function scorePitchSet(pitchClasses, root, intervals) {
+    return pitchClasses.reduce((score, pitchClass, index) => {
+      const ageWeight = 0.45 + (index + 1) / pitchClasses.length;
+      return score + (intervals.includes(positiveModulo(pitchClass - root, 12)) ? ageWeight : -ageWeight * 0.32);
+    }, 0);
+  }
+
+  function functionalTransitionScore(previousRoot, nextRoot, keyRoot, scale) {
+    if (previousRoot === null || previousRoot === undefined) return 0;
+    const previousDegree = scale.indexOf(positiveModulo(previousRoot - keyRoot, 12));
+    const nextDegree = scale.indexOf(positiveModulo(nextRoot - keyRoot, 12));
+    if (previousDegree < 0 || nextDegree < 0) return -0.35;
+    if (previousDegree === nextDegree) return 0.15;
+    const preferredMoves = {
+      0: [3, 4, 5],
+      1: [4, 6],
+      2: [5, 3],
+      3: [4, 0, 1],
+      4: [0, 5],
+      5: [1, 3, 4],
+      6: [0, 2]
+    };
+    let score = preferredMoves[previousDegree]?.includes(nextDegree) ? 1.15 : 0;
+    if (positiveModulo(nextRoot - previousRoot, 12) === 5) score += 0.55;
+    return score;
+  }
+
+  function harmonyIntervalCost(interval) {
+    const consonanceCosts = {
+      2: 2.4, 3: 0.32, 4: 0.2, 5: 0.42, 6: 1.55,
+      7: 0.48, 8: 0.24, 9: 0.16, 10: 0.7, 11: 1.25, 12: 0.65
+    };
+    return consonanceCosts[Math.abs(interval)] ?? 1.4;
+  }
+
+  function harmonyVarietyPenalty(interval) {
+    if (lastHarmonyInterval === null) return 0;
+    const absoluteInterval = Math.abs(interval);
+    const previousAbsolute = Math.abs(lastHarmonyInterval);
+    if (absoluteInterval === previousAbsolute && (absoluteInterval === 3 || absoluteInterval === 4)) return 3.4;
+    if (absoluteInterval === previousAbsolute) return 1.15;
+    if ((absoluteInterval === 3 || absoluteInterval === 4) && (previousAbsolute === 3 || previousAbsolute === 4)) return 1.8;
+    return 0;
+  }
+
+  function duetCandidates(note) {
+    const quality = chordQualities.find(item => item.suffix === note.chordSuffix) || chordQualities[0];
+    const chordRoot = Number.isFinite(note.chordRoot) ? note.chordRoot : positiveModulo(note.note, 12);
+    const chordPitchClasses = quality.intervals.map(interval => positiveModulo(chordRoot + interval, 12));
+    let directions = [-1, 1];
+    if (simpleHarmonyMode === 'upper') directions = [1];
+    else if (simpleHarmonyMode === 'lower') directions = [-1];
+    else if (simpleHarmonyMode === 'custom' && harmonyDirection === 'upper') directions = [1];
+    else if (simpleHarmonyMode === 'custom' && harmonyDirection === 'lower') directions = [-1];
+    const intervals = simpleHarmonyMode === 'custom'
+      ? [currentInterval]
+      : simpleHarmonyMode === 'auto' ? [3, 4, 5, 7, 8, 9] : [3, 4, 5];
+    const consonanceCost = { 3: 0.1, 4: 0.08, 5: 0.75, 7: 1.15, 8: 0.18, 9: 0.16 };
+    const candidates = [];
+    directions.forEach(direction => {
+      intervals.forEach(distance => {
+        const pitch = note.note + distance * direction;
+        if (pitch < 48 || pitch > 84) return;
+        const chordPenalty = chordPitchClasses.includes(positiveModulo(pitch, 12)) ? 0 : 1.8;
+        const registerPenalty = Math.abs(pitch - 66) * 0.025;
+        candidates.push({
+          pitch,
+          cost: (consonanceCost[distance] ?? harmonyIntervalCost(distance)) + chordPenalty + registerPenalty
+        });
+      });
+    });
+    if (!candidates.length) candidates.push({ pitch: note.note + (note.note > 66 ? -3 : 3), cost: 3 });
+    return candidates;
+  }
+
+  function duetTransitionCost(previousNote, note, previousPitch, pitch) {
+    const melodyMotion = note.note - previousNote.note;
+    const harmonyMotion = pitch - previousPitch;
+    const movement = Math.abs(harmonyMotion);
+    let cost = movement * 0.3 + Math.max(0, movement - 5) * 0.8;
+    const previousIntervalClass = positiveModulo(Math.abs(previousPitch - previousNote.note), 12);
+    const intervalClass = positiveModulo(Math.abs(pitch - note.note), 12);
+    const similarMotion = Math.sign(melodyMotion) === Math.sign(harmonyMotion) && melodyMotion !== 0;
+    if (similarMotion && [0, 7].includes(previousIntervalClass) && previousIntervalClass === intervalClass) cost += 8;
+    else if (similarMotion && [0, 7].includes(intervalClass)) cost += 3.5;
+    if (melodyMotion && harmonyMotion && Math.sign(melodyMotion) !== Math.sign(harmonyMotion)) cost -= 0.45;
+    if (melodyMotion && harmonyMotion === 0) cost += 0.65;
+    if (note.start - previousNote.end > 450) cost *= 0.45;
+    return cost;
+  }
+
+  function arrangeDuetScore() {
+    const notes = scoreNotes.filter(note => note.end - note.start >= 100).sort((left, right) => left.start - right.start);
+    if (!notes.length) {
+      firstPartNotes = [];
+      duetNotes = [];
+      return 0;
+    }
+    const layers = [];
+    notes.forEach((note, index) => {
+      const layer = duetCandidates(note).map(candidate => {
+        if (!index) return { ...candidate, previousIndex: -1 };
+        const previousLayer = layers[index - 1];
+        let best = { cost: Infinity, previousIndex: -1 };
+        previousLayer.forEach((previous, previousIndex) => {
+          const cost = previous.cost + candidate.cost
+            + duetTransitionCost(notes[index - 1], note, previous.pitch, candidate.pitch);
+          if (cost < best.cost) best = { cost, previousIndex };
+        });
+        return { pitch: candidate.pitch, cost: best.cost, previousIndex: best.previousIndex };
+      });
+      layers.push(layer);
+    });
+    let candidateIndex = layers[layers.length - 1].reduce((bestIndex, candidate, index, layer) => (
+      candidate.cost < layer[bestIndex].cost ? index : bestIndex
+    ), 0);
+    for (let index = notes.length - 1; index >= 0; index--) {
+      const candidate = layers[index][candidateIndex];
+      notes[index].harmonyNote = candidate.pitch;
+      notes[index].duetArranged = true;
+      candidateIndex = candidate.previousIndex;
+    }
+    notes.forEach((note, index) => {
+      const previous = notes[index - 1];
+      if (previous && previous.note === note.note && !note.articulated && note.start - previous.end < 250) {
+        note.harmonyNote = previous.harmonyNote;
+      }
+    });
+    const rhythm = scoreRhythmSettings();
+    const purpose = document.getElementById('arrangementPurpose').value || 'standard';
+    const strictIntervalMode = simpleHarmonyMode !== 'auto';
+    const phraseByNote = new Map();
+    let phraseIndex = 0;
+    let phraseStart = notes[0].start;
+    notes.forEach((note, index) => {
+      const previous = notes[index - 1];
+      const gapStartsPhrase = previous && note.start - previous.end > rhythm.quarterMs * 0.65;
+      const lengthStartsPhrase = previous && note.start - phraseStart >= rhythm.measureQuarter * rhythm.quarterMs * 2;
+      if (gapStartsPhrase || lengthStartsPhrase) {
+        phraseIndex += 1;
+        phraseStart = note.start;
+      }
+      phraseByNote.set(note.id, phraseIndex);
+    });
+    const swapCycle = 2;
+    const isSwappedPhrase = note => phraseByNote.get(note.id) % swapCycle === swapCycle - 1;
+    const purposeRange = purpose === 'lesson' ? [53, 74] : purpose === 'stage' ? [48, 82] : [50, 78];
+    const fitRange = (pitch, [minimum, maximum]) => {
+      let fitted = pitch;
+      while (fitted < minimum) fitted += 12;
+      while (fitted > maximum) fitted -= 12;
+      return fitted;
+    };
+    const guideTonePitch = (note, previousPitch = null) => {
+      const quality = chordQualities.find(item => item.suffix === note.chordSuffix) || chordQualities[0];
+      const root = Number.isFinite(note.chordRoot) ? note.chordRoot : positiveModulo(note.note, 12);
+      const dominant = note.chordSuffix === '7';
+      const guideIntervals = dominant ? [4, 10] : [quality.intervals[1] ?? 4, quality.intervals[2] ?? 7];
+      const target = previousPitch ?? note.harmonyNote ?? note.note - 4;
+      const candidates = [];
+      guideIntervals.forEach(interval => {
+        const pitchClass = positiveModulo(root + interval, 12);
+        for (let pitch = purposeRange[0]; pitch <= purposeRange[1]; pitch++) {
+          if (positiveModulo(pitch, 12) !== pitchClass) continue;
+          const melodicInterval = positiveModulo(Math.abs(pitch - note.note), 12);
+          const consonancePenalty = [3, 4, 8, 9].includes(melodicInterval) ? 0 : dominant ? 0.45 : 1.8;
+          candidates.push({ pitch, cost: Math.abs(pitch - target) + consonancePenalty });
+        }
+      });
+      candidates.sort((left, right) => left.cost - right.cost);
+      return candidates[0]?.pitch ?? fitRange(note.harmonyNote, purposeRange);
+    };
+    let previousCounterPitch = null;
+    firstPartNotes = [];
+    duetNotes = [];
+    notes.forEach((note, index) => {
+      const previous = notes[index - 1];
+      const next = notes[index + 1];
+      const duration = Math.max(120, note.end - note.start);
+      const phraseStart = !previous || note.start - previous.end > rhythm.quarterMs * 0.7;
+      const phraseEnd = !next || phraseByNote.get(next.id) !== phraseByNote.get(note.id);
+      const swapped = isSwappedPhrase(note) && !strictIntervalMode;
+      const quality = chordQualities.find(item => item.suffix === note.chordSuffix) || chordQualities[0];
+      const chordRoot = Number.isFinite(note.chordRoot) ? note.chordRoot : positiveModulo(note.note, 12);
+      const rootNear = (target, pitchClass) => {
+        let pitch = target - positiveModulo(target - pitchClass, 12);
+        if (pitch < 45) pitch += 12;
+        if (pitch > 72) pitch -= 12;
+        return pitch;
+      };
+      const appendTo = (collection, prefix, pitch, start, end, technique, articulation = '') => {
+        collection.push({
+          id: `${prefix}-${Date.now()}-${++scoreNoteSequence}`,
+          note: pitch,
+          start,
+          end: Math.max(start + 100, end),
+          chordRoot,
+          chordSuffix: note.chordSuffix || '',
+          technique,
+          articulation,
+          melodyId: note.id
+        });
+      };
+      const appendFirst = (pitch, start, end, technique, articulation = '') => appendTo(firstPartNotes, 'first', pitch, start, end, technique, articulation);
+      const appendSecond = (pitch, start, end, technique, articulation = '') => {
+        appendTo(duetNotes, 'duet', pitch, start, end, technique, articulation);
+        previousCounterPitch = pitch;
+      };
+
+      if (swapped) {
+        appendSecond(
+          fitRange(note.note, purposeRange),
+          note.start,
+          note.end,
+          'role-exchange-lead',
+          purpose === 'stage' && phraseStart ? 'accent' : ''
+        );
+        const addFirstSupport = purpose === 'stage'
+          ? index % 2 === 0
+          : purpose === 'standard' && phraseEnd;
+        if (addFirstSupport) {
+          const supportPitch = guideTonePitch(note);
+          const supportStart = purpose === 'stage' ? note.start : Math.max(note.start, note.end - rhythm.quarterMs * 0.75);
+          appendFirst(supportPitch, supportStart, note.end, 'role-exchange-support');
+        }
+        return;
+      }
+
+      const lessonArticulation = purpose === 'lesson'
+        ? phraseByNote.get(note.id) % 2 ? 'staccato' : 'tenuto'
+        : '';
+      appendFirst(fitRange(note.note, purposeRange), note.start, note.end, 'lead', lessonArticulation);
+
+      if (strictIntervalMode) {
+        appendSecond(fitRange(note.harmonyNote, purposeRange), note.start, note.end, 'interval');
+        return;
+      }
+
+      if (note.chordSuffix === '7') {
+        appendSecond(guideTonePitch(note, previousCounterPitch), note.start, note.end, 'guide-tone-3-7');
+        return;
+      }
+
+      const arpeggioThreshold = purpose === 'stage' ? 1.2 : purpose === 'lesson' ? 2.8 : 1.65;
+      if (duration >= rhythm.quarterMs * arpeggioThreshold) {
+        const arpeggioIntervals = purpose === 'lesson'
+          ? [quality.intervals[1] ?? 4, 7]
+          : index % 2 ? [0, 7, quality.intervals[1] ?? 4, 12] : [0, quality.intervals[1] ?? 4, 7, 12];
+        const stepDuration = duration / arpeggioIntervals.length;
+        const base = rootNear(52, chordRoot);
+        arpeggioIntervals.forEach((interval, step) => {
+          const start = note.start + step * stepDuration;
+          appendSecond(fitRange(base + interval, purposeRange), start, Math.min(note.end, start + stepDuration * 0.88), 'arpeggio');
+        });
+        return;
+      }
+
+      if (phraseStart || phraseEnd || index % (purpose === 'lesson' ? 4 : 6) === 0) {
+        const supportPitch = guideTonePitch(note, previousCounterPitch);
+        appendSecond(supportPitch, note.start, Math.min(note.end, note.start + Math.max(160, duration * 0.72)), 'third-sixth-support');
+        return;
+      }
+
+      const melodyMotion = previous ? note.note - previous.note : 0;
+      const chordPitchClasses = quality.intervals.map(interval => positiveModulo(chordRoot + interval, 12));
+      const target = previousCounterPitch === null
+        ? guideTonePitch(note)
+        : previousCounterPitch - Math.sign(melodyMotion) * Math.min(4, Math.max(1, Math.abs(melodyMotion)));
+      const counterCandidates = [];
+      for (let pitch = purposeRange[0]; pitch <= purposeRange[1]; pitch++) {
+        if (!chordPitchClasses.includes(positiveModulo(pitch, 12))) continue;
+        const intervalClass = positiveModulo(Math.abs(pitch - note.note), 12);
+        const voicingPenalty = [3, 4, 8, 9].includes(intervalClass) ? 0 : 1.4;
+        const crossingPenalty = pitch >= note.note ? 2.2 : 0;
+        const parallelPenalty = previousCounterPitch !== null && previous && melodyMotion
+          && Math.sign(pitch - previousCounterPitch) === Math.sign(melodyMotion) ? 2.8 : 0;
+        counterCandidates.push({ pitch, cost: Math.abs(pitch - target) + voicingPenalty + crossingPenalty + parallelPenalty });
+      }
+      counterCandidates.sort((left, right) => left.cost - right.cost);
+      const counterPitch = counterCandidates[0]?.pitch ?? note.harmonyNote;
+      const delayedStart = index % 2 ? note.start + Math.min(duration * 0.22, rhythm.quarterMs * 0.25) : note.start;
+      appendSecond(counterPitch, purpose === 'lesson' ? note.start : delayedStart, note.end, index % 2 ? 'syncopated-counterline' : 'counterline');
+    });
+    if (purpose === 'stage' && notes.length >= 4) {
+      const finalNote = notes[notes.length - 1];
+      const quality = chordQualities.find(item => item.suffix === finalNote.chordSuffix) || chordQualities[0];
+      const root = Number.isFinite(finalNote.chordRoot) ? finalNote.chordRoot : positiveModulo(finalNote.note, 12);
+      const stepDuration = Math.max(140, rhythm.quarterMs * 0.3);
+      [quality.intervals[1] ?? 4, 7, 12].forEach((interval, step) => {
+        let pitch = 60 + positiveModulo(root + interval - 60, 12);
+        while (pitch > purposeRange[1]) pitch -= 12;
+        const start = finalNote.end + step * stepDuration;
+        duetNotes.push({
+          id: `duet-${Date.now()}-${++scoreNoteSequence}`,
+          note: pitch,
+          start,
+          end: start + stepDuration * 0.82,
+          chordRoot: root,
+          chordSuffix: finalNote.chordSuffix || '',
+          technique: 'cadenza',
+          articulation: step === 2 ? 'accent' : '',
+          melodyId: finalNote.id
+        });
+      });
+    }
+    firstPartNotes.sort((left, right) => left.start - right.start);
+    duetNotes.sort((left, right) => left.start - right.start);
+    return duetNotes.length;
+  }
+
+  function handleArrangementPurposeChange() {
+    if (scoreNotes.length && !isRecording) regenerateDuetArrangement();
+  }
+
+  async function regenerateDuetArrangement() {
+    const arrangedCount = arrangeDuetScore();
+    if (!arrangedCount) return;
+    renderScore();
+    await persistScoreEdits();
+    document.getElementById('scoreStatus').innerText = `${arrangedCount}音の旋律からデュエット第2声を再編曲しました。`;
+  }
+
+  function analyzeHarmony(noteNumber) {
+    const recentNotes = noteHistory.slice(-16);
+    const pitchClasses = recentNotes.map(item => positiveModulo(item.note, 12));
+    if (!pitchClasses.length) pitchClasses.push(positiveModulo(noteNumber, 12));
+
+    let bestKey = { root: 0, mode: 'major', score: -Infinity };
+    for (let root = 0; root < 12; root++) {
+      [['major', majorScale], ['minor', minorScale]].forEach(([mode, scale]) => {
+        const score = scorePitchSet(pitchClasses, root, scale);
+        if (score > bestKey.score) bestKey = { root, mode, score };
+      });
+    }
+
+    const keyScale = bestKey.mode === 'major' ? majorScale : minorScale;
+    const keyPitchClasses = keyScale.map(interval => positiveModulo(bestKey.root + interval, 12));
+    const chordCandidates = [];
+    for (let root = 0; root < 12; root++) {
+      chordQualities.forEach(quality => {
+        const chordPitchClasses = quality.intervals.map(interval => positiveModulo(root + interval, 12));
+        let score = scorePitchSet(pitchClasses.slice(-8), root, quality.intervals);
+        if (chordPitchClasses.includes(positiveModulo(noteNumber, 12))) score += 2.8;
+        score += chordPitchClasses.filter(pitchClass => keyPitchClasses.includes(pitchClass)).length * 0.32;
+        if (keyPitchClasses.includes(root)) score += 0.55;
+        if (root === bestKey.root) score += 0.45;
+        score += functionalTransitionScore(currentAnalysis?.chordRoot, root, bestKey.root, keyScale);
+        if (currentAnalysis) {
+          const previousIntervals = currentAnalysis.chordIntervals || [0, currentAnalysis.chordSuffix === 'm' ? 3 : 4, 7];
+          const previousPitches = previousIntervals.map(interval => positiveModulo(currentAnalysis.chordRoot + interval, 12));
+          score += chordPitchClasses.filter(pitchClass => previousPitches.includes(pitchClass)).length * 0.24;
+        }
+        score -= quality.complexity;
+        chordCandidates.push({ root, suffix: quality.suffix, intervals: quality.intervals, score });
+      });
+    }
+    chordCandidates.sort((left, right) => right.score - left.score);
+    let bestChord = chordCandidates[0];
+    const currentCandidate = currentAnalysis && chordCandidates.find(candidate => (
+      candidate.root === currentAnalysis.chordRoot && candidate.suffix === currentAnalysis.chordSuffix
+    ));
+    const inputPitchClass = positiveModulo(noteNumber, 12);
+    if (currentCandidate && Date.now() - lastChordChangeTime < 650) {
+      const currentPitches = currentCandidate.intervals.map(interval => positiveModulo(currentCandidate.root + interval, 12));
+      if (currentPitches.includes(inputPitchClass) && bestChord.score - currentCandidate.score < 2.1) {
+        bestChord = currentCandidate;
+      }
+    }
+
+    const chordNotes = bestChord.intervals.map(interval => positiveModulo(bestChord.root + interval, 12));
+    const candidates = [];
+    for (let distance = 2; distance <= 11; distance++) {
+      if (chordNotes.includes(positiveModulo(noteNumber + distance, 12))) candidates.push(noteNumber + distance);
+      if (chordNotes.includes(positiveModulo(noteNumber - distance, 12))) candidates.push(noteNumber - distance);
+    }
+    if (!candidates.length) candidates.push(noteNumber + 3);
+
+    const centerPreference = noteNumber >= 72 ? -1 : noteNumber <= 55 ? 1 : 0;
+    const harmonyNote = candidates.reduce((best, candidate) => {
+      const interval = candidate - noteNumber;
+      const movement = lastHarmonyNote === null ? Math.abs(interval) * 0.12 : Math.abs(candidate - lastHarmonyNote) * 0.28;
+      const consonance = harmonyIntervalCost(interval);
+      const repetitionPenalty = harmonyVarietyPenalty(interval);
+      const chordChangeBonus = currentAnalysis && bestChord.root !== currentAnalysis.chordRoot && Math.abs(interval) >= 5 ? -0.9 : 0;
+      const registerPenalty = centerPreference && Math.sign(interval) !== centerPreference ? 1.4 : 0;
+      const rangePenalty = candidate < 48 || candidate > 84 ? 2.2 : 0;
+      const score = movement + consonance + repetitionPenalty + chordChangeBonus + registerPenalty + rangePenalty;
+      return !best || score < best.score ? { note: candidate, score } : best;
+    }, null).note;
+
+    const confidence = Math.min(99, Math.round(48 + Math.max(0, bestChord.score) * 7));
+    const previousChordName = currentAnalysis
+      ? `${noteStrings[currentAnalysis.chordRoot]}${currentAnalysis.chordSuffix}`
+      : null;
+    currentAnalysis = {
+      keyRoot: bestKey.root,
+      keyMode: bestKey.mode,
+      chordRoot: bestChord.root,
+      chordSuffix: bestChord.suffix,
+      chordIntervals: bestChord.intervals,
+      harmonyNote,
+      interval: harmonyNote - noteNumber,
+      confidence
+    };
+    detectedKeyRoot = bestKey.root;
+    detectedKeyMode = bestKey.mode;
+    const chordName = `${noteStrings[currentAnalysis.chordRoot]}${currentAnalysis.chordSuffix}`;
+    if (chordName !== previousChordName) {
+      lastChordChangeTime = Date.now();
+      chordProgression.push(chordName);
+      if (chordProgression.length > 4) chordProgression.shift();
+    }
+    lastHarmonyNote = harmonyNote;
+    lastHarmonyInterval = harmonyNote - noteNumber;
+    return currentAnalysis;
+  }
+
+  window.addEventListener('DOMContentLoaded', () => {
+    const audioPlayback = document.getElementById('audioPlayback');
+    audioPlayback.addEventListener('play', updatePlaybackButton);
+    audioPlayback.addEventListener('pause', updatePlaybackButton);
+    audioPlayback.addEventListener('ended', updatePlaybackButton);
+    audioPlayback.addEventListener('timeupdate', updatePlaybackMeter);
+    audioPlayback.addEventListener('loadedmetadata', updatePlaybackMeter);
+    audioPlayback.addEventListener('durationchange', updatePlaybackMeter);
+    checkMicrophonePermission();
+  });
+
+  async function checkMicrophonePermission() {
+    if (!navigator.permissions?.query) return;
+    try {
+      const permission = await navigator.permissions.query({ name: 'microphone' });
+      if (permission.state === 'denied') {
+        const statusText = document.getElementById('statusText');
+        statusText.innerText = 'マイクが拒否されています。ブラウザのサイト設定から許可してください';
+        statusText.classList.add('microphone-error');
+      }
+      permission.addEventListener('change', () => {
+        if (permission.state !== 'denied' && !isRunning) {
+          const statusText = document.getElementById('statusText');
+          statusText.innerText = 'マイクはオフです';
+          statusText.classList.remove('microphone-error');
+        }
+      });
+    } catch {}
+  }
+
+  function updateBluetoothStatus(message, connected = false) {
+    const status = document.getElementById('bluetoothStatus');
+    const button = document.getElementById('bluetoothBtn');
+    status.innerText = message;
+    button.innerText = connected ? "切断" : "デバイスを接続";
+  }
+
+  function handleBluetoothDisconnect() {
+    bluetoothCharacteristic = null;
+    bluetoothDevice = null;
+    updateBluetoothStatus("未接続");
+  }
+
+  async function toggleBluetooth() {
+    if (bluetoothDevice?.gatt?.connected) {
+      bluetoothDevice.gatt.disconnect();
+      return;
+    }
+
+    if (!navigator.bluetooth) {
+      updateBluetoothStatus("このブラウザはWeb Bluetoothに対応していません");
+      return;
+    }
+
+    const serviceUuid = document.getElementById('serviceUuid').value.trim();
+    const characteristicUuid = document.getElementById('characteristicUuid').value.trim();
+    if (!serviceUuid || !characteristicUuid) {
+      updateBluetoothStatus("UUIDを入力してください");
+      return;
+    }
+
+    try {
+      updateBluetoothStatus("デバイスを選択してください...");
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: [serviceUuid]
+      });
+      device.addEventListener('gattserverdisconnected', handleBluetoothDisconnect);
+
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService(serviceUuid);
+      bluetoothCharacteristic = await service.getCharacteristic(characteristicUuid);
+      bluetoothDevice = device;
+      updateBluetoothStatus(`${device.name || "BLEデバイス"} 接続中`, true);
+    } catch (error) {
+      bluetoothCharacteristic = null;
+      bluetoothDevice = null;
+      updateBluetoothStatus(error.name === 'NotFoundError' ? "接続をキャンセルしました" : "接続できませんでした。UUIDを確認してください");
+    }
+  }
+
+  async function sendBluetoothHarmony(noteNumber, harmonyFrequency, interval) {
+    if (!bluetoothCharacteristic || !bluetoothDevice?.gatt?.connected) return;
+
+    const payload = new TextEncoder().encode(`${noteNumber},${harmonyFrequency.toFixed(1)},${interval}\n`);
+    try {
+      if (bluetoothCharacteristic.properties.writeWithoutResponse) {
+        await bluetoothCharacteristic.writeValueWithoutResponse(payload);
+      } else {
+        await bluetoothCharacteristic.writeValueWithResponse(payload);
+      }
+    } catch (error) {
+      updateBluetoothStatus("データ送信に失敗しました", true);
+    }
+  }
+
+  function setHarmony(type, element) {
+    const intervals = {
+      'semitone': 1,
+      'whole': 2,
+      'minor3rd': 3,
+      'major3rd': 4,
+      'perfect4th': 5,
+      'tritone': 6,
+      'perfect5th': 7,
+      'minor6th': 8,
+      'major6th': 9,
+      'minor7th': 10,
+      'major7th': 11,
+      'octave': 12
+    };
+    currentInterval = intervals[type] || 4;
+
+    document.querySelectorAll('.grid-3 .btn-option').forEach(btn => btn.classList.remove('active'));
+    element.classList.add('active');
+    updateHarmonyDirectionStatus();
+    if (scoreNotes.length && !isRecording) regenerateDuetArrangement();
+  }
+
+  function setSimpleHarmonyMode(mode, element) {
+    stopLongHarmony(0.05);
+    simpleHarmonyMode = mode;
+    harmonyMode = mode === 'auto' ? 'auto' : 'manual';
+    if (mode !== 'auto') harmonyDirection = mode;
+    document.querySelectorAll('.duet-mode-switch .btn-option').forEach(button => button.classList.remove('active'));
+    element.classList.add('active');
+    document.getElementById('autoHarmonyPanel').hidden = false;
+    document.getElementById('manualHarmonyPanel').hidden = mode === 'auto';
+    document.querySelectorAll('.mode-switch .btn-option').forEach((button, index) => {
+      button.classList.toggle('active', index === (mode === 'auto' ? 0 : 1));
+    });
+    updateHarmonyDirectionStatus();
+    if (scoreNotes.length && !isRecording) regenerateDuetArrangement();
+  }
+
+  function setHarmonyMode(mode, element) {
+    stopLongHarmony(0.05);
+    harmonyMode = mode;
+    simpleHarmonyMode = mode === 'auto' ? 'auto' : 'custom';
+    document.querySelectorAll('.mode-switch .btn-option').forEach(button => button.classList.remove('active'));
+    element.classList.add('active');
+    document.getElementById('autoHarmonyPanel').hidden = mode !== 'auto';
+    document.getElementById('manualHarmonyPanel').hidden = mode !== 'manual';
+    document.querySelectorAll('.duet-mode-switch .btn-option').forEach((button, index) => {
+      button.classList.toggle('active', mode === 'auto' && index === 0);
+    });
+    if (scoreNotes.length && !isRecording) regenerateDuetArrangement();
+  }
+
+  function setHarmonyDirection(direction, element) {
+    harmonyDirection = direction;
+    document.querySelectorAll('.grid-direction .btn-option').forEach(btn => btn.classList.remove('active'));
+    element.classList.add('active');
+    updateHarmonyDirectionStatus();
+    if (scoreNotes.length && !isRecording) regenerateDuetArrangement();
+  }
+
+  function getHarmonyIntervals(noteNumber = null) {
+    if ((simpleHarmonyMode === 'upper' || simpleHarmonyMode === 'lower') && noteNumber !== null) {
+      return [diatonicThirdInterval(noteNumber, simpleHarmonyMode)];
+    }
+    if (harmonyMode === 'auto' && noteNumber !== null) {
+      return [analyzeHarmony(noteNumber).interval];
+    }
+    if (harmonyDirection === 'upper') return [currentInterval];
+    if (harmonyDirection === 'lower') return [-currentInterval];
+    return [-currentInterval, currentInterval];
+  }
+
+  function diatonicThirdInterval(noteNumber, direction) {
+    const keyRoot = currentAnalysis?.keyRoot ?? detectedKeyRoot;
+    const keyMode = currentAnalysis?.keyMode ?? detectedKeyMode;
+    const scale = keyMode === 'minor' ? minorScale : majorScale;
+    const pitchClassFromRoot = positiveModulo(noteNumber - keyRoot, 12);
+    const degree = scale.indexOf(pitchClassFromRoot);
+    if (degree < 0) return direction === 'upper' ? 4 : -4;
+    const degreeShift = direction === 'upper' ? 2 : -2;
+    const targetDegree = positiveModulo(degree + degreeShift, scale.length);
+    let interval = scale[targetDegree] - scale[degree];
+    if (direction === 'upper' && interval <= 0) interval += 12;
+    if (direction === 'lower' && interval >= 0) interval -= 12;
+    return interval;
+  }
+
+  function updateAnalysisDisplay(noteNumber, analysis) {
+    const keyScale = analysis.keyMode === 'major' ? majorScale : minorScale;
+    const chordQuality = chordQualities.find(quality => quality.suffix === analysis.chordSuffix) || chordQualities[0];
+    const chordPitches = chordQuality.intervals.map(interval => positiveModulo(analysis.chordRoot + interval, 12));
+    document.getElementById('chordDisplay').innerText = `${noteStrings[analysis.chordRoot]}${analysis.chordSuffix}`;
+    document.getElementById('liveChordDisplay').innerText = `${noteStrings[analysis.chordRoot]}${analysis.chordSuffix}`;
+    document.getElementById('keyDisplay').innerText = `${noteStrings[analysis.keyRoot]} ${analysis.keyMode === 'major' ? 'Major' : 'Minor'}`;
+    document.getElementById('voiceDisplay').innerText = `${analysis.interval > 0 ? '上' : '下'} ${analysis.interval > 0 ? '+' : ''}${analysis.interval}半音`;
+    document.getElementById('progressionDisplay').innerText = chordProgression.join('  →  ');
+    document.getElementById('analysisCaption').innerText = `コード適合度 ${analysis.confidence}% ・ ${noteStrings[analysis.harmonyNote % 12]}${Math.floor(analysis.harmonyNote / 12) - 1} を選択（モニター音OFF）`;
+    document.querySelectorAll('.pitch-cell').forEach((cell, pitchClass) => {
+      cell.classList.toggle('in-key', keyScale.includes(positiveModulo(pitchClass - analysis.keyRoot, 12)));
+      cell.classList.toggle('in-chord', chordPitches.includes(pitchClass));
+      cell.classList.toggle('is-input', pitchClass === positiveModulo(noteNumber, 12));
+    });
+  }
+
+  function updateHarmonyDirectionStatus() {
+    const directionLabels = { upper: '上に', lower: '下に', both: '上下に' };
+    const intervalText = harmonyDirection === 'both' ? `±${currentInterval}` : `${harmonyDirection === 'lower' ? '-' : '+'}${currentInterval}`;
+    document.getElementById('harmonyDirectionStatus').innerText = `入力音の${directionLabels[harmonyDirection]}${intervalText}半音を同等バランスで重ねます`;
+  }
+
+  // 自分の音色をキャプチャ・倍音解析する処理
+  async function sampleMyTone() {
+    const toneStatus = document.getElementById('toneStatus');
+    let tempCtx;
+    let stream;
+    try {
+      if (!navigator.mediaDevices?.getUserMedia) throw new TypeError('getUserMedia unavailable');
+      tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: false
+        }
+      });
+      const source = tempCtx.createMediaStreamSource(stream);
+      const analyser = tempCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      toneStatus.innerText = "キャプチャ中... トランペットの音を伸ばしてください";
+
+      setTimeout(() => {
+        const freqData = new Float32Array(analyser.frequencyBinCount);
+        analyser.getFloatFrequencyData(freqData);
+
+        const real = new Float32Array(16);
+        const imag = new Float32Array(16);
+        for (let i = 1; i < 16; i++) {
+          let val = Math.pow(10, freqData[i] / 20);
+          real[i] = isNaN(val) || !isFinite(val) ? 0.1 : val;
+        }
+
+        customWaveform = tempCtx.createPeriodicWave(real, imag);
+        toneStatus.innerText = "✓ My Tone の生成完了！あなたの音色が反映されます";
+        stream.getTracks().forEach(track => track.stop());
+        tempCtx.close();
+      }, 2500);
+
+    } catch (error) {
+      if (stream) stream.getTracks().forEach(track => track.stop());
+      if (tempCtx && tempCtx.state !== 'closed') await tempCtx.close();
+      toneStatus.innerText = microphoneErrorMessage(error);
+      toneStatus.classList.add('microphone-error');
+    }
+  }
+
+  // 自己相関法（Autocorrelation）による正確なピッチ検出アルゴリズム
+  function autoCorrelate(buf, sampleRate) {
+    let SIZE = buf.length;
+    let rms = 0;
+
+    for (let i = 0; i < SIZE; i++) {
+      let val = buf[i];
+      rms += val * val;
+    }
+    rms = Math.sqrt(rms / SIZE);
+    currentInputLevel = rms;
+    const now = Date.now();
+    const clearAttack = rms > 0.045 && (
+      inputWasQuiet
+      || (inputLevelBaseline > 0.025 && rms > inputLevelBaseline * 1.65)
+    );
+    if (clearAttack && now - lastArticulationTime > 120) {
+      pendingArticulation = true;
+      lastArticulationTime = now;
+      inputWasQuiet = false;
+    }
+    if (rms < 0.035) inputWasQuiet = true;
+    inputLevelBaseline += (rms - inputLevelBaseline) * (rms < inputLevelBaseline ? 0.24 : 0.045);
+    if (rms < 0.03) return -1; // ノイズフロア以下は無視
+
+    let r1 = 0, r2 = SIZE - 1, thres = 0.2;
+    for (let i = 0; i < SIZE / 2; i++) {
+      if (Math.abs(buf[i]) < thres) { r1 = i; break; }
+    }
+    for (let i = 1; i < SIZE / 2; i++) {
+      if (Math.abs(buf[SIZE - i]) < thres) { r2 = SIZE - i; break; }
+    }
+
+    buf = buf.slice(r1, r2);
+    SIZE = buf.length;
+
+    let c = new Array(SIZE).fill(0);
+    for (let i = 0; i < SIZE; i++) {
+      for (let j = 0; j < SIZE - i; j++) {
+        c[i] = c[i] + buf[j] * buf[j + i];
+      }
+    }
+
+    let d = 0;
+    while (c[d] > c[d + 1]) d++;
+    let maxval = -1, maxpos = -1;
+    for (let i = d; i < SIZE; i++) {
+      if (c[i] > maxval) {
+        maxval = c[i];
+        maxpos = i;
+      }
+    }
+    let T0 = maxpos;
+
+    let x1 = c[T0 - 1], x2 = c[T0], x3 = c[T0 + 1];
+    let a = (x1 + x3 - 2 * x2) / 2;
+    let b = (x3 - x1) / 2;
+    if (a) T0 = T0 - b / (2 * a);
+
+    return sampleRate / T0;
+  }
+
+  // 周波数をノートナンバーに変換（基準：442Hz）
+  function noteFromFrequency(frequency) {
+    const noteNum = 12 * (Math.log(frequency / A4_FREQ) / Math.log(2));
+    return Math.round(noteNum) + 69;
+  }
+
+  function stopLongHarmony(releaseSeconds = 0.12) {
+    if (!audioCtx || !activeHarmonyVoices.length) return;
+    const now = audioCtx.currentTime;
+    activeHarmonyVoices.forEach(({ oscillator, gainNode }) => {
+      gainNode.gain.cancelScheduledValues(now);
+      gainNode.gain.setTargetAtTime(0.0001, now, Math.max(0.015, releaseSeconds / 3));
+      oscillator.stop(now + releaseSeconds + 0.08);
+    });
+    activeHarmonyVoices = [];
+    activeHarmonySignature = '';
+  }
+
+  // 入力音が続く間、解析結果のハーモニーをロングトーンで維持する
+  function updateLongHarmony(inputFreq, intervals) {
+    if (!audioCtx || harmonyMode !== 'manual' || !intervals.length) {
+      stopLongHarmony(0.05);
+      return;
+    }
+
+    const now = audioCtx.currentTime;
+    const signature = intervals.join(',');
+    const voiceBalance = 1 / Math.sqrt(intervals.length);
+    smoothedHarmonyLevel += (currentInputLevel - smoothedHarmonyLevel) * (currentInputLevel < smoothedHarmonyLevel ? 0.16 : 0.06);
+    const matchedInputGain = Math.max(0.025, Math.min(0.1, smoothedHarmonyLevel));
+
+    if (signature !== activeHarmonySignature) {
+      stopLongHarmony(0.08);
+      activeHarmonySignature = signature;
+      activeHarmonyVoices = intervals.map((interval) => {
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        if (customWaveform) oscillator.setPeriodicWave(customWaveform);
+        else oscillator.type = 'triangle';
+
+        gainNode.gain.setValueAtTime(0.0001, now);
+        gainNode.gain.setTargetAtTime(matchedInputGain * voiceBalance, now, 0.045);
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.start(now);
+        return { oscillator, gainNode, interval };
+      });
+    }
+
+    const responsiveGain = matchedInputGain * voiceBalance;
+    activeHarmonyVoices.forEach(({ oscillator, gainNode, interval }) => {
+      const harmonyFreq = inputFreq * Math.pow(2, interval / 12);
+      oscillator.frequency.setTargetAtTime(harmonyFreq, now, 0.025);
+      gainNode.gain.setTargetAtTime(responsiveGain, now, 0.06);
+    });
+  }
+
+  function stopRecording() {
+    if (!isRecording) return;
+    closeRecordedNote();
+    recordingDurationSeconds = Math.max(0, (Date.now() - recordingStartedAt) / 1000);
+    isRecording = false;
+    firstPartNotes = scoreNotes.map(note => ({ ...note }));
+    duetNotes = [];
+    renderScore();
+    document.getElementById('arrangeDuetButton').hidden = !scoreNotes.length;
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      document.getElementById('scoreStatus').innerText += ' 音声を保存中...';
+    }
+    const recBtn = document.getElementById('recBtn');
+    recBtn.innerText = "録音＆採譜スタート";
+    recBtn.classList.remove('recording');
+    lockRecordingSettings(false);
+    resetBeatGuide();
+  }
+
+  function clearMicrophoneAutoOffTimer() {
+    if (microphoneAutoOffTimer) clearTimeout(microphoneAutoOffTimer);
+    microphoneAutoOffTimer = null;
+  }
+
+  function restartMicrophoneAutoOffTimer() {
+    clearMicrophoneAutoOffTimer();
+    if (!isRunning) return;
+    const minutes = Math.max(1, Number(document.getElementById('microphoneAutoOffMinutes').value) || 10);
+    microphoneAutoOffTimer = setTimeout(async () => {
+      microphoneAutoOffTimer = null;
+      if (!isRunning) return;
+      await turnMicrophoneOff();
+      document.getElementById('statusText').innerText = `${minutes}分経過したためマイクを自動でオフにしました`;
+    }, minutes * 60 * 1000);
+  }
+
+  async function turnMicrophoneOff() {
+    const micBtn = document.getElementById('micBtn');
+    const recBtn = document.getElementById('recBtn');
+    const pitchDisplay = document.getElementById('pitchDisplay');
+    const statusText = document.getElementById('statusText');
+    const flowWave = document.getElementById('flowWave');
+
+    clearMicrophoneAutoOffTimer();
+    isRunning = false;
+    countInProgress = false;
+    stopRecording();
+    resetBeatGuide();
+    stopLongHarmony(0.05);
+    if (micStream) micStream.getTracks().forEach(track => track.stop());
+    if (audioCtx && audioCtx.state !== 'closed') await audioCtx.close();
+    micStream = null;
+    audioCtx = null;
+    micBtn.innerText = "マイクをオン";
+    micBtn.classList.remove('microphone-on');
+    micBtn.setAttribute('aria-pressed', 'false');
+    recBtn.disabled = false;
+    pitchDisplay.innerText = "--";
+    statusText.innerText = "マイクはオフです";
+    statusText.classList.remove('microphone-error');
+    flowWave.classList.remove('animating');
+    lastTriggeredPitch = null;
+    lastSoundTime = 0;
+    lastHarmonyNote = null;
+    lastHarmonyInterval = null;
+    lastChordChangeTime = 0;
+    currentAnalysis = null;
+    noteHistory.length = 0;
+    chordProgression.length = 0;
+  }
+
+  function microphoneErrorMessage(error) {
+    const messages = {
+      NotAllowedError: 'マイクが拒否されています。アドレスバーのサイト設定でマイクを許可してください',
+      NotFoundError: '使用できるマイクが見つかりません。入力機器の接続を確認してください',
+      NotReadableError: 'マイクを使用できません。他の録音アプリを閉じて再試行してください',
+      AbortError: 'マイクの起動が中断されました。もう一度押してください',
+      SecurityError: '安全な接続でないためマイクを使用できません',
+      TypeError: 'このブラウザではマイク入力を利用できません'
+    };
+    return messages[error?.name] || `マイクを開始できません (${error?.name || '不明なエラー'})`;
+  }
+
+  async function toggleMicrophone() {
+    const micBtn = document.getElementById('micBtn');
+    const recBtn = document.getElementById('recBtn');
+    const statusText = document.getElementById('statusText');
+    const flowWave = document.getElementById('flowWave');
+
+    if (!isRunning) {
+      micBtn.disabled = true;
+      statusText.innerText = "マイクの許可を待っています...";
+      statusText.classList.remove('microphone-error');
+      try {
+        if (!navigator.mediaDevices?.getUserMedia) throw new TypeError('getUserMedia unavailable');
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        micStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: false,
+            noiseSuppression: false,
+            autoGainControl: false
+          }
+        });
+        
+        const source = audioCtx.createMediaStreamSource(micStream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(analyser);
+
+        micBtn.innerText = "マイクをオフ";
+        micBtn.classList.add('microphone-on');
+        micBtn.setAttribute('aria-pressed', 'true');
+        recBtn.disabled = false;
+        flowWave.classList.add('animating');
+        statusText.innerText = "マイク入力を解析中... (A4 = 442Hz)";
+        statusText.classList.remove('microphone-error');
+        isRunning = true;
+        restartMicrophoneAutoOffTimer();
+
+        const buf = new Float32Array(2048);
+        
+        function processAudio() {
+          if (!isRunning) return;
+          analyser.getFloatTimeDomainData(buf);
+          
+          const freq = autoCorrelate(buf, audioCtx.sampleRate);
+
+          if (freq !== -1 && freq > 100 && freq < 2000) {
+            const noteNum = noteFromFrequency(freq);
+            const noteName = noteStrings[noteNum % 12];
+            const octave = Math.floor(noteNum / 12) - 1;
+
+            pitchDisplay.innerText = `${noteName}${octave} (${Math.round(freq)}Hz)`;
+
+            const nowTime = Date.now();
+            lastSoundTime = nowTime;
+            if (pendingDetectedPitch !== noteNum) {
+              pendingDetectedPitch = noteNum;
+              pendingPitchSince = nowTime;
+            }
+            const responseMilliseconds = Number(document.getElementById('detectionResponse').value) || 160;
+            const stablePitch = nowTime - pendingPitchSince >= responseMilliseconds;
+            if (stablePitch && (lastTriggeredPitch !== noteNum || nowTime - lastTriggerTime > Math.max(220, responseMilliseconds))) {
+              const detectionTimestamp = lastTriggeredPitch === noteNum ? nowTime : pendingPitchSince;
+              rememberPitch(noteNum, detectionTimestamp);
+              const articulated = pendingArticulation;
+              pendingArticulation = false;
+              recordScorePitch(noteNum, detectionTimestamp, articulated);
+              lastTriggeredPitch = noteNum;
+              lastTriggerTime = nowTime;
+            }
+          } else {
+            pitchDisplay.innerText = "--";
+            if (lastSoundTime && Date.now() - lastSoundTime > 250) {
+              pendingDetectedPitch = null;
+              pendingPitchSince = 0;
+              stopLongHarmony();
+              if (isRecording) closeRecordedNote();
+            }
+          }
+          requestAnimationFrame(processAudio);
+        }
+        processAudio();
+
+      } catch (err) {
+        clearMicrophoneAutoOffTimer();
+        if (micStream) micStream.getTracks().forEach(track => track.stop());
+        if (audioCtx && audioCtx.state !== 'closed') await audioCtx.close();
+        micStream = null;
+        audioCtx = null;
+        statusText.innerText = microphoneErrorMessage(err);
+        statusText.classList.add('microphone-error');
+      } finally {
+        micBtn.disabled = false;
+      }
+    } else {
+      await turnMicrophoneOff();
+    }
+  }
+
+  async function toggleRecording() {
+    const recBtn = document.getElementById('recBtn');
+    const audioPlayback = document.getElementById('audioPlayback');
+
+    if (countInProgress) {
+      countInProgress = false;
+      recBtn.innerText = '録音＆採譜スタート';
+      recBtn.classList.remove('recording');
+      document.getElementById('scoreStatus').innerText = 'カウントインを中止しました。';
+      lockRecordingSettings(false);
+      resetBeatGuide();
+      return;
+    }
+
+    if (!isRecording) {
+      if (!await chooseRecordingDestination()) {
+        document.getElementById('scoreStatus').innerText = '録音を開始せず、保存先の選択を中止しました。';
+        return;
+      }
+      if (!micStream?.active) await toggleMicrophone();
+      if (!micStream?.active) {
+        document.getElementById('scoreStatus').innerText = 'マイクを開始できません。画面のマイク設定メッセージを確認してください。';
+        return;
+      }
+      recordedChunks = [];
+      recordedBytes = 0;
+      stopPlaybackHarmony();
+      audioPlayback.pause();
+      recordingDurationSeconds = 0;
+      scoreNotes = [];
+      firstPartNotes = [];
+      duetNotes = [];
+      selectedScoreNoteId = null;
+      selectedScoreVoice = 'original';
+      scoreEditHistory = [];
+      document.getElementById('scoreEditTools').hidden = true;
+      document.getElementById('arrangeDuetButton').hidden = true;
+      activeRecordedNote = null;
+      transposeSemitones = 0;
+      document.getElementById('transposeValue').innerText = 'B♭管 +2';
+      document.getElementById('scoreSvg').innerHTML = '';
+      document.getElementById('scoreStatus').innerText = '録音・コード解析中です。検出音は鳴りません。';
+      try {
+        const preferredTypes = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm'];
+        const mimeType = preferredTypes.find(type => MediaRecorder.isTypeSupported?.(type));
+        mediaRecorder = mimeType ? new MediaRecorder(micStream, { mimeType }) : new MediaRecorder(micStream);
+      } catch (error) {
+        document.getElementById('scoreStatus').innerText = '音声録音を開始できません。ブラウザの録音対応を確認してください。';
+        return;
+      }
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunks.push(event.data);
+          recordedBytes += event.data.size;
+          if (isRecording) {
+            const elapsedSeconds = Math.max(0, (Date.now() - recordingStartedAt) / 1000);
+            document.getElementById('scoreStatus').innerText = `録音・解析中 ${elapsedSeconds.toFixed(1)}秒 / ${(recordedBytes / 1024).toFixed(1)}KB`;
+          }
+        }
+      };
+      mediaRecorder.onstop = async () => {
+        const durationSeconds = recordingDurationSeconds || Math.max(0, (Date.now() - recordingStartedAt) / 1000);
+        recordingDurationSeconds = durationSeconds;
+        const wavBlob = wavRecordingBlob();
+        const mediaBlob = recordedChunks.length && recordedBytes > 0
+          ? new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+          : null;
+        const blob = wavBlob || mediaBlob;
+        stopPcmCapture();
+        if (blob?.size) {
+          const liveNoteCount = finalizedScoreNotes().length;
+          let recordedAudioNoteCount = 0;
+          document.getElementById('scoreStatus').innerText = '録音音声を再解析して記譜中です...';
+          try {
+            recordedAudioNoteCount = await transcribeRecordedBlob(blob);
+          } catch (error) {
+            firstPartNotes = scoreNotes.map(note => ({ ...note }));
+            duetNotes = [];
+            renderScore();
+          }
+          if (recordingObjectUrl) URL.revokeObjectURL(recordingObjectUrl);
+          recordingObjectUrl = URL.createObjectURL(blob);
+          audioPlayback.src = recordingObjectUrl;
+          audioPlayback.load();
+          audioPlayback.style.display = 'block';
+          document.getElementById('playbackOptions').hidden = false;
+          document.getElementById('playbackMeter').hidden = false;
+          document.getElementById('arrangeDuetButton').hidden = false;
+          updatePlaybackMeter();
+          try {
+            const savedName = await saveLatestRecording(blob);
+            const analysisLabel = recordedAudioNoteCount
+              ? `録音音声から${recordedAudioNoteCount}音を再解析`
+              : `リアルタイム検出${liveNoteCount}音を使用`;
+            document.getElementById('scoreStatus').innerText = `${analysisLabel}し、${savedName} に録音を保存しました（${durationSeconds.toFixed(1)}秒 / ${(blob.size / 1024).toFixed(1)}KB）。`;
+          } catch (error) {
+            document.getElementById('scoreStatus').innerText = `録音は再生できますが、指定した場所への保存に失敗しました（${(blob.size / 1024).toFixed(1)}KB）。`;
+          }
+        } else {
+          const previousRecordingAvailable = Boolean(audioPlayback.src);
+          document.getElementById('scoreStatus').innerText = previousRecordingAvailable
+            ? '新しい音声データが空でした。直前の録音はそのまま再生できます。'
+            : '音声データが空でした。入力機器とブラウザの録音権限を確認してください。';
+        }
+      };
+      mediaRecorder.onerror = () => {
+        isRecording = false;
+        recBtn.innerText = '録音＆採譜スタート';
+        recBtn.classList.remove('recording');
+        lockRecordingSettings(false);
+        document.getElementById('scoreStatus').innerText = '音声保存に失敗しました。採譜データはそのまま利用できます。';
+      };
+      const rhythmSettings = scoreRhythmSettings();
+      lockRecordingSettings(true);
+      recBtn.innerText = 'カウントイン中止';
+      recBtn.classList.add('recording');
+      const countInBeats = Math.round(rhythmSettings.numerator * rhythmSettings.countInMeasures);
+      document.getElementById('scoreStatus').innerText = countInBeats
+        ? `サイレント予備カウント中です。画面の拍表示を見て、${countInBeats}拍後に演奏を始めてください。`
+        : '予備カウントなしで録音を開始します。';
+      const countInCompleted = await runVisualCountIn(rhythmSettings);
+      if (!countInCompleted) return;
+      const liveAudioTracks = micStream.getAudioTracks().filter(track => track.readyState === 'live');
+      if (!liveAudioTracks.length) {
+        lockRecordingSettings(false);
+        recBtn.innerText = '録音＆採譜スタート';
+        recBtn.classList.remove('recording');
+        document.getElementById('scoreStatus').innerText = '録音入力が切断されています。マイクをオフにしてから再接続してください。';
+        return;
+      }
+      try {
+        recordingStartedAt = Date.now();
+        await startPcmCapture(micStream);
+        mediaRecorder.start();
+        if (mediaRecorder.state !== 'recording') throw new Error('Recorder did not start');
+      } catch (error) {
+        stopPcmCapture();
+        lockRecordingSettings(false);
+        recBtn.innerText = '録音＆採譜スタート';
+        recBtn.classList.remove('recording');
+        document.getElementById('scoreStatus').innerText = `録音を開始できませんでした（${error.name || '録音機能エラー'}）。マイクを再接続してください。`;
+        return;
+      }
+      recBtn.innerText = "録音を停止・採譜";
+      recBtn.classList.add('recording');
+      isRecording = true;
+      startRecordingBeatGuide(rhythmSettings);
+      document.getElementById('scoreStatus').innerText = '録音・音高解析中です。クリック音は鳴らず、画面だけで拍を案内します。';
+    } else {
+      stopRecording();
+    }
+  }
+</script>
+
+</body>
+</html>

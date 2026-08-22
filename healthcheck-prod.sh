@@ -109,14 +109,14 @@ if [[ "$response_body" == *'"enabled":true'* ]]; then
 fi
 pass "GET /api/store/product"
 
-request "GET" "${BASE_URL}/api/store/flow-harmony/product"
+request "GET" "${BASE_URL}/api/store/trumpet-transpose-lab/product"
 if [[ "$status_code" != "200" ]]; then
-  fail "GET /api/store/flow-harmony/product returned HTTP ${status_code}: ${response_body}"
+  fail "GET /api/store/trumpet-transpose-lab/product returned HTTP ${status_code}: ${response_body}"
 fi
 if [[ "$response_body" != *'"enabled":false'* || "$response_body" != *'"checkout_available":false'* ]]; then
-  fail "Flow Harmony is not in unpublished mode: ${response_body}"
+  fail "Trumpet Transpose Lab is not in unpublished mode: ${response_body}"
 fi
-pass "GET /api/store/flow-harmony/product"
+pass "GET /api/store/trumpet-transpose-lab/product"
 
 if [[ -z "$STORE_HEALTH_EDITOR_PASSWORD" ]]; then
   fail "STORE_HEALTH_EDITOR_PASSWORD is unset"

@@ -143,13 +143,13 @@ read_visible stripe_price_id "STRIPE_METRONOME_PRICE_ID（Enterで既存値を�
 stripe_price_id="${stripe_price_id:-$current_stripe_price_id}"
 [[ "$stripe_price_id" == price_* ]] || fail "Price IDはprice_から始まる値を入力してください。"
 
-print_header "3/7 Flow Harmony Stripe Price ID"
+print_header "3/7 Trumpet Transpose Lab Stripe Price ID"
 print -r -- 'Stripe Dashboardの「商品カタログ」で、1000円・JPY・1回払いの価格を開いて取得します。
 入力する値は price_ から始まります。メトロノームとは別のPrice IDを指定してください。'
 read_visible flow_harmony_price_id "STRIPE_FLOW_HARMONY_PRICE_ID（Enterで既存値を保持）: "
 flow_harmony_price_id="${flow_harmony_price_id:-$current_flow_harmony_price_id}"
-[[ "$flow_harmony_price_id" == price_* ]] || fail "Flow HarmonyのPrice IDはprice_から始まる値を入力してください。"
-[[ "$flow_harmony_price_id" != "$stripe_price_id" ]] || fail "Flow Harmonyにはメトロノームとは別のPrice IDを入力してください。"
+[[ "$flow_harmony_price_id" == price_* ]] || fail "Trumpet Transpose LabのPrice IDはprice_から始まる値を入力してください。"
+[[ "$flow_harmony_price_id" != "$stripe_price_id" ]] || fail "Trumpet Transpose Labにはメトロノームとは別のPrice IDを入力してください。"
 
 print_header "4/7 Webhook署名シークレット"
 print -r -- '通常は何も入力せずEnterを押してください。
@@ -252,7 +252,7 @@ if not metronome_price_valid:
   print("Stripe Priceが500円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
   raise SystemExit(1)
 if not flow_harmony_price_valid:
-  print("Flow HarmonyのStripe Priceが1000円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
+  print("Trumpet Transpose LabのStripe Priceが1000円・JPY・一回払い・同一モードではありません。", file=sys.stderr)
   raise SystemExit(1)
 if not webhook_valid:
   print(f"Webhookを有効化できませんでした: {target}", file=sys.stderr)
@@ -275,7 +275,7 @@ printf 'Stripe接続確認: OK\n'
 print_header "保存前の確認"
 printf 'モード                 : %s\n' "$stripe_mode"
 printf 'メトロノーム販売価格   : 500円（JPY・1回払い）\n'
-printf 'Flow Harmony販売価格   : 1000円（JPY・1回払い）\n'
+printf 'Trumpet Transpose Lab販売価格: 1000円（JPY・1回払い）\n'
 printf '公開サイト             : %s\n' "$public_site_url"
 printf 'Stripe秘密値           : 入力済み（非表示）\n'
 printf '管理者パスワード       : 入力済み（非表示）\n'

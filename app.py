@@ -46,9 +46,10 @@ PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
 PRODUCT_PRICE_YEN = 500
 PRODUCT_REQUIRED_FILES = {"index.html", "README.txt"}
-FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zip"
-FLOW_HARMONY_PRODUCT_ID = "flow-harmony"
-FLOW_HARMONY_PRODUCT_NAME = "Flow Harmony オフライン版"
+FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-transpose-lab.zip"
+FLOW_HARMONY_PRODUCT_ID = "trumpet-transpose-lab"
+FLOW_HARMONY_LEGACY_PRODUCT_ID = "flow-harmony"
+FLOW_HARMONY_PRODUCT_NAME = "Trumpet Transpose Lab オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
 FLOW_HARMONY_SALES_ENABLED = True
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
@@ -1614,7 +1615,7 @@ def create_app(
                 )
             )
         except Exception:
-            app.logger.error("Flow Harmony Stripe price readiness check failed")
+            app.logger.error("Trumpet Transpose Lab Stripe price readiness check failed")
             return False
 
     def retrieve_flow_harmony_checkout(session_id, configuration):
@@ -1622,18 +1623,25 @@ def create_app(
             session_id,
             expand=["payment_intent.latest_charge"],
         )
-        if not checkout_payment_is_valid(
-            checkout,
-            configuration["price_yen"],
-            configuration["stripe_mode"] == "live",
-            FLOW_HARMONY_PRODUCT_ID,
-        ):
+        valid_product = any(
+            checkout_payment_is_valid(
+                checkout,
+                configuration["price_yen"],
+                configuration["stripe_mode"] == "live",
+                product_id,
+            )
+            for product_id in (
+                FLOW_HARMONY_PRODUCT_ID,
+                FLOW_HARMONY_LEGACY_PRODUCT_ID,
+            )
+        )
+        if not valid_product:
             return None
         return checkout
 
     def personalized_flow_harmony_product(session_id):
         license_text = (
-            "Flow Harmony オフライン版 利用ライセンス\n\n"
+            "Trumpet Transpose Lab オフライン版 利用ライセンス\n\n"
             "本商品は購入者本人のみ利用できます。第三者への譲渡、共有、再配布、\n"
             "販売、公衆送信を禁止します。購入者本人が所有する複数端末では利用できます。\n\n"
             f"購入参照ID: {purchase_reference(session_id)}\n"
@@ -1742,11 +1750,16 @@ def create_app(
     def download_guide():
         return render_template("download-guide/index.html")
 
-    @app.get("/flow-harmony/")
-    def flow_harmony():
-        response = make_response(render_template("flow-harmony/index.html"))
+    @app.get("/trumpet-transpose-lab/")
+    def trumpet_transpose_lab():
+        response = make_response(render_template("trumpet-transpose-lab/index.html"))
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return response
+
+    @app.get("/flow-harmony/")
+    def flow_harmony_legacy_redirect():
+        query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""
+        return redirect(f"/trumpet-transpose-lab/{query}", code=308)
 
     @app.get("/contract-generator/")
     def contract_generator():
@@ -2034,6 +2047,7 @@ def create_app(
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
+    @app.get("/api/store/trumpet-transpose-lab/product")
     @app.get("/api/store/flow-harmony/product")
     def flow_harmony_store_product():
         configuration = flow_harmony_configuration()
@@ -2049,6 +2063,9 @@ def create_app(
             }
         )
 
+    @app.route(
+        "/api/store/trumpet-transpose-lab/checkout", methods=["POST", "OPTIONS"]
+    )
     @app.route("/api/store/flow-harmony/checkout", methods=["POST", "OPTIONS"])
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
@@ -2083,18 +2100,18 @@ def create_app(
                 },
                 success_url=(
                     f"{configuration['site_url']}/products/?flow_purchase=success"
-                    "&flow_session_id={CHECKOUT_SESSION_ID}#flow-harmony"
+                    "&flow_session_id={CHECKOUT_SESSION_ID}#trumpet-transpose-lab"
                 ),
                 cancel_url=(
                     f"{configuration['site_url']}/products/"
-                    "?flow_purchase=cancelled#flow-harmony"
+                    "?flow_purchase=cancelled#trumpet-transpose-lab"
                 ),
                 idempotency_key=(
                     f"{FLOW_HARMONY_PRODUCT_ID}:{checkout_request_id}"
                 ),
             )
         except Exception as exc:
-            app.logger.exception("Flow Harmony Checkout session creation failed")
+            app.logger.exception("Trumpet Transpose Lab Checkout session creation failed")
             return store_json(
                 {
                     "error": "決済画面を開始できませんでした。",
@@ -2104,6 +2121,9 @@ def create_app(
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
+    @app.route(
+        "/api/store/trumpet-transpose-lab/download-link", methods=["POST", "OPTIONS"]
+    )
     @app.route(
         "/api/store/flow-harmony/download-link", methods=["POST", "OPTIONS"]
     )
@@ -2125,7 +2145,7 @@ def create_app(
         try:
             checkout = retrieve_flow_harmony_checkout(session_id, configuration)
         except Exception:
-            app.logger.exception("Flow Harmony payment verification failed")
+            app.logger.exception("Trumpet Transpose Lab payment verification failed")
             return store_json({"error": "決済情報を確認できませんでした。"}, 502)
         if checkout is None:
             return store_json({"error": "支払いの完了を確認できません。"}, 403)
@@ -2135,12 +2155,13 @@ def create_app(
         return store_json(
             {
                 "download_url": (
-                    f"{request.url_root.rstrip('/')}/api/store/flow-harmony/download/{token}"
+                    f"{request.url_root.rstrip('/')}/api/store/trumpet-transpose-lab/download/{token}"
                 ),
                 "expires_in": 86400,
             }
         )
 
+    @app.get("/api/store/trumpet-transpose-lab/download/<token>")
     @app.get("/api/store/flow-harmony/download/<token>")
     def download_flow_harmony_product(token):
         serializer = download_serializer()
@@ -2152,14 +2173,17 @@ def create_app(
             return store_json({"error": "ダウンロード期限が切れました。"}, 410)
         except BadSignature:
             return store_json({"error": "ダウンロードURLが正しくありません。"}, 403)
-        if payload.get("product_id") != FLOW_HARMONY_PRODUCT_ID:
+        if payload.get("product_id") not in {
+            FLOW_HARMONY_PRODUCT_ID,
+            FLOW_HARMONY_LEGACY_PRODUCT_ID,
+        }:
             return store_json({"error": "商品が見つかりません。"}, 404)
         session_id = str(payload.get("session_id", "")).strip()
         configuration = flow_harmony_configuration()
         try:
             checkout = retrieve_flow_harmony_checkout(session_id, configuration)
         except Exception:
-            app.logger.exception("Flow Harmony payment revalidation failed")
+            app.logger.exception("Trumpet Transpose Lab payment revalidation failed")
             return store_json({"error": "決済情報を再確認できませんでした。"}, 502)
         if checkout is None:
             return store_json({"error": "現在この商品をダウンロードできません。"}, 403)
@@ -2168,7 +2192,7 @@ def create_app(
         response = send_file(
             personalized_flow_harmony_product(session_id),
             as_attachment=True,
-            download_name="flow-harmony-offline.zip",
+            download_name="trumpet-transpose-lab-offline.zip",
             mimetype="application/zip",
             conditional=True,
         )
