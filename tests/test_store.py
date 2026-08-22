@@ -209,9 +209,15 @@ class StoreTest(unittest.TestCase):
 
     def test_flow_harmony_free_version_is_available(self):
         response = self.client.get("/flow-harmony/?mode=free")
+        html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("Fiow Harmony（フロー・ハーモニー）", response.get_data(as_text=True))
+        self.assertIn("Fiow Harmony（フロー・ハーモニー）", html)
+        self.assertIn('id="selectedNoteDuration"', html)
+        self.assertIn("changeSelectedNoteDuration", html)
+        self.assertIn("showSaveFilePicker", html)
+        self.assertIn("保存先を選んでWAV保存", html)
+        self.assertNotIn("indexedDB", html)
         self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
         self.assertEqual(self.client.get("/flow-harmony/index.html").status_code, 404)
 

@@ -691,6 +691,17 @@
       padding: 7px 10px;
     }
 
+    .score-edit-tools select {
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #0d1011;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 0.72rem;
+    }
+
     .score-edit-tools span {
       color: var(--text-muted);
       font-size: 0.7rem;
@@ -1383,7 +1394,7 @@
       <input id="playbackProgress" type="range" min="0" max="1" step="0.01" value="0" aria-label="録音の再生位置" oninput="seekPlayback(this.value)">
       <span id="playbackTime">0:00 / 0:00</span>
       <div class="recording-actions">
-        <button class="btn-tone" type="button" onclick="downloadRecording()">WAVダウンロード</button>
+        <button class="btn-tone" type="button" onclick="downloadRecording()">保存先を選んでWAV保存</button>
         <label>再生速度
           <select id="playbackRate" onchange="changePlaybackRate(this.value)">
             <option value="0.5">0.5倍</option>
@@ -1393,7 +1404,7 @@
             <option value="1.5">1.5倍</option>
           </select>
         </label>
-        <button class="btn-tone" type="button" onclick="deleteLatestRecording()">録音を削除</button>
+        <button class="btn-tone" type="button" onclick="deleteLatestRecording()">録音を閉じる</button>
       </div>
     </div>
   </div>
@@ -1416,6 +1427,20 @@
     </div>
     <div class="score-edit-tools" id="scoreEditTools" hidden>
       <span id="selectedNoteStatus">音符を選択</span>
+      <label>
+        <span>音の長さ</span>
+        <select id="selectedNoteDuration" onchange="changeSelectedNoteDuration(this.value)" disabled>
+          <option value="4">全音符</option>
+          <option value="3">付点2分音符</option>
+          <option value="2">2分音符</option>
+          <option value="1.5">付点4分音符</option>
+          <option value="1">4分音符</option>
+          <option value="0.75">付点8分音符</option>
+          <option value="0.5">8分音符</option>
+          <option value="0.375">付点16分音符</option>
+          <option value="0.25">16分音符</option>
+        </select>
+      </label>
       <button class="btn-tone" id="undoScoreEditButton" type="button" onclick="undoScoreEdit()" disabled>元に戻す</button>
       <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(0, -1)" aria-label="音符を左へ移動">←</button>
       <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(1, 0)" aria-label="音符を半音上へ移動">↑</button>
@@ -1433,9 +1458,6 @@
 </div>
 
 <script>
-  const RECORDING_DATABASE_NAME = 'flowHarmonyRecordings';
-  const RECORDING_STORE_NAME = 'recordings';
-  const LATEST_RECORDING_KEY = 'latest';
   let audioCtx;
   let micStream;
   let microphoneAutoOffTimer = null;
@@ -1451,6 +1473,9 @@
   let pcmCaptureChunks = [];
   let pcmCaptureSampleRate = 44100;
   let recordingObjectUrl = '';
+  let currentRecordingBlob = null;
+  let recordingFileHandle = null;
+  let recordingFilename = 'flow-harmony-recording.wav';
   let recordingStartedAt = 0;
   let recordingDurationSeconds = 0;
   let detectedKeyRoot = 0;
@@ -1519,17 +1544,38 @@
     { suffix: 'dim', intervals: [0, 3, 6], complexity: 0.55 }
   ];
 
-  function openRecordingDatabase() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(RECORDING_DATABASE_NAME, 1);
-      request.onupgradeneeded = () => {
-        if (!request.result.objectStoreNames.contains(RECORDING_STORE_NAME)) {
-          request.result.createObjectStore(RECORDING_STORE_NAME);
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+  function recordingFilenameForNow() {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    return `flow-harmony-${timestamp}.wav`;
+  }
+
+  async function chooseRecordingDestination() {
+    recordingFilename = recordingFilenameForNow();
+    recordingFileHandle = null;
+    if (!window.showSaveFilePicker) return true;
+    try {
+      recordingFileHandle = await window.showSaveFilePicker({
+        suggestedName: recordingFilename,
+        types: [{ description: 'WAV音声', accept: { 'audio/wav': ['.wav'] } }]
+      });
+      recordingFilename = recordingFileHandle.name;
+      return true;
+    } catch (error) {
+      if (error?.name === 'AbortError') return false;
+      return true;
+    }
+  }
+
+  async function writeRecordingToDestination(blob) {
+    currentRecordingBlob = blob;
+    if (recordingFileHandle) {
+      const writable = await recordingFileHandle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      return recordingFileHandle.name;
+    }
+    downloadFile(blob, recordingFilename);
+    return recordingFilename;
   }
 
   async function startPcmCapture(stream) {
@@ -1812,7 +1858,9 @@
       document.getElementById('playbackOptions').hidden = false;
       document.getElementById('playbackMeter').hidden = false;
       document.getElementById('arrangeDuetButton').hidden = false;
-      await saveLatestRecording(file);
+      currentRecordingBlob = file;
+      recordingFileHandle = null;
+      recordingFilename = file.name;
       updatePlaybackMeter();
       status.innerText = `${file.name} から${count}音を解析し、デュエット編曲譜を作成しました。`;
     } catch (error) {
@@ -1837,61 +1885,16 @@
   }
 
   async function saveLatestRecording(blob) {
-    const database = await openRecordingDatabase();
-    const rhythm = scoreRhythmSettings();
-    const recording = {
-      blob,
-      scoreNotes: scoreNotes.map(note => ({ ...note })),
-      firstPartNotes: firstPartNotes.map(note => ({ ...note })),
-      duetNotes: duetNotes.map(note => ({ ...note })),
-      rhythm: {
-        numerator: rhythm.numerator,
-        denominator: rhythm.denominator,
-        tempo: rhythm.tempo,
-        countInMeasures: rhythm.countInMeasures,
-        pickupBeats: rhythm.pickupBeats,
-        division: rhythm.division,
-        keySignature: document.getElementById('keySignature').value,
-        detectedKeyRoot,
-        detectedKeyMode,
-        detectionResponse: document.getElementById('detectionResponse').value,
-        performanceLag: document.getElementById('performanceLag').value,
-        autoTempoDetection: document.getElementById('autoTempoDetection').value,
-        arrangementPurpose: document.getElementById('arrangementPurpose').value,
-        transposeSemitones
-      },
-      durationSeconds: recordingDurationSeconds,
-      savedAt: Date.now()
-    };
-    await new Promise((resolve, reject) => {
-      const transaction = database.transaction(RECORDING_STORE_NAME, 'readwrite');
-      transaction.objectStore(RECORDING_STORE_NAME).put(recording, LATEST_RECORDING_KEY);
-      transaction.oncomplete = resolve;
-      transaction.onerror = () => reject(transaction.error);
-    });
-    database.close();
+    return writeRecordingToDestination(blob);
   }
 
   async function readLatestRecording() {
-    const database = await openRecordingDatabase();
-    const recording = await new Promise((resolve, reject) => {
-      const request = database.transaction(RECORDING_STORE_NAME).objectStore(RECORDING_STORE_NAME).get(LATEST_RECORDING_KEY);
-      request.onsuccess = () => resolve(request.result || null);
-      request.onerror = () => reject(request.error);
-    });
-    database.close();
-    return recording;
+    return currentRecordingBlob ? { blob: currentRecordingBlob } : null;
   }
 
   async function deleteStoredRecording() {
-    const database = await openRecordingDatabase();
-    await new Promise((resolve, reject) => {
-      const transaction = database.transaction(RECORDING_STORE_NAME, 'readwrite');
-      transaction.objectStore(RECORDING_STORE_NAME).delete(LATEST_RECORDING_KEY);
-      transaction.oncomplete = resolve;
-      transaction.onerror = () => reject(transaction.error);
-    });
-    database.close();
+    currentRecordingBlob = null;
+    recordingFileHandle = null;
   }
 
   function ensureScoreNoteIds(notes) {
@@ -1899,79 +1902,7 @@
   }
 
   async function persistScoreEdits() {
-    const recording = await readLatestRecording();
-    if (!recording) return;
-    recording.scoreNotes = scoreNotes.map(note => ({ ...note }));
-    recording.firstPartNotes = firstPartNotes.map(note => ({ ...note }));
-    recording.duetNotes = duetNotes.map(note => ({ ...note }));
-    recording.rhythm = {
-      ...(recording.rhythm || {}),
-      arrangementPurpose: document.getElementById('arrangementPurpose').value,
-      transposeSemitones
-    };
-    const database = await openRecordingDatabase();
-    await new Promise((resolve, reject) => {
-      const transaction = database.transaction(RECORDING_STORE_NAME, 'readwrite');
-      transaction.objectStore(RECORDING_STORE_NAME).put(recording, LATEST_RECORDING_KEY);
-      transaction.oncomplete = resolve;
-      transaction.onerror = () => reject(transaction.error);
-    });
-    database.close();
-  }
-
-  async function restoreLatestRecording() {
-    try {
-      const recording = await readLatestRecording();
-      if (!recording?.blob?.size) return;
-      const rhythm = recording.rhythm || {};
-      document.getElementById('meterNumerator').value = rhythm.numerator || 4;
-      document.getElementById('meterDenominator').value = rhythm.denominator || 4;
-      document.getElementById('scoreTempo').value = rhythm.tempo || 120;
-      document.getElementById('countInMeasures').value = rhythm.countInMeasures ?? 1;
-      document.getElementById('pickupBeats').value = rhythm.pickupBeats || 0;
-      document.getElementById('quantizeDivision').value = rhythm.division || 8;
-      document.getElementById('keySignature').value = rhythm.keySignature ?? 'auto';
-      detectedKeyRoot = Number(rhythm.detectedKeyRoot) || 0;
-      detectedKeyMode = rhythm.detectedKeyMode === 'minor' ? 'minor' : 'major';
-      document.getElementById('detectionResponse').value = rhythm.detectionResponse || '160';
-      document.getElementById('performanceLag').value = rhythm.performanceLag ?? 150;
-      document.getElementById('autoTempoDetection').value = rhythm.autoTempoDetection || 'on';
-      document.getElementById('arrangementPurpose').value = rhythm.arrangementPurpose || 'standard';
-      transposeSemitones = Number(rhythm.transposeSemitones) || 0;
-      const restoredScoreTranspose = scoreTransposeSemitones();
-      document.getElementById('transposeValue').innerText = transposeSemitones === 0
-        ? 'B♭管 +2'
-        : `B♭管 ${restoredScoreTranspose > 0 ? '+' : ''}${restoredScoreTranspose}`;
-      scoreNotes = Array.isArray(recording.scoreNotes) ? ensureScoreNoteIds(recording.scoreNotes) : [];
-      firstPartNotes = Array.isArray(recording.firstPartNotes)
-        ? ensureScoreNoteIds(recording.firstPartNotes)
-        : scoreNotes.map(note => ({ ...note }));
-      duetNotes = Array.isArray(recording.duetNotes)
-        ? ensureScoreNoteIds(recording.duetNotes)
-        : scoreNotes.filter(note => note.harmonyNote !== null).map(note => ({
-            ...note,
-            id: `duet-${Date.now()}-${++scoreNoteSequence}`,
-            note: note.harmonyNote,
-            technique: 'legacy'
-          }));
-      recordingDurationSeconds = Number(recording.durationSeconds) || 0;
-      if (recordingObjectUrl) URL.revokeObjectURL(recordingObjectUrl);
-      recordingObjectUrl = URL.createObjectURL(recording.blob);
-      const audioPlayback = document.getElementById('audioPlayback');
-      audioPlayback.src = recordingObjectUrl;
-      audioPlayback.load();
-      audioPlayback.style.display = 'block';
-      document.getElementById('playbackOptions').hidden = false;
-      document.getElementById('playbackMeter').hidden = false;
-      document.getElementById('arrangeDuetButton').hidden = false;
-      updatePlaybackMeter();
-      renderScore();
-      resetBeatGuide();
-      const savedDate = new Date(recording.savedAt).toLocaleString('ja-JP');
-      document.getElementById('scoreStatus').innerText = `${scoreNotes.length}音・${(recording.blob.size / 1024).toFixed(1)}KBの録音を復元しました（${savedDate}保存）。`;
-    } catch (error) {
-      document.getElementById('scoreStatus').innerText = '保存済み録音を読み込めませんでした。新しく録音してください。';
-    }
+    return Promise.resolve();
   }
 
   function positiveModulo(value, divisor) {
@@ -2056,6 +1987,17 @@
       note.end += appliedShift;
     }
     collection.sort((left, right) => left.start - right.start);
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  async function changeSelectedNoteDuration(durationQuarterValue) {
+    const collection = selectedScoreVoice === 'harmony' ? duetNotes : firstPartNotes;
+    const note = collection.find(item => item.id === selectedScoreNoteId);
+    const durationQuarter = Number(durationQuarterValue);
+    if (!note || !Number.isFinite(durationQuarter) || durationQuarter <= 0) return;
+    rememberScoreEdit();
+    note.end = note.start + durationQuarter * scoreRhythmSettings().quarterMs;
     renderScore();
     await persistScoreEdits();
   }
@@ -2175,12 +2117,13 @@
       document.getElementById('scoreStatus').innerText = 'ダウンロードできる録音がありません。';
       return;
     }
-    const url = URL.createObjectURL(recording.blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'flow-harmony-recording.wav';
-    link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    if (!await chooseRecordingDestination()) return;
+    try {
+      const savedName = await writeRecordingToDestination(recording.blob);
+      document.getElementById('scoreStatus').innerText = `${savedName} に録音を保存しました。`;
+    } catch (error) {
+      document.getElementById('scoreStatus').innerText = '指定した場所へ録音を保存できませんでした。';
+    }
   }
 
   function downloadFile(blob, filename) {
@@ -2355,7 +2298,7 @@
   }
 
   async function deleteLatestRecording() {
-    if (!confirm('保存済みの録音と楽譜を削除します。よろしいですか？')) return;
+    if (!confirm('画面上の録音と楽譜を閉じます。保存済みのWAVファイルは削除されません。よろしいですか？')) return;
     try {
       await deleteStoredRecording();
       const audioPlayback = document.getElementById('audioPlayback');
@@ -2381,7 +2324,7 @@
       document.getElementById('arrangeDuetButton').hidden = true;
       document.getElementById('scoreSvg').innerHTML = '';
       document.getElementById('scoreEditTools').hidden = true;
-      document.getElementById('scoreStatus').innerText = '保存済みの録音と楽譜を削除しました。';
+      document.getElementById('scoreStatus').innerText = '画面上の録音と楽譜を閉じました。保存先のWAVファイルは残っています。';
       updatePlaybackButton();
       updatePlaybackMeter();
     } catch (error) {
@@ -2813,6 +2756,16 @@
     const selectedNote = (selectedScoreVoice === 'harmony' ? duetNotes : notes)
       .find(note => note.id === selectedScoreNoteId);
     const scoreTranspose = scoreTransposeSemitones();
+    const durationControl = document.getElementById('selectedNoteDuration');
+    durationControl.disabled = !selectedNote;
+    if (selectedNote) {
+      const durationQuarter = Math.max(0, selectedNote.end - selectedNote.start) / settings.quarterMs;
+      const durationValues = Array.from(durationControl.options, option => Number(option.value));
+      const closestDuration = durationValues.reduce((closest, value) => (
+        Math.abs(value - durationQuarter) < Math.abs(closest - durationQuarter) ? value : closest
+      ), durationValues[0]);
+      durationControl.value = String(closestDuration);
+    }
     document.getElementById('selectedNoteStatus').innerText = selectedNote
       ? `${selectedScoreVoice === 'harmony' ? '2nd' : '1st'} ${noteStrings[positiveModulo(selectedNote.note + scoreTranspose, 12)]} を選択中`
       : '1stまたは2ndの音符を選択';
@@ -3455,7 +3408,6 @@
       if (!audioPlayback.paused) schedulePlaybackHarmony();
     });
     checkMicrophonePermission();
-    restoreLatestRecording();
   });
 
   async function checkMicrophonePermission() {
@@ -4028,6 +3980,10 @@
     }
 
     if (!isRecording) {
+      if (!await chooseRecordingDestination()) {
+        document.getElementById('scoreStatus').innerText = '録音を開始せず、保存先の選択を中止しました。';
+        return;
+      }
       if (!micStream?.active) await toggleMicrophone();
       if (!micStream?.active) {
         document.getElementById('scoreStatus').innerText = 'マイクを開始できません。画面のマイク設定メッセージを確認してください。';
@@ -4098,13 +4054,13 @@
           document.getElementById('arrangeDuetButton').hidden = false;
           updatePlaybackMeter();
           try {
-            await saveLatestRecording(blob);
+            const savedName = await saveLatestRecording(blob);
             const analysisLabel = recordedAudioNoteCount
               ? `録音音声から${recordedAudioNoteCount}音を再解析`
               : `リアルタイム検出${liveNoteCount}音を使用`;
-            document.getElementById('scoreStatus').innerText = `${analysisLabel}し、デュエット編曲譜を保存しました（${durationSeconds.toFixed(1)}秒 / ${(blob.size / 1024).toFixed(1)}KB）。`;
+            document.getElementById('scoreStatus').innerText = `${analysisLabel}し、${savedName} に録音を保存しました（${durationSeconds.toFixed(1)}秒 / ${(blob.size / 1024).toFixed(1)}KB）。`;
           } catch (error) {
-            document.getElementById('scoreStatus').innerText = `録音は再生できますが、ブラウザ内への保存に失敗しました（${(blob.size / 1024).toFixed(1)}KB）。`;
+            document.getElementById('scoreStatus').innerText = `録音は再生できますが、指定した場所への保存に失敗しました（${(blob.size / 1024).toFixed(1)}KB）。`;
           }
         } else {
           const previousRecordingAvailable = Boolean(audioPlayback.src);
