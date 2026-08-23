@@ -100,12 +100,8 @@ request "GET" "${BASE_URL}/api/store/product"
 if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/product returned HTTP ${status_code}: ${response_body}"
 fi
-if [[ "$response_body" != *'"enabled"'* ]]; then
-  fail "GET /api/store/product body missing enabled field: ${response_body}"
-fi
-store_is_enabled=false
-if [[ "$response_body" == *'"enabled":true'* ]]; then
-  store_is_enabled=true
+if [[ "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ]]; then
+  fail "Metronome checkout is unavailable: ${response_body}"
 fi
 pass "GET /api/store/product"
 

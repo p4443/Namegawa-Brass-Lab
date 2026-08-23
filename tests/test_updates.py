@@ -636,6 +636,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
+        self.assertIn("Metronome checkout is unavailable", healthcheck)
         self.assertIn("Trumpet Transpose Lab checkout is unavailable", healthcheck)
         self.assertIn("'\"enabled\":true'", healthcheck)
         self.assertIn("'\"checkout_available\":true'", healthcheck)
