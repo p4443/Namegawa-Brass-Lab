@@ -192,6 +192,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('data-paper-size="A4" data-orientation="portrait"', page)
         self.assertIn("A4縦 PDF出力 / 印刷", page)
         self.assertIn("break-inside: avoid;", page)
+        self.assertIn('class="individual-contract-table"', page)
+        self.assertIn(".individual-contract-table th { border-right: 1.5px solid #222222; }", page)
         self.assertIn("print-color-adjust: exact;", page)
         self.assertIn("ハラスメント", page)
         self.assertIn("運送中止", page)

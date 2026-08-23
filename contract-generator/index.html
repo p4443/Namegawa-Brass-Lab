@@ -196,6 +196,15 @@
 
     .document table { width: 100%; margin-top: 18px; border-collapse: collapse; }
     .document th, .document td { padding: 9px; border: 1px solid #222222; text-align: left; vertical-align: top; }
+    .individual-contract-table {
+      border: 1px solid #222222;
+      border-collapse: separate !important;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    .individual-contract-table th, .individual-contract-table td { border: 0; border-bottom: 1px solid #222222; }
+    .individual-contract-table th { border-right: 1.5px solid #222222; }
+    .individual-contract-table tr:last-child > * { border-bottom: 0; }
     .document th { width: 30%; background: #f1f5f9; }
     .document td { white-space: pre-wrap; }
 
@@ -436,7 +445,7 @@
     }
 
     function contractTable(rows) {
-      return `<table>${rows.map(row => `<tr><th>${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</table>`;
+      return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
     }
 
     function renderPreview() {
