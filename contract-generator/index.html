@@ -223,6 +223,10 @@
     .cargo-capacity-status strong { display: block; margin-bottom: 3px; }
     .cargo-capacity-status.is-ok { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
     .cargo-capacity-status.is-over { border-color: #dc2626; color: #7f1d1d; background: #fef2f2; }
+    .transport-workflow-status { margin-bottom: 14px; padding: 12px; border: 1px solid #d97706; border-radius: 6px; color: #78350f; background: #fffbeb; font-size: 0.8rem; }
+    .transport-workflow-status.is-ready { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
+    .transport-workflow-status strong { display: block; margin-bottom: 4px; }
+    .transport-workflow-status ul { margin: 5px 0 0; padding-left: 20px; }
     .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
     .cargo-editor-fieldset:disabled { opacity: 0.5; }
     .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
@@ -521,27 +525,40 @@
     <div class="freight-dialog-body">
       <h2 id="freightCalculatorTitle">適正運賃・料金 自動算出</h2>
       <p>公表資料と自社料金規定を確認してマスターを入力してください。「確認済み」にしない限り見積書へ反映できません。</p>
+      <button class="secondary-button" data-load-light-cargo-reference type="button">軽貨物の業界参考値を読み込む</button>
+      <p class="estimate-edit-guide">軽貨物参考値は法定運賃ではありません。各事業者の届出運賃・最新の公開料金・案件条件を確認し、2t以上の車両には使用しないでください。</p>
       <div class="rate-master-grid">
         <label>出発地<input data-freight-input="route_origin" type="text"></label>
         <label>目的地<input data-freight-input="route_destination" type="text"></label>
         <label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
+        <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
+        <label>積卸し作業時間（分）<input data-operation-input="loading_minutes" type="number" min="0" step="1" value="0"></label>
+        <label class="rate-confirm"><input data-operation-input="holiday" type="checkbox"><span>日曜・祝日（参考運賃を20%割増）</span></label>
+        <label class="rate-confirm"><input data-operation-input="night" type="checkbox"><span>22:00〜翌5:00（参考運賃を30%割増）</span></label>
         <label>料金マスター基準日<input data-rate-key="effective_date" type="date"></label>
         <label class="rate-wide">公表資料・料金規定の出典URL<input data-rate-key="source_url" type="url"></label>
         <label>20kmまでの距離制基本運賃（円）<input data-rate-key="distance_base_20" type="number" min="0"></label>
         <label>21〜50km 1km加算（円）<input data-rate-key="distance_per_km_21_50" type="number" min="0"></label>
         <label>51〜100km 1km加算（円）<input data-rate-key="distance_per_km_51_100" type="number" min="0"></label>
-        <label>101km以上 1km加算（円）<input data-rate-key="distance_per_km_101_plus" type="number" min="0"></label>
+        <label>101〜150km 1km加算（円）<input data-rate-key="distance_per_km_101_150" type="number" min="0"></label>
+        <label>151km以上 1km加算（円）<input data-rate-key="distance_per_km_151_plus" type="number" min="0"></label>
+        <label>軽貨物2時間・20kmまで（円）<input data-rate-key="charter_2h" type="number" min="0"></label>
         <label>4時間制運賃（円）<input data-rate-key="charter_4h" type="number" min="0"></label>
         <label>8時間制運賃（円）<input data-rate-key="charter_8h" type="number" min="0"></label>
+        <label>超過30分（円）<input data-rate-key="extra_30m" type="number" min="0"></label>
         <label>超過1時間（円）<input data-rate-key="extra_hour" type="number" min="0"></label>
         <label>待機30分（円）<input data-rate-key="waiting_per_30m" type="number" min="0"></label>
         <label>荷役基本料金（円）<input data-rate-key="loading_base" type="number" min="0"></label>
+        <label>荷役15分（円）<input data-rate-key="loading_per_15m" type="number" min="0"></label>
         <label>荷役25ptごとの加算（円）<input data-rate-key="loading_per_25_points" type="number" min="0"></label>
+        <label>休日割増率（%）<input data-rate-key="holiday_percent" type="number" min="0"></label>
+        <label>深夜・早朝割増率（%）<input data-rate-key="night_percent" type="number" min="0"></label>
         <label>燃料基準価格（円/L）<input data-rate-key="fuel_reference_price" type="number" min="0"></label>
         <label>見積時燃料価格（円/L）<input data-rate-key="fuel_current_price" type="number" min="0"></label>
         <label>燃料差額1円・1kmあたり係数<input data-rate-key="fuel_per_km_per_yen" type="number" min="0"></label>
         <label>外部2t車参考チャーター額（円）<input data-rate-key="external_2t_charter" type="number" min="0"></label>
+        <label class="rate-confirm"><input data-rate-tax-included type="checkbox"><span>入力した参考運賃は税込額</span></label>
         <label class="rate-confirm"><input data-rate-verified type="checkbox"><span>基準日現在の公表資料と自社料金規定を確認し、入力値を見積根拠として使用します。</span></label>
       </div>
       <p class="save-status" id="freightCalculatorStatus" role="status"></p>
@@ -591,6 +608,8 @@
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
+        workflow_status: 'quote_pending', transport_provider_mode: 'external_carrier', vehicle_class: 'undecided', pricing_basis: 'mlit_reference',
+        carrier_name: '', carrier_quote_url: '', carrier_quote_date: '',
         permit_number: '', office_information: '', operation_manager: '',
         cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
@@ -598,21 +617,17 @@
         route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
         instrument_price_master: { effective_date: '', source_url: '', verified: false },
         freight_rate_master: {
-          effective_date: '', source_url: '', verified: false,
+          effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
           distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
+          distance_per_km_101_150: '0', distance_per_km_151_plus: '0',
+          charter_2h: '0', extra_30m: '0', loading_per_15m: '0', holiday_percent: '0', night_percent: '0',
           charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0',
           loading_base: '0', loading_per_25_points: '0', fuel_reference_price: '0', fuel_current_price: '0',
           fuel_per_km_per_yen: '0', external_2t_charter: '0'
         },
-        cargo_items: [
-          { category: '金管楽器', instrument_key: 'trumpet', description: 'トランペット', maker_model: '標準モデル', quantity: '10', condition: '良好', valuation_mode: 'master', unit_value: '500000', total_value: '5000000', volume_points: '1', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'horn', description: 'ホルン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '800000', total_value: '6400000', volume_points: '4', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'trombone', description: 'トロンボーン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '600000', total_value: '4800000', volume_points: '3', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'tuba', description: 'チューバ', maker_model: '標準モデル', quantity: '4', condition: '良好', valuation_mode: 'master', unit_value: '1500000', total_value: '6000000', volume_points: '15', notes: '本体・ハードケース・付属品' },
-          { category: '打楽器', instrument_key: 'other', description: '打楽器・音響機材一式', maker_model: '', quantity: '1', condition: '良好', valuation_mode: 'manual', unit_value: '7800000', total_value: '7800000', volume_points: '35', notes: '個別内訳・製造番号は必要に応じて備考へ追記' }
-        ],
+        cargo_items: [{ category: 'その他', instrument_key: 'other', description: '案件受付後に入力', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '型番・再調達価格を案件ごとに確認' }],
         estimate_items: [
-          { description: '基本運賃（貸切）', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '走行距離および拘束時間に基づく基本運賃' },
+          { description: '外部運送会社の正式見積', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '国土交通省標準運賃は参考のみ。正式見積取得後に確定' },
           { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
           { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
           { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
@@ -662,6 +677,25 @@
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
 
+    function selectField(label, key, value, options) {
+      return `<div class="field"><label>${label}<select data-contract-key="${key}">${options.map(option => `<option value="${option.value}"${option.value === value ? ' selected' : ''}>${option.label}</option>`).join('')}</select></label></div>`;
+    }
+
+    function transportReadiness(values) {
+      const missing = [];
+      if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
+      if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
+      if (values.vehicle_class === 'undecided') missing.push('車両区分');
+      if (values.transport_provider_mode !== 'external_carrier') missing.push('外部運送会社への委託設定');
+      if (values.pricing_basis !== 'carrier_quote') missing.push('正式見積を料金根拠に設定');
+      if (!values.carrier_name) missing.push('外部運送会社名');
+      if (!values.carrier_quote_url || !values.carrier_quote_date) missing.push('正式見積書・取得日');
+      if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
+      if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
+      if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
+      return missing;
+    }
+
     const estimatePresets = {
       description: ['基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
       quantity: ['1', '2', '3', '5', '10'],
@@ -672,25 +706,62 @@
 
     const cargoCategories = ['木管楽器', '金管楽器', '打楽器', '弦楽器', '備品', 'その他'];
     const instrumentMaster = {
-      flute: { category: '木管楽器', name: 'フルート', model: '標準モデル', referenceValue: 300000, volumePoints: 0.5 },
-      clarinet: { category: '木管楽器', name: 'クラリネット', model: '標準モデル', referenceValue: 250000, volumePoints: 1 },
-      bass_clarinet: { category: '木管楽器', name: 'バスクラリネット', model: '標準モデル', referenceValue: 800000, volumePoints: 5 },
-      baritone_sax: { category: '木管楽器', name: 'バリトンサックス', model: '標準モデル', referenceValue: 900000, volumePoints: 8 },
-      trumpet: { category: '金管楽器', name: 'トランペット', model: '標準モデル', referenceValue: 500000, volumePoints: 1 },
-      horn: { category: '金管楽器', name: 'ホルン', model: '標準モデル', referenceValue: 800000, volumePoints: 4 },
-      trombone: { category: '金管楽器', name: 'トロンボーン', model: '標準モデル', referenceValue: 600000, volumePoints: 3 },
-      euphonium: { category: '金管楽器', name: 'ユーフォニアム', model: '標準モデル', referenceValue: 800000, volumePoints: 8 },
-      tuba: { category: '金管楽器', name: 'チューバ', model: '標準モデル', referenceValue: 1500000, volumePoints: 15 },
-      timpani: { category: '打楽器', name: 'ティンパニ', model: '標準モデル', referenceValue: 1000000, volumePoints: 30 },
-      bass_drum: { category: '打楽器', name: 'バスドラム', model: '標準モデル', referenceValue: 500000, volumePoints: 25 },
-      marimba: { category: '打楽器', name: 'マリンバ', model: '標準モデル', referenceValue: 2000000, volumePoints: 35 },
-      contrabass: { category: '弦楽器', name: 'コントラバス', model: '標準モデル', referenceValue: 1000000, volumePoints: 20 },
-      music_stand: { category: '備品', name: '譜面台', model: '', referenceValue: 10000, volumePoints: 0.5 }
+      flute: { category: '木管楽器', name: 'フルート', volumePoints: 0.5 },
+      clarinet: { category: '木管楽器', name: 'クラリネット', volumePoints: 1 },
+      bass_clarinet: { category: '木管楽器', name: 'バスクラリネット', volumePoints: 5 },
+      baritone_sax: { category: '木管楽器', name: 'バリトンサックス', volumePoints: 8 },
+      trumpet: { category: '金管楽器', name: 'トランペット', volumePoints: 1 },
+      horn: { category: '金管楽器', name: 'ホルン', volumePoints: 4 },
+      trombone: { category: '金管楽器', name: 'トロンボーン', volumePoints: 3 },
+      euphonium: { category: '金管楽器', name: 'ユーフォニアム', volumePoints: 8 },
+      tuba: { category: '金管楽器', name: 'チューバ', volumePoints: 15 },
+      timpani: { category: '打楽器', name: 'ティンパニ', volumePoints: 30 },
+      bass_drum: { category: '打楽器', name: 'バスドラム', volumePoints: 25 },
+      marimba: { category: '打楽器', name: 'マリンバ', volumePoints: 35 },
+      contrabass: { category: '弦楽器', name: 'コントラバス', volumePoints: 20 },
+      music_stand: { category: '備品', name: '譜面台', volumePoints: 0.5 }
     };
+
+    const lightCargoReferenceRateHistory = [{
+      effective_date: '2026-08-23',
+      source_url: '',
+      verified: false,
+      distance_base_20: '5500',
+      distance_per_km_21_50: '242',
+      distance_per_km_51_100: '187',
+      distance_per_km_101_plus: '154',
+      distance_per_km_101_150: '154',
+      distance_per_km_151_plus: '132',
+      charter_2h: '6050',
+      charter_4h: '0',
+      charter_8h: '22550',
+      extra_30m: '1375',
+      extra_hour: '2750',
+      waiting_per_30m: '1100',
+      loading_base: '0',
+      loading_per_15m: '550',
+      loading_per_25_points: '0',
+      holiday_percent: '20',
+      night_percent: '30',
+      fuel_reference_price: '0',
+      fuel_current_price: '0',
+      fuel_per_km_per_yen: '0',
+      external_2t_charter: '0'
+    }];
+
+    function latestRateForEstimateDate(rateHistory, estimateDate) {
+      const applicableRates = rateHistory
+        .filter(rate => rate.effective_date <= estimateDate)
+        .sort((left, right) => left.effective_date.localeCompare(right.effective_date));
+      if (!estimateDate || applicableRates.length === 0) {
+        throw new Error('見積作成日以前に適用開始された料金データがありません。');
+      }
+      return applicableRates[applicableRates.length - 1];
+    }
 
     function instrumentOptions(selectedKey) {
       const options = Object.entries(instrumentMaster).map(([key, item]) =>
-        `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${item.category}｜${item.name}｜${item.model || '型番なし'}</option>`
+        `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${item.category}｜${item.name}</option>`
       ).join('');
       return `${options}<option value="other"${selectedKey === 'other' ? ' selected' : ''}>その他（名称・評価額を自由入力）</option>`;
     }
@@ -733,7 +804,16 @@
       syncCargoValuation();
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
-      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>許認可・営業所・運行管理者情報と添付URLは、確認済みの実情報だけを入力してください。参考価格・容積ポイントは管理用の初期値であり、実物と最新資料を確認して更新してください。</div>`
+      const missing = transportReadiness(values);
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>国土交通省「標準的な運賃」は参考額の確認だけに使い、請求額は外部運送会社の正式見積で確定してください。</div>`
+        + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}"><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
+        + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '外部運送会社へ見積依頼中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
+        + selectField('運送実施形態', 'transport_provider_mode', values.transport_provider_mode, [{ value: 'external_carrier', label: '外部の許可運送会社へ委託' }, { value: 'self_light_cargo', label: '自社の軽貨物運送' }, { value: 'self_general_freight', label: '自社の一般貨物運送' }])
+        + selectField('参考車両区分', 'vehicle_class', values.vehicle_class, [{ value: 'undecided', label: '未定' }, { value: 'light_cargo', label: '軽貨物車（黒ナンバー・2t未満）' }, { value: 'small', label: '小型車（2トンクラス）' }, { value: 'medium', label: '中型車（4トンクラス）' }, { value: 'large', label: '大型車（10トンクラス）' }, { value: 'trailer', label: 'トレーラー' }])
+        + selectField('料金根拠', 'pricing_basis', values.pricing_basis, [{ value: 'mlit_reference', label: '国土交通省標準運賃は参考のみ' }, { value: 'light_cargo_reference', label: '軽貨物の業界相場は参考のみ' }, { value: 'carrier_quote', label: '外部運送会社の正式見積で確定' }])
+        + field('外部運送会社名', 'carrier_name', values.carrier_name)
+        + field('正式見積書の共有URL', 'carrier_quote_url', values.carrier_quote_url)
+        + `<div class="field"><label>正式見積取得日<input data-contract-key="carrier_quote_date" type="date" value="${escapeHtml(values.carrier_quote_date)}"></label></div>`
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + field('輸送案件名', 'transport_name', values.transport_name)
@@ -752,8 +832,8 @@
         + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><button class="secondary-button" data-open-route-map type="button">経路図作成を開く</button></div>`
         + `<p class="save-status" data-document-tool-status role="status"></p>`
         + `<div${overCapacity ? '' : ' hidden'} data-external-budget>${field('外注・追加車両手配の希望予算（円）', 'external_vehicle_budget', values.external_vehicle_budget)}</div>`
-        + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から運賃・料金を自動計算</button>`
-        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器価格マスターの確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">価格出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 最新の定価・市場相場を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">メーカー・販売店等の出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 案件の型番と再調達価格を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
     }
 
@@ -764,12 +844,12 @@
           <h2>輸送対象物 ${index + 1}<button class="cargo-row-remove" data-remove-cargo-row="${index}" type="button" aria-label="輸送対象物${index + 1}を削除">削除</button></h2>
           <div class="cargo-editor-grid">
             <label>区分<select data-cargo-item-key="category">${cargoCategories.map(category => `<option${category === item.category ? ' selected' : ''}>${category}</option>`).join('')}</select></label>
-            <label class="cargo-instrument">楽器マスター<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
+            <label class="cargo-instrument">品目テンプレート<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
             <label>品名・機材名<input data-cargo-item-key="description" type="text" maxlength="120" value="${escapeHtml(item.description)}"></label>
-            <label>メーカー・型番（空欄可）<input data-cargo-item-key="maker_model" type="text" maxlength="120" value="${escapeHtml(item.maker_model)}"></label>
+            <label>メーカー・型番<input data-cargo-item-key="maker_model" type="text" maxlength="120" value="${escapeHtml(item.maker_model)}"></label>
             <label>数量<input data-cargo-item-key="quantity" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(item.quantity)}"></label>
             <label>引渡時の状態<input data-cargo-item-key="condition" type="text" maxlength="80" value="${escapeHtml(item.condition)}"></label>
-            <label>評価方式<select data-cargo-item-key="valuation_mode"><option value="master"${item.valuation_mode === 'master' ? ' selected' : ''}>マスター参考額</option><option value="manual"${item.valuation_mode === 'manual' ? ' selected' : ''}>任意評価額</option></select></label>
+            <label>評価方式<select data-cargo-item-key="valuation_mode"><option value="master"${item.valuation_mode === 'master' ? ' selected' : ''}>出典確認済み</option><option value="manual"${item.valuation_mode === 'manual' ? ' selected' : ''}>案件ごとに入力</option></select></label>
             <label>単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
@@ -834,13 +914,24 @@
     }
 
     function normalizeTransportValues(values) {
+      Object.assign(values, {
+        workflow_status: values.workflow_status || 'quote_pending',
+        transport_provider_mode: values.transport_provider_mode || 'external_carrier',
+        vehicle_class: values.vehicle_class || 'undecided',
+        pricing_basis: values.pricing_basis || 'mlit_reference',
+        carrier_name: values.carrier_name || '',
+        carrier_quote_url: values.carrier_quote_url || '',
+        carrier_quote_date: values.carrier_quote_date || ''
+      });
       values.instrument_price_master = {
         effective_date: '', source_url: '', verified: false,
         ...(values.instrument_price_master || {})
       };
       values.freight_rate_master = {
-        effective_date: '', source_url: '', verified: false,
+        effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
         distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
+        distance_per_km_101_150: '0', distance_per_km_151_plus: '0', charter_2h: '0', extra_30m: '0',
+        loading_per_15m: '0', holiday_percent: '0', night_percent: '0', tax_included: false,
         charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0', loading_base: '0', loading_per_25_points: '0',
         fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0', external_2t_charter: '0',
         ...(values.freight_rate_master || {})
@@ -927,7 +1018,7 @@
       if (budget) budget.hidden = volume < 100;
     }
 
-    function calculateOptimalFreight(distance, totalHours) {
+    function calculateOptimalFreight(distance, totalHours, operation = {}) {
       const master = contractValues.estimateB.freight_rate_master;
       if (!master.verified || !master.effective_date || !/^https?:\/\/[^\s]+$/.test(master.source_url)) {
         throw new Error('料金マスターの基準日・出典URLを確認し、確認済みにしてください。');
@@ -936,41 +1027,69 @@
         throw new Error('出発地と目的地を入力してください。');
       }
       const rate = key => estimateNumber(master[key]);
-      if (distance <= 0 || totalHours <= 0 || rate('distance_base_20') <= 0 || rate('charter_4h') <= 0 || rate('charter_8h') <= 0) {
+      const isLightCargo = contractValues.estimateB.vehicle_class === 'light_cargo';
+      if (distance <= 0 || totalHours <= 0 || rate('distance_base_20') <= 0 || rate('charter_8h') <= 0 || (isLightCargo ? rate('charter_2h') <= 0 : rate('charter_4h') <= 0)) {
         throw new Error('距離、拘束時間、主要運賃を0より大きい値で入力してください。');
       }
       let distancePrice = rate('distance_base_20');
       let remaining = Math.max(0, distance - 20);
-      const distanceBands = [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [Infinity, 'distance_per_km_101_plus']];
+      const distanceBands = isLightCargo
+        ? [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [50, 'distance_per_km_101_150'], [Infinity, 'distance_per_km_151_plus']]
+        : [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [Infinity, 'distance_per_km_101_plus']];
       distanceBands.forEach(([limit, key]) => {
         const applied = Math.min(remaining, limit);
         distancePrice += applied * rate(key);
         remaining -= applied;
       });
-      let timePrice = totalHours <= 4 && distance <= 40 ? rate('charter_4h') : rate('charter_8h');
-      timePrice += Math.max(0, Math.ceil(totalHours - 8)) * rate('extra_hour');
-      timePrice += Math.max(0, Math.ceil(distance - 80)) * rate('distance_per_km_101_plus');
-      const estimatedWaitingHours = Math.max(0, totalHours - distance / 30 - 1);
-      const waitingFee = Math.ceil(estimatedWaitingHours * 2) * rate('waiting_per_30m');
+      let timePrice = isLightCargo && totalHours <= 2 && distance <= 20
+        ? rate('charter_2h')
+        : totalHours <= 4 && distance <= 40 && !isLightCargo ? rate('charter_4h') : rate('charter_8h');
+      timePrice += isLightCargo
+        ? Math.max(0, Math.ceil((totalHours - 8) * 2)) * rate('extra_30m')
+        : Math.max(0, Math.ceil(totalHours - 8)) * rate('extra_hour');
+      if (isLightCargo) {
+        let excessDistance = Math.max(0, Math.ceil(distance - 80));
+        const excessBands = [[20, 'distance_per_km_51_100'], [50, 'distance_per_km_101_150'], [Infinity, 'distance_per_km_151_plus']];
+        excessBands.forEach(([limit, key]) => {
+          const applied = Math.min(excessDistance, limit);
+          timePrice += applied * rate(key);
+          excessDistance -= applied;
+        });
+      } else {
+        timePrice += Math.max(0, Math.ceil(distance - 80)) * rate('distance_per_km_101_plus');
+      }
+      const waitingMinutes = Math.max(0, Number(operation.waitingMinutes) || 0);
+      const loadingMinutes = Math.max(0, Number(operation.loadingMinutes) || 0);
+      const waitingFee = isLightCargo ? Math.ceil(Math.max(0, waitingMinutes - 30) / 30) * rate('waiting_per_30m') : Math.ceil(waitingMinutes / 30) * rate('waiting_per_30m');
       const distanceBasedTotal = Math.round(distancePrice + waitingFee);
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
       const useTimeCharter = timePrice <= distanceBasedTotal;
-      const baseFreightCost = overCapacity
+      let baseFreightGross = overCapacity
         ? rate('external_2t_charter')
         : Math.round(useTimeCharter ? timePrice : distancePrice);
-      if (overCapacity && baseFreightCost <= 0) throw new Error('積載超過のため外部2t車参考チャーター額を入力してください。');
+      if (overCapacity && baseFreightGross <= 0) throw new Error('積載超過のため外部2t車参考チャーター額を入力してください。');
+      const premiumPercent = (operation.holiday ? rate('holiday_percent') : 0) + (operation.night ? rate('night_percent') : 0);
+      baseFreightGross = Math.round(baseFreightGross * (1 + premiumPercent / 100));
       const loadingSteps = Math.max(0, Math.ceil(volume / 25) - 1);
-      const loadingFee = rate('loading_base') + loadingSteps * rate('loading_per_25_points');
+      const loadingFeeGross = isLightCargo
+        ? Math.ceil(Math.max(0, loadingMinutes - 30) / 15) * rate('loading_per_15m')
+        : rate('loading_base') + loadingSteps * rate('loading_per_25_points');
+      const toPreTax = amount => master.tax_included ? Math.round(amount / 1.1) : amount;
+      const baseFreightCost = toPreTax(baseFreightGross);
+      const loadingFee = toPreTax(loadingFeeGross);
       const fuelDifference = Math.max(0, rate('fuel_current_price') - rate('fuel_reference_price'));
       const fuelSurcharge = Math.ceil(fuelDifference * distance * rate('fuel_per_km_per_yen'));
       return {
-        recommendedType: overCapacity ? '外部2t車チャーター（要正式見積り）' : useTimeCharter ? '基本運賃（時間制・貸切）' : '基本運賃（距離制）',
+        recommendedType: overCapacity ? '外部2t車チャーター（要正式見積り）' : isLightCargo ? useTimeCharter ? '軽貨物参考運賃（時間制）' : '軽貨物参考運賃（距離制）' : useTimeCharter ? '基本運賃（時間制・貸切）' : '基本運賃（距離制）',
         baseFreightCost,
         loadingFee,
-        waitingFee,
+        waitingFee: toPreTax(waitingFee),
         fuelSurcharge,
         volume,
+        referenceGross: baseFreightGross,
+        premiumPercent,
+        isLightCargo,
         reason: overCapacity
           ? `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、容積スコア${volume}ptが軽貨物上限に達したため外部2t車参考額を適用`
           : useTimeCharter
@@ -983,24 +1102,52 @@
       const values = contractValues.estimateB;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { input.value = values[input.dataset.freightInput]; });
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
+      freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = values.freight_rate_master.tax_included === true;
       freightCalculatorDialog.querySelector('[data-rate-verified]').checked = values.freight_rate_master.verified;
       freightCalculatorStatus.textContent = '';
       freightCalculatorStatus.dataset.state = '';
       freightCalculatorDialog.showModal();
     }
 
+    function loadLightCargoReference() {
+      const values = contractValues.estimateB;
+      try {
+        const latestRates = latestRateForEstimateDate(lightCargoReferenceRateHistory, contractDate.value);
+        values.vehicle_class = 'light_cargo';
+        values.pricing_basis = 'light_cargo_reference';
+        values.freight_rate_master = { ...values.freight_rate_master, ...latestRates, tax_included: true };
+        freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
+        freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = true;
+        freightCalculatorDialog.querySelector('[data-rate-verified]').checked = false;
+        freightCalculatorStatus.textContent = `見積作成日現在の最新軽貨物参考値（税込・${latestRates.effective_date}適用開始）を読み込みました。出典URLと自社の届出運賃を確認後、「確認済み」にしてください。`;
+        freightCalculatorStatus.dataset.state = '';
+        renderDynamicFields();
+        renderPreview();
+      } catch (error) {
+        freightCalculatorStatus.textContent = error.message;
+        freightCalculatorStatus.dataset.state = 'error';
+      }
+    }
+
     function applyFreightCalculator() {
       const values = contractValues.estimateB;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { values[input.dataset.freightInput] = input.value; });
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { values.freight_rate_master[input.dataset.rateKey] = input.value; });
+      values.freight_rate_master.tax_included = freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked;
       values.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
       try {
-        const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours));
+        const operation = {
+          waitingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="waiting_minutes"]').value,
+          loadingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="loading_minutes"]').value,
+          holiday: freightCalculatorDialog.querySelector('[data-operation-input="holiday"]').checked,
+          night: freightCalculatorDialog.querySelector('[data-operation-input="night"]').checked
+        };
+        const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours), operation);
         const [freight, loading, , insurance, fuel] = values.estimate_items;
-        Object.assign(freight, { description: result.recommendedType, unit_price: String(result.baseFreightCost), amount: String(result.baseFreightCost), details: `${result.reason}（料金マスター基準日 ${values.freight_rate_master.effective_date}）` });
-        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: `運賃と分離。容積スコア${result.volume}ptに基づく荷役料金` });
+        Object.assign(freight, { description: result.recommendedType, unit_price: String(result.baseFreightCost), amount: String(result.baseFreightCost), details: `${result.reason}。${result.isLightCargo ? `業界参考税込額${formatEstimateYen(result.referenceGross)}円を税抜換算` : '公表資料を参照'}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${values.freight_rate_master.effective_date}）。正式額は届出運賃または運送会社見積で確定` });
+        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: result.isLightCargo ? `運賃と分離。積卸し${operation.loadingMinutes || 0}分、最初の30分を除き15分単位の参考作業料金` : `運賃と分離。容積スコア${result.volume}ptに基づく荷役料金` });
         Object.assign(fuel, { description: '燃料サーチャージ', unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
-        values.waiting_fee = `30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（想定待機料 ${formatEstimateYen(result.waitingFee)}円）`;
+        values.waiting_fee = `最初の30分は無料、以降30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（税抜反映額 ${formatEstimateYen(result.waitingFee)}円）`;
         values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
         syncCargoValuation();
         if (insurance) insurance.details = `申告総評価額${formatEstimateYen(calculateCargoValuation())}円に対する補償特約費`;
@@ -1022,6 +1169,13 @@
           client_name: clientName.value,
           transport_name: contractValues.estimateB.transport_name,
           editor_email: contractValues.estimateB.cargo_contact_email,
+          workflow_status: contractValues.estimateB.workflow_status,
+          transport_provider_mode: contractValues.estimateB.transport_provider_mode,
+          vehicle_class: contractValues.estimateB.vehicle_class,
+          pricing_basis: contractValues.estimateB.pricing_basis,
+          carrier_name: contractValues.estimateB.carrier_name,
+          carrier_quote_url: contractValues.estimateB.carrier_quote_url,
+          carrier_quote_date: contractValues.estimateB.carrier_quote_date,
           cargo_items: contractValues.estimateB.cargo_items,
           freight_rate_master: contractValues.estimateB.freight_rate_master,
           instrument_price_master: contractValues.estimateB.instrument_price_master
@@ -1125,14 +1279,19 @@
       const cargoValuation = syncCargoValuation();
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
+      const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
+      const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '外部運送会社へ見積依頼中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
-          <h1>御見積書（B契約：楽器輸送業務）</h1>
+          <h1>${isReady ? '御見積書' : '見積準備票'}（B契約：楽器輸送業務）</h1>
           <p class="doc-date">${date}</p>
           <div class="estimate-client"><strong>${safeClient} 様</strong><br>${safeRepresentative}</div>
           <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
+          <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
+          <p><strong>運送実施：</strong>${values.transport_provider_mode === 'external_carrier' ? '外部の許可運送会社へ委託' : '自社運送（許認可確認必須）'}　<strong>参考車両：</strong>${escapeHtml(values.vehicle_class === 'undecided' ? '未定' : values.vehicle_class)}</p>
+          <p><strong>運送会社：</strong>${escapeHtml(values.carrier_name || '未定')}　<strong>正式見積：</strong>${values.carrier_quote_url ? `<a href="${escapeHtml(values.carrier_quote_url)}" target="_blank" rel="noopener noreferrer">確認する</a>` : '未取得'}</p>
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           <div class="estimate-issuer"><strong>受託者（乙）</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>住所：埼玉県比企郡滑川町月の輪5丁目1-3</div>
           <h2>1. 法定開示・クラウド添付書類</h2>
@@ -1151,7 +1310,7 @@
         </section>
         <section class="contract-page estimate-page" data-page-number="2">
           <h1>御見積明細（運賃・料金分離型）</h1>
-          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <div class="estimate-total">${isReady ? `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -` : '御見積金額：未確定（外部運送会社の正式見積取得後に確定）'}</div>
           <table class="estimate-table">
             <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
@@ -1164,7 +1323,7 @@
             <li><strong>迂回・延泊実費</strong>${escapeHtml(values.detour_expenses)}</li>
           </ul>
           <p>追加料金は個別契約書B第4項・第5項および事前提示した料金規定に基づき、発生理由と算定根拠を示して精算します。燃油価格や法令改定による運賃見直しは第6項に基づき協議します。</p>
-          <p><strong>料金マスター：</strong>${rateMaster.verified ? `${escapeHtml(rateMaster.effective_date)}現在・<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">出典資料</a>` : '未確認（自動算出結果として保存できません）'}</p>
+          <p><strong>参考運賃資料：</strong>${rateMaster.source_url ? `<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">${values.pricing_basis === 'light_cargo_reference' ? '軽貨物の公開料金・自社届出運賃' : '国土交通省「標準的な運賃」'}</a>` : '未設定'}。${values.pricing_basis === 'light_cargo_reference' ? '軽貨物事業者の届出運賃ではなく、2t未満の軽貨物車に限る業界参考値です。' : ''}請求額は自社届出運賃または外部運送会社の正式見積で確定します。</p>
           <p><strong>契約書との関係：</strong>発注時は業務委託基本契約書および個別契約書Bを締結し、本見積書および添付書類を個別契約の一部として扱います。</p>
         </section>
         <section class="contract-page estimate-page" data-page-number="3">
@@ -1472,11 +1631,11 @@
           Object.assign(item, {
             category: master.category,
             description: master.name,
-            maker_model: master.model,
-            valuation_mode: 'master',
-            unit_value: String(master.referenceValue),
+            maker_model: '',
+            valuation_mode: 'manual',
+            unit_value: '0',
             volume_points: String(master.volumePoints),
-            total_value: String(estimateNumber(item.quantity) * master.referenceValue)
+            total_value: '0'
           });
         } else {
           Object.assign(item, { category: 'その他', description: 'その他', maker_model: '', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0' });
@@ -1573,6 +1732,7 @@
     });
     document.getElementById('printContract').addEventListener('click', () => window.print());
     document.getElementById('cancelFreightCalculator').addEventListener('click', () => freightCalculatorDialog.close());
+    freightCalculatorDialog.querySelector('[data-load-light-cargo-reference]').addEventListener('click', loadLightCargoReference);
     document.getElementById('applyFreightCalculator').addEventListener('click', applyFreightCalculator);
     saveButton.addEventListener('click', async () => {
       saveStatus.textContent = '保存しています...';

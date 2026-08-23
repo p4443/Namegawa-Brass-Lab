@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";
+var SCRIPT_VERSION = "2026-08-23-light-cargo-reference-v24";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -470,21 +470,36 @@ function generateTransportWorkbook(data) {
 
   var feeSheet = workbook.insertSheet("料金規定");
   var feeRows = [
-    ["楽器価格マスター基準日", safeCell(instrumentMaster.effective_date)],
-    ["楽器価格マスター出典URL", safeCell(instrumentMaster.source_url)],
-    ["料金マスター基準日", safeCell(rateMaster.effective_date)],
-    ["出典URL", safeCell(rateMaster.source_url)],
-    ["確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
+    ["案件進行状態", safeCell(data.workflow_status)],
+    ["運送実施形態", safeCell(data.transport_provider_mode)],
+    ["参考車両区分", safeCell(data.vehicle_class)],
+    ["料金根拠", safeCell(data.pricing_basis)],
+    ["外部運送会社名", safeCell(data.carrier_name)],
+    ["正式見積書URL", safeCell(data.carrier_quote_url)],
+    ["正式見積取得日", safeCell(data.carrier_quote_date)],
+    ["楽器再調達価格基準日", safeCell(instrumentMaster.effective_date)],
+    ["楽器再調達価格出典URL", safeCell(instrumentMaster.source_url)],
+    ["参考運賃基準日", safeCell(rateMaster.effective_date)],
+    ["参考運賃出典URL", safeCell(rateMaster.source_url)],
+    ["参考車種確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
+    ["参考運賃の税込区分", rateMaster.tax_included === true ? "税込" : "税抜"],
+    ["軽貨物参考値の注意", data.pricing_basis === "light_cargo_reference" ? "法定運賃ではありません。2t未満の軽貨物車に限り、自社届出運賃または正式見積の確認前に参考使用します。" : "対象外"],
     ["20kmまでの距離制基本運賃", Number(rateMaster.distance_base_20 || 0)],
     ["21〜50km 1km加算", Number(rateMaster.distance_per_km_21_50 || 0)],
     ["51〜100km 1km加算", Number(rateMaster.distance_per_km_51_100 || 0)],
-    ["101km以上 1km加算", Number(rateMaster.distance_per_km_101_plus || 0)],
+    ["101〜150km 1km加算", Number(rateMaster.distance_per_km_101_150 || rateMaster.distance_per_km_101_plus || 0)],
+    ["151km以上 1km加算", Number(rateMaster.distance_per_km_151_plus || rateMaster.distance_per_km_101_plus || 0)],
+    ["軽貨物2時間・20kmまで", Number(rateMaster.charter_2h || 0)],
     ["4時間制運賃", Number(rateMaster.charter_4h || 0)],
     ["8時間制運賃", Number(rateMaster.charter_8h || 0)],
+    ["超過30分", Number(rateMaster.extra_30m || 0)],
     ["超過1時間", Number(rateMaster.extra_hour || 0)],
     ["待機30分", Number(rateMaster.waiting_per_30m || 0)],
     ["荷役基本料金", Number(rateMaster.loading_base || 0)],
+    ["荷役15分", Number(rateMaster.loading_per_15m || 0)],
     ["荷役25ptごとの加算", Number(rateMaster.loading_per_25_points || 0)],
+    ["休日割増率", Number(rateMaster.holiday_percent || 0)],
+    ["深夜・早朝割増率", Number(rateMaster.night_percent || 0)],
     ["燃料基準価格", Number(rateMaster.fuel_reference_price || 0)],
     ["見積時燃料価格", Number(rateMaster.fuel_current_price || 0)],
     ["燃料差額1円・1kmあたり係数", Number(rateMaster.fuel_per_km_per_yen || 0)],
@@ -492,7 +507,7 @@ function generateTransportWorkbook(data) {
   ];
   feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
   feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
-  feeSheet.getRange(7, 2, feeRows.length - 5, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(16, 2, feeRows.length - 14, 1).setNumberFormat("¥#,##0");
   feeSheet.setFrozenRows(1);
   feeSheet.autoResizeColumns(1, 2);
 
