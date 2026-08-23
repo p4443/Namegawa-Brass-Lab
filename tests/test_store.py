@@ -207,44 +207,96 @@ class StoreTest(unittest.TestCase):
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
 
-    def test_flow_harmony_free_version_is_unavailable(self):
-        response = self.client.get("/flow-harmony/?mode=free")
+    def test_trumpet_transpose_lab_free_version_is_available(self):
+        response = self.client.get("/trumpet-transpose-lab/?mode=free")
+        html = response.get_data(as_text=True)
 
-        self.assertEqual(response.status_code, 503)
-        self.assertIn("現在公開を停止", response.get_data(as_text=True))
-        self.assertEqual(response.headers["Retry-After"], "86400")
-        self.assertEqual(self.client.get("/flow-harmony/index.html").status_code, 404)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Trumpet Transpose Lab", html)
+        self.assertIn("トランペット専用ワークスペース", html)
+        self.assertIn('id="selectedNoteDuration"', html)
+        self.assertIn("changeSelectedNoteDuration", html)
+        self.assertIn("showSaveFilePicker", html)
+        self.assertIn("保存先を選んでWAV保存", html)
+        self.assertIn("prepareRecordedSamples(buffer)", html)
+        self.assertIn("AUDIO_DECODE_FAILED", html)
+        self.assertIn("previousScoreNotes", html)
+        self.assertIn("自動採譜（B♭トランペット）", html)
+        self.assertIn("trumpet-transpose-lab-score.mid", html)
+        self.assertIn("trumpet-transpose-lab-score.musicxml", html)
+        self.assertIn("offsets[positiveModulo(noteNumber, 12)] - 4", html)
+        self.assertIn("updateDetectedKeyFromNotes(scoreNotes)", html)
+        self.assertIn("if (notes.length) updateDetectedKeyFromNotes(notes)", html)
+        self.assertIn('aria-label="ト音記号"', html)
+        self.assertIn("const sharpPositions = [92, 110, 86, 104, 122, 98, 116]", html)
+        self.assertIn("サイレント予備カウント", html)
+        self.assertIn("録音・解析中（無音）", html)
+        self.assertIn("録音開始前に1小節、無音でカウントします", html)
+        self.assertNotIn("playMetronomeClick", html)
+        self.assertNotIn("indexedDB", html)
+        self.assertNotIn('id="bluetoothBtn"', html)
+        self.assertNotIn('id="chordDisplay"', html)
+        self.assertNotIn('id="manualHarmonyPanel"', html)
+        self.assertNotIn("Trumpet 2 - Counterline", html)
+        self.assertNotIn('<score-part id="P2">', html)
+        self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
+        legacy = self.client.get("/flow-harmony/?mode=free")
+        self.assertEqual(legacy.status_code, 308)
+        self.assertEqual(legacy.headers["Location"], "/trumpet-transpose-lab/?mode=free")
+        self.assertEqual(self.client.get("/trumpet-transpose-lab/index.html").status_code, 404)
 
-    def test_products_shows_flow_harmony_as_unavailable(self):
+    def test_products_offers_free_and_offline_flow_harmony(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn('../flow-harmony/?mode=free', html)
-        self.assertIn('id="flow-purchase-button" type="button" disabled>公開停止中', html)
-        self.assertIn("無料Web版とオフライン版は、どちらも現在ご利用いただけません", html)
-        self.assertNotIn('requestStore("flow-harmony/checkout"', html)
+        self.assertIn('../trumpet-transpose-lab/?mode=free', html)
+        self.assertIn('id="flow-purchase-button" type="button" disabled>販売状況を確認中', html)
+        self.assertIn("録音したフレーズを自動採譜し、音高・音価・タイミングを編集", html)
+        self.assertNotIn("allow=\"microphone; autoplay; bluetooth\"", html)
+        self.assertIn("Web版は無料で全機能を利用できます", html)
+        self.assertIn('requestStore("trumpet-transpose-lab/checkout"', html)
 
-    def test_lesson_page_does_not_link_to_flow_harmony(self):
+    def test_products_separates_free_web_and_one_time_zip_apps(self):
+        response = self.client.get("/products/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(html.count('<span class="product-label">無料Web版</span>'), 2)
+        self.assertEqual(html.count("<h3>買い切りアプリ版（ZIP）</h3>"), 2)
+        self.assertEqual(html.count("追加料金なしの1回払い"), 2)
+
+    def test_products_stack_vertically_on_smartphones(self):
+        response = self.client.get("/products/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<span class="mobile-scroll-copy">下へスクロール</span>', html)
+        self.assertIn(".desktop-scroll-copy, .carousel-controls { display: none; }", html)
+        self.assertIn("scroll-snap-type: none;", html)
+        self.assertIn(".product-feature { width: 100%; min-width: 0;", html)
+
+    def test_lesson_page_links_to_free_flow_harmony(self):
         response = self.client.get("/lesson/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertNotIn('../flow-harmony/?mode=free', html)
-        self.assertIn("Flow Harmony", html)
-        self.assertIn("現在公開を停止しています", html)
+        self.assertIn('../trumpet-transpose-lab/?mode=free', html)
+        self.assertIn("Trumpet Transpose Lab", html)
+        self.assertIn("無料で体験", html)
 
     def test_flow_harmony_product_uses_one_thousand_yen_price(self):
         with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
-            response = self.client.get("/api/store/flow-harmony/product")
+            response = self.client.get("/api/store/trumpet-transpose-lab/product")
 
         self.assertEqual(response.status_code, 200)
         product = response.get_json()
-        self.assertEqual(product["product_id"], "flow-harmony")
+        self.assertEqual(product["product_id"], "trumpet-transpose-lab")
+        self.assertEqual(product["name"], "Trumpet Transpose Lab オフライン版")
         self.assertEqual(product["price_yen"], 1000)
         self.assertFalse(product["checkout_available"])
 
-    def test_flow_harmony_checkout_is_unavailable_before_release(self):
+    def test_flow_harmony_checkout_uses_configured_price(self):
         stripe = self.stripe_module(amount_total=1000)
         stripe.Price.retrieve.return_value.unit_amount = 1000
         checkout_request_id = "66e59f96-394e-4df1-9b0b-e80b888d90fc"
@@ -256,26 +308,30 @@ class StoreTest(unittest.TestCase):
             },
         ), patch.dict(sys.modules, {"stripe": stripe}):
             response = self.client.post(
-                "/api/store/flow-harmony/checkout",
+                "/api/store/trumpet-transpose-lab/checkout",
                 json={"checkout_request_id": checkout_request_id},
             )
 
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.get_json()["error"], "現在公開を停止しています。")
-        stripe.checkout.Session.create.assert_not_called()
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["checkout_url"], "https://checkout.example/session")
+        stripe.checkout.Session.create.assert_called_once()
+        checkout_arguments = stripe.checkout.Session.create.call_args.kwargs
+        self.assertEqual(checkout_arguments["line_items"], [{"price": "price_flow_harmony", "quantity": 1}])
+        self.assertEqual(checkout_arguments["metadata"]["product_id"], "trumpet-transpose-lab")
+        self.assertEqual(checkout_arguments["metadata"]["price_yen"], "1000")
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):
         stripe = self.stripe_module(amount_total=1000)
         checkout = stripe.checkout.Session.retrieve.return_value
         checkout.metadata = {
-            "product_id": "flow-harmony",
+            "product_id": "trumpet-transpose-lab",
             "price_yen": "1000",
             "price_id": "price_flow_harmony",
         }
         stripe.Price.retrieve.return_value.unit_amount = 1000
         with patch.dict(sys.modules, {"stripe": stripe}):
             link_response = self.client.post(
-                "/api/store/flow-harmony/download-link",
+                "/api/store/trumpet-transpose-lab/download-link",
                 json={"session_id": "cs_test_paid"},
             )
             download_response = self.client.get(
@@ -288,8 +344,29 @@ class StoreTest(unittest.TestCase):
         with ZipFile(io.BytesIO(download_response.data)) as archive:
             self.assertIn("index.html", archive.namelist())
             license_text = archive.read("LICENSE.txt").decode("utf-8")
-        self.assertIn("Flow Harmony オフライン版 利用ライセンス", license_text)
+        self.assertIn("Trumpet Transpose Lab オフライン版 利用ライセンス", license_text)
         self.assertIn("購入参照ID:", license_text)
+
+    def test_legacy_flow_harmony_purchase_remains_downloadable(self):
+        stripe = self.stripe_module(amount_total=1000)
+        checkout = stripe.checkout.Session.retrieve.return_value
+        checkout.metadata = {
+            "product_id": "flow-harmony",
+            "price_yen": "1000",
+            "price_id": "price_flow_harmony",
+        }
+        stripe.Price.retrieve.return_value.unit_amount = 1000
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/trumpet-transpose-lab/download-link",
+                json={"session_id": "cs_test_legacy_paid"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(
+            "/api/store/trumpet-transpose-lab/download/",
+            response.get_json()["download_url"],
+        )
 
     def test_products_offers_secure_purchase_recovery(self):
         response = self.client.get("/products/")

@@ -5,7 +5,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py index.html build_product.py ./
+COPY app.py index.html back-navigation.js build_product.py ./
 COPY data ./data
 COPY lesson ./lesson
 COPY products ./products
@@ -15,7 +15,8 @@ COPY schedule ./schedule
 COPY pdf ./pdf
 COPY video ./video
 COPY ["music App", "./music App"]
-COPY flow-harmony ./flow-harmony
+COPY trumpet-transpose-lab ./trumpet-transpose-lab
+COPY contract-generator ./contract-generator
 
 RUN python build_product.py
 

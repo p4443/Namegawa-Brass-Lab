@@ -59,6 +59,7 @@
     .catalog-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
     .catalog-heading .section-title, .catalog-heading .section-desc { text-align: left; }
     .catalog-heading .section-desc { margin-bottom: 0; }
+    .mobile-scroll-copy { display: none; }
     .carousel-controls { display: flex; flex: 0 0 auto; gap: 8px; }
     .carousel-button { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--primary-color); border-radius: 50%; color: var(--primary-color); background: var(--bg-white); font-size: 1.1rem; cursor: pointer; }
     .carousel-button:hover, .carousel-button:focus-visible { color: #ffffff; background: var(--primary-color); }
@@ -97,6 +98,7 @@
     .launch-link:hover { color: #ffffff; background: var(--primary-color); }
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
+    .transpose-lab-window { height: 1500px; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -145,6 +147,7 @@
       .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
+      .transpose-lab-window { height: 1800px; }
     }
 
     @media (max-width: 520px) {
@@ -161,8 +164,16 @@
       .catalog-heading { align-items: center; }
       .catalog-heading .section-title { font-size: 1.35rem; }
       .catalog-heading .section-desc { margin-top: 4px; font-size: 0.8rem; }
-      .carousel-button { width: 38px; height: 38px; }
-      .product-feature { flex-basis: calc(94% - 2px); }
+      .desktop-scroll-copy, .carousel-controls { display: none; }
+      .mobile-scroll-copy { display: inline; }
+      .product-track {
+        display: grid;
+        gap: 24px;
+        overflow-x: visible;
+        padding: 2px 2px 18px;
+        scroll-snap-type: none;
+      }
+      .product-feature { width: 100%; min-width: 0; flex-basis: auto; scroll-snap-align: none; }
       .product-heading, .store-panel { padding: 20px; }
       .product-heading { gap: 16px; }
       .product-heading h2 { font-size: 1.2rem; line-height: 1.45; }
@@ -178,7 +189,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <a class="brand" href="../">なめがわブラス・ラボ</a>
-      <a class="back-link" href="../#web">← サービス案内へ戻る</a>
+      <a class="back-link" href="../#web" data-history-back>← 1つ前へ戻る</a>
     </div>
   </header>
 
@@ -202,7 +213,7 @@
         <div class="catalog-heading">
           <div>
             <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
-            <p class="section-desc">右へスクロールしてアプリを選べます</p>
+            <p class="section-desc"><span class="desktop-scroll-copy">右へスクロール</span><span class="mobile-scroll-copy">下へスクロール</span>してアプリを選べます</p>
           </div>
           <div class="carousel-controls" aria-label="アプリ商品のスクロール操作">
             <button class="carousel-button" type="button" data-carousel-prev="product-track" aria-label="前の商品">←</button>
@@ -211,25 +222,29 @@
         </div>
 
         <div class="product-track" id="product-track" aria-labelledby="products-title" tabindex="0">
-          <article class="product-feature" id="flow-harmony">
+          <article class="product-feature" id="trumpet-transpose-lab">
           <header class="product-heading">
             <div>
-              <span class="product-label">公開停止中</span>
-              <h2>Flow Harmony（フロー・ハーモニー）</h2>
-              <p>入力音の上下へハーモニーを重ね、1/fゆらぎや自分の音色を使って練習できるアプリです。</p>
+              <span class="product-label">無料Web版</span>
+              <h2>Trumpet Transpose Lab</h2>
+              <p>録音したフレーズを自動採譜し、音高・音価・タイミングを編集。B♭トランペット譜の移調からMIDI・MusicXML出力まで、譜面作りを一つの画面で完結できます。</p>
             </div>
+            <a class="launch-link" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">無料Web版を開く</a>
           </header>
+
+          <iframe class="app-window transpose-lab-window" src="../trumpet-transpose-lab/?mode=free" title="Trumpet Transpose Lab" loading="lazy" allow="microphone; autoplay"></iframe>
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>現在公開を停止しています</h3>
-              <p>無料Web版とオフライン版は、どちらも現在ご利用いただけません。</p>
+              <h3>買い切りアプリ版（ZIP）</h3>
+              <p>追加料金なしの1回払いで、インターネット接続なしでも利用できるZIPファイルを購入できます。</p>
               <ul class="store-benefits">
-                <li>上下12音程ハーモニーと1/fゆらぎを収録</li>
-                <li>再公開時期は未定です</li>
+                <li>Web版は無料で全機能を利用可能</li>
+                <li>購入者本人の所有端末で利用可能</li>
+                <li>決済確認後、24時間有効のリンクを発行</li>
               </ul>
               <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
-              <nav class="store-legal" aria-label="Flow Harmony購入に関する情報">
+              <nav class="store-legal" aria-label="Trumpet Transpose Lab購入に関する情報">
                 <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
                 <a href="../legal/#license">利用ライセンス</a>
                 <a href="../legal/#refund">返金方針</a>
@@ -237,7 +252,7 @@
               </nav>
             </div>
             <div class="store-actions">
-              <button class="store-button" id="flow-purchase-button" type="button" disabled>公開停止中</button>
+              <button class="store-button" id="flow-purchase-button" type="button" disabled>販売状況を確認中</button>
               <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
               <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
             </div>
@@ -247,19 +262,19 @@
           <article class="product-feature" id="metronome">
           <header class="product-heading">
             <div>
-              <span class="product-label">公開中のアプリ・Web版無料</span>
+              <span class="product-label">無料Web版</span>
               <h2>トランペット練習メトロノーム</h2>
               <p>ブレストレーニング、可変テンポ、連符分割、音色切替を一つにまとめた練習アプリです。</p>
             </div>
-            <a class="launch-link" href="../music%20App/" target="_blank" rel="noopener">別画面で試す</a>
+            <a class="launch-link" href="../music%20App/" target="_blank" rel="noopener">無料Web版を開く</a>
           </header>
 
           <iframe class="app-window" src="../music%20App/" title="トランペット練習メトロノーム" loading="lazy" allow="autoplay"></iframe>
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>オフライン版</h3>
-              <p>インターネット接続を気にせず、ご本人の端末で利用できるダウンロード商品です。</p>
+              <h3>買い切りアプリ版（ZIP）</h3>
+              <p>追加料金なしの1回払いで、インターネット接続を気にせず本人の端末で利用できるZIP商品です。</p>
               <ul class="store-benefits">
                 <li>Web版は無料で全機能を体験可能</li>
                 <li>購入者本人の所有端末で利用可能</li>
@@ -326,7 +341,29 @@
 
   <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
+  <script src="../back-navigation.js"></script>
   <script>
+    const transposeLabWindow = document.querySelector(".transpose-lab-window");
+    const resizeTransposeLabWindow = () => {
+      const frameDocument = transposeLabWindow?.contentDocument;
+      if (!frameDocument) return;
+      transposeLabWindow.style.height = "1px";
+      const contentHeight = Math.max(
+        frameDocument.documentElement.scrollHeight,
+        frameDocument.body.scrollHeight,
+      );
+      if (contentHeight > 0) transposeLabWindow.style.height = `${contentHeight}px`;
+    };
+
+    transposeLabWindow?.addEventListener("load", () => {
+      resizeTransposeLabWindow();
+      const frameDocument = transposeLabWindow.contentDocument;
+      if (frameDocument && "ResizeObserver" in window) {
+        new ResizeObserver(resizeTransposeLabWindow).observe(frameDocument.body);
+      }
+    });
+    window.addEventListener("resize", resizeTransposeLabWindow);
+
     document.querySelectorAll(".product-track").forEach((track) => {
       const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
       const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
@@ -616,10 +653,43 @@
       }
     }
 
-    flowStoreStatus.textContent = "無料Web版とオフライン版は現在公開を停止しています。";
+    function renderFlowProduct(product) {
+      flowPurchaseButton.disabled = !product.checkout_available;
+      flowPurchaseButton.textContent = product.checkout_available
+        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
+        : "オフライン版 販売準備中";
+      flowStoreStatus.textContent = product.checkout_available
+        ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
+        : "Web版は無料で全機能を利用できます。";
+    }
+
+    async function loadFlowProduct() {
+      try {
+        renderFlowProduct(await requestStore("trumpet-transpose-lab/product"));
+      } catch (error) {
+        flowPurchaseButton.textContent = "オフライン版 販売準備中";
+        flowStoreStatus.textContent = error.message;
+      }
+    }
+
+    flowPurchaseButton.addEventListener("click", async () => {
+      flowPurchaseButton.disabled = true;
+      flowStoreStatus.textContent = "安全な決済画面を準備しています…";
+      try {
+        const result = await requestStore("trumpet-transpose-lab/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
+        });
+        location.href = result.checkout_url;
+      } catch (error) {
+        flowStoreStatus.textContent = error.message;
+        await loadFlowProduct();
+      }
+    });
 
     async function provideFlowDownload(sessionId) {
-      const result = await requestStore("flow-harmony/download-link", {
+      const result = await requestStore("trumpet-transpose-lab/download-link", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ session_id: sessionId }),
@@ -642,7 +712,7 @@
       for (let attempt = 1; attempt <= 5; attempt += 1) {
         try {
           await provideFlowDownload(sessionId);
-          history.replaceState(null, "", `${location.pathname}#flow-harmony`);
+          history.replaceState(null, "", `${location.pathname}#trumpet-transpose-lab`);
           return;
         } catch (error) {
           if (attempt === 5) flowStoreStatus.textContent = error.message;
@@ -652,7 +722,7 @@
     }
 
     loadStoreProduct().then(applyPurchaseResult);
-    applyFlowPurchaseResult();
+    loadFlowProduct().then(applyFlowPurchaseResult);
   </script>
 </body>
 </html>

@@ -360,6 +360,71 @@
       font-size: 0.82rem;
     }
 
+    .lesson-detail-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 7px 16px;
+      border: 1px solid var(--navy);
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--navy);
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .lesson-detail-toggle::after {
+      content: "詳細を見る ＋";
+      font-size: 0.76rem;
+    }
+
+    .lesson-detail-toggle[aria-expanded="true"]::after {
+      content: "閉じる −";
+    }
+
+    .lesson-detail-toggle:hover,
+    .lesson-detail-toggle:focus-visible {
+      color: var(--navy);
+      background: #ffffff;
+    }
+
+    .lesson-detail {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 24px;
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: var(--background);
+      scroll-margin-top: 110px;
+    }
+
+    .lesson-detail[hidden] {
+      display: none;
+    }
+
+    .lesson-detail h3 {
+      margin: 0 0 12px;
+      color: var(--navy);
+      font-size: 1.12rem;
+    }
+
+    .lesson-detail p {
+      margin: 0;
+    }
+
+    .lesson-detail ol,
+    .lesson-detail ul {
+      margin: 14px 0;
+      padding-left: 1.5rem;
+    }
+
+    .lesson-detail li + li {
+      margin-top: 6px;
+    }
+
     .instructor-panel {
       padding: 24px;
       border-left: 4px solid var(--gold);
@@ -1145,6 +1210,22 @@
         grid-template-columns: 1fr;
       }
 
+      .carousel-controls {
+        display: none;
+      }
+
+      .app-track {
+        display: grid;
+        overflow-x: visible;
+        padding-bottom: 2px;
+        scroll-snap-type: none;
+      }
+
+      .lesson-app-card {
+        width: 100%;
+        min-height: 112px;
+      }
+
       .price-card {
         grid-template-columns: 1fr;
         gap: 8px;
@@ -1227,7 +1308,7 @@
   <header class="page-header">
     <nav class="nav" aria-label="ページナビゲーション">
       <a class="nav-brand" href="../">なめがわブラス・ラボ</a>
-      <a class="back-link" href="../">← トップへ戻る</a>
+      <a class="back-link" href="../" data-history-back>← 1つ前へ戻る</a>
     </nav>
     <div class="hero">
       <div class="hero-content">
@@ -1298,10 +1379,10 @@
             <strong>トランペット練習メトロノーム</strong>
             <span>呼吸・テンポ・連符をまとめて練習</span>
           </a>
-          <div class="lesson-app-card" aria-disabled="true">
-            <strong>Flow Harmony</strong>
-            <span>現在公開を停止しています</span>
-          </div>
+          <a class="lesson-app-card" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">
+            <strong>Trumpet Transpose Lab</strong>
+            <span>録音から採譜、音符編集、B♭譜の移調まで無料で体験</span>
+          </a>
         </div>
       </div>
     </section>
@@ -1311,24 +1392,55 @@
       <div class="price-list">
         <article class="price-card">
           <div>
-            <h3>小学生</h3>
+            <h3><button class="lesson-detail-toggle" id="elementary-lesson-toggle" type="button" aria-expanded="false" aria-controls="elementary-trial">小学生</button></h3>
             <p>個人レッスン（1回30分）</p>
           </div>
           <div class="price">月2回：3,000円</div>
+          <aside class="lesson-detail" id="elementary-trial" aria-labelledby="elementary-trial-title" hidden>
+            <h3 id="elementary-trial-title">トランペット体験レッスン！憧れの音を鳴らしてみよう♪</h3>
+            <p>初めてでも大丈夫！段階を踏んで自分のペースで挑戦できます。</p>
+            <ol>
+              <li><strong>カッコいい構え方</strong>（基本の姿勢からスタート）</li>
+              <li><strong>息出しのコツ</strong>（焦らず音を出す準備）</li>
+              <li><strong>音出しチャレンジ</strong>（鳴らなくてもOK！感覚を掴もう）</li>
+              <li><strong>メロディに挑戦</strong>（指使いを覚えて一歩ずつ）</li>
+            </ol>
+            <p>鳴らなくても大丈夫。「音が出た！」の喜びを焦らず一緒に体験してみませんか？</p>
+          </aside>
         </article>
         <article class="price-card">
           <div>
-            <h3>中学生</h3>
+            <h3><button class="lesson-detail-toggle" id="junior-high-lesson-toggle" type="button" aria-expanded="false" aria-controls="junior-high-trial">中学生</button></h3>
             <p>個人レッスン（1回45分）</p>
           </div>
           <div class="price">月2回：5,000円</div>
+          <aside class="lesson-detail" id="junior-high-trial" aria-labelledby="junior-high-trial-title" hidden>
+            <h3 id="junior-high-trial-title">中学生のためのトランペットレッスン！</h3>
+            <p>部活での悩みやステップアップを全力でサポートします！</p>
+            <ul>
+              <li><strong>ウォームアップと基礎練習</strong>（体の準備と上達のための練習を明確に区別！）</li>
+              <li><strong>部活動のお悩み相談</strong>（音量・バテ・合奏の不安を一緒に解決）</li>
+              <li><strong>コンクール・ソロ曲の攻略</strong>（曲の表現力や難しいフレーズの練習法を伝授）</li>
+            </ul>
+            <p>自分の音に自信をつけて、演奏をもっと楽しもう！お気軽にご相談ください♪</p>
+          </aside>
         </article>
         <article class="price-card">
           <div>
-            <h3>高校生以上</h3>
+            <h3><button class="lesson-detail-toggle" id="high-school-adult-lesson-toggle" type="button" aria-expanded="false" aria-controls="high-school-adult-trial">高校生以上</button></h3>
             <p>個人レッスン（1回60分）</p>
           </div>
           <div class="price">基本料金：1回7,000円</div>
+          <aside class="lesson-detail" id="high-school-adult-trial" aria-labelledby="high-school-adult-trial-title" hidden>
+            <h3 id="high-school-adult-trial-title">【高校生・大人向け】トランペット オーダーメイド・レッスン</h3>
+            <p>一人ひとりの「なりたい姿」やライフスタイルに合わせた、完全オーダーメイドのレッスンをご提案します！</p>
+            <ul>
+              <li><strong>憧れの曲を吹いてみたい</strong>（ジャズ、ポップス、クラシックなど好きなジャンルに挑戦）</li>
+              <li><strong>趣味として楽しく続けたい</strong>（ブランクがある方の再開や、マイペースな趣味づくりに）</li>
+              <li><strong>本格的な技術UP・音大受験対策</strong>（基礎の見直しから専門的な表現力、受験課題曲まで徹底サポート）</li>
+            </ul>
+            <p>「もっと上手くなりたい」「音色を磨きたい」といった経験者はもちろん、大人になってから始める初心者の方も大歓迎です。あなただけのレッスンメニューで、トランペットをもっと楽しみませんか？</p>
+          </aside>
         </article>
         <article class="price-card">
           <div>
@@ -1455,7 +1567,21 @@
       <p class="copyright">© なめがわブラス・ラボ</p>
     </div>
   </footer>
+  <script src="../back-navigation.js"></script>
   <script>
+    document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
+      const detail = document.getElementById(toggle.getAttribute("aria-controls"));
+      if (!detail) return;
+      toggle.setAttribute("aria-expanded", "false");
+      detail.hidden = true;
+      toggle.addEventListener("click", () => {
+        const isOpen = toggle.getAttribute("aria-expanded") === "true";
+        toggle.setAttribute("aria-expanded", String(!isOpen));
+        detail.hidden = isOpen;
+        if (!isOpen) detail.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
     document.querySelectorAll(".lesson-app-card").forEach((link) => {
       link.addEventListener("click", (event) => {
         if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;

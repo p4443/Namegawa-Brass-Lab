@@ -89,3 +89,35 @@ curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
 curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
 [FAIL] STORE_HEALTH_EDITOR_PASSWORD is unset
 curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] STORE_HEALTH_EDITOR_PASSWORD is unset
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Flow Harmony is not in unpublished mode: {"checkout_available":false,"enabled":true,"name":"Flow Harmony \u30aa\u30d5\u30e9\u30a4\u30f3\u7248","price_yen":1000,"product_id":"flow-harmony"}
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+[FAIL] Trumpet Transpose Lab is not in unpublished mode: {"checkout_available":false,"enabled":true,"name":"Trumpet Transpose Lab \u30aa\u30d5\u30e9\u30a4\u30f3\u7248","price_yen":1000,"product_id":"trumpet-transpose-lab"}
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL
+curl: (6) Could not resolve host: namegawa-brass-lab.onrender.com
+[FAIL] Network error on GET https://namegawa-brass-lab.onrender.com/health
+curl: (6) Could not resolve host: YOUR_WEBHOOK_URL

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fiow Harmony（フロー・ハーモニー）</title>
+  <title>Trumpet Transpose Lab</title>
   <style>
     :root {
       --bg-color: #080a0b;
@@ -1153,120 +1153,26 @@
 
 <div class="app-container">
   <div class="header">
-    <h1>Fiow Harmony（フロー・ハーモニー）</h1>
-    <p>録音した演奏から、吹きやすい二重奏とB♭トランペット譜を生成</p>
+    <h1>Trumpet Transpose Lab</h1>
+    <p>録音したフレーズを楽譜に変換し、音高・音価・タイミングと移調を一つの画面で整えるトランペット専用ワークスペース</p>
   </div>
 
   <div class="app-feature">
-
-  <div class="duet-controls">
-    <div>
-      <div class="section-title"><span>デュエット編曲</span></div>
-      <div class="duet-mode-switch" aria-label="簡単ハモリモード">
-        <button class="btn-option active" type="button" onclick="setSimpleHarmonyMode('auto', this)">おまかせ<br>自動解析</button>
-        <button class="btn-option" type="button" onclick="setSimpleHarmonyMode('upper', this)">上ハモリ<br>3度・4度</button>
-        <button class="btn-option" type="button" onclick="setSimpleHarmonyMode('lower', this)">下ハモリ<br>3度・4度</button>
-      </div>
-    </div>
-
-  <!-- マイ・トーン サンプリング -->
-  <div>
-    <div class="tone-box">
-      <button class="btn-tone" id="sampleBtn" onclick="sampleMyTone()">音色を分析して自分専用にする（My Tone）</button>
-      <div id="toneStatus" style="font-size:0.75rem; color:var(--text-muted); margin-top:6px;">
-        ボタンを押して音を長く伸ばすと、ハモリ音があなたの音質に近づきます
-      </div>
-    </div>
-  </div>
-  </div>
-
   <details class="advanced-settings">
-    <summary>詳細設定（マイク・12音ハモリ・Bluetooth）</summary>
+    <summary>マイク設定</summary>
     <div class="advanced-content">
-
-  <div class="advanced-block">
-    <div class="section-title">
-      <span>マイク安全設定</span>
-    </div>
-    <label>自動でオフにする時間
-      <select id="microphoneAutoOffMinutes" onchange="restartMicrophoneAutoOffTimer()">
-        <option value="5">5分</option>
-        <option value="10" selected>10分</option>
-        <option value="15">15分</option>
-        <option value="30">30分</option>
-        <option value="60">60分</option>
-      </select>
-    </label>
-  </div>
-
-  <!-- Bluetooth デバイス連携 -->
-  <div class="advanced-block">
-    <div class="section-title">
-      <span>Bluetooth 波デバイス</span>
-    </div>
-    <div class="bluetooth-box">
-      <div class="bluetooth-row">
-        <button class="btn-tone" id="bluetoothBtn" onclick="toggleBluetooth()">デバイスを接続</button>
-        <span class="bluetooth-status" id="bluetoothStatus">未接続</span>
-      </div>
-      <details class="bluetooth-settings">
-        <summary>BLE通信設定</summary>
-        <label>
-          Service UUID
-          <input id="serviceUuid" value="6e400001-b5a3-f393-e0a9-e50e24dcca9e" spellcheck="false">
+      <div class="advanced-block">
+        <div class="section-title"><span>マイク安全設定</span></div>
+        <label>自動でオフにする時間
+          <select id="microphoneAutoOffMinutes" onchange="restartMicrophoneAutoOffTimer()">
+            <option value="5">5分</option>
+            <option value="10" selected>10分</option>
+            <option value="15">15分</option>
+            <option value="30">30分</option>
+            <option value="60">60分</option>
+          </select>
         </label>
-        <label>
-          Write Characteristic UUID
-          <input id="characteristicUuid" value="6e400002-b5a3-f393-e0a9-e50e24dcca9e" spellcheck="false">
-        </label>
-      </details>
-    </div>
-  </div>
-
-  <!-- ハーモニー解析と12音インターバル -->
-  <div class="advanced-block">
-    <div class="section-title">
-      <span>ハーモニー設計</span>
-    </div>
-    <div class="mode-switch" aria-label="ハーモニーモード">
-      <button class="btn-option active" onclick="setHarmonyMode('auto', this)">進行解析・自動</button>
-      <button class="btn-option" onclick="setHarmonyMode('manual', this)">12音・マニュアル</button>
-    </div>
-    <div class="analysis-stage" id="autoHarmonyPanel">
-      <div class="analysis-headline">
-        <div class="analysis-metric"><span>推定コード</span><strong id="chordDisplay">Listening</strong></div>
-        <div class="analysis-metric"><span>調性</span><strong id="keyDisplay">--</strong></div>
-        <div class="analysis-metric"><span>選択ボイス</span><strong id="voiceDisplay">自動待機</strong></div>
       </div>
-      <div class="progression-line"><span>推定進行</span><strong id="progressionDisplay">--</strong></div>
-      <div class="pitch-map" id="pitchMap" aria-label="12音解析マップ"></div>
-      <p class="analysis-caption" id="analysisCaption">マイク音から心地よいコード進行と声部を推定します。検出モニター音はOFFです。</p>
-    </div>
-    <div class="manual-settings" id="manualHarmonyPanel" hidden>
-      <div class="grid-direction" aria-label="ハーモニー方向">
-        <button class="btn-option" onclick="setHarmonyDirection('upper', this)">上ハモり</button>
-        <button class="btn-option" onclick="setHarmonyDirection('lower', this)">下ハモり</button>
-        <button class="btn-option active" onclick="setHarmonyDirection('both', this)">上下ハモり</button>
-      </div>
-      <div class="grid-3">
-        <button class="btn-option active" onclick="setHarmony('major3rd', this)">長3度 (+4)</button>
-        <button class="btn-option" onclick="setHarmony('perfect5th', this)">完全5度 (+7)</button>
-        <button class="btn-option" onclick="setHarmony('octave', this)">オクターブ (+12)</button>
-        <button class="btn-option" onclick="setHarmony('semitone', this)">半音 (+1)</button>
-        <button class="btn-option" onclick="setHarmony('whole', this)">全音 (+2)</button>
-        <button class="btn-option" onclick="setHarmony('minor3rd', this)">短3度 (+3)</button>
-        <button class="btn-option" onclick="setHarmony('perfect4th', this)">完全4度 (+5)</button>
-        <button class="btn-option" onclick="setHarmony('tritone', this)">増4度/減5度 (+6)</button>
-        <button class="btn-option" onclick="setHarmony('minor6th', this)">短6度 (+8)</button>
-        <button class="btn-option" onclick="setHarmony('major6th', this)">長6度 (+9)</button>
-        <button class="btn-option" onclick="setHarmony('minor7th', this)">短7度 (+10)</button>
-        <button class="btn-option" onclick="setHarmony('major7th', this)">長7度 (+11)</button>
-      </div>
-      <p class="harmony-direction-status" id="harmonyDirectionStatus">入力音の上下に長3度（±4半音）を同等バランスで重ねます</p>
-      <p class="analysis-caption">12音ハモリは入力音と同等の音量バランスで鳴ります。ハウリング防止のためヘッドホンを推奨します。</p>
-    </div>
-  </div>
-
     </div>
   </details>
 
@@ -1279,10 +1185,6 @@
       <div class="flow-wave" id="flowWave"></div>
       <div class="pitch-tag" id="pitchDisplay">--</div>
       <span class="monitor-status" id="statusText">マイクはオフです</span>
-    </div>
-    <div class="monitor-code">
-      <span class="monitor-label">推定コード</span>
-      <strong id="liveChordDisplay">--</strong>
     </div>
   </div>
 
@@ -1358,20 +1260,13 @@
       <label>演奏遅延補正 ms
         <input id="performanceLag" type="number" min="0" max="500" step="10" value="150" onchange="handleScoreSettingsChange()">
       </label>
-      <label>編曲用途
-        <select id="arrangementPurpose" onchange="handleArrangementPurposeChange()">
-          <option value="lesson">レッスン</option>
-          <option value="standard" selected>標準</option>
-          <option value="stage">ステージ</option>
-        </select>
-      </label>
     </div>
     </details>
     <div class="beat-guide" id="beatGuide">
       <div class="beat-orb" id="beatOrb">–</div>
       <div class="beat-copy">
         <strong id="beatGuideTitle">テンポ待機</strong>
-        <span id="beatGuideDetail">録音開始前に1小節カウントします</span>
+        <span id="beatGuideDetail">録音開始前に1小節、無音でカウントします</span>
       </div>
       <span class="beat-tempo" id="beatTempo">♩=120</span>
     </div>
@@ -1383,11 +1278,8 @@
       録音ファイルを読み込んで楽譜化
       <input id="recordingFileInput" type="file" accept="audio/*,.wav,.mp3,.m4a,.aac,.ogg,.webm" onchange="analyzeSelectedRecording(this)">
     </label>
-    <button class="btn-tone" id="arrangeDuetButton" type="button" onclick="reanalyzeLatestRecording()" hidden>録音音声を再解析・編曲</button>
-    <div class="playback-switch" id="playbackOptions" aria-label="録音再生モード" hidden>
-      <button class="btn-option active" type="button" onclick="setPlaybackHarmony(false, this)">原音のみ</button>
-      <button class="btn-option" type="button" onclick="setPlaybackHarmony(true, this)">原音＋デュエット</button>
-    </div>
+    <button class="btn-tone" id="arrangeDuetButton" type="button" onclick="reanalyzeLatestRecording()" hidden>録音音声を再解析</button>
+    <div id="playbackOptions" hidden></div>
     <audio id="audioPlayback" controls preload="metadata" style="display:none;"></audio>
     <div class="playback-meter" id="playbackMeter" hidden>
       <button class="btn-tone" id="playbackToggle" type="button" onclick="togglePlayback()">再生</button>
@@ -1411,12 +1303,12 @@
 
   <section class="score-panel" aria-labelledby="scoreTitle">
     <div class="score-toolbar">
-      <strong id="scoreTitle">デュエット自動編曲譜（B♭トランペット）</strong>
+      <strong id="scoreTitle">自動採譜（B♭トランペット）</strong>
       <div class="score-toolbar-actions">
         <div class="score-export-actions" aria-label="DAW・楽譜ソフトへ書き出し">
           <button class="btn-tone" type="button" onclick="downloadMidi()">MIDI</button>
           <button class="btn-tone" type="button" onclick="downloadMusicXml()">MusicXML</button>
-          <button class="btn-tone" type="button" onclick="optimizeTrumpetKey()">吹きやすい調へ</button>
+          <button class="btn-tone" type="button" onclick="optimizeTrumpetKey()">演奏しやすい調へ</button>
         </div>
         <div class="transpose-control" aria-label="楽譜の移調">
           <button class="btn-tone" type="button" onclick="changeTranspose(-1)" aria-label="半音下げる">−</button>
@@ -1451,7 +1343,7 @@
     <div class="score-viewport" id="scoreViewport">
       <svg id="scoreSvg" role="img" aria-label="解析された楽譜"></svg>
     </div>
-    <p class="score-empty" id="scoreStatus">録音を停止すると、旋律を解析して二声のデュエット譜を作成します。</p>
+    <p class="score-empty" id="scoreStatus">録音を停止すると、演奏した旋律を自動で記譜します。</p>
   </section>
   </div>
   </div>
@@ -1475,7 +1367,7 @@
   let recordingObjectUrl = '';
   let currentRecordingBlob = null;
   let recordingFileHandle = null;
-  let recordingFilename = 'flow-harmony-recording.wav';
+  let recordingFilename = 'trumpet-transpose-lab-recording.wav';
   let recordingStartedAt = 0;
   let recordingDurationSeconds = 0;
   let detectedKeyRoot = 0;
@@ -1493,7 +1385,6 @@
   const instrumentTransposeSemitones = 2;
   let countInProgress = false;
   let beatGuideTimer = null;
-  let metronomeNextBeatTime = 0;
   let tapTempoTimes = [];
   let playbackHarmonyEnabled = false;
   let playbackHarmonyContext = null;
@@ -1546,7 +1437,7 @@
 
   function recordingFilenameForNow() {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-    return `flow-harmony-${timestamp}.wav`;
+    return `trumpet-transpose-lab-${timestamp}.wav`;
   }
 
   async function chooseRecordingDestination() {
@@ -1640,7 +1531,7 @@
       energy += sample * sample;
     }
     const rms = Math.sqrt(energy / windowSize);
-    if (rms < 0.012) return null;
+    if (rms < 0.006) return null;
     mean /= windowSize;
     for (let index = 0; index < length; index++) {
       let sum = 0;
@@ -1691,6 +1582,29 @@
     const refinedLag = denominator ? bestLag + 0.5 * (left - right) / denominator : bestLag;
     const frequency = reducedSampleRate / refinedLag;
     return frequency >= 100 && frequency <= 2000 ? { frequency, rms, confidence } : null;
+  }
+
+  function prepareRecordedSamples(buffer) {
+    let selected = buffer.getChannelData(0);
+    let selectedEnergy = -1;
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const samples = buffer.getChannelData(channel);
+      let energy = 0;
+      let peak = 0;
+      for (let index = 0; index < samples.length; index++) {
+        energy += samples[index] * samples[index];
+        peak = Math.max(peak, Math.abs(samples[index]));
+      }
+      if (energy > selectedEnergy) {
+        selected = samples;
+        selectedEnergy = energy;
+      }
+    }
+    let peak = 0;
+    for (let index = 0; index < selected.length; index++) peak = Math.max(peak, Math.abs(selected[index]));
+    if (!peak || peak >= 0.2) return selected;
+    const gain = Math.min(8, 0.35 / peak);
+    return Float32Array.from(selected, sample => Math.max(-1, Math.min(1, sample * gain)));
   }
 
   async function transcribePcmSamples(samples, sampleRate) {
@@ -1791,12 +1705,16 @@
   }
 
   async function transcribeRecordedBlob(blob) {
-    const liveNotes = scoreNotes.map(note => ({ ...note }));
     const context = new (window.AudioContext || window.webkitAudioContext)();
     try {
-      const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      let buffer;
+      try {
+        buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      } catch (error) {
+        throw new Error('AUDIO_DECODE_FAILED');
+      }
       recordingDurationSeconds = buffer.duration;
-      const transcribed = await transcribePcmSamples(buffer.getChannelData(0), buffer.sampleRate);
+      const transcribed = await transcribePcmSamples(prepareRecordedSamples(buffer), buffer.sampleRate);
       if (!transcribed.length) return 0;
       if (document.getElementById('autoTempoDetection').value === 'on') {
         const currentTempo = Number(document.getElementById('scoreTempo').value) || 120;
@@ -1804,17 +1722,15 @@
         document.getElementById('scoreTempo').value = estimatedTempo;
       }
       scoreNotes = transcribed.map((note) => {
-        const live = closestLiveAnalysis(note, liveNotes);
         return {
           id: `note-${Date.now()}-${++scoreNoteSequence}`,
           ...note,
-          chordRoot: live?.chordRoot ?? positiveModulo(note.note, 12),
-          chordSuffix: live?.chordSuffix ?? '',
-          harmonyNote: null,
           analyzedFromRecording: true
         };
       });
-      arrangeDuetScore();
+      updateDetectedKeyFromNotes(scoreNotes);
+      firstPartNotes = scoreNotes.map(note => ({ ...note }));
+      duetNotes = [];
       renderScore();
       return scoreNotes.length;
     } finally {
@@ -1831,7 +1747,7 @@
       const count = await transcribeRecordedBlob(recording.blob);
       if (!count) throw new Error('No notes detected');
       await persistScoreEdits();
-      status.innerText = `録音音声を再解析し、${count}音のデュエット編曲譜を作成しました。`;
+      status.innerText = `録音音声を再解析し、${count}音を記譜しました。`;
     } catch (error) {
       status.innerText = '録音音声から音符を検出できませんでした。元の採譜結果は維持しています。';
     }
@@ -1843,6 +1759,9 @@
     const status = document.getElementById('scoreStatus');
     status.innerText = `${file.name} を解析しています...`;
     input.disabled = true;
+    const previousScoreNotes = scoreNotes.map(note => ({ ...note }));
+    const previousFirstPartNotes = firstPartNotes.map(note => ({ ...note }));
+    const previousDuetNotes = duetNotes.map(note => ({ ...note }));
     try {
       scoreNotes = [];
       firstPartNotes = [];
@@ -1862,9 +1781,15 @@
       recordingFileHandle = null;
       recordingFilename = file.name;
       updatePlaybackMeter();
-      status.innerText = `${file.name} から${count}音を解析し、デュエット編曲譜を作成しました。`;
+      status.innerText = `${file.name} から${count}音を解析して記譜しました。`;
     } catch (error) {
-      status.innerText = '録音ファイルから音符を検出できませんでした。対応形式または録音音量を確認してください。';
+      scoreNotes = previousScoreNotes;
+      firstPartNotes = previousFirstPartNotes;
+      duetNotes = previousDuetNotes;
+      renderScore();
+      status.innerText = error.message === 'AUDIO_DECODE_FAILED'
+        ? 'この録音形式を読み込めませんでした。WAV、MP3、M4Aのいずれかで保存して再度お試しください。'
+        : '録音から音を検出できませんでした。音量が十分な演奏音を含むファイルを選んでください。';
     } finally {
       input.disabled = false;
       input.value = '';
@@ -1909,18 +1834,12 @@
     return ((value % divisor) + divisor) % divisor;
   }
 
-  function recordScorePitch(noteNumber, timestamp, harmonyInterval = null, articulated = false) {
+  function recordScorePitch(noteNumber, timestamp, articulated = false) {
     if (!isRecording) return;
     const lag = Math.max(0, Math.min(500, Number(document.getElementById('performanceLag').value) || 0));
     const elapsed = Math.max(0, timestamp - recordingStartedAt - lag);
-    const harmonyNote = harmonyInterval === null ? null : noteNumber + harmonyInterval;
-    const chordRoot = currentAnalysis?.chordRoot ?? positiveModulo(noteNumber, 12);
-    const chordSuffix = currentAnalysis?.chordSuffix ?? '';
     if (
       activeRecordedNote?.note === noteNumber
-      && activeRecordedNote.harmonyNote === harmonyNote
-      && activeRecordedNote.chordRoot === chordRoot
-      && activeRecordedNote.chordSuffix === chordSuffix
       && !articulated
     ) {
       activeRecordedNote.end = elapsed;
@@ -1932,9 +1851,6 @@
       note: noteNumber,
       start: elapsed,
       end: elapsed + 180,
-      chordRoot,
-      chordSuffix,
-      harmonyNote,
       articulated: Boolean(articulated)
     };
     scoreNotes.push(activeRecordedNote);
@@ -2202,15 +2118,14 @@
       0, 0xff, 0x59, 2, fifths & 0xff, detectedKeyMode === 'minor' ? 1 : 0,
       0, 0xff, 0x2f, 0
     ]);
-    const header = midiChunk('MThd', [0, 1, 0, 3, (ticksPerQuarter >>> 8) & 0xff, ticksPerQuarter & 0xff]);
+    const header = midiChunk('MThd', [0, 1, 0, 2, (ticksPerQuarter >>> 8) & 0xff, ticksPerQuarter & 0xff]);
     const bytes = [
       ...header,
       ...conductor,
-      ...midiTrack('Trumpet 1 - Melody', melody, 0, settings, ticksPerQuarter),
-      ...midiTrack('Trumpet 2 - Counterline', duetNotes, 1, settings, ticksPerQuarter)
+      ...midiTrack('Trumpet - Melody', melody, 0, settings, ticksPerQuarter)
     ];
-    downloadFile(new Blob([new Uint8Array(bytes)], { type: 'audio/midi' }), 'flow-harmony-duet.mid');
-    document.getElementById('scoreStatus').innerText = 'DAW用MIDIを1st・2ndの2トラックで書き出しました。';
+    downloadFile(new Blob([new Uint8Array(bytes)], { type: 'audio/midi' }), 'trumpet-transpose-lab-score.mid');
+    document.getElementById('scoreStatus').innerText = '採譜した旋律をMIDIで書き出しました。';
   }
 
   function musicXmlPitch(noteNumber, preferFlats) {
@@ -2285,16 +2200,15 @@
     }
     const settings = scoreRhythmSettings();
     const melodyModel = buildScoreModel(melody, settings);
-    const duetModel = buildScoreModel(duetNotes, settings);
-    const lastQuarter = Math.max(melodyModel.lastQuarter, duetModel.lastQuarter, settings.pickupQuarter || settings.measureQuarter);
+    const lastQuarter = Math.max(melodyModel.lastQuarter, settings.pickupQuarter || settings.measureQuarter);
     const scoreOriginQuarter = settings.pickupQuarter || 0;
     const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
     const totalQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
     const fifths = scoreKeySignature();
     const divisions = 480;
-    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n<score-partwise version="4.0"><work><work-title>Flow Harmony Duet</work-title></work><identification><encoding><software>Flow Harmony</software><encoding-date>${new Date().toISOString().slice(0, 10)}</encoding-date></encoding></identification><part-list><score-part id="P1"><part-name>B-flat Trumpet 1</part-name><score-instrument id="P1-I1"><instrument-name>Trumpet</instrument-name></score-instrument><midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>57</midi-program></midi-instrument></score-part><score-part id="P2"><part-name>B-flat Trumpet 2</part-name><score-instrument id="P2-I1"><instrument-name>Trumpet</instrument-name></score-instrument><midi-instrument id="P2-I1"><midi-channel>2</midi-channel><midi-program>57</midi-program></midi-instrument></score-part></part-list><part id="P1">${musicXmlPart('P1', melody, settings, totalQuarter, divisions, fifths)}</part><part id="P2">${musicXmlPart('P2', duetNotes, settings, totalQuarter, divisions, fifths)}</part></score-partwise>`;
-    downloadFile(new Blob([xml], { type: 'application/vnd.recordare.musicxml+xml;charset=utf-8' }), 'flow-harmony-duet.musicxml');
-    document.getElementById('scoreStatus').innerText = 'B♭トランペット二重奏のMusicXMLを書き出しました。';
+    const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n<score-partwise version="4.0"><work><work-title>Trumpet Transpose Lab Score</work-title></work><identification><encoding><software>Trumpet Transpose Lab</software><encoding-date>${new Date().toISOString().slice(0, 10)}</encoding-date></encoding></identification><part-list><score-part id="P1"><part-name>B-flat Trumpet</part-name><score-instrument id="P1-I1"><instrument-name>Trumpet</instrument-name></score-instrument><midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>57</midi-program></midi-instrument></score-part></part-list><part id="P1">${musicXmlPart('P1', melody, settings, totalQuarter, divisions, fifths)}</part></score-partwise>`;
+    downloadFile(new Blob([xml], { type: 'application/vnd.recordare.musicxml+xml;charset=utf-8' }), 'trumpet-transpose-lab-score.musicxml');
+    document.getElementById('scoreStatus').innerText = '採譜したB♭トランペット譜をMusicXMLで書き出しました。';
   }
 
   async function deleteLatestRecording() {
@@ -2390,7 +2304,7 @@
     const flatOffsets = [0, 1, 1, 2, 2, 3, 4, 4, 5, 5, 6, 6];
     const octave = Math.floor(noteNumber / 12) - 1;
     const offsets = preferFlats ? flatOffsets : sharpOffsets;
-    return (octave - 4) * 7 + offsets[positiveModulo(noteNumber, 12)];
+    return (octave - 4) * 7 + offsets[positiveModulo(noteNumber, 12)] - 4;
   }
 
   function escapeXml(value) {
@@ -2464,22 +2378,6 @@
     }
     candidates.sort((left, right) => left.cost - right.cost);
     return candidates[0].cost < 0.24 ? candidates[0].tempo : fallbackTempo;
-  }
-
-  function playMetronomeClick(accent = false) {
-    if (!audioCtx || audioCtx.state === 'closed') return;
-    const start = Math.max(audioCtx.currentTime, metronomeNextBeatTime);
-    const oscillator = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    oscillator.type = 'square';
-    oscillator.frequency.setValueAtTime(accent ? 1760 : 1180, start);
-    gain.gain.setValueAtTime(accent ? 0.12 : 0.075, start);
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.045);
-    oscillator.connect(gain);
-    gain.connect(audioCtx.destination);
-    oscillator.start(start);
-    oscillator.stop(start + 0.05);
-    metronomeNextBeatTime = start + 0.055;
   }
 
   function quantizeQuarter(milliseconds, settings) {
@@ -2638,7 +2536,7 @@
     beatGuideTimer = null;
     const settings = scoreRhythmSettings();
     const countInText = settings.countInMeasures
-      ? `録音開始前に${settings.countInMeasures}小節カウントします`
+      ? `録音開始前に${settings.countInMeasures}小節、無音でカウントします`
       : '予備カウントなしで録音します';
     updateBeatGuide('テンポ待機', countInText, '–', false, settings.tempo);
   }
@@ -2654,9 +2552,39 @@
     return (mode === 'minor' ? minorSignatures : majorSignatures)[positiveModulo(root, 12)];
   }
 
+  function updateDetectedKeyFromNotes(notes) {
+    if (!notes.length) return;
+    const pitchWeights = Array(12).fill(0);
+    notes.forEach((note) => {
+      const durationWeight = Math.max(100, note.end - note.start);
+      pitchWeights[positiveModulo(note.note, 12)] += durationWeight;
+    });
+    const profiles = {
+      major: [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88],
+      minor: [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+    };
+    const candidates = [];
+    for (let root = 0; root < 12; root++) {
+      Object.entries(profiles).forEach(([mode, profile]) => {
+        const fifths = keySignatureCountFor(root + instrumentTransposeSemitones, mode);
+        const profileScore = pitchWeights.reduce((total, weight, pitchClass) => (
+          total + weight * profile[positiveModulo(pitchClass - root, 12)]
+        ), 0);
+        candidates.push({ root, mode, score: profileScore - Math.abs(fifths) * 18 });
+      });
+    }
+    candidates.sort((left, right) => right.score - left.score
+      || Math.abs(keySignatureCountFor(left.root + instrumentTransposeSemitones, left.mode))
+        - Math.abs(keySignatureCountFor(right.root + instrumentTransposeSemitones, right.mode)));
+    detectedKeyRoot = candidates[0].root;
+    detectedKeyMode = candidates[0].mode;
+  }
+
   function scoreKeySignature() {
     const selected = document.getElementById('keySignature').value;
     if (selected !== 'auto') return Number(selected);
+    const notes = finalizedFirstPartNotes();
+    if (notes.length) updateDetectedKeyFromNotes(notes);
     return keySignatureCountFor(detectedKeyRoot + scoreTransposeSemitones(), detectedKeyMode);
   }
 
@@ -2692,8 +2620,7 @@
       if (!countInProgress) return false;
       const measureBeat = positiveModulo(beat - 1, settings.numerator) + 1;
       const measure = Math.floor((beat - 1) / settings.numerator) + 1;
-      playMetronomeClick(measureBeat === 1);
-      updateBeatGuide('予備カウント', `${measure}小節目 ・ ${beat}/${totalBeats}拍`, measureBeat, measureBeat === 1, settings.tempo);
+      updateBeatGuide('サイレント予備カウント', `${measure}小節目 ・ ${beat}/${totalBeats}拍`, measureBeat, measureBeat === 1, settings.tempo);
       await new Promise(resolve => setTimeout(resolve, beatMilliseconds));
     }
     countInProgress = false;
@@ -2717,8 +2644,7 @@
       const regularBeatIndex = Math.max(0, beatIndex - Math.ceil(settings.pickupBeats));
       const beat = positiveModulo(regularBeatIndex, settings.numerator) + 1;
       const measure = Math.floor(regularBeatIndex / settings.numerator) + 1;
-      playMetronomeClick(beat === 1);
-      updateBeatGuide('録音・解析中', `${measure}小節目 ・ ${beat}/${settings.numerator}拍`, beat, beat === 1, settings.tempo);
+      updateBeatGuide('録音・解析中（無音）', `${measure}小節目 ・ ${beat}/${settings.numerator}拍`, beat, beat === 1, settings.tempo);
     };
     refresh();
     beatGuideTimer = setInterval(refresh, Math.max(30, beatMilliseconds / 6));
@@ -2731,9 +2657,8 @@
     const settings = scoreRhythmSettings();
     const scoreModel = buildScoreModel(notes, settings);
     const rhythmicNotes = scoreModel.events;
-    const duetScoreModel = buildScoreModel(duetNotes, settings);
-    const rhythmicDuetNotes = duetScoreModel.events;
-    const lastQuarter = Math.max(scoreModel.lastQuarter, duetScoreModel.lastQuarter);
+    const rhythmicDuetNotes = [];
+    const lastQuarter = scoreModel.lastQuarter;
     const scoreOriginQuarter = settings.pickupQuarter || 0;
     const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
     const scoreEndQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
@@ -2753,8 +2678,7 @@
       return;
     }
     document.getElementById('scoreEditTools').hidden = false;
-    const selectedNote = (selectedScoreVoice === 'harmony' ? duetNotes : notes)
-      .find(note => note.id === selectedScoreNoteId);
+    const selectedNote = notes.find(note => note.id === selectedScoreNoteId);
     const scoreTranspose = scoreTransposeSemitones();
     const durationControl = document.getElementById('selectedNoteDuration');
     durationControl.disabled = !selectedNote;
@@ -2767,8 +2691,8 @@
       durationControl.value = String(closestDuration);
     }
     document.getElementById('selectedNoteStatus').innerText = selectedNote
-      ? `${selectedScoreVoice === 'harmony' ? '2nd' : '1st'} ${noteStrings[positiveModulo(selectedNote.note + scoreTranspose, 12)]} を選択中`
-      : '1stまたは2ndの音符を選択';
+      ? `${noteStrings[positiveModulo(selectedNote.note + scoreTranspose, 12)]} を選択中`
+      : '編集する音符を選択';
 
     const staffTop = 92;
     const staffGap = 12;
@@ -2776,8 +2700,8 @@
       const y = staffTop + index * staffGap;
       return `<line x1="38" y1="${y}" x2="${width - 24}" y2="${y}" stroke="#43474a" stroke-width="1"/>`;
     }).join('');
-    const sharpPositions = [98, 116, 92, 110, 128, 104, 122];
-    const flatPositions = [122, 104, 128, 110, 134, 116, 140];
+    const sharpPositions = [92, 110, 86, 104, 122, 98, 116];
+    const flatPositions = [116, 98, 122, 104, 128, 110, 134];
     const signaturePositions = keySignatureCount > 0 ? sharpPositions : flatPositions;
     const signatureSymbol = keySignatureCount > 0 ? '♯' : '♭';
     const keySignatureElements = Array.from({ length: signatureSize }, (_, index) => (
@@ -2820,8 +2744,6 @@
       const x = scoreStartX + (rest.startQuarter + rest.duration / 2) * quarterWidth;
       return `<text x="${x}" y="${staffTop + 34}" text-anchor="middle" font-size="25" font-family="Apple Symbols, Noto Music, serif" fill="#151719">${restSymbols[rest.duration]}</text>`;
     }).join('');
-    let previousChord = '';
-    let previousChordX = -Infinity;
     const resolveOriginalAccidental = createAccidentalResolver(keySignatureCount, settings);
     const noteElements = rhythmicNotes.map((note) => {
       const transposed = note.note + scoreTranspose;
@@ -2834,13 +2756,7 @@
         ? `<text x="${x - 19}" y="${y + 6}" font-size="18" font-family="serif">${accidentalSymbol}</text>`
         : '';
       const { baseDuration, dotted, filled, flagCount } = scoreDurationStyle(durationQuarter);
-      const overlappingDuetNote = rhythmicDuetNotes.find(duetNote => (
-        duetNote.startQuarter < note.endQuarter && duetNote.endQuarter > note.startQuarter
-      ));
-      const harmonyY = overlappingDuetNote
-        ? staffTop + staffGap * 3 - scorePitchPosition(overlappingDuetNote.note + scoreTranspose, preferFlats) * 6
-        : null;
-      const stemDown = harmonyY === null ? y <= staffTop + staffGap * 2 : y > harmonyY;
+      const stemDown = y <= staffTop + staffGap * 2;
       const stemX = stemDown ? x - 7 : x + 7;
       const stemEndY = stemDown ? y + 35 : y - 35;
       const stem = baseDuration < 4 ? `<line x1="${stemX}" y1="${y}" x2="${stemX}" y2="${stemEndY}" stroke="#151719" stroke-width="2"/>` : '';
@@ -2856,21 +2772,12 @@
       for (let ledgerY = staffTop - staffGap; ledgerY >= y - 3; ledgerY -= staffGap) ledgerLines.push(ledgerY);
       for (let ledgerY = staffBottom + staffGap; ledgerY <= y + 3; ledgerY += staffGap) ledgerLines.push(ledgerY);
       const ledgers = ledgerLines.map(ledgerY => `<line x1="${x - 13}" y1="${ledgerY}" x2="${x + 13}" y2="${ledgerY}" stroke="#151719" stroke-width="1.2"/>`).join('');
-      const chordName = `${scoreNoteName(note.chordRoot + scoreTranspose, preferFlats)}${note.chordSuffix}`;
-      const showChord = !note.tiedFrom && chordName !== previousChord && x - previousChordX >= 54;
-      const chord = showChord
-        ? `<text x="${x - 10}" y="${staffTop - 27}" font-size="15" font-weight="700" fill="#157486">${escapeXml(chordName)}</text>`
-        : '';
-      if (showChord) {
-        previousChord = chordName;
-        previousChordX = x;
-      }
       const selected = note.id === selectedScoreNoteId && selectedScoreVoice === 'original' ? ' selected' : '';
       const tieEndX = scoreStartX + note.endQuarter * quarterWidth + 14;
       const tie = note.tiedTo
         ? `<path class="score-tie original-tie" d="M ${x + 7} ${y + 8} Q ${(x + tieEndX) / 2} ${y + 20} ${tieEndX - 7} ${y + 8}" fill="none" stroke="#151719" stroke-width="1.6"/>`
         : '';
-      return `${chord}<g class="score-note original${selected}" onclick="selectScoreNote('${note.id}', 'original')">${ledgers}${accidental}<ellipse cx="${x}" cy="${y}" rx="8.5" ry="5.8" transform="rotate(-18 ${x} ${y})" fill="${filled ? '#151719' : '#f5f3eb'}" stroke="#151719" stroke-width="1.8"/>${stem}${flags}${dot}</g>${tie}`;
+      return `<g class="score-note original${selected}" onclick="selectScoreNote('${note.id}', 'original')">${ledgers}${accidental}<ellipse cx="${x}" cy="${y}" rx="8.5" ry="5.8" transform="rotate(-18 ${x} ${y})" fill="${filled ? '#151719' : '#f5f3eb'}" stroke="#151719" stroke-width="1.8"/>${stem}${flags}${dot}</g>${tie}`;
     }).join('');
 
     const resolveHarmonyAccidental = createAccidentalResolver(keySignatureCount, settings);
@@ -2919,10 +2826,9 @@
       ? ` / PICKUP ${settings.pickupBeats} BEAT${settings.pickupBeats === 1 ? '' : 'S'}`
       : '';
     const keySource = document.getElementById('keySignature').value === 'auto' ? 'AUTO' : 'MANUAL';
-    svg.innerHTML = `<rect width="${width}" height="260" fill="#f8f7f2"/><text x="38" y="31" font-size="12" font-weight="600" fill="#555b5e">B♭ TRUMPET · ${settings.numerator}/${settings.denominator} · ♩=${settings.tempo} · ${keySignatureLabel(keySignatureCount)} (${keySource})${pickupLabel}</text><text x="${width - 170}" y="31" font-size="11" fill="#555b5e">黒: 1st　青: 2nd</text>${staffLines}${initialBarline}${barlines.join('')}${finalBarline}<text x="43" y="136" font-size="58" font-family="Apple Symbols, Noto Music, serif" fill="#151719">𝄞</text>${keySignatureElements}<text x="${timeSignatureX}" y="109" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.numerator}</text><text x="${timeSignatureX}" y="132" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.denominator}</text>${restElements}${noteElements}${harmonyElements}`;
+    svg.innerHTML = `<rect width="${width}" height="260" fill="#f8f7f2"/><text x="38" y="31" font-size="12" font-weight="600" fill="#555b5e">B♭ TRUMPET · ト音記号 · ${settings.numerator}/${settings.denominator} · ♩=${settings.tempo} · ${keySignatureLabel(keySignatureCount)} (${keySource})${pickupLabel}</text>${staffLines}${initialBarline}${barlines.join('')}${finalBarline}<text x="43" y="136" font-size="58" font-family="Apple Symbols, Noto Music, serif" fill="#151719" aria-label="ト音記号">𝄞</text>${keySignatureElements}<text x="${timeSignatureX}" y="109" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.numerator}</text><text x="${timeSignatureX}" y="132" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.denominator}</text>${restElements}${noteElements}`;
     const pickupStatus = settings.pickupBeats ? `、アウフタクト${settings.pickupBeats}拍` : '';
-    const harmonyCount = duetNotes.length;
-    status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}で1st ${notes.length}音・2nd ${harmonyCount}音を編曲しました。`;
+    status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}で${notes.length}音を記譜しました。`;
   }
 
   function changeTranspose(amount) {
@@ -2938,8 +2844,7 @@
   async function optimizeTrumpetKey() {
     const notes = finalizedScoreNotes();
     if (!notes.length) return;
-    const purpose = document.getElementById('arrangementPurpose').value || 'standard';
-    const idealCenter = purpose === 'lesson' ? 66 : purpose === 'stage' ? 69 : 67;
+    const idealCenter = 67;
     const candidates = [];
     for (let shift = -6; shift <= 6; shift++) {
       const writtenPitches = notes.map(note => note.note + instrumentTransposeSemitones + shift);
@@ -2956,7 +2861,6 @@
     transposeSemitones = candidates[0].shift;
     const scoreTranspose = scoreTransposeSemitones();
     document.getElementById('transposeValue').innerText = `B♭管 ${scoreTranspose > 0 ? '+' : ''}${scoreTranspose}`;
-    arrangeDuetScore();
     renderScore();
     await persistScoreEdits();
     document.getElementById('scoreStatus').innerText = `調号とテッシトゥーラから、B♭管 ${scoreTranspose > 0 ? '+' : ''}${scoreTranspose} の記譜へ調整しました。`;
@@ -3390,23 +3294,13 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('pitchMap').innerHTML = noteStrings
-      .map((note, index) => `<span class="pitch-cell" data-pitch-class="${index}">${note}</span>`)
-      .join('');
     const audioPlayback = document.getElementById('audioPlayback');
-    audioPlayback.addEventListener('play', schedulePlaybackHarmony);
     audioPlayback.addEventListener('play', updatePlaybackButton);
-    audioPlayback.addEventListener('pause', stopPlaybackHarmony);
     audioPlayback.addEventListener('pause', updatePlaybackButton);
-    audioPlayback.addEventListener('ended', stopPlaybackHarmony);
     audioPlayback.addEventListener('ended', updatePlaybackButton);
     audioPlayback.addEventListener('timeupdate', updatePlaybackMeter);
     audioPlayback.addEventListener('loadedmetadata', updatePlaybackMeter);
     audioPlayback.addEventListener('durationchange', updatePlaybackMeter);
-    audioPlayback.addEventListener('seeking', stopPlaybackHarmony);
-    audioPlayback.addEventListener('seeked', () => {
-      if (!audioPlayback.paused) schedulePlaybackHarmony();
-    });
     checkMicrophonePermission();
   });
 
@@ -3778,7 +3672,8 @@
     closeRecordedNote();
     recordingDurationSeconds = Math.max(0, (Date.now() - recordingStartedAt) / 1000);
     isRecording = false;
-    arrangeDuetScore();
+    firstPartNotes = scoreNotes.map(note => ({ ...note }));
+    duetNotes = [];
     renderScore();
     document.getElementById('arrangeDuetButton').hidden = !scoreNotes.length;
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
@@ -3842,8 +3737,6 @@
     currentAnalysis = null;
     noteHistory.length = 0;
     chordProgression.length = 0;
-    document.getElementById('progressionDisplay').innerText = '--';
-    document.getElementById('liveChordDisplay').innerText = '--';
   }
 
   function microphoneErrorMessage(error) {
@@ -3920,22 +3813,12 @@
             if (stablePitch && (lastTriggeredPitch !== noteNum || nowTime - lastTriggerTime > Math.max(220, responseMilliseconds))) {
               const detectionTimestamp = lastTriggeredPitch === noteNum ? nowTime : pendingPitchSince;
               rememberPitch(noteNum, detectionTimestamp);
-              const harmonyIntervals = getHarmonyIntervals(noteNum);
-              if (harmonyMode === 'auto') updateAnalysisDisplay(noteNum, currentAnalysis);
               const articulated = pendingArticulation;
               pendingArticulation = false;
-              recordScorePitch(noteNum, detectionTimestamp, harmonyIntervals[0] ?? null, articulated);
-              harmonyIntervals.forEach((interval) => {
-                const harmonyFreq = freq * Math.pow(2, interval / 12);
-                sendBluetoothHarmony(noteNum + interval, harmonyFreq, interval);
-              });
+              recordScorePitch(noteNum, detectionTimestamp, articulated);
               lastTriggeredPitch = noteNum;
               lastTriggerTime = nowTime;
             }
-            const liveIntervals = harmonyMode === 'auto' && currentAnalysis
-              ? [currentAnalysis.interval]
-              : getHarmonyIntervals();
-            updateLongHarmony(freq, liveIntervals);
           } else {
             pitchDisplay.innerText = "--";
             if (lastSoundTime && Date.now() - lastSoundTime > 250) {
@@ -4037,11 +3920,12 @@
         if (blob?.size) {
           const liveNoteCount = finalizedScoreNotes().length;
           let recordedAudioNoteCount = 0;
-          document.getElementById('scoreStatus').innerText = '録音音声を再解析してデュエット編曲中です...';
+          document.getElementById('scoreStatus').innerText = '録音音声を再解析して記譜中です...';
           try {
             recordedAudioNoteCount = await transcribeRecordedBlob(blob);
           } catch (error) {
-            arrangeDuetScore();
+            firstPartNotes = scoreNotes.map(note => ({ ...note }));
+            duetNotes = [];
             renderScore();
           }
           if (recordingObjectUrl) URL.revokeObjectURL(recordingObjectUrl);
@@ -4082,7 +3966,7 @@
       recBtn.classList.add('recording');
       const countInBeats = Math.round(rhythmSettings.numerator * rhythmSettings.countInMeasures);
       document.getElementById('scoreStatus').innerText = countInBeats
-        ? `無音の予備カウント中です。${countInBeats}拍後に録音を開始します。`
+        ? `サイレント予備カウント中です。画面の拍表示を見て、${countInBeats}拍後に演奏を始めてください。`
         : '予備カウントなしで録音を開始します。';
       const countInCompleted = await runVisualCountIn(rhythmSettings);
       if (!countInCompleted) return;
@@ -4107,11 +3991,11 @@
         document.getElementById('scoreStatus').innerText = `録音を開始できませんでした（${error.name || '録音機能エラー'}）。マイクを再接続してください。`;
         return;
       }
-      recBtn.innerText = "録音を停止・デュエット編曲";
+      recBtn.innerText = "録音を停止・採譜";
       recBtn.classList.add('recording');
       isRecording = true;
       startRecordingBeatGuide(rhythmSettings);
-      document.getElementById('scoreStatus').innerText = '録音・コード解析中です。画面の拍に合わせて演奏してください。';
+      document.getElementById('scoreStatus').innerText = '録音・音高解析中です。クリック音は鳴らず、画面だけで拍を案内します。';
     } else {
       stopRecording();
     }

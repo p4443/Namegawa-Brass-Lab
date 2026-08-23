@@ -7,8 +7,10 @@ from zipfile import ZIP_DEFLATED, ZipFile
 BASE_DIR = Path(__file__).resolve().parent
 SOURCE_FILE = BASE_DIR / "music App" / "index.html"
 OUTPUT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
-FLOW_HARMONY_SOURCE_FILE = BASE_DIR / "flow-harmony" / "index.html"
-FLOW_HARMONY_OUTPUT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zip"
+TRANSPOSE_LAB_SOURCE_FILE = BASE_DIR / "trumpet-transpose-lab" / "index.html"
+TRANSPOSE_LAB_OUTPUT_FILE = (
+    BASE_DIR / "private" / "products" / "trumpet-transpose-lab.zip"
+)
 README = """トランペット練習メトロノーム オフライン版
 
 使い方:
@@ -23,15 +25,16 @@ README = """トランペット練習メトロノーム オフライン版
 - 購入者本人が所有する複数端末で利用できます。
 - 第三者への譲渡、共有、再配布、販売、公衆送信は禁止します。
 """
-FLOW_HARMONY_README = """Flow Harmony オフライン版
+TRANSPOSE_LAB_README = """Trumpet Transpose Lab オフライン版
 
 使い方:
 1. ZIPファイルを展開します。
 2. index.htmlをブラウザで開きます。
 3. マイクの使用を許可して利用します。
 
-演奏検知、上下ハーモニー、1/fゆらぎ、録音はインターネット接続なしで利用できます。
-Bluetooth連携は対応ブラウザとHTTPS環境が必要な場合があります。
+録音したフレーズを自動採譜し、音高・音価・タイミングを編集できます。
+B♭トランペット譜の移調、WAV保存、MIDI・MusicXML出力にも対応します。
+録音データはサーバーへ送信せず、利用者が指定した場所へ保存します。
 
 利用条件:
 - 本商品は購入者本人のみ利用できます。
@@ -64,13 +67,13 @@ def build_archive(source_file, output_file, readme):
 def build_product():
     metronome = build_archive(SOURCE_FILE, OUTPUT_FILE, README)
     build_archive(
-        FLOW_HARMONY_SOURCE_FILE,
-        FLOW_HARMONY_OUTPUT_FILE,
-        FLOW_HARMONY_README,
+        TRANSPOSE_LAB_SOURCE_FILE,
+        TRANSPOSE_LAB_OUTPUT_FILE,
+        TRANSPOSE_LAB_README,
     )
     return metronome
 
 
 if __name__ == "__main__":
     print(build_product())
-    print(FLOW_HARMONY_OUTPUT_FILE)
+    print(TRANSPOSE_LAB_OUTPUT_FILE)
