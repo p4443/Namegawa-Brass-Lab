@@ -113,8 +113,8 @@ request "GET" "${BASE_URL}/api/store/trumpet-transpose-lab/product"
 if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/trumpet-transpose-lab/product returned HTTP ${status_code}: ${response_body}"
 fi
-if [[ "$response_body" != *'"enabled":false'* || "$response_body" != *'"checkout_available":false'* ]]; then
-  fail "Trumpet Transpose Lab is not in unpublished mode: ${response_body}"
+if [[ "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ]]; then
+  fail "Trumpet Transpose Lab checkout is unavailable: ${response_body}"
 fi
 pass "GET /api/store/trumpet-transpose-lab/product"
 

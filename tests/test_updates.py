@@ -629,6 +629,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("CONTRACTS_DIR: /contracts", compose)
         self.assertIn("契約書管理:/contracts", compose)
 
+    def test_production_healthcheck_requires_transpose_checkout(self):
+        healthcheck = (Path(__file__).resolve().parents[1] / "healthcheck-prod.sh").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("Trumpet Transpose Lab checkout is unavailable", healthcheck)
+        self.assertIn("'\"enabled\":true'", healthcheck)
+        self.assertIn("'\"checkout_available\":true'", healthcheck)
+        self.assertNotIn("Trumpet Transpose Lab is not in unpublished mode", healthcheck)
+
     def test_contract_api_saves_and_lists_by_department(self):
         with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as server_directory, patch.dict(
             os.environ, {"EDITOR_PASSWORD": "editor-secret"}
