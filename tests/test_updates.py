@@ -620,6 +620,8 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
+        self.assertIn("apt-get install -y --no-install-recommends curl", dockerfile)
+        self.assertIn("COPY healthcheck-prod.sh ./", dockerfile)
         self.assertIn("COPY contract-generator ./contract-generator", dockerfile)
         self.assertIn("COPY app.py index.html back-navigation.js build_product.py ./", dockerfile)
 
