@@ -194,6 +194,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("break-inside: avoid;", page)
         self.assertIn('class="individual-contract-table"', page)
         self.assertIn(".individual-contract-table th { border-right: 1.5px solid #222222; }", page)
+        self.assertIn(".individual-contract-table td:last-child { border-right: 1.5px solid #222222; }", page)
         self.assertIn("print-color-adjust: exact;", page)
         self.assertIn("ハラスメント", page)
         self.assertIn("運送中止", page)
