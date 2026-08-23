@@ -218,6 +218,9 @@ class StoreTest(unittest.TestCase):
         self.assertIn("changeSelectedNoteDuration", html)
         self.assertIn("showSaveFilePicker", html)
         self.assertIn("保存先を選んでWAV保存", html)
+        self.assertIn("prepareRecordedSamples(buffer)", html)
+        self.assertIn("AUDIO_DECODE_FAILED", html)
+        self.assertIn("previousScoreNotes", html)
         self.assertIn("自動採譜（B♭トランペット）", html)
         self.assertIn("trumpet-transpose-lab-score.mid", html)
         self.assertIn("trumpet-transpose-lab-score.musicxml", html)
@@ -253,6 +256,15 @@ class StoreTest(unittest.TestCase):
         self.assertNotIn("allow=\"microphone; autoplay; bluetooth\"", html)
         self.assertIn("Web版は無料で全機能を利用できます", html)
         self.assertIn('requestStore("trumpet-transpose-lab/checkout"', html)
+
+    def test_products_separates_free_web_and_one_time_zip_apps(self):
+        response = self.client.get("/products/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(html.count('<span class="product-label">無料Web版</span>'), 2)
+        self.assertEqual(html.count("<h3>買い切りアプリ版（ZIP）</h3>"), 2)
+        self.assertEqual(html.count("追加料金なしの1回払い"), 2)
 
     def test_products_stack_vertically_on_smartphones(self):
         response = self.client.get("/products/")

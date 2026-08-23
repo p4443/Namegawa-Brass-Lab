@@ -203,12 +203,27 @@
       .document { min-width: 210mm; }
     }
 
-    @page { size: A4; margin: 0; }
+    @page { size: A4 portrait; margin: 12mm; }
 
     @media print {
       .sidebar { display: none; }
       body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
-      .document { width: 210mm; min-height: 297mm; padding: 18mm 20mm; box-shadow: none; }
+      .document {
+        width: auto;
+        min-height: auto;
+        padding: 0;
+        box-shadow: none;
+        font-size: 10pt;
+        line-height: 1.65;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      .document h1 { margin-bottom: 18px; font-size: 18pt; break-after: avoid; }
+      .document h2 { margin-top: 14px; break-after: avoid; }
+      .document p { orphans: 3; widows: 3; }
+      .document table { break-inside: auto; }
+      .document tr, .doc-parties, .party-box { break-inside: avoid; }
+      .doc-parties { margin-top: 24px; }
     }
   </style>
 </head>

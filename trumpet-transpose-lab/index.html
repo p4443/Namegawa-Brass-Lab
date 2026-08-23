@@ -1531,7 +1531,7 @@
       energy += sample * sample;
     }
     const rms = Math.sqrt(energy / windowSize);
-    if (rms < 0.012) return null;
+    if (rms < 0.006) return null;
     mean /= windowSize;
     for (let index = 0; index < length; index++) {
       let sum = 0;
@@ -1582,6 +1582,29 @@
     const refinedLag = denominator ? bestLag + 0.5 * (left - right) / denominator : bestLag;
     const frequency = reducedSampleRate / refinedLag;
     return frequency >= 100 && frequency <= 2000 ? { frequency, rms, confidence } : null;
+  }
+
+  function prepareRecordedSamples(buffer) {
+    let selected = buffer.getChannelData(0);
+    let selectedEnergy = -1;
+    for (let channel = 0; channel < buffer.numberOfChannels; channel++) {
+      const samples = buffer.getChannelData(channel);
+      let energy = 0;
+      let peak = 0;
+      for (let index = 0; index < samples.length; index++) {
+        energy += samples[index] * samples[index];
+        peak = Math.max(peak, Math.abs(samples[index]));
+      }
+      if (energy > selectedEnergy) {
+        selected = samples;
+        selectedEnergy = energy;
+      }
+    }
+    let peak = 0;
+    for (let index = 0; index < selected.length; index++) peak = Math.max(peak, Math.abs(selected[index]));
+    if (!peak || peak >= 0.2) return selected;
+    const gain = Math.min(8, 0.35 / peak);
+    return Float32Array.from(selected, sample => Math.max(-1, Math.min(1, sample * gain)));
   }
 
   async function transcribePcmSamples(samples, sampleRate) {
@@ -1682,12 +1705,16 @@
   }
 
   async function transcribeRecordedBlob(blob) {
-    const liveNotes = scoreNotes.map(note => ({ ...note }));
     const context = new (window.AudioContext || window.webkitAudioContext)();
     try {
-      const buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      let buffer;
+      try {
+        buffer = await context.decodeAudioData(await blob.arrayBuffer());
+      } catch (error) {
+        throw new Error('AUDIO_DECODE_FAILED');
+      }
       recordingDurationSeconds = buffer.duration;
-      const transcribed = await transcribePcmSamples(buffer.getChannelData(0), buffer.sampleRate);
+      const transcribed = await transcribePcmSamples(prepareRecordedSamples(buffer), buffer.sampleRate);
       if (!transcribed.length) return 0;
       if (document.getElementById('autoTempoDetection').value === 'on') {
         const currentTempo = Number(document.getElementById('scoreTempo').value) || 120;
@@ -1732,6 +1759,9 @@
     const status = document.getElementById('scoreStatus');
     status.innerText = `${file.name} を解析しています...`;
     input.disabled = true;
+    const previousScoreNotes = scoreNotes.map(note => ({ ...note }));
+    const previousFirstPartNotes = firstPartNotes.map(note => ({ ...note }));
+    const previousDuetNotes = duetNotes.map(note => ({ ...note }));
     try {
       scoreNotes = [];
       firstPartNotes = [];
@@ -1753,7 +1783,13 @@
       updatePlaybackMeter();
       status.innerText = `${file.name} から${count}音を解析して記譜しました。`;
     } catch (error) {
-      status.innerText = '録音ファイルから音符を検出できませんでした。対応形式または録音音量を確認してください。';
+      scoreNotes = previousScoreNotes;
+      firstPartNotes = previousFirstPartNotes;
+      duetNotes = previousDuetNotes;
+      renderScore();
+      status.innerText = error.message === 'AUDIO_DECODE_FAILED'
+        ? 'この録音形式を読み込めませんでした。WAV、MP3、M4Aのいずれかで保存して再度お試しください。'
+        : '録音から音を検出できませんでした。音量が十分な演奏音を含むファイルを選んでください。';
     } finally {
       input.disabled = false;
       input.value = '';
