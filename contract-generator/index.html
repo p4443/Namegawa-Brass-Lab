@@ -231,34 +231,32 @@
       .document, .contract-page { min-width: var(--paper-width); }
     }
 
-    @page { size: A4 portrait; margin: 12mm; }
+    @page { size: A4 portrait; margin: 0; }
 
     @media print {
       .sidebar { display: none; }
       body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
       .document {
         display: block;
-        width: auto;
+        width: var(--paper-width);
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
       .contract-page {
-        width: 186mm;
-        height: 273mm;
-        min-height: 273mm;
-        margin: 0 auto;
-        padding: 0;
-        overflow: visible;
+        width: var(--paper-width);
+        height: var(--paper-height);
+        min-height: var(--paper-height);
+        margin: 0;
+        padding: 16mm 18mm;
+        overflow: hidden;
         box-shadow: none;
         break-after: page;
       }
       .contract-page:last-child { break-after: auto; }
-      .document h1 { margin-bottom: 18px; font-size: 18pt; break-after: avoid; }
-      .document h2 { margin-top: 14px; break-after: avoid; }
+      .document h1, .document h2 { break-after: avoid; }
       .document p { orphans: 3; widows: 3; }
       .document table { break-inside: auto; }
       .document tr, .doc-parties, .party-box { break-inside: avoid; }
-      .doc-parties { margin-top: 24px; }
     }
   </style>
 </head>
