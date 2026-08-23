@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";
+var SCRIPT_VERSION = "2026-08-23-transport-workflow-v23";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -470,11 +470,18 @@ function generateTransportWorkbook(data) {
 
   var feeSheet = workbook.insertSheet("料金規定");
   var feeRows = [
-    ["楽器価格マスター基準日", safeCell(instrumentMaster.effective_date)],
-    ["楽器価格マスター出典URL", safeCell(instrumentMaster.source_url)],
-    ["料金マスター基準日", safeCell(rateMaster.effective_date)],
-    ["出典URL", safeCell(rateMaster.source_url)],
-    ["確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
+    ["案件進行状態", safeCell(data.workflow_status)],
+    ["運送実施形態", safeCell(data.transport_provider_mode)],
+    ["参考車両区分", safeCell(data.vehicle_class)],
+    ["料金根拠", safeCell(data.pricing_basis)],
+    ["外部運送会社名", safeCell(data.carrier_name)],
+    ["正式見積書URL", safeCell(data.carrier_quote_url)],
+    ["正式見積取得日", safeCell(data.carrier_quote_date)],
+    ["楽器再調達価格基準日", safeCell(instrumentMaster.effective_date)],
+    ["楽器再調達価格出典URL", safeCell(instrumentMaster.source_url)],
+    ["参考運賃基準日", safeCell(rateMaster.effective_date)],
+    ["国土交通省標準運賃URL", safeCell(rateMaster.source_url)],
+    ["参考車種確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
     ["20kmまでの距離制基本運賃", Number(rateMaster.distance_base_20 || 0)],
     ["21〜50km 1km加算", Number(rateMaster.distance_per_km_21_50 || 0)],
     ["51〜100km 1km加算", Number(rateMaster.distance_per_km_51_100 || 0)],
@@ -492,7 +499,7 @@ function generateTransportWorkbook(data) {
   ];
   feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
   feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
-  feeSheet.getRange(7, 2, feeRows.length - 5, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(14, 2, feeRows.length - 12, 1).setNumberFormat("¥#,##0");
   feeSheet.setFrozenRows(1);
   feeSheet.autoResizeColumns(1, 2);
 

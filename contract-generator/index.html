@@ -223,6 +223,10 @@
     .cargo-capacity-status strong { display: block; margin-bottom: 3px; }
     .cargo-capacity-status.is-ok { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
     .cargo-capacity-status.is-over { border-color: #dc2626; color: #7f1d1d; background: #fef2f2; }
+    .transport-workflow-status { margin-bottom: 14px; padding: 12px; border: 1px solid #d97706; border-radius: 6px; color: #78350f; background: #fffbeb; font-size: 0.8rem; }
+    .transport-workflow-status.is-ready { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
+    .transport-workflow-status strong { display: block; margin-bottom: 4px; }
+    .transport-workflow-status ul { margin: 5px 0 0; padding-left: 20px; }
     .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
     .cargo-editor-fieldset:disabled { opacity: 0.5; }
     .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
@@ -591,6 +595,8 @@
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
+        workflow_status: 'quote_pending', transport_provider_mode: 'external_carrier', vehicle_class: 'undecided', pricing_basis: 'mlit_reference',
+        carrier_name: '', carrier_quote_url: '', carrier_quote_date: '',
         permit_number: '', office_information: '', operation_manager: '',
         cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
@@ -598,21 +604,15 @@
         route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
         instrument_price_master: { effective_date: '', source_url: '', verified: false },
         freight_rate_master: {
-          effective_date: '', source_url: '', verified: false,
+          effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
           distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
           charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0',
           loading_base: '0', loading_per_25_points: '0', fuel_reference_price: '0', fuel_current_price: '0',
           fuel_per_km_per_yen: '0', external_2t_charter: '0'
         },
-        cargo_items: [
-          { category: '金管楽器', instrument_key: 'trumpet', description: 'トランペット', maker_model: '標準モデル', quantity: '10', condition: '良好', valuation_mode: 'master', unit_value: '500000', total_value: '5000000', volume_points: '1', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'horn', description: 'ホルン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '800000', total_value: '6400000', volume_points: '4', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'trombone', description: 'トロンボーン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '600000', total_value: '4800000', volume_points: '3', notes: '本体・ハードケース・付属品' },
-          { category: '金管楽器', instrument_key: 'tuba', description: 'チューバ', maker_model: '標準モデル', quantity: '4', condition: '良好', valuation_mode: 'master', unit_value: '1500000', total_value: '6000000', volume_points: '15', notes: '本体・ハードケース・付属品' },
-          { category: '打楽器', instrument_key: 'other', description: '打楽器・音響機材一式', maker_model: '', quantity: '1', condition: '良好', valuation_mode: 'manual', unit_value: '7800000', total_value: '7800000', volume_points: '35', notes: '個別内訳・製造番号は必要に応じて備考へ追記' }
-        ],
+        cargo_items: [{ category: 'その他', instrument_key: 'other', description: '案件受付後に入力', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '型番・再調達価格を案件ごとに確認' }],
         estimate_items: [
-          { description: '基本運賃（貸切）', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '走行距離および拘束時間に基づく基本運賃' },
+          { description: '外部運送会社の正式見積', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '国土交通省標準運賃は参考のみ。正式見積取得後に確定' },
           { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
           { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
           { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
@@ -662,6 +662,25 @@
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
 
+    function selectField(label, key, value, options) {
+      return `<div class="field"><label>${label}<select data-contract-key="${key}">${options.map(option => `<option value="${option.value}"${option.value === value ? ' selected' : ''}>${option.label}</option>`).join('')}</select></label></div>`;
+    }
+
+    function transportReadiness(values) {
+      const missing = [];
+      if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
+      if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
+      if (values.vehicle_class === 'undecided') missing.push('車両区分');
+      if (values.transport_provider_mode !== 'external_carrier') missing.push('外部運送会社への委託設定');
+      if (values.pricing_basis !== 'carrier_quote') missing.push('正式見積を料金根拠に設定');
+      if (!values.carrier_name) missing.push('外部運送会社名');
+      if (!values.carrier_quote_url || !values.carrier_quote_date) missing.push('正式見積書・取得日');
+      if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
+      if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
+      if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
+      return missing;
+    }
+
     const estimatePresets = {
       description: ['基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
       quantity: ['1', '2', '3', '5', '10'],
@@ -672,25 +691,25 @@
 
     const cargoCategories = ['木管楽器', '金管楽器', '打楽器', '弦楽器', '備品', 'その他'];
     const instrumentMaster = {
-      flute: { category: '木管楽器', name: 'フルート', model: '標準モデル', referenceValue: 300000, volumePoints: 0.5 },
-      clarinet: { category: '木管楽器', name: 'クラリネット', model: '標準モデル', referenceValue: 250000, volumePoints: 1 },
-      bass_clarinet: { category: '木管楽器', name: 'バスクラリネット', model: '標準モデル', referenceValue: 800000, volumePoints: 5 },
-      baritone_sax: { category: '木管楽器', name: 'バリトンサックス', model: '標準モデル', referenceValue: 900000, volumePoints: 8 },
-      trumpet: { category: '金管楽器', name: 'トランペット', model: '標準モデル', referenceValue: 500000, volumePoints: 1 },
-      horn: { category: '金管楽器', name: 'ホルン', model: '標準モデル', referenceValue: 800000, volumePoints: 4 },
-      trombone: { category: '金管楽器', name: 'トロンボーン', model: '標準モデル', referenceValue: 600000, volumePoints: 3 },
-      euphonium: { category: '金管楽器', name: 'ユーフォニアム', model: '標準モデル', referenceValue: 800000, volumePoints: 8 },
-      tuba: { category: '金管楽器', name: 'チューバ', model: '標準モデル', referenceValue: 1500000, volumePoints: 15 },
-      timpani: { category: '打楽器', name: 'ティンパニ', model: '標準モデル', referenceValue: 1000000, volumePoints: 30 },
-      bass_drum: { category: '打楽器', name: 'バスドラム', model: '標準モデル', referenceValue: 500000, volumePoints: 25 },
-      marimba: { category: '打楽器', name: 'マリンバ', model: '標準モデル', referenceValue: 2000000, volumePoints: 35 },
-      contrabass: { category: '弦楽器', name: 'コントラバス', model: '標準モデル', referenceValue: 1000000, volumePoints: 20 },
-      music_stand: { category: '備品', name: '譜面台', model: '', referenceValue: 10000, volumePoints: 0.5 }
+      flute: { category: '木管楽器', name: 'フルート', volumePoints: 0.5 },
+      clarinet: { category: '木管楽器', name: 'クラリネット', volumePoints: 1 },
+      bass_clarinet: { category: '木管楽器', name: 'バスクラリネット', volumePoints: 5 },
+      baritone_sax: { category: '木管楽器', name: 'バリトンサックス', volumePoints: 8 },
+      trumpet: { category: '金管楽器', name: 'トランペット', volumePoints: 1 },
+      horn: { category: '金管楽器', name: 'ホルン', volumePoints: 4 },
+      trombone: { category: '金管楽器', name: 'トロンボーン', volumePoints: 3 },
+      euphonium: { category: '金管楽器', name: 'ユーフォニアム', volumePoints: 8 },
+      tuba: { category: '金管楽器', name: 'チューバ', volumePoints: 15 },
+      timpani: { category: '打楽器', name: 'ティンパニ', volumePoints: 30 },
+      bass_drum: { category: '打楽器', name: 'バスドラム', volumePoints: 25 },
+      marimba: { category: '打楽器', name: 'マリンバ', volumePoints: 35 },
+      contrabass: { category: '弦楽器', name: 'コントラバス', volumePoints: 20 },
+      music_stand: { category: '備品', name: '譜面台', volumePoints: 0.5 }
     };
 
     function instrumentOptions(selectedKey) {
       const options = Object.entries(instrumentMaster).map(([key, item]) =>
-        `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${item.category}｜${item.name}｜${item.model || '型番なし'}</option>`
+        `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${item.category}｜${item.name}</option>`
       ).join('');
       return `${options}<option value="other"${selectedKey === 'other' ? ' selected' : ''}>その他（名称・評価額を自由入力）</option>`;
     }
@@ -733,7 +752,16 @@
       syncCargoValuation();
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
-      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>許認可・営業所・運行管理者情報と添付URLは、確認済みの実情報だけを入力してください。参考価格・容積ポイントは管理用の初期値であり、実物と最新資料を確認して更新してください。</div>`
+      const missing = transportReadiness(values);
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>国土交通省「標準的な運賃」は参考額の確認だけに使い、請求額は外部運送会社の正式見積で確定してください。</div>`
+        + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}"><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
+        + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '外部運送会社へ見積依頼中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
+        + selectField('運送実施形態', 'transport_provider_mode', values.transport_provider_mode, [{ value: 'external_carrier', label: '外部の許可運送会社へ委託' }, { value: 'self_light_cargo', label: '自社の軽貨物運送' }, { value: 'self_general_freight', label: '自社の一般貨物運送' }])
+        + selectField('国交省標準運賃の参考車両', 'vehicle_class', values.vehicle_class, [{ value: 'undecided', label: '未定' }, { value: 'small', label: '小型車（2トンクラス）' }, { value: 'medium', label: '中型車（4トンクラス）' }, { value: 'large', label: '大型車（10トンクラス）' }, { value: 'trailer', label: 'トレーラー' }])
+        + selectField('料金根拠', 'pricing_basis', values.pricing_basis, [{ value: 'mlit_reference', label: '国土交通省標準運賃は参考のみ' }, { value: 'carrier_quote', label: '外部運送会社の正式見積で確定' }])
+        + field('外部運送会社名', 'carrier_name', values.carrier_name)
+        + field('正式見積書の共有URL', 'carrier_quote_url', values.carrier_quote_url)
+        + `<div class="field"><label>正式見積取得日<input data-contract-key="carrier_quote_date" type="date" value="${escapeHtml(values.carrier_quote_date)}"></label></div>`
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + field('輸送案件名', 'transport_name', values.transport_name)
@@ -752,8 +780,8 @@
         + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><button class="secondary-button" data-open-route-map type="button">経路図作成を開く</button></div>`
         + `<p class="save-status" data-document-tool-status role="status"></p>`
         + `<div${overCapacity ? '' : ' hidden'} data-external-budget>${field('外注・追加車両手配の希望予算（円）', 'external_vehicle_budget', values.external_vehicle_budget)}</div>`
-        + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から運賃・料金を自動計算</button>`
-        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器価格マスターの確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">価格出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 最新の定価・市場相場を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">メーカー・販売店等の出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 案件の型番と再調達価格を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
     }
 
@@ -764,12 +792,12 @@
           <h2>輸送対象物 ${index + 1}<button class="cargo-row-remove" data-remove-cargo-row="${index}" type="button" aria-label="輸送対象物${index + 1}を削除">削除</button></h2>
           <div class="cargo-editor-grid">
             <label>区分<select data-cargo-item-key="category">${cargoCategories.map(category => `<option${category === item.category ? ' selected' : ''}>${category}</option>`).join('')}</select></label>
-            <label class="cargo-instrument">楽器マスター<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
+            <label class="cargo-instrument">品目テンプレート<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
             <label>品名・機材名<input data-cargo-item-key="description" type="text" maxlength="120" value="${escapeHtml(item.description)}"></label>
-            <label>メーカー・型番（空欄可）<input data-cargo-item-key="maker_model" type="text" maxlength="120" value="${escapeHtml(item.maker_model)}"></label>
+            <label>メーカー・型番<input data-cargo-item-key="maker_model" type="text" maxlength="120" value="${escapeHtml(item.maker_model)}"></label>
             <label>数量<input data-cargo-item-key="quantity" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(item.quantity)}"></label>
             <label>引渡時の状態<input data-cargo-item-key="condition" type="text" maxlength="80" value="${escapeHtml(item.condition)}"></label>
-            <label>評価方式<select data-cargo-item-key="valuation_mode"><option value="master"${item.valuation_mode === 'master' ? ' selected' : ''}>マスター参考額</option><option value="manual"${item.valuation_mode === 'manual' ? ' selected' : ''}>任意評価額</option></select></label>
+            <label>評価方式<select data-cargo-item-key="valuation_mode"><option value="master"${item.valuation_mode === 'master' ? ' selected' : ''}>出典確認済み</option><option value="manual"${item.valuation_mode === 'manual' ? ' selected' : ''}>案件ごとに入力</option></select></label>
             <label>単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
@@ -834,12 +862,21 @@
     }
 
     function normalizeTransportValues(values) {
+      Object.assign(values, {
+        workflow_status: values.workflow_status || 'quote_pending',
+        transport_provider_mode: values.transport_provider_mode || 'external_carrier',
+        vehicle_class: values.vehicle_class || 'undecided',
+        pricing_basis: values.pricing_basis || 'mlit_reference',
+        carrier_name: values.carrier_name || '',
+        carrier_quote_url: values.carrier_quote_url || '',
+        carrier_quote_date: values.carrier_quote_date || ''
+      });
       values.instrument_price_master = {
         effective_date: '', source_url: '', verified: false,
         ...(values.instrument_price_master || {})
       };
       values.freight_rate_master = {
-        effective_date: '', source_url: '', verified: false,
+        effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
         distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
         charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0', loading_base: '0', loading_per_25_points: '0',
         fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0', external_2t_charter: '0',
@@ -1022,6 +1059,13 @@
           client_name: clientName.value,
           transport_name: contractValues.estimateB.transport_name,
           editor_email: contractValues.estimateB.cargo_contact_email,
+          workflow_status: contractValues.estimateB.workflow_status,
+          transport_provider_mode: contractValues.estimateB.transport_provider_mode,
+          vehicle_class: contractValues.estimateB.vehicle_class,
+          pricing_basis: contractValues.estimateB.pricing_basis,
+          carrier_name: contractValues.estimateB.carrier_name,
+          carrier_quote_url: contractValues.estimateB.carrier_quote_url,
+          carrier_quote_date: contractValues.estimateB.carrier_quote_date,
           cargo_items: contractValues.estimateB.cargo_items,
           freight_rate_master: contractValues.estimateB.freight_rate_master,
           instrument_price_master: contractValues.estimateB.instrument_price_master
@@ -1125,14 +1169,19 @@
       const cargoValuation = syncCargoValuation();
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
+      const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
+      const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '外部運送会社へ見積依頼中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
-          <h1>御見積書（B契約：楽器輸送業務）</h1>
+          <h1>${isReady ? '御見積書' : '見積準備票'}（B契約：楽器輸送業務）</h1>
           <p class="doc-date">${date}</p>
           <div class="estimate-client"><strong>${safeClient} 様</strong><br>${safeRepresentative}</div>
           <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
+          <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
+          <p><strong>運送実施：</strong>${values.transport_provider_mode === 'external_carrier' ? '外部の許可運送会社へ委託' : '自社運送（許認可確認必須）'}　<strong>参考車両：</strong>${escapeHtml(values.vehicle_class === 'undecided' ? '未定' : values.vehicle_class)}</p>
+          <p><strong>運送会社：</strong>${escapeHtml(values.carrier_name || '未定')}　<strong>正式見積：</strong>${values.carrier_quote_url ? `<a href="${escapeHtml(values.carrier_quote_url)}" target="_blank" rel="noopener noreferrer">確認する</a>` : '未取得'}</p>
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           <div class="estimate-issuer"><strong>受託者（乙）</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>住所：埼玉県比企郡滑川町月の輪5丁目1-3</div>
           <h2>1. 法定開示・クラウド添付書類</h2>
@@ -1151,7 +1200,7 @@
         </section>
         <section class="contract-page estimate-page" data-page-number="2">
           <h1>御見積明細（運賃・料金分離型）</h1>
-          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <div class="estimate-total">${isReady ? `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -` : '御見積金額：未確定（外部運送会社の正式見積取得後に確定）'}</div>
           <table class="estimate-table">
             <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
@@ -1164,7 +1213,7 @@
             <li><strong>迂回・延泊実費</strong>${escapeHtml(values.detour_expenses)}</li>
           </ul>
           <p>追加料金は個別契約書B第4項・第5項および事前提示した料金規定に基づき、発生理由と算定根拠を示して精算します。燃油価格や法令改定による運賃見直しは第6項に基づき協議します。</p>
-          <p><strong>料金マスター：</strong>${rateMaster.verified ? `${escapeHtml(rateMaster.effective_date)}現在・<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">出典資料</a>` : '未確認（自動算出結果として保存できません）'}</p>
+          <p><strong>参考運賃資料：</strong>${rateMaster.source_url ? `<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">国土交通省「標準的な運賃」</a>` : '未設定'}。参考額であり、請求額は外部運送会社の正式見積で確定します。</p>
           <p><strong>契約書との関係：</strong>発注時は業務委託基本契約書および個別契約書Bを締結し、本見積書および添付書類を個別契約の一部として扱います。</p>
         </section>
         <section class="contract-page estimate-page" data-page-number="3">
@@ -1472,11 +1521,11 @@
           Object.assign(item, {
             category: master.category,
             description: master.name,
-            maker_model: master.model,
-            valuation_mode: 'master',
-            unit_value: String(master.referenceValue),
+            maker_model: '',
+            valuation_mode: 'manual',
+            unit_value: '0',
             volume_points: String(master.volumePoints),
-            total_value: String(estimateNumber(item.quantity) * master.referenceValue)
+            total_value: '0'
           });
         } else {
           Object.assign(item, { category: 'その他', description: 'その他', maker_model: '', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0' });

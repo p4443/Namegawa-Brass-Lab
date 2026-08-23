@@ -177,6 +177,13 @@ CONTRACT_TYPES = {
         "keys": {
             "transport_name",
             "validity",
+            "workflow_status",
+            "transport_provider_mode",
+            "vehicle_class",
+            "pricing_basis",
+            "carrier_name",
+            "carrier_quote_url",
+            "carrier_quote_date",
             "permit_number",
             "office_information",
             "operation_manager",
@@ -217,7 +224,7 @@ CONTRACT_TYPES = {
         "keys": {"deliverable", "amount", "deadline", "special_terms"},
     },
 }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-23-transport-sheet-v22"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-23-transport-workflow-v23"
 
 
 def current_japan_date():
@@ -736,12 +743,90 @@ def validate_contract(payload):
     raw_values = payload.get("values", {})
     if not isinstance(raw_values, dict):
         raise ValueError("契約条件を確認してください。")
+    transport_workflow_status = str(
+        raw_values.get("workflow_status", "quote_pending")
+    ).strip()
+    transport_is_pending = (
+        doc_type == "estimateB" and transport_workflow_status != "ready"
+    )
+    transport_pending_optional_fields = {
+        "permit_number",
+        "office_information",
+        "operation_manager",
+        "cargo_document_url",
+        "route_document_url",
+        "compliance_document_url",
+        "fee_document_url",
+        "cargo_contact_email",
+        "route_origin",
+        "route_destination",
+    }
+    transport_optional_fields = {
+        "carrier_name",
+        "carrier_quote_url",
+        "carrier_quote_date",
+    }
+    if doc_type == "estimateB" and transport_workflow_status == "ready":
+        ready_cargo_items = raw_values.get("cargo_items", [])
+        ready_rate_master = raw_values.get("freight_rate_master", {})
+        ready_instrument_master = raw_values.get("instrument_price_master", {})
+        cargo_values_ready = isinstance(ready_cargo_items, list) and all(
+            isinstance(item, dict)
+            and str(item.get("maker_model", "")).strip()
+            and str(item.get("unit_value", "")).strip().isdigit()
+            and int(str(item.get("unit_value", "0")).strip()) > 0
+            for item in ready_cargo_items
+        )
+        if (
+            raw_values.get("transport_provider_mode") != "external_carrier"
+            or raw_values.get("vehicle_class") in {None, "", "undecided"}
+            or raw_values.get("pricing_basis") != "carrier_quote"
+            or not str(raw_values.get("carrier_name", "")).strip()
+            or not str(raw_values.get("carrier_quote_url", "")).strip()
+            or not str(raw_values.get("carrier_quote_date", "")).strip()
+            or not isinstance(ready_rate_master, dict)
+            or ready_rate_master.get("verified") is not True
+            or not isinstance(ready_instrument_master, dict)
+            or ready_instrument_master.get("verified") is not True
+            or not cargo_values_ready
+        ):
+            raise ValueError("正式見積の発行準備に必要な運送会社・見積根拠・楽器評価額を確認してください。")
     values = {}
     for key in configuration["keys"]:
+        if key == "workflow_status":
+            if transport_workflow_status not in {"draft", "quote_pending", "ready"}:
+                raise ValueError("輸送案件の進行状態を選択してください。")
+            values[key] = transport_workflow_status
+            continue
+        if key == "transport_provider_mode":
+            provider_mode = str(
+                raw_values.get(key, "external_carrier")
+            ).strip()
+            if provider_mode not in {
+                "external_carrier",
+                "self_light_cargo",
+                "self_general_freight",
+            }:
+                raise ValueError("運送実施形態を選択してください。")
+            values[key] = provider_mode
+            continue
+        if key == "vehicle_class":
+            vehicle_class = str(raw_values.get(key, "undecided")).strip()
+            if vehicle_class not in {"undecided", "small", "medium", "large", "trailer"}:
+                raise ValueError("国土交通省標準運賃を参照する車両区分を選択してください。")
+            values[key] = vehicle_class
+            continue
+        if key == "pricing_basis":
+            pricing_basis = str(raw_values.get(key, "mlit_reference")).strip()
+            if pricing_basis not in {"mlit_reference", "carrier_quote"}:
+                raise ValueError("料金根拠を選択してください。")
+            values[key] = pricing_basis
+            continue
         if key == "cargo_restrictions_agreed":
-            if raw_values.get(key) is not True:
+            agreed = raw_values.get(key) is True
+            if not transport_is_pending and not agreed:
                 raise ValueError("貴重品等を輸送対象外とする確認への同意が必要です。")
-            values[key] = True
+            values[key] = agreed
             continue
         if key == "freight_rate_master":
             raw_master = raw_values.get(key, {})
@@ -761,20 +846,25 @@ def validate_contract(payload):
                 "fuel_per_km_per_yen",
                 "external_2t_charter",
             }
-            if not isinstance(raw_master, dict) or raw_master.get("verified") is not True:
+            if not isinstance(raw_master, dict):
+                raise ValueError("料金マスターを確認してください。")
+            verified = raw_master.get("verified") is True
+            if not transport_is_pending and not verified:
                 raise ValueError("料金マスターの出典を確認し、確認済みにしてください。")
             effective_date = str(raw_master.get("effective_date", "")).strip()
             source_url = str(raw_master.get("source_url", "")).strip()
-            try:
-                datetime.strptime(effective_date, "%Y-%m-%d")
-            except ValueError as exc:
-                raise ValueError("料金マスターの基準日を正しく入力してください。") from exc
-            if re.fullmatch(r"https?://[^\s]+", source_url) is None:
-                raise ValueError("料金マスターの出典URLを入力してください。")
+            if verified or effective_date:
+                try:
+                    datetime.strptime(effective_date, "%Y-%m-%d")
+                except ValueError as exc:
+                    raise ValueError("料金マスターの基準日を正しく入力してください。") from exc
+            if verified or source_url:
+                if re.fullmatch(r"https?://[^\s]+", source_url) is None:
+                    raise ValueError("料金マスターの出典URLを入力してください。")
             rate_master = {
                 "effective_date": effective_date,
                 "source_url": source_url,
-                "verified": True,
+                "verified": verified,
             }
             for rate_key in rate_keys:
                 rate_value = str(raw_master.get(rate_key, "")).strip()
@@ -880,6 +970,12 @@ def validate_contract(payload):
             values[key] = estimate_items
             continue
         value = str(raw_values.get(key, "")).strip()
+        if key in transport_optional_fields and not value:
+            values[key] = ""
+            continue
+        if transport_is_pending and key in transport_pending_optional_fields and not value:
+            values[key] = ""
+            continue
         maximum_length = 3000 if key == "special_terms" else 500
         if not value or len(value) > maximum_length:
             raise ValueError(
@@ -887,6 +983,11 @@ def validate_contract(payload):
             )
         if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
             raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
+        if key == "carrier_quote_date":
+            try:
+                datetime.strptime(value, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValueError("正式見積の取得日を正しく入力してください。") from exc
         if key == "cargo_contact_email" and re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value) is None:
             raise ValueError("シート共有先メールアドレスを正しく入力してください。")
         if key in {"external_vehicle_budget", "route_distance_km", "total_hours"} and re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", value) is None:
@@ -1996,12 +2097,21 @@ def create_app(
         cargo_items = payload.get("cargo_items")
         rate_master = payload.get("freight_rate_master")
         instrument_master = payload.get("instrument_price_master")
+        workflow_status = str(payload.get("workflow_status", "draft")).strip()
+        transport_provider_mode = str(payload.get("transport_provider_mode", "external_carrier")).strip()
+        vehicle_class = str(payload.get("vehicle_class", "undecided")).strip()
+        pricing_basis = str(payload.get("pricing_basis", "mlit_reference")).strip()
+        carrier_name = str(payload.get("carrier_name", "")).strip()
+        carrier_quote_url = str(payload.get("carrier_quote_url", "")).strip()
+        carrier_quote_date = str(payload.get("carrier_quote_date", "")).strip()
         if not client_name or len(client_name) > 120 or not transport_name or len(transport_name) > 160:
             return jsonify({"error": "取引先名と輸送案件名を入力してください。"}), 400
         if re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", editor_email) is None:
             return jsonify({"error": "シート共有先メールアドレスを正しく入力してください。"}), 400
         if not isinstance(cargo_items, list) or not 1 <= len(cargo_items) <= 10 or not isinstance(rate_master, dict) or not isinstance(instrument_master, dict):
             return jsonify({"error": "輸送対象物と料金マスターを確認してください。"}), 400
+        if workflow_status not in {"draft", "quote_pending", "ready"} or transport_provider_mode not in {"external_carrier", "self_light_cargo", "self_general_freight"} or vehicle_class not in {"undecided", "small", "medium", "large", "trailer"} or pricing_basis not in {"mlit_reference", "carrier_quote"}:
+            return jsonify({"error": "輸送案件の進行状態を確認してください。"}), 400
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
         if not script_url or not script_secret:
@@ -2014,6 +2124,13 @@ def create_app(
                     "client_name": client_name,
                     "transport_name": transport_name,
                     "editor_email": editor_email,
+                    "workflow_status": workflow_status,
+                    "transport_provider_mode": transport_provider_mode,
+                    "vehicle_class": vehicle_class,
+                    "pricing_basis": pricing_basis,
+                    "carrier_name": carrier_name,
+                    "carrier_quote_url": carrier_quote_url,
+                    "carrier_quote_date": carrier_quote_date,
                     "cargo_items": cargo_items,
                     "freight_rate_master": rate_master,
                     "instrument_price_master": instrument_master,

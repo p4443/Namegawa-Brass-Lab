@@ -228,7 +228,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function calculateCargoVolume()", page)
         self.assertIn("function calculateOptimalFreight(distance, totalHours)", page)
         self.assertIn('data-freight-input="route_origin"', page)
-        self.assertIn("楽器価格マスターの確認", page)
+        self.assertIn("楽器再調達価格の確認", page)
+        self.assertIn("function transportReadiness(values)", page)
+        self.assertIn("案件受付（下書き）", page)
+        self.assertIn("外部運送会社へ見積依頼中", page)
+        self.assertIn("国土交通省標準運賃は参考のみ", page)
+        self.assertIn("field('正式見積書の共有URL', 'carrier_quote_url'", page)
         self.assertIn("data-cargo-consent", page)
         self.assertIn("data-generate-transport-sheet", page)
         self.assertIn("外部2t車チャーター（要正式見積り）", page)
@@ -399,11 +404,124 @@ class UpdatesTest(unittest.TestCase):
                 "120000",
             )
 
+    def test_contract_api_saves_transport_case_while_formal_quote_is_pending(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateB",
+                    "client_name": "実案件受付テスト",
+                    "client_representative": "",
+                    "contract_date": "2026-08-23",
+                    "values": {
+                        "workflow_status": "quote_pending",
+                        "transport_provider_mode": "external_carrier",
+                        "vehicle_class": "undecided",
+                        "pricing_basis": "mlit_reference",
+                        "carrier_name": "",
+                        "carrier_quote_url": "",
+                        "carrier_quote_date": "",
+                        "transport_name": "楽器輸送業務一式",
+                        "validity": "正式見積取得後に確定",
+                        "permit_number": "",
+                        "office_information": "",
+                        "operation_manager": "",
+                        "cargo_document_url": "",
+                        "route_document_url": "",
+                        "compliance_document_url": "",
+                        "fee_document_url": "",
+                        "waiting_fee": "正式見積取得後に確定",
+                        "ancillary_fee": "正式見積取得後に確定",
+                        "detour_expenses": "実費精算",
+                        "cargo_restrictions_agreed": False,
+                        "cargo_contact_email": "",
+                        "external_vehicle_budget": "0",
+                        "route_origin": "",
+                        "route_destination": "",
+                        "route_distance_km": "0",
+                        "total_hours": "0",
+                        "instrument_price_master": {
+                            "effective_date": "",
+                            "source_url": "",
+                            "verified": False,
+                        },
+                        "freight_rate_master": {
+                            "effective_date": "2024-03-22",
+                            "source_url": "https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html",
+                            "verified": False,
+                            "distance_base_20": "0",
+                            "distance_per_km_21_50": "0",
+                            "distance_per_km_51_100": "0",
+                            "distance_per_km_101_plus": "0",
+                            "charter_4h": "0",
+                            "charter_8h": "0",
+                            "extra_hour": "0",
+                            "waiting_per_30m": "0",
+                            "loading_base": "0",
+                            "loading_per_25_points": "0",
+                            "fuel_reference_price": "0",
+                            "fuel_current_price": "0",
+                            "fuel_per_km_per_yen": "0",
+                            "external_2t_charter": "0",
+                        },
+                        "cargo_items": [{
+                            "category": "その他",
+                            "instrument_key": "other",
+                            "description": "案件受付後に入力",
+                            "maker_model": "",
+                            "quantity": "1",
+                            "condition": "要確認",
+                            "valuation_mode": "manual",
+                            "unit_value": "0",
+                            "total_value": "0",
+                            "volume_points": "0",
+                            "notes": "型番・再調達価格を案件ごとに確認",
+                        }],
+                        "estimate_items": [{
+                            "description": "外部運送会社の正式見積",
+                            "quantity": "1",
+                            "unit": "式",
+                            "unit_price": "0",
+                            "amount": "0",
+                            "details": "国土交通省標準運賃は参考のみ。正式見積取得後に確定",
+                        }],
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.json["values"]["workflow_status"], "quote_pending")
+            self.assertEqual(response.json["values"]["vehicle_class"], "undecided")
+            self.assertFalse(response.json["values"]["freight_rate_master"]["verified"])
+
+            ready_payload = response.get_json()
+            ready_payload["values"]["workflow_status"] = "ready"
+            rejected = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=ready_payload,
+            )
+            self.assertEqual(rejected.status_code, 400)
+            self.assertIn("正式見積の発行準備", rejected.json["error"])
+
     def test_transport_sheet_api_uses_authenticated_apps_script(self):
         payload = {
             "client_name": "〇〇高等学校吹奏楽部",
             "transport_name": "演奏会楽器輸送",
             "editor_email": "music@example.com",
+            "workflow_status": "quote_pending",
+            "transport_provider_mode": "external_carrier",
+            "vehicle_class": "medium",
+            "pricing_basis": "carrier_quote",
+            "carrier_name": "テスト運送株式会社",
+            "carrier_quote_url": "https://example.com/quote.pdf",
+            "carrier_quote_date": "2026-08-23",
             "cargo_items": [{"description": "チューバ", "quantity": "2"}],
             "freight_rate_master": {"effective_date": "2026-08-23"},
             "instrument_price_master": {"effective_date": "2026-08-23"},
@@ -432,6 +550,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["fee_url"], send_request.return_value["feeUrl"])
         self.assertEqual(send_request.call_args.kwargs["action"], "generate_transport_sheet")
         self.assertEqual(send_request.call_args.args[2]["editor_email"], "music@example.com")
+        self.assertEqual(send_request.call_args.args[2]["workflow_status"], "quote_pending")
+        self.assertEqual(send_request.call_args.args[2]["carrier_name"], "テスト運送株式会社")
 
     def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
         client = create_app(database_url="").test_client()
@@ -813,7 +933,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-23-transport-workflow-v23";', script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
         self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
         self.assertIn('return "admin:" + Utilities.getUuid();', script)
@@ -908,6 +1028,16 @@ class UpdatesTest(unittest.TestCase):
             r"console\.",
         ):
             self.assertNotRegex(script, unsupported)
+
+    def test_apps_script_transport_sheet_includes_case_workflow(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('["案件進行状態", safeCell(data.workflow_status)]', script)
+        self.assertIn('["外部運送会社名", safeCell(data.carrier_name)]', script)
+        self.assertIn('["正式見積書URL", safeCell(data.carrier_quote_url)]', script)
+        self.assertIn('["国土交通省標準運賃URL", safeCell(rateMaster.source_url)]', script)
 
     def test_apps_script_avoids_trailing_commas_in_function_calls(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -1315,7 +1445,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-23-transport-sheet-v22",
+                "version": "2026-08-23-transport-workflow-v23",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
