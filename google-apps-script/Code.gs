@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-23-light-cargo-reference-v24";
+var SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -507,7 +507,11 @@ function generateTransportWorkbook(data) {
   ];
   feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
   feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
-  feeSheet.getRange(16, 2, feeRows.length - 14, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(16, 2, 14, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(30, 2, 2, 1).setNumberFormat('0"%"');
+  feeSheet.getRange(32, 2, 2, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(34, 2).setNumberFormat("0.##");
+  feeSheet.getRange(35, 2).setNumberFormat("¥#,##0");
   feeSheet.setFrozenRows(1);
   feeSheet.autoResizeColumns(1, 2);
 

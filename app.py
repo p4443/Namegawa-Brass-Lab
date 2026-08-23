@@ -224,7 +224,7 @@ CONTRACT_TYPES = {
         "keys": {"deliverable", "amount", "deadline", "special_terms"},
     },
 }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-23-light-cargo-reference-v24"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25"
 
 
 def current_japan_date():

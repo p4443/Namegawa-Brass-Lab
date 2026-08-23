@@ -964,7 +964,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-23-light-cargo-reference-v24";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25";', script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
         self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
         self.assertIn('return "admin:" + Utilities.getUuid();', script)
@@ -1073,6 +1073,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('["151km以上 1km加算", Number(rateMaster.distance_per_km_151_plus', script)
         self.assertIn('["軽貨物2時間・20kmまで", Number(rateMaster.charter_2h', script)
         self.assertIn('["休日割増率", Number(rateMaster.holiday_percent', script)
+        self.assertIn('feeSheet.getRange(16, 2, 14, 1).setNumberFormat("¥#,##0")', script)
+        self.assertIn('feeSheet.getRange(30, 2, 2, 1).setNumberFormat(\'0"%"\')', script)
+        self.assertIn('feeSheet.getRange(34, 2).setNumberFormat("0.##")', script)
 
     def test_apps_script_avoids_trailing_commas_in_function_calls(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -1480,7 +1483,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-23-light-cargo-reference-v24",
+                "version": "2026-08-23-light-cargo-sheet-format-v25",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
