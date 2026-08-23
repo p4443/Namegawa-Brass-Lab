@@ -172,44 +172,31 @@
     }
 
     .document {
-      width: var(--paper-width);
-      height: auto;
-      min-height: var(--paper-height);
-      padding: 18mm 20mm;
-      color: #222222;
-      background: #ffffff;
-      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.15);
-      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
-      font-size: 10.5pt;
-      line-height: 1.75;
-    }
-    .document[data-contract-type="master"] {
       display: grid;
       gap: 12mm;
-      min-height: 0;
-      padding: 0;
-      background: transparent;
-      box-shadow: none;
-    }
-    .master-page {
       width: var(--paper-width);
-      min-height: var(--paper-height);
-      padding: 18mm 20mm;
+      color: #222222;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    }
+    .contract-page {
+      width: var(--paper-width);
+      height: var(--paper-height);
+      padding: 16mm 18mm;
+      overflow: hidden;
       background: #ffffff;
       box-shadow: 0 8px 28px rgba(15, 23, 42, 0.15);
+      font-size: 10pt;
+      line-height: 1.6;
     }
-    .document[data-contract-type^="type"] { font-size: 10pt; line-height: 1.65; }
-    .document[data-contract-type^="type"] th,
-    .document[data-contract-type^="type"] td { padding: 8px; }
 
-    .document h1 { margin: 0 0 26px; text-align: center; font-size: 20pt; letter-spacing: 0; }
-    .document h2 { margin: 18px 0 5px; font-size: 11pt; }
-    .document p { margin: 0 0 9px; }
+    .document h1 { margin: 0 0 20px; text-align: center; font-size: 18pt; letter-spacing: 0; }
+    .document h2 { margin: 13px 0 4px; font-size: 10.5pt; }
+    .document p { margin: 0 0 7px; }
     .doc-date { margin-bottom: 18px !important; text-align: right; }
     .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 34px; }
     .party-box { min-height: 145px; }
     .party-box + .party-box { padding-left: 20px; border-left: 1px solid #cbd5e1; }
-    .document[data-contract-type="master"] .doc-parties {
+    .doc-parties.with-divider {
       grid-template-columns: minmax(0, 1fr) 1.5px minmax(0, 1fr);
       gap: 14px;
     }
@@ -241,7 +228,7 @@
       .generator { grid-template-columns: 1fr; }
       .sidebar { position: static; height: auto; }
       .preview-container { justify-content: flex-start; padding: 20px; }
-      .document { min-width: var(--paper-width); }
+      .document, .contract-page { min-width: var(--paper-width); }
     }
 
     @page { size: A4 portrait; margin: 12mm; }
@@ -250,25 +237,22 @@
       .sidebar { display: none; }
       body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
       .document {
+        display: block;
         width: auto;
-        height: auto;
-        min-height: auto;
-        padding: 0;
-        box-shadow: none;
-        font-size: 10pt;
-        line-height: 1.65;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
-      .document[data-contract-type="master"] { display: block; }
-      .master-page {
-        width: auto;
-        min-height: 0;
+      .contract-page {
+        width: 186mm;
+        height: 273mm;
+        min-height: 273mm;
+        margin: 0 auto;
         padding: 0;
+        overflow: visible;
         box-shadow: none;
         break-after: page;
       }
-      .master-page:last-child { break-after: auto; }
+      .contract-page:last-child { break-after: auto; }
       .document h1 { margin-bottom: 18px; font-size: 18pt; break-after: avoid; }
       .document h2 { margin-top: 14px; break-after: avoid; }
       .document p { orphans: 3; widows: 3; }
@@ -302,10 +286,14 @@
       <div class="field">
         <label for="docType">契約書の種類</label>
         <select id="docType">
-          <option value="master">業務委託基本契約書</option>
-          <option value="typeA">個別契約書 A（音楽指導・支援）</option>
-          <option value="typeB">個別契約書 B（楽器輸送）</option>
-          <option value="typeC">個別契約書 C（WEB・アプリ）</option>
+          <optgroup label="共通契約書">
+            <option value="master">業務委託基本契約書</option>
+          </optgroup>
+          <optgroup label="個別契約書">
+            <option value="typeA">個別契約書 A（音楽指導・支援）</option>
+            <option value="typeB">個別契約書 B（楽器輸送）</option>
+            <option value="typeC">個別契約書 C（WEB・アプリ）</option>
+          </optgroup>
         </select>
       </div>
 
@@ -473,13 +461,13 @@
       }
     }
 
-    function partyHtml(includeDivider = false) {
+    function partyHtml() {
       const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
       const safeRepresentative = escapeHtml(clientRepresentative.value || '代表者 ＿＿＿＿＿＿＿＿');
       return `
-        <div class="doc-parties">
+        <div class="doc-parties with-divider">
           <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
-          ${includeDivider ? '<div class="party-divider" aria-hidden="true"></div>' : ''}
+          <div class="party-divider" aria-hidden="true"></div>
           <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
         </div>`;
     }
@@ -488,15 +476,9 @@
       return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
     }
 
-    function renderPreview() {
-      const type = docType.value;
-      preview.dataset.contractType = type;
-      const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
-      const date = formatJapaneseDate(contractDate.value);
-      const parties = partyHtml(type === 'master');
-      if (type === 'master') {
-        preview.innerHTML = `
-          <section class="document-page master-page" data-page-number="1">
+    function renderMasterContract(date, safeClient, parties) {
+      preview.innerHTML = `
+          <section class="contract-page" data-page-number="1">
           <h1>業務委託基本契約書</h1><p class="doc-date">${date}</p>
           <p>${safeClient}（以下「甲」という）と、なめがわブラス・ラボ 代表 佐々木 久和（以下「乙」という）は、甲が乙に委託する業務について、次のとおり基本契約を締結する。</p>
           <h2>第1条（目的および適用範囲）</h2><p>本契約は、甲乙間の継続的な業務委託取引に関する基本事項を定め、個別契約に共通して適用する。</p>
@@ -504,40 +486,51 @@
           <h2>第3条（協力義務および変更管理）</h2><p>甲乙は、業務に必要な情報、資料、承認および環境を合理的な時期までに提供する。前提条件、業務範囲、法令等の制定または改廃その他契約条件に影響する事情が変化した場合は速やかに通知し、費用、納期および責任分担の変更を記録可能な方法で協議し合意する。</p>
           <h2>第4条（委託料、費用および支払）</h2><p>甲は、個別契約に定める委託料、消費税等および合意した実費を指定期日までに支払う。甲の都合による延期、中止または追加作業の取扱いは個別契約に定め、定めがない場合は既履行分および取消不能な費用を甲が負担する。</p>
           <h2>第5条（再委託）</h2><p>乙は、業務遂行に合理的に必要な範囲で、適切な能力および管理体制を有する第三者へ業務の全部または一部を再委託できる。この場合、乙は再委託先に本契約上必要な義務を課し、その履行について甲に対して責任を負う。</p>
-          </section>
-          <section class="document-page master-page" data-page-number="2">
           <h2>第6条（秘密保持および個人情報）</h2><p>甲乙は、業務上知り得た相手方の非公開情報を契約目的以外に利用せず、法令上必要な場合を除き第三者へ開示しない。ただし、公知の情報、受領前から適法に保有する情報、正当な権限を有する第三者から取得した情報および独自に開発した情報を除く。個人情報は目的の範囲で取り扱い、合理的な安全管理措置を講じる。</p>
           <h2>第7条（知的財産権）</h2><p>契約締結前から各当事者または第三者が保有する知的財産権は従前の権利者に留保される。業務により新たに生じる成果物の権利帰属および利用条件は個別契約に定め、定めがない場合、甲は委託料完済後、契約目的に必要な範囲で成果物を利用できる。</p>
+          </section>
+          <section class="contract-page" data-page-number="2">
           <h2>第8条（法令遵守および反社会的勢力の排除）</h2><p>甲乙は、業務に適用される法令、許認可、施設規則および第三者の権利を尊重する。甲乙は、自らおよび実質的に関与する者が反社会的勢力に該当せず、これと関係を有しないことを表明し、違反した相手方との契約を催告なく解除できる。</p>
           <h2>第9条（不可抗力）</h2><p>災害、感染症、戦争、騒乱、行政措置、通信・交通・エネルギー障害、第三者サービスの広範な停止その他合理的な支配を超える不可抗力により履行が遅延または不能となった当事者は、その責任を負わない。当事者は影響軽減に努め、長期化する場合は延期、代替または終了を協議する。</p>
           <h2>第10条（解除）</h2><p>当事者が契約上の重大な義務に違反し、相当期間を定めた是正要求後も改善しない場合、相手方は本契約または個別契約を解除できる。支払停止、破産手続開始その他信用を著しく害する事由が生じた場合は催告を要しない。</p>
           <h2>第11条（損害賠償）</h2><p>当事者は、自己の責めに帰すべき事由により相手方に現実かつ直接に生じた通常損害を賠償する。乙の賠償総額は、乙の故意または重過失、生命・身体への損害その他法令上制限できない場合を除き、原因となった個別契約で乙が受領した委託料を上限とする。</p>
-          </section>
-          <section class="document-page master-page" data-page-number="3">
           <h2>第12条（契約期間および存続）</h2><p>本契約の期間は締結日から1年間とし、期間満了日の30日前までに書面または電磁的方法による終了通知がない場合は同一条件で1年間更新する。秘密保持、知的財産権、未払金、損害賠償および紛争解決に関する条項は、性質上必要な範囲で契約終了後も存続する。</p>
           <h2>第13条（通知および電磁的記録）</h2><p>契約に関する通知、承認および合意は、書面、電子メールその他内容を保存・再現できる電磁的方法により行うことができる。連絡先を変更した当事者は速やかに通知し、未通知により生じた不利益を負担する。</p>
           <h2>第14条（分離可能性および権利不放棄）</h2><p>本契約の一部が無効または執行不能となっても、その他の条項は影響を受けない。権利を直ちに行使しないことは、その権利の放棄を意味しない。</p>
           <h2>第15条（準拠法、管轄および協議）</h2><p>本契約は日本法に準拠する。本契約に定めのない事項または疑義については甲乙誠実に協議し、解決しない場合は、法令上認められる範囲で乙の主たる事業所所在地を管轄する裁判所を第一審の合意管轄裁判所とする。</p>${parties}
           </section>`;
-        return;
-      }
+    }
 
+    function renderIndividualContract(type, date, parties) {
       const values = contractValues[type];
       if (type === 'typeA') {
-        preview.innerHTML = `<h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['委託業務の内容', values.work], ['委託料', values.amount], ['契約期間・実施日', values.term],
           ['特記事項', values.special_terms]
-        ])}${parties}`;
+        ])}${parties}</section>`;
       } else if (type === 'typeB') {
-        preview.innerHTML = `<h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
           ['特記事項', values.special_terms]
-        ])}${parties}`;
+        ])}${parties}</section>`;
       } else {
-        preview.innerHTML = `<h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
           ['特記事項', values.special_terms]
-        ])}${parties}`;
+        ])}${parties}</section>`;
+      }
+    }
+
+    function renderPreview() {
+      const type = docType.value;
+      preview.dataset.contractType = type;
+      const date = formatJapaneseDate(contractDate.value);
+      const parties = partyHtml();
+      if (type === 'master') {
+        const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+        renderMasterContract(date, safeClient, parties);
+      } else {
+        renderIndividualContract(type, date, parties);
       }
     }
 
