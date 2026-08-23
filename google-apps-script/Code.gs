@@ -1,5 +1,6 @@
 var SHEET_NAME = "レッスン予約";
 var SLOT_SHEET_NAME = "予約枠状態";
+var CONSULTATION_SHEET_NAME = "企画・輸送相談";
 var HEADERS = [
   "受付日時",
   "受付番号",
@@ -14,11 +15,26 @@ var HEADERS = [
   "所要時間（分）"
 ];
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
+var CONSULTATION_HEADERS = [
+  "受付日時",
+  "受付番号",
+  "サービス種別",
+  "団体名・お申込者名",
+  "メールアドレス",
+  "実施予定日",
+  "サポート内容",
+  "楽器総評価額",
+  "企画種別",
+  "搬送概要",
+  "相談詳細",
+  "添付ファイル名",
+  "添付ファイルURL"
+];
 var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";
+var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -49,19 +65,19 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["list", "update", "delete", "cancel", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"]
       });
     }
 
     var requestId = String(data.request_id || "").trim();
-    if ((action === "update" || action === "delete" || action === "cancel") && requestId) {
+    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "cancel") && requestId) {
       var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
       if (cachedResult) {
         return jsonResponse(JSON.parse(cachedResult));
       }
     }
 
-    var writeActions = ["create", "upsert_slot_status_range", "update", "delete", "cancel"];
+    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel"];
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
@@ -71,6 +87,36 @@ function doPost(event) {
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
+    if (action === "generate_transport_sheet") {
+      return adminActionResponse(generateTransportWorkbook(data), requestId);
+    }
+    if (action === "consultation") {
+      var consultationSheet = getConsultationSheet(spreadsheet);
+      var consultationNow = new Date();
+      var consultationId = createConsultationId(consultationNow);
+      var consultationAttachmentUrl = saveConsultationAttachment(data, consultationId);
+      consultationSheet.appendRow([
+        consultationNow,
+        consultationId,
+        safeCell(data.service_mode),
+        safeCell(data.org_name),
+        safeCell(data.email),
+        safeCell(data.event_date),
+        safeCell(data.support_content),
+        safeCell(data.instrument_value),
+        safeCell(data.planning_type),
+        safeCell(data.cargo_detail),
+        safeCell(data.message),
+        safeCell(data.attachment_name),
+        safeCell(consultationAttachmentUrl)
+      ]);
+      var consultationAutoReplySent = sendConsultationAutoReply(data, consultationId);
+      return adminActionResponse({
+        ok: true,
+        consultationId: consultationId,
+        autoReplySent: consultationAutoReplySent
+      }, requestId);
+    }
     if (action === "create") {
       var now = new Date();
       var duplicate = findDuplicateReservation(sheet, data, now);
@@ -155,7 +201,7 @@ function doPost(event) {
       var from = String(data.from || "").trim();
       var to = String(data.to || "").trim();
       var slots = listSlotStatuses(slotSheet, sheet, from, to);
-      var confirmedCounts = confirmedReservationCounts(sheet, from, to);
+      var confirmedCounts = confirmedReservationCounts(sheet, slotSheet, from, to);
       return jsonResponse({ ok: true, slots: slots, confirmedCounts: confirmedCounts });
     }
 
@@ -184,7 +230,7 @@ function doPost(event) {
         endTime,
         status,
         note,
-        "admin"
+        createAdminSlotSource()
       );
       return jsonResponse({ ok: true, updatedCount: updatedCount });
     }
@@ -378,6 +424,85 @@ function getSpreadsheet() {
   return SpreadsheetApp.openById(spreadsheetId);
 }
 
+function generateTransportWorkbook(data) {
+  var clientName = String(data.client_name || "").trim();
+  var transportName = String(data.transport_name || "").trim();
+  var editorEmail = String(data.editor_email || "").trim();
+  var cargoItems = Array.isArray(data.cargo_items) ? data.cargo_items : [];
+  var rateMaster = data.freight_rate_master || {};
+  var instrumentMaster = data.instrument_price_master || {};
+  if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length) {
+    throw new Error("Invalid transport sheet request");
+  }
+
+  var createdAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss");
+  var workbook = SpreadsheetApp.create("輸送対象物明細_" + clientName + "_" + transportName + "_" + createdAt);
+  var file = DriveApp.getFileById(workbook.getId());
+  var folderId = String(PropertiesService.getScriptProperties().getProperty("TRANSPORT_DOCUMENT_FOLDER_ID") || "").trim();
+  if (folderId) {
+    file.moveTo(DriveApp.getFolderById(folderId));
+  }
+  file.addEditor(editorEmail);
+
+  var cargoSheet = workbook.getSheets()[0];
+  cargoSheet.setName("輸送対象物明細");
+  var cargoHeaders = ["区分", "楽器・機材", "メーカー・型番", "数量", "状態", "評価方式", "単価・評価額", "行評価額", "容積pt/個", "容積pt合計", "備考"];
+  cargoSheet.getRange(1, 1, 1, cargoHeaders.length).setValues([cargoHeaders]);
+  var cargoRows = cargoItems.map(function (item) {
+    var quantity = Number(item.quantity || 0);
+    var volumePoints = Number(item.volume_points || 0);
+    return [
+      safeCell(item.category), safeCell(item.description), safeCell(item.maker_model), quantity,
+      safeCell(item.condition), safeCell(item.valuation_mode), Number(item.unit_value || 0),
+      Number(item.total_value || 0), volumePoints, quantity * volumePoints, safeCell(item.notes)
+    ];
+  });
+  cargoSheet.getRange(2, 1, cargoRows.length, cargoHeaders.length).setValues(cargoRows);
+  var totalRow = cargoRows.length + 2;
+  cargoSheet.getRange(totalRow, 1, 1, 7).merge().setValue("申告総評価額");
+  cargoSheet.getRange(totalRow, 8).setFormula("=SUM(H2:H" + (totalRow - 1) + ")");
+  cargoSheet.getRange(totalRow, 9).setValue("容積ポイント合計");
+  cargoSheet.getRange(totalRow, 10).setFormula("=SUM(J2:J" + (totalRow - 1) + ")");
+  cargoSheet.getRange(1, 1, 1, cargoHeaders.length).setBackground("#14532d").setFontColor("#ffffff").setFontWeight("bold");
+  cargoSheet.getRange("G:H").setNumberFormat("¥#,##0");
+  cargoSheet.setFrozenRows(1);
+  cargoSheet.autoResizeColumns(1, cargoHeaders.length);
+
+  var feeSheet = workbook.insertSheet("料金規定");
+  var feeRows = [
+    ["楽器価格マスター基準日", safeCell(instrumentMaster.effective_date)],
+    ["楽器価格マスター出典URL", safeCell(instrumentMaster.source_url)],
+    ["料金マスター基準日", safeCell(rateMaster.effective_date)],
+    ["出典URL", safeCell(rateMaster.source_url)],
+    ["確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
+    ["20kmまでの距離制基本運賃", Number(rateMaster.distance_base_20 || 0)],
+    ["21〜50km 1km加算", Number(rateMaster.distance_per_km_21_50 || 0)],
+    ["51〜100km 1km加算", Number(rateMaster.distance_per_km_51_100 || 0)],
+    ["101km以上 1km加算", Number(rateMaster.distance_per_km_101_plus || 0)],
+    ["4時間制運賃", Number(rateMaster.charter_4h || 0)],
+    ["8時間制運賃", Number(rateMaster.charter_8h || 0)],
+    ["超過1時間", Number(rateMaster.extra_hour || 0)],
+    ["待機30分", Number(rateMaster.waiting_per_30m || 0)],
+    ["荷役基本料金", Number(rateMaster.loading_base || 0)],
+    ["荷役25ptごとの加算", Number(rateMaster.loading_per_25_points || 0)],
+    ["燃料基準価格", Number(rateMaster.fuel_reference_price || 0)],
+    ["見積時燃料価格", Number(rateMaster.fuel_current_price || 0)],
+    ["燃料差額1円・1kmあたり係数", Number(rateMaster.fuel_per_km_per_yen || 0)],
+    ["外部2t車参考チャーター額", Number(rateMaster.external_2t_charter || 0)]
+  ];
+  feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
+  feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
+  feeSheet.getRange(7, 2, feeRows.length - 5, 1).setNumberFormat("¥#,##0");
+  feeSheet.setFrozenRows(1);
+  feeSheet.autoResizeColumns(1, 2);
+
+  return {
+    ok: true,
+    cargoUrl: workbook.getUrl() + "#gid=" + cargoSheet.getSheetId(),
+    feeUrl: workbook.getUrl() + "#gid=" + feeSheet.getSheetId()
+  };
+}
+
 function getReservationSheet(spreadsheet) {
   var sheet = spreadsheet.getSheetByName(SHEET_NAME);
   if (!sheet) {
@@ -420,6 +545,51 @@ function getSlotStatusSheet(spreadsheet) {
     sheet.autoResizeColumns(1, SLOT_HEADERS.length);
   }
   return sheet;
+}
+
+function getConsultationSheet(spreadsheet) {
+  var sheet = spreadsheet.getSheetByName(CONSULTATION_SHEET_NAME);
+  if (!sheet) {
+    sheet = spreadsheet.insertSheet(CONSULTATION_SHEET_NAME);
+  }
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(CONSULTATION_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  sheet.getRange(1, 1, 1, CONSULTATION_HEADERS.length)
+    .setValues([CONSULTATION_HEADERS])
+    .setBackground("#1a56db")
+    .setFontColor("#ffffff")
+    .setFontWeight("bold");
+  sheet.getRange("A:A").setNumberFormat("yyyy/mm/dd hh:mm:ss");
+  sheet.autoResizeColumns(1, CONSULTATION_HEADERS.length);
+  return sheet;
+}
+
+function saveConsultationAttachment(data, consultationId) {
+  var attachmentData = String(data.attachment_data || "").trim();
+  var attachmentName = String(data.attachment_name || "").trim();
+  if (!attachmentData || !attachmentName) {
+    return "";
+  }
+  var attachmentType = String(data.attachment_type || "application/octet-stream").trim();
+  var folders = DriveApp.getFoldersByName("企画・輸送相談添付");
+  var folder = folders.hasNext() ? folders.next() : DriveApp.createFolder("企画・輸送相談添付");
+  var blob = Utilities.newBlob(
+    Utilities.base64Decode(attachmentData),
+    attachmentType,
+    consultationId + "_" + attachmentName
+  );
+  return folder.createFile(blob).getUrl();
+}
+
+function createConsultationId(date) {
+  var datePart = Utilities.formatDate(date, Session.getScriptTimeZone(), "yyyyMMdd");
+  var propertyKey = "CONSULTATION_SEQUENCE_" + datePart;
+  var properties = PropertiesService.getScriptProperties();
+  var sequence = (Number(properties.getProperty(propertyKey)) || 0) + 1;
+  properties.setProperty(propertyKey, String(sequence));
+  return "C-" + datePart + "-" + zeroPad(sequence, 3);
 }
 
 function createReservationId(date, sheet) {
@@ -714,24 +884,79 @@ function activeReservationSlotStatuses(sheet) {
   return statuses;
 }
 
-function confirmedReservationCounts(sheet, fromDateText, toDateText) {
+function confirmedReservationCounts(sheet, slotSheet, fromDateText, toDateText) {
   var counts = {};
   var lastRow = sheet.getLastRow();
-  if (lastRow <= 1) {
+  if (lastRow > 1) {
+    var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    values.forEach(function (row) {
+      if (String(row[2] || "").trim() !== "確定") {
+        return;
+      }
+      var dateText = normalizeReservationDate(row[7]);
+      if (!dateText || (fromDateText && dateText < fromDateText) || (toDateText && dateText > toDateText)) {
+        return;
+      }
+      counts[dateText] = (counts[dateText] || 0) + 1;
+    });
+  }
+
+  var slotLastRow = slotSheet.getLastRow();
+  if (slotLastRow <= 1) {
     return counts;
   }
-  var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
-  values.forEach(function (row) {
-    if (String(row[2] || "").trim() !== "確定") {
+  var slotValues = slotSheet.getRange(2, 1, slotLastRow - 1, SLOT_HEADERS.length).getValues();
+  var adminBookings = {};
+  var legacyAdminTimes = {};
+  slotValues.forEach(function (row) {
+    if (String(row[2] || "").trim() !== "予約済") {
       return;
     }
-    var dateText = normalizeReservationDate(row[7]);
+    var dateText = toDateText_(row[0]);
     if (!dateText || (fromDateText && dateText < fromDateText) || (toDateText && dateText > toDateText)) {
       return;
     }
+    var source = String(row[5] || "").trim();
+    if (source.indexOf("admin:") !== 0 && source !== "admin") {
+      return;
+    }
+    if (source === "admin") {
+      if (!legacyAdminTimes[dateText]) {
+        legacyAdminTimes[dateText] = [];
+      }
+      legacyAdminTimes[dateText].push(normalizeReservationTime(row[1]));
+      return;
+    }
+    adminBookings[dateText + "|" + source] = dateText;
+  });
+  Object.keys(adminBookings).forEach(function (bookingKey) {
+    var dateText = adminBookings[bookingKey];
     counts[dateText] = (counts[dateText] || 0) + 1;
   });
+  Object.keys(legacyAdminTimes).forEach(function (dateText) {
+    var minuteValues = [];
+    var consultationCount = 0;
+    legacyAdminTimes[dateText].forEach(function (timeText) {
+      if (timeText === "要相談") {
+        consultationCount = 1;
+        return;
+      }
+      var minutes = toMinutes(timeText);
+      if (minutes >= 0 && minuteValues.indexOf(minutes) === -1) {
+        minuteValues.push(minutes);
+      }
+    });
+    minuteValues.sort(function (left, right) { return left - right; });
+    var blockCount = minuteValues.reduce(function (total, minutes, index) {
+      return total + (index === 0 || minutes - minuteValues[index - 1] > 15 ? 1 : 0);
+    }, 0);
+    counts[dateText] = (counts[dateText] || 0) + blockCount + consultationCount;
+  });
   return counts;
+}
+
+function createAdminSlotSource() {
+  return "admin:" + Utilities.getUuid();
 }
 
 function upsertSlotStatusRange(sheet, startDate, endDate, startTime, endTime, status, note, source) {
@@ -1007,6 +1232,53 @@ function sendReservationAutoReply(data, reservationId) {
 
   try {
     GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
+      htmlBody: htmlBody,
+      name: "なめがわブラス・ラボ",
+      replyTo: ADMIN_NOTIFICATION_EMAIL,
+      bcc: ADMIN_NOTIFICATION_EMAIL
+    });
+    return true;
+  } catch (error) {
+    Logger.log(error);
+    return false;
+  }
+}
+
+function sendConsultationAutoReply(data, consultationId) {
+  var email = sanitizeMailHeader(data.email).trim();
+  if (!email || email.indexOf("@") <= 0) {
+    return false;
+  }
+
+  var name = sanitizeMailHeader(data.org_name).trim() || "お客様";
+  var serviceMode = String(data.service_mode || "").trim();
+  var body = [
+    name + " 様",
+    "",
+    "イベント企画・輸送のご相談ありがとうございます。",
+    "以下の内容で確かに受け付けました。",
+    "",
+    "受付番号: " + consultationId,
+    "サービス種別: " + serviceMode,
+    "",
+    "内容を確認後、担当よりお見積りと進め方をご連絡します。",
+    "このメールは自動送信です。"
+  ].join("\n");
+  var htmlBody = [
+    "<!doctype html>",
+    '<html><head><meta charset="UTF-8"></head><body>',
+    "<p>" + escapeHtml(name) + " 様</p>",
+    "<p>イベント企画・輸送のご相談ありがとうございます。<br>",
+    "以下の内容で確かに受け付けました。</p>",
+    "<p>受付番号: " + escapeHtml(consultationId) + "<br>",
+    "サービス種別: " + escapeHtml(serviceMode) + "</p>",
+    "<p>内容を確認後、担当よりお見積りと進め方をご連絡します。<br>",
+    "このメールは自動送信です。</p>",
+    "</body></html>"
+  ].join("");
+
+  try {
+    GmailApp.sendEmail(email, "【なめがわブラス・ラボ】企画・輸送相談受付完了", body, {
       htmlBody: htmlBody,
       name: "なめがわブラス・ラボ",
       replyTo: ADMIN_NOTIFICATION_EMAIL,

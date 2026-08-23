@@ -1,0 +1,1639 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex,nofollow">
+  <title>契約書作成 | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --primary: #1a56db;
+      --primary-dark: #1e40af;
+      --text: #1f2937;
+      --muted: #64748b;
+      --border: #cbd5e1;
+      --surface: #ffffff;
+      --canvas: #e9eef4;
+      --danger: #b91c1c;
+      --paper-width: 210mm;
+      --paper-height: 297mm;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background: var(--canvas);
+      font-family: "Hiragino Sans", "Yu Gothic", Meiryo, sans-serif;
+    }
+
+    button, input, select, textarea { font: inherit; }
+
+    [hidden] { display: none !important; }
+
+    .login-screen {
+      display: grid;
+      min-height: 100vh;
+      padding: 24px;
+      place-items: center;
+    }
+
+    .login-panel {
+      width: min(100%, 420px);
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12);
+    }
+
+    .login-panel h1 { margin: 0 0 8px; color: var(--primary-dark); font-size: 1.4rem; }
+    .login-panel p { margin: 0 0 20px; color: var(--muted); font-size: 0.9rem; }
+
+    .login-form { display: grid; gap: 12px; }
+    .login-form label { font-size: 0.85rem; font-weight: 800; }
+    .login-form input { width: 100%; padding: 11px 12px; border: 1px solid var(--border); border-radius: 6px; }
+    .login-status { min-height: 1.5em; margin: 0 !important; color: var(--danger) !important; }
+
+    .primary-button {
+      min-height: 44px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--primary);
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .primary-button:hover, .primary-button:focus-visible { background: var(--primary-dark); }
+
+    .generator {
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      padding: 24px;
+      overflow-y: auto;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      box-shadow: 3px 0 12px rgba(15, 23, 42, 0.08);
+    }
+
+    .sidebar-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+    .sidebar h1 { margin: 0; color: var(--primary-dark); font-size: 1.35rem; }
+
+    .logout-button {
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      background: #ffffff;
+      cursor: pointer;
+    }
+
+    .field { display: grid; gap: 6px; margin-bottom: 15px; }
+    .field label { font-size: 0.82rem; font-weight: 800; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      padding: 9px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      background: #ffffff;
+    }
+    .field textarea { min-height: 90px; resize: vertical; }
+    .field textarea[data-contract-key="special_terms"] { min-height: 260px; }
+    .estimate-editor {
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .estimate-edit-guide {
+      margin: 4px 0 14px;
+      padding: 12px;
+      border: 1px solid #60a5fa;
+      border-left: 4px solid var(--primary);
+      border-radius: 6px;
+      color: #1e3a8a;
+      background: #eff6ff;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .estimate-edit-guide strong { display: block; font-size: 0.9rem; }
+    .estimate-editor h2 { margin: 0 0 10px; font-size: 0.9rem; }
+    .estimate-editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .estimate-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
+    .estimate-editor-grid input, .estimate-editor-grid textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #ffffff;
+    }
+    .estimate-preset {
+      width: 100%;
+      margin-bottom: 4px;
+      padding: 7px 8px;
+      border: 1px solid #93c5fd;
+      border-radius: 5px;
+      color: #1e3a8a;
+      background: #eff6ff;
+      font-size: 0.75rem;
+    }
+    .estimate-editor-grid .estimate-description,
+    .estimate-editor-grid .estimate-details { grid-column: 1 / -1; }
+    .estimate-editor-grid textarea { min-height: 66px; resize: vertical; }
+    .field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--primary); }
+
+    .sidebar-note {
+      margin: 18px 0;
+      padding: 12px;
+      border-left: 3px solid #d97706;
+      color: #78350f;
+      background: #fffbeb;
+      font-size: 0.78rem;
+      line-height: 1.6;
+    }
+
+    .print-button { width: 100%; margin-top: 6px; }
+
+    .save-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .secondary-button {
+      min-height: 44px;
+      border: 1px solid var(--primary);
+      border-radius: 6px;
+      color: var(--primary);
+      background: #ffffff;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .secondary-button:hover, .secondary-button:focus-visible { background: #eff6ff; }
+    .save-status { min-height: 1.5em; margin: 9px 0 0; color: var(--muted); font-size: 0.8rem; }
+    .save-status[data-state="error"] { color: var(--danger); }
+    .save-status[data-state="success"] { color: #047857; font-weight: 800; }
+
+    .saved-contracts {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .saved-contracts h2 { margin: 0 0 12px; font-size: 1rem; }
+    .storage-path { margin: 0 0 12px; color: var(--muted); font-size: 0.75rem; overflow-wrap: anywhere; }
+    .saved-contract-actions { display: grid; gap: 8px; }
+    .danger-button { border-color: #fecaca; color: var(--danger); }
+    .danger-button:hover, .danger-button:focus-visible { background: #fef2f2; }
+    .delete-dialog { width: min(440px, calc(100% - 32px)); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
+    .delete-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+    .delete-dialog-body { padding: 24px; }
+    .delete-dialog h2 { margin: 0 0 10px; font-size: 1.15rem; }
+    .delete-dialog p { line-height: 1.65; }
+    .delete-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .cargo-consent {
+      display: flex;
+      gap: 9px;
+      margin-bottom: 12px;
+      padding: 12px;
+      border: 1px solid #b45309;
+      border-radius: 6px;
+      color: #78350f;
+      background: #fffbeb;
+      font-size: 0.8rem;
+      font-weight: 800;
+      line-height: 1.5;
+    }
+    .cargo-consent input { flex: 0 0 auto; margin-top: 3px; }
+    .cargo-capacity-status { margin-bottom: 14px; padding: 12px; border: 1px solid; border-radius: 6px; font-size: 0.8rem; }
+    .cargo-capacity-status strong { display: block; margin-bottom: 3px; }
+    .cargo-capacity-status.is-ok { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
+    .cargo-capacity-status.is-over { border-color: #dc2626; color: #7f1d1d; background: #fef2f2; }
+    .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
+    .cargo-editor-fieldset:disabled { opacity: 0.5; }
+    .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
+      width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #ffffff;
+    }
+    .cargo-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
+    .cargo-editor-grid .cargo-instrument { grid-column: span 2; }
+    .cargo-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
+    .cargo-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
+    .document-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+    .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
+    .freight-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
+    .freight-dialog-body { padding: 24px; overflow: auto; }
+    .freight-dialog h2 { margin: 0 0 8px; }
+    .rate-master-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .rate-master-grid label { display: grid; gap: 4px; font-size: 0.78rem; font-weight: 800; }
+    .rate-master-grid input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; }
+    .rate-master-grid .rate-wide { grid-column: 1 / -1; }
+    .rate-confirm { display: flex !important; grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: start; }
+    .rate-confirm input { width: auto; margin-top: 3px; }
+
+    .preview-container {
+      display: flex;
+      justify-content: center;
+      padding: 40px;
+      overflow: auto;
+    }
+
+    .document {
+      display: grid;
+      gap: 12mm;
+      width: var(--paper-width);
+      color: #222222;
+      font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+    }
+    .contract-page {
+      width: var(--paper-width);
+      height: var(--paper-height);
+      padding: 16mm 18mm;
+      overflow: hidden;
+      background: #ffffff;
+      box-shadow: 0 8px 28px rgba(15, 23, 42, 0.15);
+      font-size: 10pt;
+      line-height: 1.6;
+    }
+
+    .document h1 { margin: 0 0 20px; text-align: center; font-size: 18pt; letter-spacing: 0; }
+    .document h2 { margin: 13px 0 4px; font-size: 10.5pt; }
+    .document p { margin: 0 0 7px; }
+    .doc-date { margin-bottom: 18px !important; text-align: right; }
+    .doc-parties { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 34px; }
+    .party-box { min-height: 145px; }
+    .party-box + .party-box { padding-left: 20px; border-left: 1px solid #cbd5e1; }
+    .doc-parties.with-divider {
+      grid-template-columns: minmax(0, 1fr) 1.5px minmax(0, 1fr);
+      gap: 14px;
+    }
+    .party-divider {
+      align-self: stretch;
+      width: 1.5px;
+      background: #222222;
+    }
+    .party-trade-name { white-space: nowrap; }
+    .sign-area { margin-top: 18px; text-align: right; }
+
+    .document table { width: 100%; margin-top: 18px; border-collapse: collapse; }
+    .document th, .document td { padding: 9px; border: 1px solid #222222; text-align: left; vertical-align: top; }
+    .individual-contract-table {
+      border: 1px solid #222222;
+      border-right: 0;
+      border-collapse: separate !important;
+      border-spacing: 0;
+      table-layout: fixed;
+    }
+    .individual-contract-table th, .individual-contract-table td { border: 0; border-bottom: 1px solid #222222; }
+    .individual-contract-table th { border-right: 1.5px solid #222222; }
+    .individual-contract-table td:last-child { border-right: 1.5px solid #222222; }
+    .individual-contract-table tr:last-child > * { border-bottom: 0; }
+    .document th { width: 30%; background: #f1f5f9; }
+    .document td { white-space: pre-wrap; }
+
+    .estimate-page { font-size: 9pt; line-height: 1.45; }
+    .estimate-page h1 { margin-bottom: 10px; }
+    .estimate-client { margin: 14px 0 16px; font-size: 11pt; }
+    .estimate-total {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 2px solid #222222;
+      text-align: center;
+      font-size: 13pt;
+      font-weight: 700;
+    }
+    .estimate-value {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border-left: 4px solid #1e40af;
+      background: #eff6ff;
+    }
+    .estimate-table { margin-top: 10px !important; font-size: 8pt; }
+    .estimate-table th, .estimate-table td { padding: 6px; }
+    .estimate-table th { width: auto; }
+    .estimate-table .number { width: 13%; text-align: right; white-space: nowrap; }
+    .estimate-table .quantity { width: 7%; text-align: center; white-space: nowrap; }
+    .estimate-summary { width: 48% !important; margin: 10px 0 0 auto !important; }
+    .estimate-summary th, .estimate-summary td { padding: 5px 7px; }
+    .estimate-summary td { text-align: right; white-space: nowrap; }
+    .estimate-issuer { margin-top: 12px; }
+    .estimate-conditions { margin: 0; padding: 0; list-style: none; }
+    .estimate-conditions li { margin-bottom: 11px; }
+    .estimate-conditions strong { display: block; margin-bottom: 2px; font-size: 9.5pt; }
+    .document-links a, .document-url-missing { overflow-wrap: anywhere; }
+    .cargo-editor-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) 0.55fr minmax(0, 1fr);
+      gap: 8px;
+    }
+    .cargo-editor-grid .cargo-notes { grid-column: 1 / -1; }
+    .cargo-valuation-table { margin-top: 12px !important; font-size: 8pt; table-layout: fixed; }
+    .cargo-valuation-table th, .cargo-valuation-table td { padding: 6px; }
+    .cargo-valuation-table th { width: auto; }
+    .cargo-valuation-table th:nth-child(1) { width: 19%; }
+    .cargo-valuation-table th:nth-child(2) { width: 7%; }
+    .cargo-valuation-table th:nth-child(3) { width: 9%; }
+    .cargo-valuation-table th:nth-child(4),
+    .cargo-valuation-table th:nth-child(5) { width: 15%; }
+    .cargo-valuation-table th:nth-child(6) { width: 35%; }
+    .cargo-valuation-table .number { text-align: right; white-space: nowrap; }
+    .cargo-declaration { margin-top: 14px; padding: 10px 12px; border: 1px solid #222222; }
+    .estimate-preview-editor {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 3px;
+    }
+    .estimate-preview-editor select,
+    .estimate-preview-editor input {
+      width: 100%;
+      min-width: 0;
+      padding: 4px 5px;
+      border: 1px solid #93c5fd;
+      border-radius: 4px;
+      color: #172554;
+      background: #ffffff;
+      font: inherit;
+    }
+    .estimate-preview-editor select { color: #1e40af; background: #eff6ff; }
+    .estimate-print-value { display: none; }
+
+    @media (max-width: 900px) {
+      .generator { grid-template-columns: 1fr; }
+      .sidebar { position: static; height: auto; }
+      .preview-container { justify-content: flex-start; padding: 20px; }
+      .document, .contract-page { min-width: var(--paper-width); }
+    }
+
+    @page { size: A4 portrait; margin: 0; }
+
+    @media print {
+      .sidebar { display: none; }
+      body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
+      .document {
+        display: block;
+        width: var(--paper-width);
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      .contract-page {
+        width: var(--paper-width);
+        height: var(--paper-height);
+        min-height: var(--paper-height);
+        margin: 0;
+        padding: 16mm 18mm;
+        overflow: hidden;
+        box-shadow: none;
+        break-after: page;
+      }
+      .contract-page:last-child { break-after: auto; }
+      .document h1, .document h2 { break-after: avoid; }
+      .document p { orphans: 3; widows: 3; }
+      .document table { break-inside: auto; }
+      .document tr, .doc-parties, .party-box { break-inside: avoid; }
+      .estimate-preview-editor { display: none; }
+      .estimate-print-value { display: inline; }
+    }
+  </style>
+</head>
+<body>
+  <main class="login-screen" id="loginScreen">
+    <section class="login-panel" aria-labelledby="loginTitle">
+      <h1 id="loginTitle">管理者用 契約書作成</h1>
+      <p>お知らせ管理と同じ管理者パスワードを入力してください。</p>
+      <form class="login-form" id="contractLoginForm">
+        <label for="contractPassword">管理者パスワード</label>
+        <input id="contractPassword" type="password" autocomplete="current-password" required>
+        <button class="primary-button" type="submit">開く</button>
+        <p class="login-status" id="loginStatus" role="status" aria-live="polite"></p>
+      </form>
+    </section>
+  </main>
+
+  <main class="generator" id="contractGenerator" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <h1>契約書作成</h1>
+        <button class="logout-button" id="contractLogout" type="button" data-history-back data-fallback="../#web">戻る（ログアウト）</button>
+      </div>
+
+      <div class="field">
+        <label for="docType">契約書の種類</label>
+        <select id="docType">
+          <optgroup label="共通契約書">
+            <option value="master">業務委託基本契約書</option>
+          </optgroup>
+          <optgroup label="個別契約書">
+            <option value="typeA">個別契約書 A（音楽指導・支援）</option>
+            <option value="estimateB">B契約前 次世代型御見積書（楽器輸送）</option>
+            <option value="typeB">個別契約書 B（楽器輸送）</option>
+            <option value="estimateC">C契約前 御見積書（選択・任意入力対応）</option>
+            <option value="typeC">個別契約書 C（WEB・アプリ）</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="field">
+        <label for="clientName">取引先名（甲）</label>
+        <input type="text" id="clientName" maxlength="120" placeholder="例：〇〇高等学校吹奏楽部">
+      </div>
+
+      <div class="field">
+        <label for="clientRepresentative">代表者名</label>
+        <input type="text" id="clientRepresentative" maxlength="80" placeholder="例：代表 山田 太郎">
+      </div>
+
+      <div class="field">
+        <label for="contractDate" id="documentDateLabel">契約締結日</label>
+        <input type="date" id="contractDate">
+      </div>
+
+      <div id="dynamicFields"></div>
+
+      <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
+      <div class="save-actions">
+        <button class="primary-button" id="saveContract" type="button">部門別に保存</button>
+        <button class="secondary-button" id="printContract" type="button">A4縦 PDF出力 / 印刷</button>
+      </div>
+      <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
+
+      <section class="saved-contracts" aria-labelledby="savedContractsTitle">
+        <h2 id="savedContractsTitle">保存済み契約書</h2>
+        <p class="storage-path" id="contractStoragePath"></p>
+        <div class="field">
+          <label for="savedContractSelect">部門・取引先から選択</label>
+          <select id="savedContractSelect">
+            <option value="">保存済み契約書を選択</option>
+          </select>
+        </div>
+        <div class="saved-contract-actions">
+          <button class="secondary-button" id="loadContract" type="button">選択した契約書を開く</button>
+          <button class="secondary-button danger-button" id="deleteContract" type="button">選択した契約書を削除</button>
+        </div>
+      </section>
+    </aside>
+
+    <section class="preview-container" aria-label="契約書プレビュー">
+      <article class="document" id="documentPreview" data-paper-size="A4" data-orientation="portrait"></article>
+    </section>
+  </main>
+
+  <dialog class="delete-dialog" id="deleteContractDialog" aria-labelledby="deleteContractTitle">
+    <div class="delete-dialog-body">
+      <section id="deleteConfirmStep">
+        <h2 id="deleteContractTitle">契約書を削除しますか？</h2>
+        <p id="deleteContractSummary"></p>
+        <p>この操作は取り消せません。</p>
+        <div class="delete-dialog-actions">
+          <button class="secondary-button" id="cancelDeleteContract" type="button">キャンセル</button>
+          <button class="secondary-button danger-button" id="continueDeleteContract" type="button">第2確認へ</button>
+        </div>
+      </section>
+      <section id="deleteIdStep" hidden>
+        <h2>契約書IDを入力</h2>
+        <p>削除対象の契約書IDを正確に入力してください。</p>
+        <div class="field">
+          <label for="deleteContractId">契約書ID</label>
+          <input id="deleteContractId" type="text" autocomplete="off">
+        </div>
+        <p class="save-status" id="deleteContractError" role="alert"></p>
+        <div class="delete-dialog-actions">
+          <button class="secondary-button" id="backDeleteContract" type="button">第1確認へ戻る</button>
+          <button class="secondary-button danger-button" id="confirmDeleteContract" type="button">完全に削除</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
+  <dialog class="freight-dialog" id="freightCalculatorDialog" aria-labelledby="freightCalculatorTitle">
+    <div class="freight-dialog-body">
+      <h2 id="freightCalculatorTitle">適正運賃・料金 自動算出</h2>
+      <p>公表資料と自社料金規定を確認してマスターを入力してください。「確認済み」にしない限り見積書へ反映できません。</p>
+      <div class="rate-master-grid">
+        <label>出発地<input data-freight-input="route_origin" type="text"></label>
+        <label>目的地<input data-freight-input="route_destination" type="text"></label>
+        <label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label>
+        <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
+        <label>料金マスター基準日<input data-rate-key="effective_date" type="date"></label>
+        <label class="rate-wide">公表資料・料金規定の出典URL<input data-rate-key="source_url" type="url"></label>
+        <label>20kmまでの距離制基本運賃（円）<input data-rate-key="distance_base_20" type="number" min="0"></label>
+        <label>21〜50km 1km加算（円）<input data-rate-key="distance_per_km_21_50" type="number" min="0"></label>
+        <label>51〜100km 1km加算（円）<input data-rate-key="distance_per_km_51_100" type="number" min="0"></label>
+        <label>101km以上 1km加算（円）<input data-rate-key="distance_per_km_101_plus" type="number" min="0"></label>
+        <label>4時間制運賃（円）<input data-rate-key="charter_4h" type="number" min="0"></label>
+        <label>8時間制運賃（円）<input data-rate-key="charter_8h" type="number" min="0"></label>
+        <label>超過1時間（円）<input data-rate-key="extra_hour" type="number" min="0"></label>
+        <label>待機30分（円）<input data-rate-key="waiting_per_30m" type="number" min="0"></label>
+        <label>荷役基本料金（円）<input data-rate-key="loading_base" type="number" min="0"></label>
+        <label>荷役25ptごとの加算（円）<input data-rate-key="loading_per_25_points" type="number" min="0"></label>
+        <label>燃料基準価格（円/L）<input data-rate-key="fuel_reference_price" type="number" min="0"></label>
+        <label>見積時燃料価格（円/L）<input data-rate-key="fuel_current_price" type="number" min="0"></label>
+        <label>燃料差額1円・1kmあたり係数<input data-rate-key="fuel_per_km_per_yen" type="number" min="0"></label>
+        <label>外部2t車参考チャーター額（円）<input data-rate-key="external_2t_charter" type="number" min="0"></label>
+        <label class="rate-confirm"><input data-rate-verified type="checkbox"><span>基準日現在の公表資料と自社料金規定を確認し、入力値を見積根拠として使用します。</span></label>
+      </div>
+      <p class="save-status" id="freightCalculatorStatus" role="status"></p>
+      <div class="delete-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">キャンセル</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映</button></div>
+    </div>
+  </dialog>
+
+  <script src="../back-navigation.js"></script>
+  <script>
+    const loginScreen = document.getElementById('loginScreen');
+    const loginForm = document.getElementById('contractLoginForm');
+    const passwordInput = document.getElementById('contractPassword');
+    const loginStatus = document.getElementById('loginStatus');
+    const generator = document.getElementById('contractGenerator');
+    const logoutButton = document.getElementById('contractLogout');
+    const docType = document.getElementById('docType');
+    const clientName = document.getElementById('clientName');
+    const clientRepresentative = document.getElementById('clientRepresentative');
+    const contractDate = document.getElementById('contractDate');
+    const documentDateLabel = document.getElementById('documentDateLabel');
+    const dynamicFields = document.getElementById('dynamicFields');
+    const preview = document.getElementById('documentPreview');
+    const saveButton = document.getElementById('saveContract');
+    const saveStatus = document.getElementById('saveStatus');
+    const savedContractSelect = document.getElementById('savedContractSelect');
+    const loadButton = document.getElementById('loadContract');
+    const deleteButton = document.getElementById('deleteContract');
+    const storagePath = document.getElementById('contractStoragePath');
+    const deleteDialog = document.getElementById('deleteContractDialog');
+    const deleteConfirmStep = document.getElementById('deleteConfirmStep');
+    const deleteIdStep = document.getElementById('deleteIdStep');
+    const deleteContractId = document.getElementById('deleteContractId');
+    const deleteContractError = document.getElementById('deleteContractError');
+    const freightCalculatorDialog = document.getElementById('freightCalculatorDialog');
+    const freightCalculatorStatus = document.getElementById('freightCalculatorStatus');
+    let pendingDeleteContractId = '';
+    let adminPassword = '';
+
+    const contractValues = {
+      typeA: {
+        work: '管楽器指導、および地域クラブ移行支援', amount: '30,000円（交通費別途）', term: '実施日または別途定める期間',
+        special_terms: '1. 本業務は善良な管理者の注意をもって行う準委任業務であり、技能向上、進学、受賞その他特定の成果を保証するものではない。\n2. 甲は、会場、設備、参加者情報、緊急連絡体制その他安全な実施に必要な環境を整える。未成年者が参加する場合、甲は保護者同意、引渡し、撮影・公開の可否および健康上の配慮事項を管理する。\n3. 甲乙は、事故、災害、感染症、気象、交通障害その他安全な実施が困難な事情がある場合、延期、中止または実施方法の変更を協議する。緊急時は人命および安全を優先する。\n4. 参加者へのハラスメント、差別、暴力、危険行為その他信頼関係を損なう行為を禁止し、改善されない場合、乙は業務を中断または終了できる。\n5. 日程、人数、会場、業務範囲および教材利用の変更ならびにキャンセル料、交通費、宿泊費等は、実施前に電磁的方法を含む記録可能な方法で合意する。'
+      },
+      typeB: {
+        cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
+        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機料・付帯作業料）甲または施設側の都合により、事前の運行計画で定めた積卸し時間を超える待機が発生した場合、または申告のない付帯作業（過度な梱包作業、階段荷揚げ等）が発生した場合、乙は事前に提示した運賃・料金規定に基づき甲へ追加料金を請求できる。\n6. （運賃等の見直し）契約締結後、著しい経済情勢の変動、燃油価格の急激な高騰または関連法令の改定が生じた場合、乙は根拠資料を提示し、運賃および料金の改定（燃油特別付加運賃の導入を含む）を甲乙協議の上で請求できる。\n7. （情報の開示と共有）乙は適法な運送体制を確認できるよう、事業許可証、管轄営業所情報、運行管理者情報を、法令上および個人情報保護上開示可能な範囲で、書面または電子データ（見積書添付URL等）により甲へ提示する。'
+      },
+      estimateB: {
+        transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
+        permit_number: '', office_information: '', operation_manager: '',
+        cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
+        waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
+        cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
+        route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
+        instrument_price_master: { effective_date: '', source_url: '', verified: false },
+        freight_rate_master: {
+          effective_date: '', source_url: '', verified: false,
+          distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
+          charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0',
+          loading_base: '0', loading_per_25_points: '0', fuel_reference_price: '0', fuel_current_price: '0',
+          fuel_per_km_per_yen: '0', external_2t_charter: '0'
+        },
+        cargo_items: [
+          { category: '金管楽器', instrument_key: 'trumpet', description: 'トランペット', maker_model: '標準モデル', quantity: '10', condition: '良好', valuation_mode: 'master', unit_value: '500000', total_value: '5000000', volume_points: '1', notes: '本体・ハードケース・付属品' },
+          { category: '金管楽器', instrument_key: 'horn', description: 'ホルン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '800000', total_value: '6400000', volume_points: '4', notes: '本体・ハードケース・付属品' },
+          { category: '金管楽器', instrument_key: 'trombone', description: 'トロンボーン', maker_model: '標準モデル', quantity: '8', condition: '良好', valuation_mode: 'master', unit_value: '600000', total_value: '4800000', volume_points: '3', notes: '本体・ハードケース・付属品' },
+          { category: '金管楽器', instrument_key: 'tuba', description: 'チューバ', maker_model: '標準モデル', quantity: '4', condition: '良好', valuation_mode: 'master', unit_value: '1500000', total_value: '6000000', volume_points: '15', notes: '本体・ハードケース・付属品' },
+          { category: '打楽器', instrument_key: 'other', description: '打楽器・音響機材一式', maker_model: '', quantity: '1', condition: '良好', valuation_mode: 'manual', unit_value: '7800000', total_value: '7800000', volume_points: '35', notes: '個別内訳・製造番号は必要に応じて備考へ追記' }
+        ],
+        estimate_items: [
+          { description: '基本運賃（貸切）', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '走行距離および拘束時間に基づく基本運賃' },
+          { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
+          { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
+          { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
+          { description: '燃料サーチャージ（予定）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '燃油価格に応じた特別付加料金' }
+        ]
+      },
+      estimateC: {
+        project_name: '生成AI活用型 Web・アプリケーション開発一式',
+        operating_system: 'Windows 11 / macOS 最新版',
+        runtime_environment: 'Google Chrome 最新版',
+        delivery_date: '双方協議のうえ定める日',
+        estimate_items: [
+          { description: '要件定義・プロンプト設計費', quantity: '1', unit: '式', unit_price: '40000', amount: '40000', details: '業務要件のヒアリング、UI構成案策定、AI生成用プロンプト・アーキテクチャ設計' },
+          { description: '生成AI支援 アプリケーション実装費', quantity: '1', unit: '式', unit_price: '90000', amount: '90000', details: '生成AIを活用したフロントエンド・バックエンドの高速コード生成および機能実装' },
+          { description: 'UI/UXデザイン・スタイリング費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'レスポンシブ対応、UIコンポーネント調整、操作性最適化' },
+          { description: 'コード監査・セキュリティ検証費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'AI生成コードの人間による精査・リファクタリング、指定環境での動作・安全性検証' },
+          { description: 'パッケージング・納品諸経費', quantity: '1', unit: '式', unit_price: '10000', amount: '10000', details: '納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理' }
+        ]
+      },
+      typeC: {
+        deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
+        special_terms: '1. 成果物はプログラム一式をZIPファイル等の電子データで納品し、納品時に合意する指定動作環境での稼働を受入基準とする。甲はデータ受領後14日以内に検収し、期間内に具体的な不適合の通知がない場合は検収完了とみなす。\n2. 検収完了後14日以内に発見された、合意仕様に対するプログラム固有の不具合は乙が無償で修正する。仕様変更、機能追加、指定外環境への対応および第三者サービスの変更対応は無償修正に含まれない。\n3. 本件はプログラムの売り切り（買い切り）契約とし、検収完了後の継続的な運用保守、監視、バックアップ、将来のOS・ブラウザ・API等の更新への追従および機能追加は含まれず、必要な場合は別途有償で合意する。\n4. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。\n5. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とする。甲乙は個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。'
+      }
+    };
+
+    function escapeHtml(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function formatJapaneseDate(value) {
+      if (!value) return '令和　年　月　日';
+      const [year, month, day] = value.split('-').map(Number);
+      return new Intl.DateTimeFormat('ja-JP-u-ca-japanese', {
+        year: 'numeric', month: 'long', day: 'numeric'
+      }).format(new Date(year, month - 1, day));
+    }
+
+    function field(label, key, value, multiline = false, maximumLength = 500) {
+      const element = multiline
+        ? `<textarea data-contract-key="${key}" maxlength="${maximumLength}">${escapeHtml(value)}</textarea>`
+        : `<input data-contract-key="${key}" type="text" maxlength="${maximumLength}" value="${escapeHtml(value)}">`;
+      return `<div class="field"><label>${label}${element}</label></div>`;
+    }
+
+    const estimatePresets = {
+      description: ['基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
+      quantity: ['1', '2', '3', '5', '10'],
+      unit: ['運行', '式', '件', '画面', '時間', '日'],
+      unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
+      amount: ['10000', '30000', '40000', '50000', '90000', '100000']
+    };
+
+    const cargoCategories = ['木管楽器', '金管楽器', '打楽器', '弦楽器', '備品', 'その他'];
+    const instrumentMaster = {
+      flute: { category: '木管楽器', name: 'フルート', model: '標準モデル', referenceValue: 300000, volumePoints: 0.5 },
+      clarinet: { category: '木管楽器', name: 'クラリネット', model: '標準モデル', referenceValue: 250000, volumePoints: 1 },
+      bass_clarinet: { category: '木管楽器', name: 'バスクラリネット', model: '標準モデル', referenceValue: 800000, volumePoints: 5 },
+      baritone_sax: { category: '木管楽器', name: 'バリトンサックス', model: '標準モデル', referenceValue: 900000, volumePoints: 8 },
+      trumpet: { category: '金管楽器', name: 'トランペット', model: '標準モデル', referenceValue: 500000, volumePoints: 1 },
+      horn: { category: '金管楽器', name: 'ホルン', model: '標準モデル', referenceValue: 800000, volumePoints: 4 },
+      trombone: { category: '金管楽器', name: 'トロンボーン', model: '標準モデル', referenceValue: 600000, volumePoints: 3 },
+      euphonium: { category: '金管楽器', name: 'ユーフォニアム', model: '標準モデル', referenceValue: 800000, volumePoints: 8 },
+      tuba: { category: '金管楽器', name: 'チューバ', model: '標準モデル', referenceValue: 1500000, volumePoints: 15 },
+      timpani: { category: '打楽器', name: 'ティンパニ', model: '標準モデル', referenceValue: 1000000, volumePoints: 30 },
+      bass_drum: { category: '打楽器', name: 'バスドラム', model: '標準モデル', referenceValue: 500000, volumePoints: 25 },
+      marimba: { category: '打楽器', name: 'マリンバ', model: '標準モデル', referenceValue: 2000000, volumePoints: 35 },
+      contrabass: { category: '弦楽器', name: 'コントラバス', model: '標準モデル', referenceValue: 1000000, volumePoints: 20 },
+      music_stand: { category: '備品', name: '譜面台', model: '', referenceValue: 10000, volumePoints: 0.5 }
+    };
+
+    function instrumentOptions(selectedKey) {
+      const options = Object.entries(instrumentMaster).map(([key, item]) =>
+        `<option value="${key}"${key === selectedKey ? ' selected' : ''}>${item.category}｜${item.name}｜${item.model || '型番なし'}</option>`
+      ).join('');
+      return `${options}<option value="other"${selectedKey === 'other' ? ' selected' : ''}>その他（名称・評価額を自由入力）</option>`;
+    }
+
+    function presetOptions(values) {
+      return `<option value="">登録内容から選択</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+    }
+
+    function estimateInput(label, key, value, className = '') {
+      return `<label class="${className}">${label}<select class="estimate-preset" data-estimate-preset-key="${key}" aria-label="${label}の登録内容から選択">${presetOptions(estimatePresets[key])}</select><input data-estimate-key="${key}" type="text" maxlength="120" value="${escapeHtml(value)}" aria-label="${label}の任意入力"></label>`;
+    }
+
+    function renderEstimateFields(values) {
+      const items = values.estimate_items.map((item, index) => `
+        <section class="estimate-editor" data-estimate-row="${index}">
+          <h2>明細 ${index + 1}</h2>
+          <div class="estimate-editor-grid">
+            ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
+            ${estimateInput('数量', 'quantity', item.quantity)}
+            ${estimateInput('単位', 'unit', item.unit)}
+            ${estimateInput('単価（円）', 'unit_price', item.unit_price)}
+            ${estimateInput('金額（円）', 'amount', item.amount)}
+            <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
+          </div>
+        </section>`).join('');
+      return `<div class="estimate-edit-guide"><strong>C契約前見積書の編集</strong>各項目は青い「登録内容から選択」で通常内容を選べます。その下の白い入力欄へ任意の内容を直接入力することもできます。</div>
+        <div class="field"><label>案件名（選択または任意入力）<select class="estimate-preset" data-estimate-preset="project_name" aria-label="案件名の登録内容から選択">${presetOptions(['生成AI活用型 Web・アプリケーション開発一式', 'コーポレートWebサイト制作一式', '業務支援Webアプリケーション開発一式', '既存Webサイト改修・機能追加一式'])}</select><input data-contract-key="project_name" type="text" maxlength="160" value="${escapeHtml(values.project_name)}" aria-label="案件名の任意入力"></label></div>`
+        + field('指定OS', 'operating_system', values.operating_system)
+        + field('ブラウザ・実行環境', 'runtime_environment', values.runtime_environment)
+        + field('納期', 'delivery_date', values.delivery_date)
+        + `<datalist id="estimateProjectPresets"><option value="生成AI活用型 Web・アプリケーション開発一式"><option value="コーポレートWebサイト制作一式"><option value="業務支援Webアプリケーション開発一式"><option value="既存Webサイト改修・機能追加一式"></datalist>
+          <datalist id="estimateItemPresets"><option value="要件定義・プロンプト設計費"><option value="生成AI支援 アプリケーション実装費"><option value="UI/UXデザイン・スタイリング費"><option value="コード監査・セキュリティ検証費"><option value="パッケージング・納品諸経費"><option value="追加機能開発費"><option value="データ移行費"></datalist>
+          <datalist id="estimateQuantityPresets"><option value="1"><option value="2"><option value="3"><option value="5"><option value="10"></datalist>
+          <datalist id="estimateUnitPresets"><option value="式"><option value="件"><option value="画面"><option value="時間"><option value="日"></datalist>
+          <datalist id="estimatePricePresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>
+          <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}`;
+    }
+
+    function renderTransportEstimateFields(values) {
+      syncCargoValuation();
+      const volume = calculateCargoVolume();
+      const overCapacity = volume >= 100;
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>許認可・営業所・運行管理者情報と添付URLは、確認済みの実情報だけを入力してください。参考価格・容積ポイントは管理用の初期値であり、実物と最新資料を確認して更新してください。</div>`
+        + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
+        + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
+        + field('輸送案件名', 'transport_name', values.transport_name)
+        + field('見積有効期限', 'validity', values.validity)
+        + field('事業許可番号', 'permit_number', values.permit_number)
+        + field('管轄営業所情報', 'office_information', values.office_information, true)
+        + field('運行管理者情報', 'operation_manager', values.operation_manager)
+        + field('A4付属書PDFの共有URL', 'cargo_document_url', values.cargo_document_url)
+        + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
+        + field('事業許可・営業所・運行管理情報 URL', 'compliance_document_url', values.compliance_document_url)
+        + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
+        + field('待機料', 'waiting_fee', values.waiting_fee)
+        + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
+        + field('迂回・延泊実費', 'detour_expenses', values.detour_expenses)
+        + field('シート共有先メールアドレス', 'cargo_contact_email', values.cargo_contact_email)
+        + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><button class="secondary-button" data-open-route-map type="button">経路図作成を開く</button></div>`
+        + `<p class="save-status" data-document-tool-status role="status"></p>`
+        + `<div${overCapacity ? '' : ' hidden'} data-external-budget>${field('外注・追加車両手配の希望予算（円）', 'external_vehicle_budget', values.external_vehicle_budget)}</div>`
+        + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から運賃・料金を自動計算</button>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器価格マスターの確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">価格出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 最新の定価・市場相場を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + renderEstimateItemEditors(values);
+    }
+
+    function renderCargoItemEditors(values) {
+      const total = calculateCargoValuation();
+      return `<div class="estimate-edit-guide"><strong>輸送対象物明細・評価額証明</strong>申告総評価額：<span data-cargo-total="editor">${formatEstimateYen(total)}円</span></div>${values.cargo_items.map((item, index) => `
+        <section class="estimate-editor" data-cargo-row="${index}">
+          <h2>輸送対象物 ${index + 1}<button class="cargo-row-remove" data-remove-cargo-row="${index}" type="button" aria-label="輸送対象物${index + 1}を削除">削除</button></h2>
+          <div class="cargo-editor-grid">
+            <label>区分<select data-cargo-item-key="category">${cargoCategories.map(category => `<option${category === item.category ? ' selected' : ''}>${category}</option>`).join('')}</select></label>
+            <label class="cargo-instrument">楽器マスター<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
+            <label>品名・機材名<input data-cargo-item-key="description" type="text" maxlength="120" value="${escapeHtml(item.description)}"></label>
+            <label>メーカー・型番（空欄可）<input data-cargo-item-key="maker_model" type="text" maxlength="120" value="${escapeHtml(item.maker_model)}"></label>
+            <label>数量<input data-cargo-item-key="quantity" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(item.quantity)}"></label>
+            <label>引渡時の状態<input data-cargo-item-key="condition" type="text" maxlength="80" value="${escapeHtml(item.condition)}"></label>
+            <label>評価方式<select data-cargo-item-key="valuation_mode"><option value="master"${item.valuation_mode === 'master' ? ' selected' : ''}>マスター参考額</option><option value="manual"${item.valuation_mode === 'manual' ? ' selected' : ''}>任意評価額</option></select></label>
+            <label>単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
+            <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
+            <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
+            <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
+          </div>
+        </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>その他の品目行を追加</button>`;
+    }
+
+    function renderEstimateItemEditors(values) {
+      return values.estimate_items.map((item, index) => `
+        <section class="estimate-editor" data-estimate-row="${index}">
+          <h2>明細 ${index + 1}</h2><div class="estimate-editor-grid">
+            ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
+            ${estimateInput('数量', 'quantity', item.quantity)}${estimateInput('単位', 'unit', item.unit)}
+            ${estimateInput('単価（円）', 'unit_price', item.unit_price)}${estimateInput('金額（円）', 'amount', item.amount)}
+            <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
+          </div>
+        </section>`).join('');
+    }
+
+    function applyEstimatePreset(select) {
+      if (!select.value) return;
+      const row = select.closest('[data-estimate-row]');
+      const key = select.dataset.estimatePresetKey || select.dataset.estimatePreset;
+      const input = row
+        ? row.querySelector(`[data-estimate-key="${key}"]`)
+        : dynamicFields.querySelector(`[data-contract-key="${key}"]`);
+      if (!input) return;
+      input.value = select.value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      select.value = '';
+    }
+
+    function renderDynamicFields() {
+      const type = docType.value;
+      documentDateLabel.textContent = type === 'estimateB' || type === 'estimateC' ? '見積発行日' : '契約締結日';
+      if (type === 'master') {
+        dynamicFields.replaceChildren();
+        return;
+      }
+      const values = contractValues[type];
+      if (type === 'estimateB') {
+        dynamicFields.innerHTML = renderTransportEstimateFields(values);
+      } else if (type === 'estimateC') {
+        dynamicFields.innerHTML = renderEstimateFields(values);
+      } else if (type === 'typeA') {
+        dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
+          + field('委託料', 'amount', values.amount)
+          + field('契約期間・実施日', 'term', values.term)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
+      } else if (type === 'typeB') {
+        dynamicFields.innerHTML = field('輸送対象物', 'cargo', values.cargo, true)
+          + field('対象物の総評価額', 'value', values.value)
+          + field('運行経路・実施条件', 'route', values.route, true)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
+      } else {
+        dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
+          + field('委託料', 'amount', values.amount)
+          + field('納期', 'deadline', values.deadline)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
+      }
+    }
+
+    function normalizeTransportValues(values) {
+      values.instrument_price_master = {
+        effective_date: '', source_url: '', verified: false,
+        ...(values.instrument_price_master || {})
+      };
+      values.freight_rate_master = {
+        effective_date: '', source_url: '', verified: false,
+        distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
+        charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0', loading_base: '0', loading_per_25_points: '0',
+        fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0', external_2t_charter: '0',
+        ...(values.freight_rate_master || {})
+      };
+      values.cargo_items = (values.cargo_items || []).map(item => ({
+        category: item.category || 'その他',
+        instrument_key: item.instrument_key || 'other',
+        description: item.description || 'その他',
+        maker_model: item.maker_model || '',
+        quantity: item.quantity || '1',
+        condition: item.condition || '要確認',
+        valuation_mode: item.valuation_mode || 'manual',
+        unit_value: item.unit_value || '0',
+        total_value: item.total_value || '0',
+        volume_points: item.volume_points || '0',
+        notes: item.notes || ''
+      }));
+      return values;
+    }
+
+    function partyHtml() {
+      const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || '代表者 ＿＿＿＿＿＿＿＿');
+      return `
+        <div class="doc-parties with-divider">
+          <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
+          <div class="party-divider" aria-hidden="true"></div>
+          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
+        </div>`;
+    }
+
+    function contractTable(rows) {
+      return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function estimateNumber(value) {
+      const normalized = String(value || '').replace(/,/g, '').trim();
+      return /^\d+$/.test(normalized) ? Number(normalized) : 0;
+    }
+
+    function activeEstimateType() {
+      return preview.dataset.contractType === 'estimateB' ? 'estimateB' : 'estimateC';
+    }
+
+    function calculateEstimateTotals(type = activeEstimateType()) {
+      const subtotal = contractValues[type].estimate_items.reduce(
+        (total, item) => total + estimateNumber(item.amount), 0
+      );
+      const tax = Math.round(subtotal * 0.1);
+      return { subtotal, tax, total: subtotal + tax };
+    }
+
+    function calculateCargoValuation() {
+      return contractValues.estimateB.cargo_items.reduce(
+        (total, item) => total + estimateNumber(item.total_value), 0
+      );
+    }
+
+    function calculateCargoVolume() {
+      return contractValues.estimateB.cargo_items.reduce((total, item) => {
+        const quantity = Number(item.quantity) || 0;
+        const points = Number(item.volume_points) || 0;
+        return total + quantity * points;
+      }, 0);
+    }
+
+    function formatCargoCapacity(volume) {
+      const formatted = Number(volume).toLocaleString('ja-JP', { maximumFractionDigits: 2 });
+      return volume >= 100
+        ? `容積スコア ${formatted}pt。軽貨物の運用上限100pt以上のため、外部2t車または往復運行の見積りが必要です。`
+        : `容積スコア ${formatted}pt。軽貨物車両1台の運用上限100pt未満です。最終判断は実寸・重量・固定方法・荷姿の現物確認後に行います。`;
+    }
+
+    function updateCargoCapacityUi() {
+      const volume = calculateCargoVolume();
+      const status = dynamicFields.querySelector('[data-cargo-capacity-status]');
+      if (status) {
+        status.classList.toggle('is-over', volume >= 100);
+        status.classList.toggle('is-ok', volume < 100);
+        status.querySelector('strong').textContent = volume >= 100 ? '積載量上限アラート' : '軽貨物車両での積載判定';
+        status.querySelector('span').textContent = formatCargoCapacity(volume);
+      }
+      const budget = dynamicFields.querySelector('[data-external-budget]');
+      if (budget) budget.hidden = volume < 100;
+    }
+
+    function calculateOptimalFreight(distance, totalHours) {
+      const master = contractValues.estimateB.freight_rate_master;
+      if (!master.verified || !master.effective_date || !/^https?:\/\/[^\s]+$/.test(master.source_url)) {
+        throw new Error('料金マスターの基準日・出典URLを確認し、確認済みにしてください。');
+      }
+      if (!contractValues.estimateB.route_origin.trim() || !contractValues.estimateB.route_destination.trim()) {
+        throw new Error('出発地と目的地を入力してください。');
+      }
+      const rate = key => estimateNumber(master[key]);
+      if (distance <= 0 || totalHours <= 0 || rate('distance_base_20') <= 0 || rate('charter_4h') <= 0 || rate('charter_8h') <= 0) {
+        throw new Error('距離、拘束時間、主要運賃を0より大きい値で入力してください。');
+      }
+      let distancePrice = rate('distance_base_20');
+      let remaining = Math.max(0, distance - 20);
+      const distanceBands = [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [Infinity, 'distance_per_km_101_plus']];
+      distanceBands.forEach(([limit, key]) => {
+        const applied = Math.min(remaining, limit);
+        distancePrice += applied * rate(key);
+        remaining -= applied;
+      });
+      let timePrice = totalHours <= 4 && distance <= 40 ? rate('charter_4h') : rate('charter_8h');
+      timePrice += Math.max(0, Math.ceil(totalHours - 8)) * rate('extra_hour');
+      timePrice += Math.max(0, Math.ceil(distance - 80)) * rate('distance_per_km_101_plus');
+      const estimatedWaitingHours = Math.max(0, totalHours - distance / 30 - 1);
+      const waitingFee = Math.ceil(estimatedWaitingHours * 2) * rate('waiting_per_30m');
+      const distanceBasedTotal = Math.round(distancePrice + waitingFee);
+      const volume = calculateCargoVolume();
+      const overCapacity = volume >= 100;
+      const useTimeCharter = timePrice <= distanceBasedTotal;
+      const baseFreightCost = overCapacity
+        ? rate('external_2t_charter')
+        : Math.round(useTimeCharter ? timePrice : distancePrice);
+      if (overCapacity && baseFreightCost <= 0) throw new Error('積載超過のため外部2t車参考チャーター額を入力してください。');
+      const loadingSteps = Math.max(0, Math.ceil(volume / 25) - 1);
+      const loadingFee = rate('loading_base') + loadingSteps * rate('loading_per_25_points');
+      const fuelDifference = Math.max(0, rate('fuel_current_price') - rate('fuel_reference_price'));
+      const fuelSurcharge = Math.ceil(fuelDifference * distance * rate('fuel_per_km_per_yen'));
+      return {
+        recommendedType: overCapacity ? '外部2t車チャーター（要正式見積り）' : useTimeCharter ? '基本運賃（時間制・貸切）' : '基本運賃（距離制）',
+        baseFreightCost,
+        loadingFee,
+        waitingFee,
+        fuelSurcharge,
+        volume,
+        reason: overCapacity
+          ? `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、容積スコア${volume}ptが軽貨物上限に達したため外部2t車参考額を適用`
+          : useTimeCharter
+            ? `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し時間制を推奨`
+            : `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し距離制を推奨`
+      };
+    }
+
+    function openFreightCalculator() {
+      const values = contractValues.estimateB;
+      freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { input.value = values[input.dataset.freightInput]; });
+      freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
+      freightCalculatorDialog.querySelector('[data-rate-verified]').checked = values.freight_rate_master.verified;
+      freightCalculatorStatus.textContent = '';
+      freightCalculatorStatus.dataset.state = '';
+      freightCalculatorDialog.showModal();
+    }
+
+    function applyFreightCalculator() {
+      const values = contractValues.estimateB;
+      freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { values[input.dataset.freightInput] = input.value; });
+      freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { values.freight_rate_master[input.dataset.rateKey] = input.value; });
+      values.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
+      try {
+        const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours));
+        const [freight, loading, , insurance, fuel] = values.estimate_items;
+        Object.assign(freight, { description: result.recommendedType, unit_price: String(result.baseFreightCost), amount: String(result.baseFreightCost), details: `${result.reason}（料金マスター基準日 ${values.freight_rate_master.effective_date}）` });
+        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: `運賃と分離。容積スコア${result.volume}ptに基づく荷役料金` });
+        Object.assign(fuel, { description: '燃料サーチャージ', unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
+        values.waiting_fee = `30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（想定待機料 ${formatEstimateYen(result.waitingFee)}円）`;
+        values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
+        syncCargoValuation();
+        if (insurance) insurance.details = `申告総評価額${formatEstimateYen(calculateCargoValuation())}円に対する補償特約費`;
+        freightCalculatorDialog.close();
+        renderDynamicFields();
+        renderPreview();
+      } catch (error) {
+        freightCalculatorStatus.textContent = error.message;
+        freightCalculatorStatus.dataset.state = 'error';
+      }
+    }
+
+    async function generateTransportSheet() {
+      const status = dynamicFields.querySelector('[data-document-tool-status]');
+      if (!contractValues.estimateB.cargo_restrictions_agreed) throw new Error('輸送対象外品の確認へ同意してください。');
+      status.textContent = '安全な共有シートを発行しています...';
+      const response = await fetch('/api/contracts/transport-sheet', {
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify({
+          client_name: clientName.value,
+          transport_name: contractValues.estimateB.transport_name,
+          editor_email: contractValues.estimateB.cargo_contact_email,
+          cargo_items: contractValues.estimateB.cargo_items,
+          freight_rate_master: contractValues.estimateB.freight_rate_master,
+          instrument_price_master: contractValues.estimateB.instrument_price_master
+        })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '輸送明細シートを発行できませんでした。'));
+      const result = await response.json();
+      contractValues.estimateB.cargo_document_url = result.cargo_url;
+      contractValues.estimateB.fee_document_url = result.fee_url;
+      renderDynamicFields();
+      renderPreview();
+      const nextStatus = dynamicFields.querySelector('[data-document-tool-status]');
+      nextStatus.textContent = '指定メールだけが編集できる輸送明細・料金規定シートを発行しました。';
+      nextStatus.dataset.state = 'success';
+    }
+
+    function syncCargoValuation() {
+      const total = calculateCargoValuation();
+      const insuranceItem = contractValues.estimateB.estimate_items.find(
+        item => item.description === '動産総合・運送保険料'
+      ) || contractValues.estimateB.estimate_items[3];
+      if (insuranceItem) insuranceItem.details = `申告総評価額${formatEstimateYen(total)}円に対する補償特約費`;
+      return total;
+    }
+
+    function formatEstimateYen(value) {
+      return Number(value).toLocaleString('ja-JP');
+    }
+
+    function updateEstimatePreviewTotals() {
+      const totals = calculateEstimateTotals();
+      const totalHeading = preview.querySelector('.estimate-total');
+      if (totalHeading) totalHeading.textContent = `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -`;
+      const subtotalCell = preview.querySelector('[data-estimate-total="subtotal"]');
+      const taxCell = preview.querySelector('[data-estimate-total="tax"]');
+      const totalCell = preview.querySelector('[data-estimate-total="total"]');
+      if (subtotalCell) subtotalCell.textContent = `${formatEstimateYen(totals.subtotal)}円`;
+      if (taxCell) taxCell.textContent = `${formatEstimateYen(totals.tax)}円`;
+      if (totalCell) totalCell.textContent = `${formatEstimateYen(totals.total)}円`;
+    }
+
+    function estimatePreviewEditor(key, value, rowIndex = '') {
+      const presets = key === 'project_name'
+        ? ['生成AI活用型 Web・アプリケーション開発一式', 'コーポレートWebサイト制作一式', '業務支援Webアプリケーション開発一式', '既存Webサイト改修・機能追加一式']
+        : key === 'transport_name'
+          ? ['楽器輸送業務一式', '演奏会楽器輸送', '学校・部活動楽器輸送', '打楽器・大型機材輸送']
+          : estimatePresets[key];
+      const rowAttribute = rowIndex === '' ? '' : ` data-preview-estimate-row="${rowIndex}"`;
+      return `<span class="estimate-preview-editor"${rowAttribute}><select data-preview-estimate-preset="${key}" aria-label="登録内容から選択">${presetOptions(presets)}</select><input data-preview-estimate-key="${key}" type="text" value="${escapeHtml(value)}" aria-label="任意入力"></span><span class="estimate-print-value">${escapeHtml(value)}</span>`;
+    }
+
+    function renderWebAppEstimate(date, safeClient) {
+      const values = contractValues.estimateC;
+      const totals = calculateEstimateTotals('estimateC');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      preview.innerHTML = `
+        <section class="contract-page estimate-page" data-page-number="1">
+          <h1>御見積書</h1>
+          <p class="doc-date">${date}</p>
+          <div class="estimate-client"><strong>${safeClient} 御中</strong><br>${safeRepresentative}</div>
+          <p>以下の通り、御見積申し上げます。</p>
+          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <div class="estimate-value"><strong>生成AIを活用するプロのWebクリエイターとしての提供価値</strong><br>生成AIによる設計・実装支援で制作工程を高速化しながら、要件定義、プロンプト設計、コード監査、セキュリティ検証および最終品質保証は制作者が責任を持って行います。これにより、高品質・短納期・適正価格を両立します。</div>
+          <div><strong>案件名（直接編集できます）：</strong>${estimatePreviewEditor('project_name', values.project_name)}</div>
+          <table class="estimate-table">
+            <thead><tr><th>品目・作業内容</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>概要・内訳</th></tr></thead>
+            <tbody>
+              ${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}
+            </tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <div class="estimate-issuer"><strong>発行者情報</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>業務区分：生成AI活用型 Web・アプリケーション開発 / クリエイティブ制作</div>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="2">
+          <h1>お見積り条件・特記事項</h1>
+          <ul class="estimate-conditions">
+            <li><strong>1. 納品形態</strong>完成したプログラム一式をZIPファイル等の電子データ形式にて引き渡します。</li>
+            <li><strong>2. 指定動作環境</strong>本見積りは納品時に合意する指定動作環境での稼働を前提とします。<br>OS：${escapeHtml(values.operating_system)}<br>ブラウザ・実行環境：${escapeHtml(values.runtime_environment)}</li>
+            <li><strong>3. 納期</strong>${escapeHtml(values.delivery_date)}</li>
+            <li><strong>4. 検収および無償修正期間</strong>検収期間：データ受領後14日以内に指定環境での動作確認をお願いいたします。期間内に具体的な不適合の通知がない場合は検収完了とみなします。<br>無償修正期間：検収完了後14日以内に発見されたプログラム固有の不具合（バグ）について無償対応いたします。仕様変更、機能追加および指定外環境への対応は対象外です。</li>
+            <li><strong>5. 売り切り（保守対象外）の確認</strong>本件はプログラムの売り切り（買い切り）契約であり、検収完了後の継続的な運用保守、将来的なOS・ブラウザ・APIアップデートへの追従改修、監視、バックアップおよび機能追加等は含まれません。必要時は別途有償にて承ります。</li>
+            <li><strong>6. 生成AIおよび第三者サービス</strong>生成AIは制作支援に使用し、成果物の品質確認と納品責任は発行者が負います。第三者サービス、オープンソースソフトウェア等の権利・規約は各提供者の条件に従い、将来の仕様変更や料金改定への対応は別途協議します。</li>
+            <li><strong>7. お支払条件</strong>検収完了後、当月末締め・翌月末日までに指定口座へのお振込みをお願いいたします。振込手数料はご依頼者様のご負担とします。</li>
+            <li><strong>8. 有効期限</strong>本見積書の発行日より30日間有効といたします。</li>
+            <li><strong>9. 契約書との関係</strong>ご発注時は業務委託基本契約書および「個別契約書 C（WEB・アプリ）」を締結し、本見積書を個別契約の一部として取り扱います。文書間に差異がある場合は、後に成立した個別の合意を優先します。</li>
+          </ul>
+        </section>`;
+    }
+
+    function transportDocumentLink(label, value) {
+      const safeValue = escapeHtml(value || '未設定');
+      const link = /^https?:\/\/[^\s]+$/.test(value)
+        ? `<a href="${safeValue}" target="_blank" rel="noopener noreferrer">${safeValue}</a>`
+        : '<span class="document-url-missing">未設定（保存前に実在する共有URLを入力）</span>';
+      return `<li><strong>${label}</strong>${link}</li>`;
+    }
+
+    function renderTransportEstimate(date, safeClient) {
+      const values = contractValues.estimateB;
+      const totals = calculateEstimateTotals('estimateB');
+      const cargoValuation = syncCargoValuation();
+      const cargoVolume = calculateCargoVolume();
+      const rateMaster = values.freight_rate_master;
+      const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      preview.innerHTML = `
+        <section class="contract-page estimate-page" data-page-number="1">
+          <h1>御見積書（B契約：楽器輸送業務）</h1>
+          <p class="doc-date">${date}</p>
+          <div class="estimate-client"><strong>${safeClient} 様</strong><br>${safeRepresentative}</div>
+          <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
+          <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
+          <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
+          <div class="estimate-issuer"><strong>受託者（乙）</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>住所：埼玉県比企郡滑川町月の輪5丁目1-3</div>
+          <h2>1. 法定開示・クラウド添付書類</h2>
+          <p>以下は入力された情報と添付先です。本見積書の表示だけで許認可の有効性を自動証明するものではないため、甲は原本・発行主体・有効期限を確認してください。</p>
+          <table class="individual-contract-table"><tbody>
+            <tr><th scope="row">事業許可番号</th><td>${escapeHtml(values.permit_number || '未設定')}</td></tr>
+            <tr><th scope="row">管轄営業所情報</th><td>${escapeHtml(values.office_information || '未設定')}</td></tr>
+            <tr><th scope="row">運行管理者情報</th><td>${escapeHtml(values.operation_manager || '未設定')}</td></tr>
+          </tbody></table>
+          <ul class="estimate-conditions document-links">
+            ${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}
+            ${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}
+            ${transportDocumentLink('事業許可・管轄営業所・運行管理者情報', values.compliance_document_url)}
+            ${transportDocumentLink('追加料金規定表', values.fee_document_url)}
+          </ul>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="2">
+          <h1>御見積明細（運賃・料金分離型）</h1>
+          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <table class="estimate-table">
+            <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
+            <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <h2>2. 現場発生時の追加請求予定項目</h2>
+          <ul class="estimate-conditions">
+            <li><strong>待機料</strong>${escapeHtml(values.waiting_fee)}</li>
+            <li><strong>付帯作業料</strong>${escapeHtml(values.ancillary_fee)}</li>
+            <li><strong>迂回・延泊実費</strong>${escapeHtml(values.detour_expenses)}</li>
+          </ul>
+          <p>追加料金は個別契約書B第4項・第5項および事前提示した料金規定に基づき、発生理由と算定根拠を示して精算します。燃油価格や法令改定による運賃見直しは第6項に基づき協議します。</p>
+          <p><strong>料金マスター：</strong>${rateMaster.verified ? `${escapeHtml(rateMaster.effective_date)}現在・<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">出典資料</a>` : '未確認（自動算出結果として保存できません）'}</p>
+          <p><strong>契約書との関係：</strong>発注時は業務委託基本契約書および個別契約書Bを締結し、本見積書および添付書類を個別契約の一部として扱います。</p>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="3">
+          <h1>輸送対象物明細・評価額証明（付属書）</h1>
+          <p class="doc-date">${date}</p>
+          <p><strong>輸送案件：</strong>${escapeHtml(values.transport_name)}　<strong>申告者：</strong>${safeClient}</p>
+          <p>下記は運送委託および保険手続の基礎となる申告内容です。品名、数量、状態、評価額、ケース・付属品および製造番号等を、引渡し前に現物と照合してください。</p>
+          <table class="cargo-valuation-table">
+            <colgroup><col style="width:19%"><col style="width:7%"><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:35%"></colgroup>
+            <thead><tr><th>品名・機材名</th><th>数量</th><th>状態</th><th class="number">単価・評価額</th><th class="number">行評価額</th><th>備考</th></tr></thead>
+            <tbody>${values.cargo_items.map(item => `<tr><td>${escapeHtml(item.category)}｜${escapeHtml(item.description)}${item.maker_model ? `<br>${escapeHtml(item.maker_model)}` : ''}</td><td>${escapeHtml(item.quantity)}</td><td>${escapeHtml(item.condition)}</td><td class="number">${formatEstimateYen(estimateNumber(item.unit_value))}円</td><td class="number">${formatEstimateYen(estimateNumber(item.total_value))}円</td><td>${escapeHtml(item.notes)}<br>容積：${escapeHtml(item.volume_points)}pt／個</td></tr>`).join('')}</tbody>
+            <tfoot><tr><th colspan="4">申告総評価額</th><td class="number" data-cargo-total="valuation"><strong>${formatEstimateYen(cargoValuation)}円</strong></td><td>総容積 ${formatEstimateYen(cargoVolume)}pt</td></tr></tfoot>
+          </table>
+          <div class="cargo-declaration">
+            <strong>申告・確認</strong>
+            <p>甲は、現金、有価証券、貴金属、時計その他規定する貴重品を輸送対象へ含めず、上記内容が引渡し時点の輸送対象物と一致し、評価額が購入価格、時価、再調達価格その他合理的な根拠に基づくことを申告します。甲乙は引渡し時に数量、外観、梱包状態を確認し、必要に応じて写真・製造番号・購入証明等を記録します。</p>
+            <p>甲確認者：＿＿＿＿＿＿＿＿＿＿　乙確認者：＿＿＿＿＿＿＿＿＿＿　確認日：＿＿年＿＿月＿＿日</p>
+          </div>
+          <h2>保管・共有</h2>
+          <p>本付属書を見積書とともにPDF出力し、アクセス権限と保存期間を確認したクラウドへ保管します。共有URLは見積書1ページ目の「輸送対象物明細・評価額証明」欄に記録し、契約終了後は契約・保険上必要な期間に限って管理します。</p>
+        </section>`;
+    }
+
+    function renderMasterContract(date, safeClient, parties) {
+      preview.innerHTML = `
+          <section class="contract-page" data-page-number="1">
+          <h1>業務委託基本契約書</h1><p class="doc-date">${date}</p>
+          <p>${safeClient}（以下「甲」という）と、なめがわブラス・ラボ 代表 佐々木 久和（以下「乙」という）は、甲が乙に委託する業務について、次のとおり基本契約を締結する。</p>
+          <h2>第1条（目的および適用範囲）</h2><p>本契約は、甲乙間の継続的な業務委託取引に関する基本事項を定め、個別契約に共通して適用する。</p>
+          <h2>第2条（個別契約および優先順位）</h2><p>業務内容、成果物、委託料、履行時期、検査その他の条件は、見積書、申込書、仕様書その他記録可能な方法による合意（以下「個別契約」という）で定める。本契約と個別契約が異なる場合は個別契約を優先し、複数の文書間に矛盾がある場合は、後に成立した個別の合意を優先する。</p>
+          <h2>第3条（協力義務および変更管理）</h2><p>甲乙は、業務に必要な情報、資料、承認および環境を合理的な時期までに提供する。前提条件、業務範囲、法令等の制定または改廃その他契約条件に影響する事情が変化した場合は速やかに通知し、費用、納期および責任分担の変更を記録可能な方法で協議し合意する。</p>
+          <h2>第4条（委託料、費用および支払）</h2><p>甲は、個別契約に定める委託料、消費税等および合意した実費を指定期日までに支払う。甲の都合による延期、中止または追加作業の取扱いは個別契約に定め、定めがない場合は既履行分および取消不能な費用を甲が負担する。</p>
+          <h2>第5条（再委託）</h2><p>乙は、業務遂行に合理的に必要な範囲で、適切な能力および管理体制を有する第三者へ業務の全部または一部を再委託できる。この場合、乙は再委託先に本契約上必要な義務を課し、その履行について甲に対して責任を負う。</p>
+          <h2>第6条（秘密保持および個人情報）</h2><p>甲乙は、業務上知り得た相手方の非公開情報を契約目的以外に利用せず、法令上必要な場合を除き第三者へ開示しない。ただし、公知の情報、受領前から適法に保有する情報、正当な権限を有する第三者から取得した情報および独自に開発した情報を除く。個人情報は目的の範囲で取り扱い、合理的な安全管理措置を講じる。</p>
+          <h2>第7条（知的財産権）</h2><p>契約締結前から各当事者または第三者が保有する知的財産権は従前の権利者に留保される。業務により新たに生じる成果物の権利帰属および利用条件は個別契約に定め、定めがない場合、甲は委託料完済後、契約目的に必要な範囲で成果物を利用できる。</p>
+          </section>
+          <section class="contract-page" data-page-number="2">
+          <h2>第8条（法令遵守および反社会的勢力の排除）</h2><p>甲乙は、業務に適用される法令、許認可、施設規則および第三者の権利を尊重する。甲乙は、自らおよび実質的に関与する者が反社会的勢力に該当せず、これと関係を有しないことを表明し、違反した相手方との契約を催告なく解除できる。</p>
+          <h2>第9条（不可抗力）</h2><p>災害、感染症、戦争、騒乱、行政措置、通信・交通・エネルギー障害、第三者サービスの広範な停止その他合理的な支配を超える不可抗力により履行が遅延または不能となった当事者は、その責任を負わない。当事者は影響軽減に努め、長期化する場合は延期、代替または終了を協議する。</p>
+          <h2>第10条（解除）</h2><p>当事者が契約上の重大な義務に違反し、相当期間を定めた是正要求後も改善しない場合、相手方は本契約または個別契約を解除できる。支払停止、破産手続開始その他信用を著しく害する事由が生じた場合は催告を要しない。</p>
+          <h2>第11条（損害賠償）</h2><p>当事者は、自己の責めに帰すべき事由により相手方に現実かつ直接に生じた通常損害を賠償する。乙の賠償総額は、乙の故意または重過失、生命・身体への損害その他法令上制限できない場合を除き、原因となった個別契約で乙が受領した委託料を上限とする。</p>
+          <h2>第12条（契約期間および存続）</h2><p>本契約の期間は締結日から1年間とし、期間満了日の30日前までに書面または電磁的方法による終了通知がない場合は同一条件で1年間更新する。秘密保持、知的財産権、未払金、損害賠償および紛争解決に関する条項は、性質上必要な範囲で契約終了後も存続する。</p>
+          <h2>第13条（通知および電磁的記録）</h2><p>契約に関する通知、承認および合意は、書面、電子メールその他内容を保存・再現できる電磁的方法により行うことができる。連絡先を変更した当事者は速やかに通知し、未通知により生じた不利益を負担する。</p>
+          <h2>第14条（分離可能性および権利不放棄）</h2><p>本契約の一部が無効または執行不能となっても、その他の条項は影響を受けない。権利を直ちに行使しないことは、その権利の放棄を意味しない。</p>
+          <h2>第15条（準拠法、管轄および協議）</h2><p>本契約は日本法に準拠する。本契約に定めのない事項または疑義については甲乙誠実に協議し、解決しない場合は、法令上認められる範囲で乙の主たる事業所所在地を管轄する裁判所を第一審の合意管轄裁判所とする。</p>${parties}
+          </section>`;
+    }
+
+    function renderIndividualContract(type, date, parties) {
+      const values = contractValues[type];
+      if (type === 'typeA') {
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['委託業務の内容', values.work], ['委託料', values.amount], ['契約期間・実施日', values.term],
+          ['特記事項', values.special_terms]
+        ])}${parties}</section>`;
+      } else if (type === 'typeB') {
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
+          ['特記事項', values.special_terms]
+        ])}${parties}</section>`;
+      } else {
+        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+          ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
+          ['特記事項', values.special_terms]
+        ])}${parties}</section>`;
+      }
+    }
+
+    function renderPreview() {
+      const type = docType.value;
+      preview.dataset.contractType = type;
+      const date = formatJapaneseDate(contractDate.value);
+      const parties = partyHtml();
+      if (type === 'estimateB') {
+        const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
+        renderTransportEstimate(date, safeClient);
+      } else if (type === 'estimateC') {
+        const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
+        renderWebAppEstimate(date, safeClient);
+      } else if (type === 'master') {
+        const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+        renderMasterContract(date, safeClient, parties);
+      } else {
+        renderIndividualContract(type, date, parties);
+      }
+    }
+
+    function contractPayload() {
+      return {
+        doc_type: docType.value,
+        client_name: clientName.value,
+        client_representative: clientRepresentative.value,
+        contract_date: contractDate.value,
+        values: docType.value === 'master' ? {} : { ...contractValues[docType.value] }
+      };
+    }
+
+    function adminHeaders() {
+      return { 'Content-Type': 'application/json', 'X-Editor-Password': adminPassword };
+    }
+
+    async function readApiError(response, fallback) {
+      try {
+        const result = await response.json();
+        return result.error || fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    async function loadSavedContracts(selectedId = '') {
+      const response = await fetch('/api/contracts', { headers: adminHeaders() });
+      if (!response.ok) throw new Error(await readApiError(response, '保存済み契約書を取得できませんでした。'));
+      const result = await response.json();
+      storagePath.textContent = `このPC内の保存先: ${result.storage_path}`;
+      savedContractSelect.replaceChildren(new Option('保存済み契約書を選択', ''));
+      const groups = new Map();
+      result.contracts.forEach(contract => {
+        if (!groups.has(contract.department)) groups.set(contract.department, []);
+        groups.get(contract.department).push(contract);
+      });
+      groups.forEach((contracts, department) => {
+        const group = document.createElement('optgroup');
+        group.label = department;
+        contracts.forEach(contract => {
+          const option = new Option(
+            `${contract.contract_date} / ${contract.client_name}`,
+            contract.contract_id
+          );
+          group.appendChild(option);
+        });
+        savedContractSelect.appendChild(group);
+      });
+      savedContractSelect.value = selectedId;
+    }
+
+    async function saveCurrentContract() {
+      if (!clientName.value.trim()) {
+        clientName.focus();
+        throw new Error('取引先名を入力してください。');
+      }
+      saveButton.disabled = true;
+      const response = await fetch('/api/contracts', {
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify(contractPayload())
+      });
+      if (!response.ok) {
+        saveButton.disabled = false;
+        throw new Error(await readApiError(response, '契約書を保存できませんでした。'));
+      }
+      const contract = await response.json();
+      await loadSavedContracts(contract.contract_id);
+      saveButton.disabled = false;
+      return contract;
+    }
+
+    async function openSavedContract() {
+      const contractId = savedContractSelect.value;
+      if (!contractId) throw new Error('保存済み契約書を選択してください。');
+      const response = await fetch(`/api/contracts/${encodeURIComponent(contractId)}`, {
+        headers: adminHeaders()
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '契約書を開けませんでした。'));
+      const { contract } = await response.json();
+      docType.value = contract.doc_type;
+      clientName.value = contract.client_name;
+      clientRepresentative.value = contract.client_representative;
+      contractDate.value = contract.contract_date;
+      if (contract.doc_type !== 'master') {
+        contractValues[contract.doc_type] = { ...contractValues[contract.doc_type], ...contract.values };
+        if (contract.doc_type === 'estimateB') normalizeTransportValues(contractValues.estimateB);
+      }
+      renderDynamicFields();
+      renderPreview();
+      return contract;
+    }
+
+    async function deleteSavedContract(contractId, confirmationId) {
+      const response = await fetch(`/api/contracts/${encodeURIComponent(contractId)}`, {
+        method: 'DELETE', headers: adminHeaders(), body: JSON.stringify({ confirmation_id: confirmationId })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '契約書を削除できませんでした。'));
+      const result = await response.json();
+      await loadSavedContracts();
+      return result;
+    }
+
+    function showDeleteStep(step) {
+      deleteConfirmStep.hidden = step !== 1;
+      deleteIdStep.hidden = step !== 2;
+      deleteContractError.textContent = '';
+      if (step === 2) deleteContractId.focus();
+    }
+
+    function showGenerator() {
+      loginScreen.hidden = true;
+      generator.hidden = false;
+      contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+      renderDynamicFields();
+      renderPreview();
+      loadSavedContracts().catch(error => {
+        saveStatus.textContent = error.message;
+        saveStatus.dataset.state = 'error';
+      });
+    }
+
+    async function authenticate(password) {
+      const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
+      if (!response.ok) throw new Error('管理者パスワードが違います。');
+      adminPassword = password;
+      passwordInput.value = '';
+      showGenerator();
+    }
+
+    loginForm.addEventListener('submit', async event => {
+      event.preventDefault();
+      loginStatus.textContent = '';
+      try {
+        await authenticate(passwordInput.value);
+      } catch (error) {
+        loginStatus.textContent = error.message || 'ログインできませんでした。';
+        passwordInput.select();
+      }
+    });
+
+    logoutButton.addEventListener('click', () => {
+      adminPassword = '';
+      generator.hidden = true;
+      loginScreen.hidden = false;
+      passwordInput.value = '';
+      passwordInput.focus();
+    });
+
+    docType.addEventListener('change', () => { renderDynamicFields(); renderPreview(); });
+    [clientName, clientRepresentative, contractDate].forEach(input => input.addEventListener('input', renderPreview));
+    dynamicFields.addEventListener('input', event => {
+      if (event.target.matches('[data-cargo-consent]')) {
+        contractValues.estimateB.cargo_restrictions_agreed = event.target.checked;
+        const fieldset = dynamicFields.querySelector('[data-cargo-editor]');
+        if (fieldset) fieldset.disabled = !event.target.checked;
+        renderPreview();
+        return;
+      }
+      const instrumentMasterKey = event.target.dataset.instrumentMasterKey;
+      if (instrumentMasterKey) {
+        contractValues.estimateB.instrument_price_master[instrumentMasterKey] = event.target.value;
+        return;
+      }
+      if (event.target.matches('[data-instrument-master-verified]')) {
+        contractValues.estimateB.instrument_price_master.verified = event.target.checked;
+        return;
+      }
+      const cargoKey = event.target.dataset.cargoItemKey;
+      if (cargoKey) {
+        const row = event.target.closest('[data-cargo-row]');
+        const rowIndex = Number(row?.dataset.cargoRow);
+        const item = contractValues.estimateB.cargo_items[rowIndex];
+        if (!item) return;
+        item[cargoKey] = event.target.value;
+        if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
+          item.total_value = String(
+            estimateNumber(item.quantity) * estimateNumber(item.unit_value)
+          );
+          const totalInput = row.querySelector('[data-cargo-item-key="total_value"]');
+          if (totalInput) totalInput.value = item.total_value;
+        }
+        syncCargoValuation();
+        const editorTotal = dynamicFields.querySelector('[data-cargo-total="editor"]');
+        if (editorTotal) editorTotal.textContent = `${formatEstimateYen(calculateCargoValuation())}円`;
+        updateCargoCapacityUi();
+        renderPreview();
+        return;
+      }
+      const estimateKey = event.target.dataset.estimateKey;
+      if (estimateKey) {
+        const row = event.target.closest('[data-estimate-row]');
+        const rowIndex = Number(row?.dataset.estimateRow);
+        const item = contractValues[docType.value]?.estimate_items?.[rowIndex];
+        if (!item) return;
+        item[estimateKey] = event.target.value;
+        if (estimateKey === 'quantity' || estimateKey === 'unit_price') {
+          const quantity = Number(String(item.quantity).replace(/,/g, ''));
+          const unitPrice = estimateNumber(item.unit_price);
+          if (Number.isFinite(quantity) && quantity >= 0 && unitPrice >= 0) {
+            item.amount = String(Math.round(quantity * unitPrice));
+            const amountInput = row.querySelector('[data-estimate-key="amount"]');
+            if (amountInput) amountInput.value = item.amount;
+          }
+        }
+        renderPreview();
+        return;
+      }
+      const key = event.target.dataset.contractKey;
+      if (!key) return;
+      contractValues[docType.value][key] = event.target.value;
+      renderPreview();
+    });
+    dynamicFields.addEventListener('change', event => {
+      if (event.target.matches('[data-cargo-instrument]')) {
+        const row = event.target.closest('[data-cargo-row]');
+        const item = contractValues.estimateB.cargo_items[Number(row?.dataset.cargoRow)];
+        if (!item) return;
+        item.instrument_key = event.target.value;
+        const master = instrumentMaster[event.target.value];
+        if (master) {
+          Object.assign(item, {
+            category: master.category,
+            description: master.name,
+            maker_model: master.model,
+            valuation_mode: 'master',
+            unit_value: String(master.referenceValue),
+            volume_points: String(master.volumePoints),
+            total_value: String(estimateNumber(item.quantity) * master.referenceValue)
+          });
+        } else {
+          Object.assign(item, { category: 'その他', description: 'その他', maker_model: '', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0' });
+        }
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      if (event.target.matches('[data-estimate-preset], [data-estimate-preset-key]')) {
+        applyEstimatePreset(event.target);
+      }
+    });
+    dynamicFields.addEventListener('click', async event => {
+      if (event.target.closest('[data-open-freight-calculator]')) {
+        openFreightCalculator();
+        return;
+      }
+      if (event.target.closest('[data-open-route-map]')) {
+        window.open('https://www.google.com/maps/dir/', '_blank', 'noopener,noreferrer');
+        return;
+      }
+      if (event.target.closest('[data-add-cargo-row]')) {
+        if (contractValues.estimateB.cargo_items.length >= 10) return;
+        contractValues.estimateB.cargo_items.push({ category: 'その他', instrument_key: 'other', description: 'その他', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '' });
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      const removeButton = event.target.closest('[data-remove-cargo-row]');
+      if (removeButton) {
+        if (contractValues.estimateB.cargo_items.length <= 1) return;
+        contractValues.estimateB.cargo_items.splice(Number(removeButton.dataset.removeCargoRow), 1);
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      if (event.target.closest('[data-generate-transport-sheet]')) {
+        try {
+          await generateTransportSheet();
+        } catch (error) {
+          const status = dynamicFields.querySelector('[data-document-tool-status]');
+          if (status) {
+            status.textContent = error.message;
+            status.dataset.state = 'error';
+          }
+        }
+      }
+    });
+    preview.addEventListener('change', event => {
+      const presetKey = event.target.dataset.previewEstimatePreset;
+      if (presetKey && event.target.value) {
+        const editor = event.target.closest('.estimate-preview-editor');
+        const input = editor?.querySelector(`[data-preview-estimate-key="${presetKey}"]`);
+        if (input) {
+          input.value = event.target.value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        event.target.value = '';
+        return;
+      }
+    });
+    preview.addEventListener('input', event => {
+      const key = event.target.dataset.previewEstimateKey;
+      if (!key) return;
+      const estimateType = activeEstimateType();
+      if (key === 'project_name' || key === 'transport_name') {
+        contractValues[estimateType][key] = event.target.value;
+        const sidebarInput = dynamicFields.querySelector(`[data-contract-key="${key}"]`);
+        if (sidebarInput) sidebarInput.value = event.target.value;
+      } else {
+        const rowIndex = Number(event.target.closest('[data-preview-estimate-row]')?.dataset.previewEstimateRow);
+        const item = contractValues[estimateType].estimate_items[rowIndex];
+        if (!item) return;
+        item[key] = event.target.value;
+        const sidebarInput = dynamicFields.querySelector(`[data-estimate-row="${rowIndex}"] [data-estimate-key="${key}"]`);
+        if (sidebarInput) sidebarInput.value = event.target.value;
+        if (key === 'quantity' || key === 'unit_price') {
+          const quantity = Number(String(item.quantity).replace(/,/g, ''));
+          const unitPrice = estimateNumber(item.unit_price);
+          if (Number.isFinite(quantity) && quantity >= 0) {
+            item.amount = String(Math.round(quantity * unitPrice));
+            const amountInput = preview.querySelector(`[data-preview-estimate-row="${rowIndex}"] [data-preview-estimate-key="amount"]`);
+            const sidebarAmount = dynamicFields.querySelector(`[data-estimate-row="${rowIndex}"] [data-estimate-key="amount"]`);
+            if (amountInput) amountInput.value = item.amount;
+            if (sidebarAmount) sidebarAmount.value = item.amount;
+            const amountPrintValue = amountInput?.closest('.estimate-preview-editor')?.nextElementSibling;
+            if (amountPrintValue?.classList.contains('estimate-print-value')) amountPrintValue.textContent = item.amount;
+          }
+        }
+      }
+      const printValue = event.target.closest('.estimate-preview-editor')?.nextElementSibling;
+      if (printValue?.classList.contains('estimate-print-value')) printValue.textContent = event.target.value;
+      updateEstimatePreviewTotals();
+    });
+    document.getElementById('printContract').addEventListener('click', () => window.print());
+    document.getElementById('cancelFreightCalculator').addEventListener('click', () => freightCalculatorDialog.close());
+    document.getElementById('applyFreightCalculator').addEventListener('click', applyFreightCalculator);
+    saveButton.addEventListener('click', async () => {
+      saveStatus.textContent = '保存しています...';
+      saveStatus.dataset.state = '';
+      try {
+        const contract = await saveCurrentContract();
+        saveStatus.textContent = `${contract.department}フォルダへ保存しました。`;
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        saveButton.disabled = false;
+        saveStatus.textContent = error.message || '契約書を保存できませんでした。';
+        saveStatus.dataset.state = 'error';
+      }
+    });
+    loadButton.addEventListener('click', async () => {
+      saveStatus.textContent = '';
+      saveStatus.dataset.state = '';
+      try {
+        const contract = await openSavedContract();
+        saveStatus.textContent = `${contract.department}の契約書を開きました。`;
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        saveStatus.textContent = error.message || '契約書を開けませんでした。';
+        saveStatus.dataset.state = 'error';
+      }
+    });
+    deleteButton.addEventListener('click', () => {
+      saveStatus.textContent = '';
+      saveStatus.dataset.state = '';
+      pendingDeleteContractId = savedContractSelect.value;
+      if (!pendingDeleteContractId) {
+        saveStatus.textContent = '削除する保存済み契約書を選択してください。';
+        saveStatus.dataset.state = 'error';
+        return;
+      }
+      document.getElementById('deleteContractSummary').textContent = savedContractSelect.selectedOptions[0]?.textContent || pendingDeleteContractId;
+      deleteContractId.value = '';
+      showDeleteStep(1);
+      deleteDialog.showModal();
+    });
+    document.getElementById('cancelDeleteContract').addEventListener('click', () => deleteDialog.close());
+    document.getElementById('continueDeleteContract').addEventListener('click', () => showDeleteStep(2));
+    document.getElementById('backDeleteContract').addEventListener('click', () => showDeleteStep(1));
+    document.getElementById('confirmDeleteContract').addEventListener('click', async () => {
+      const confirmationId = deleteContractId.value.trim();
+      if (confirmationId !== pendingDeleteContractId) {
+        deleteContractError.textContent = '契約書IDが一致しません。';
+        return;
+      }
+      try {
+        const result = await deleteSavedContract(pendingDeleteContractId, confirmationId);
+        deleteDialog.close();
+        saveStatus.textContent = result.deleted_count > 1
+          ? 'PC内・サーバー内の保存済み契約書を削除しました。'
+          : '保存済み契約書をサーバーから削除しました。';
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        deleteContractError.textContent = error.message || '契約書を削除できませんでした。';
+      }
+    });
+
+  </script>
+</body>
+</html>

@@ -2,6 +2,8 @@ import json
 import os
 import tempfile
 import unittest
+from io import BytesIO
+from base64 import b64encode
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -15,6 +17,7 @@ from app import (
     parse_update_line,
     reservation_slot_times,
     send_lesson_reservation,
+    validate_consultation,
     validate_lesson_reservation,
     validate_lesson_reservation_update,
     validate_update,
@@ -22,6 +25,545 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_consultation_validation_requires_mode_specific_fields(self):
+        valid = {
+            "service_mode": "allinone",
+            "org_name": "〇〇高等学校吹奏楽部",
+            "email": "music@example.com",
+            "event_date": "2026-10-10",
+            "support_content": "コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）",
+            "instrument_value": "1000",
+            "message": "見積りを希望します。",
+            "terms_agree": True,
+        }
+
+        values = validate_consultation(valid)
+
+        self.assertEqual(values["service_mode"], "オールインワン依頼（指導・セッティング・運搬一式）")
+        self.assertEqual(values["instrument_value"], "300万円〜1,000万円")
+        with self.assertRaisesRegex(ValueError, "実施予定日"):
+            validate_consultation({**valid, "event_date": ""})
+
+    def test_consultation_validation_accepts_safe_attachment_and_other_planning(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域イベント実行委員会",
+            "email": "event@example.com",
+            "planning_type": "その他",
+            "message": "屋外ライブの運営支援について相談したいです。",
+            "attachment": {
+                "name": "plan.pdf",
+                "type": "application/pdf",
+                "data": b64encode(b"%PDF-1.4 test").decode("ascii"),
+            },
+            "terms_agree": True,
+        }
+
+        values = validate_consultation(payload)
+
+        self.assertEqual(values["planning_type"], "その他")
+        self.assertEqual(values["attachment_name"], "plan.pdf")
+        self.assertEqual(values["attachment_type"], "application/pdf")
+        self.assertEqual(values["attachment_data"], payload["attachment"]["data"])
+        with self.assertRaisesRegex(ValueError, "概略・要望事項"):
+            validate_consultation({**payload, "message": ""})
+        with self.assertRaisesRegex(ValueError, "添付できない"):
+            validate_consultation(
+                {
+                    **payload,
+                    "attachment": {
+                        "name": "script.html",
+                        "type": "text/html",
+                        "data": b64encode(b"<script></script>").decode("ascii"),
+                    },
+                }
+            )
+
+    def test_consultation_api_sends_validated_request_to_apps_script(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_request:
+            send_request.return_value = {
+                "ok": True,
+                "consultationId": "C-20260821-001",
+                "autoReplySent": True,
+            }
+
+            response = create_app(database_url="").test_client().post(
+                "/api/consultation", json=payload
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.get_json()["consultation_id"], "C-20260821-001")
+        self.assertEqual(send_request.call_args.kwargs["action"], "consultation")
+        self.assertEqual(
+            send_request.call_args.args[2]["service_mode"],
+            "イベント企画・プロデュースのみ",
+        )
+
+    def test_apps_script_stores_consultation_attachment_in_drive(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('"添付ファイル名"', script)
+        self.assertIn('"添付ファイルURL"', script)
+        self.assertIn("saveConsultationAttachment(data, consultationId)", script)
+        self.assertIn('DriveApp.getFoldersByName("企画・輸送相談添付")', script)
+        self.assertIn("Utilities.base64Decode(attachmentData)", script)
+        self.assertIn("folder.createFile(blob).getUrl()", script)
+
+    def test_index_embeds_event_consultation_form(self):
+        page = create_app(database_url="").test_client().get("/").get_data(as_text=True)
+
+        self.assertIn('href="#event-consultation"', page)
+        self.assertIn('id="event-consultation"', page)
+        self.assertIn('class="consultation-disclosure"', page)
+        self.assertIn('<summary', page)
+        self.assertIn('id="nblConsultationForm"', page)
+        self.assertIn('data-mode="allinone"', page)
+        self.assertIn('data-mode="planning"', page)
+        self.assertIn('data-mode="cargo"', page)
+        self.assertIn("fetch('/api/consultation'", page)
+        self.assertIn('href="legal/privacy-policy.html"', page)
+        self.assertIn('id="consultationAttachment"', page)
+        self.assertIn('演奏会・ライブ等のプロデュース', page)
+        self.assertIn('<option value="その他">その他</option>', page)
+        self.assertIn('id="consultationPlanningOtherHint"', page)
+        self.assertIn("orgNameExamples", page)
+
+    def test_index_links_admin_contract_generator_from_services_heading(self):
+        response = create_app(database_url="").test_client().get("/")
+        page = response.get_data(as_text=True)
+
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertIn('class="services-heading"', page)
+        self.assertIn('href="contract-generator/"', page)
+        self.assertIn("契約書作成", page)
+        self.assertNotIn('class="services-admin-link" href="contract-generator/" target="_blank"', page)
+
+    def test_contract_generator_requires_editor_login_in_page(self):
+        response = create_app(database_url="").test_client().get("/contract-generator/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("no-store", response.headers["Cache-Control"])
+        self.assertEqual(response.headers["X-Robots-Tag"], "noindex, nofollow")
+        page = response.get_data(as_text=True)
+        self.assertIn('id="contractLoginForm"', page)
+        self.assertIn('id="contractGenerator"', page)
+        self.assertIn("/api/editor", page)
+        self.assertIn("X-Editor-Password", page)
+        self.assertIn("let adminPassword = '';", page)
+        self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
+        self.assertIn('id="contractLogout" type="button" data-history-back', page)
+        self.assertIn('data-fallback="../#web">戻る（ログアウト）</button>', page)
+        self.assertIn("passwordInput.value = '';", page)
+        self.assertIn('id="contractStoragePath"', page)
+        self.assertIn('id="deleteContract"', page)
+        self.assertIn('id="deleteConfirmStep"', page)
+        self.assertIn('id="deleteIdStep" hidden', page)
+        self.assertIn("deleteDialog.showModal()", page)
+        self.assertIn("method: 'DELETE'", page)
+        self.assertIn("PC内・サーバー内の保存済み契約書を削除しました。", page)
+        self.assertIn('id="docType"', page)
+        self.assertIn('value="master"', page)
+        self.assertIn('value="typeA"', page)
+        self.assertIn('value="typeB"', page)
+        self.assertIn('value="estimateB"', page)
+        self.assertIn("B契約前 次世代型御見積書", page)
+        self.assertIn('value="estimateC"', page)
+        self.assertIn("C契約前 御見積書（選択・任意入力対応）", page)
+        self.assertIn("C契約前見積書の編集", page)
+        self.assertIn('value="typeC"', page)
+        self.assertIn("window.print()", page)
+        self.assertIn("法令等の制定または改廃", page)
+        self.assertIn("電磁的記録", page)
+        self.assertIn("反社会的勢力", page)
+        self.assertIn("不可抗力", page)
+        self.assertIn("未成年者", page)
+        self.assertIn("@page { size: A4 portrait; margin: 0; }", page)
+        self.assertIn('data-paper-size="A4" data-orientation="portrait"', page)
+        self.assertIn("A4縦 PDF出力 / 印刷", page)
+        self.assertNotIn("aspect-ratio: 210 / 297;", page)
+        self.assertIn('<optgroup label="共通契約書">', page)
+        self.assertIn('<optgroup label="個別契約書">', page)
+        self.assertIn("function renderMasterContract(date, safeClient, parties)", page)
+        self.assertIn("function renderIndividualContract(type, date, parties)", page)
+        self.assertIn("function renderWebAppEstimate(date, safeClient)", page)
+        self.assertEqual(page.count('<section class="contract-page" data-page-number="2">'), 1)
+        self.assertIn(".contract-page:last-child { break-after: auto; }", page)
+        self.assertIn("width: var(--paper-width);", page)
+        self.assertIn("height: var(--paper-height);", page)
+        self.assertIn("padding: 16mm 18mm;", page)
+        self.assertIn("break-inside: avoid;", page)
+        self.assertIn('class="individual-contract-table"', page)
+        self.assertIn(".individual-contract-table th { border-right: 1.5px solid #222222; }", page)
+        self.assertIn(".individual-contract-table td:last-child { border-right: 1.5px solid #222222; }", page)
+        self.assertIn('class="party-divider" aria-hidden="true"', page)
+        self.assertIn("renderMasterContract(date, safeClient, parties)", page)
+        self.assertIn("renderIndividualContract(type, date, parties)", page)
+        self.assertIn("preview.dataset.contractType = type;", page)
+        self.assertIn("print-color-adjust: exact;", page)
+        self.assertIn("ハラスメント", page)
+        self.assertIn("運送中止", page)
+        self.assertIn("事故、滅失、毀損または遅延", page)
+        self.assertIn("待機料・付帯作業料", page)
+        self.assertIn("燃油特別付加運賃", page)
+        self.assertIn("事業許可証、管轄営業所情報、運行管理者情報", page)
+        self.assertIn("function renderTransportEstimate(date, safeClient)", page)
+        self.assertIn("輸送対象物明細・評価額証明（付属書）", page)
+        self.assertIn("function calculateCargoValuation()", page)
+        self.assertIn("function calculateCargoVolume()", page)
+        self.assertIn("function calculateOptimalFreight(distance, totalHours)", page)
+        self.assertIn('data-freight-input="route_origin"', page)
+        self.assertIn("楽器価格マスターの確認", page)
+        self.assertIn("data-cargo-consent", page)
+        self.assertIn("data-generate-transport-sheet", page)
+        self.assertIn("外部2t車チャーター（要正式見積り）", page)
+        self.assertIn('data-cargo-item-key="unit_value"', page)
+        self.assertIn('data-cargo-total="valuation"', page)
+        self.assertIn("変更管理", page)
+        self.assertIn("生成AI支援 アプリケーション実装費", page)
+        self.assertIn("検収完了後14日以内", page)
+        self.assertIn("売り切り（買い切り）契約", page)
+        self.assertIn('id="estimateProjectPresets"', page)
+        self.assertIn('id="estimateItemPresets"', page)
+        self.assertIn('data-estimate-row="${index}"', page)
+        self.assertIn('data-estimate-preset="project_name"', page)
+        self.assertIn('data-estimate-preset-key="${key}"', page)
+        self.assertIn("function applyEstimatePreset(select)", page)
+        self.assertIn("function estimatePreviewEditor(key, value, rowIndex = '')", page)
+        self.assertIn("data-preview-estimate-key", page)
+        self.assertIn("function calculateEstimateTotals(type = activeEstimateType())", page)
+        self.assertIn("脆弱性", page)
+        self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
+        self.assertIn(".party-trade-name { white-space: nowrap; }", page)
+
+    def test_contract_api_saves_web_app_estimate(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateC",
+                    "client_name": "株式会社テスト",
+                    "client_representative": "担当者 山田様",
+                    "contract_date": "2026-08-23",
+                    "values": {
+                        "project_name": "生成AI活用型Webアプリ開発",
+                        "operating_system": "Windows 11 / macOS 最新版",
+                        "runtime_environment": "Google Chrome 最新版",
+                        "delivery_date": "双方協議のうえ定める日",
+                        "estimate_items": [
+                            {
+                                "description": "要件定義・プロンプト設計費",
+                                "quantity": "1",
+                                "unit": "式",
+                                "unit_price": "40000",
+                                "amount": "40000",
+                                "details": "要件定義と設計",
+                            }
+                        ],
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertRegex(
+                response.json["contract_id"],
+                r"^estimateC-20260823-[a-f0-9]{8}$",
+            )
+            self.assertEqual(response.json["department"], "WEB・アプリ")
+            self.assertEqual(
+                response.json["values"]["estimate_items"][0]["amount"], "40000"
+            )
+
+    def test_contract_api_saves_transport_estimate(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateB",
+                    "client_name": "〇〇楽団",
+                    "client_representative": "代表 山田様",
+                    "contract_date": "2026-08-23",
+                    "values": {
+                        "transport_name": "楽器輸送業務一式",
+                        "validity": "発行日より30日間",
+                        "permit_number": "許可番号を入力",
+                        "office_information": "管轄営業所情報を入力",
+                        "operation_manager": "運行管理者情報を入力",
+                        "cargo_document_url": "https://example.com/cargo",
+                        "route_document_url": "https://example.com/route",
+                        "compliance_document_url": "https://example.com/compliance",
+                        "fee_document_url": "https://example.com/fees",
+                        "waiting_fee": "30分毎に5,000円",
+                        "ancillary_fee": "1名1時間毎に8,000円",
+                        "detour_expenses": "実費精算",
+                        "cargo_restrictions_agreed": True,
+                        "cargo_contact_email": "music@example.com",
+                        "external_vehicle_budget": "150000",
+                        "route_origin": "〇〇高等学校",
+                        "route_destination": "〇〇市民ホール",
+                        "route_distance_km": "30",
+                        "total_hours": "8",
+                        "instrument_price_master": {
+                            "effective_date": "2026-08-23",
+                            "source_url": "https://example.com/instrument-prices",
+                            "verified": True,
+                        },
+                        "freight_rate_master": {
+                            "effective_date": "2026-08-23",
+                            "source_url": "https://www.mlit.go.jp/example",
+                            "verified": True,
+                            "distance_base_20": "5000",
+                            "distance_per_km_21_50": "200",
+                            "distance_per_km_51_100": "180",
+                            "distance_per_km_101_plus": "160",
+                            "charter_4h": "15000",
+                            "charter_8h": "25000",
+                            "extra_hour": "3000",
+                            "waiting_per_30m": "2000",
+                            "loading_base": "5000",
+                            "loading_per_25_points": "1500",
+                            "fuel_reference_price": "170",
+                            "fuel_current_price": "180",
+                            "fuel_per_km_per_yen": "2",
+                            "external_2t_charter": "120000",
+                        },
+                        "cargo_items": [
+                            {
+                                "category": "金管楽器",
+                                "instrument_key": "trumpet",
+                                "description": "トランペット",
+                                "maker_model": "YAMAHA YTR-8335",
+                                "quantity": "10",
+                                "condition": "良好",
+                                "valuation_mode": "master",
+                                "unit_value": "500000",
+                                "total_value": "5000000",
+                                "volume_points": "1",
+                                "notes": "ハードケース入り",
+                            }
+                        ],
+                        "estimate_items": [
+                            {
+                                "description": "基本運賃（貸切）",
+                                "quantity": "1",
+                                "unit": "運行",
+                                "unit_price": "100000",
+                                "amount": "100000",
+                                "details": "走行距離および拘束時間に基づく基本運賃",
+                            }
+                        ],
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertRegex(
+                response.json["contract_id"],
+                r"^estimateB-20260823-[a-f0-9]{8}$",
+            )
+            self.assertEqual(response.json["department"], "楽器輸送")
+            self.assertEqual(
+                response.json["values"]["cargo_items"][0]["total_value"],
+                "5000000",
+            )
+            self.assertTrue(response.json["values"]["cargo_restrictions_agreed"])
+            self.assertEqual(
+                response.json["values"]["freight_rate_master"]["external_2t_charter"],
+                "120000",
+            )
+
+    def test_transport_sheet_api_uses_authenticated_apps_script(self):
+        payload = {
+            "client_name": "〇〇高等学校吹奏楽部",
+            "transport_name": "演奏会楽器輸送",
+            "editor_email": "music@example.com",
+            "cargo_items": [{"description": "チューバ", "quantity": "2"}],
+            "freight_rate_master": {"effective_date": "2026-08-23"},
+            "instrument_price_master": {"effective_date": "2026-08-23"},
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "editor-secret",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_request:
+            send_request.return_value = {
+                "ok": True,
+                "cargoUrl": "https://docs.google.com/spreadsheets/d/cargo/edit",
+                "feeUrl": "https://docs.google.com/spreadsheets/d/cargo/edit#gid=2",
+            }
+            response = create_app(database_url="").test_client().post(
+                "/api/contracts/transport-sheet",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["cargo_url"], send_request.return_value["cargoUrl"])
+        self.assertEqual(response.json["fee_url"], send_request.return_value["feeUrl"])
+        self.assertEqual(send_request.call_args.kwargs["action"], "generate_transport_sheet")
+        self.assertEqual(send_request.call_args.args[2]["editor_email"], "music@example.com")
+
+    def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
+        client = create_app(database_url="").test_client()
+        index_page = client.get("/").get_data(as_text=True)
+        schedule_page = client.get("/schedule/").get_data(as_text=True)
+
+        self.assertIn('id="updates-editor-logout" type="button" data-history-back', index_page)
+        self.assertIn("let updatesEditorKey = '';", index_page)
+        self.assertNotIn("updatesEditorPassword', password", index_page)
+        self.assertIn("updatesEditorLogin.reset();", index_page)
+        self.assertIn('id="admin-logout" type="button" data-history-back', schedule_page)
+        self.assertIn('passwordInput.value = "";', schedule_page)
+
+    def test_all_back_links_use_shared_previous_page_navigation(self):
+        client = create_app(database_url="").test_client()
+        page_paths = (
+            "/lesson/",
+            "/lesson/application-form.html",
+            "/products/",
+            "/download-guide/",
+            "/legal/",
+            "/legal/privacy-policy.html",
+            "/schedule/",
+            "/video/",
+        )
+
+        for page_path in page_paths:
+            with self.subTest(page_path=page_path):
+                page = client.get(page_path).get_data(as_text=True)
+                self.assertIn("data-history-back", page)
+                self.assertIn('src="../back-navigation.js"', page)
+
+    def test_docker_image_includes_contract_generator(self):
+        dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("COPY contract-generator ./contract-generator", dockerfile)
+        self.assertIn("COPY app.py index.html back-navigation.js build_product.py ./", dockerfile)
+
+        compose = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("CONTRACTS_DIR: /contracts", compose)
+        self.assertIn("契約書管理:/contracts", compose)
+
+    def test_contract_api_saves_and_lists_by_department(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as server_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="",
+                contracts_dir=Path(temporary_directory),
+                contract_replica_dirs=(Path(server_directory),),
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+            payload = {
+                "doc_type": "typeB",
+                "client_name": "〇〇楽団",
+                "client_representative": "代表 山田 太郎",
+                "contract_date": "2026-08-21",
+                "values": {
+                    "cargo": "管楽器一式",
+                    "value": "金 1,000万円",
+                    "route": "滑川町から会場まで",
+                    "special_terms": "申告内容と補償条件を事前に確認する。",
+                },
+            }
+
+            saved = client.post("/api/contracts", json=payload, headers=headers)
+            listed = client.get("/api/contracts", headers=headers)
+
+            self.assertEqual(saved.status_code, 201)
+            self.assertRegex(saved.json["contract_id"], r"^typeB-20260821-[a-f0-9]{8}$")
+            contract_path = Path(temporary_directory) / "transport" / f'{saved.json["contract_id"]}.json'
+            self.assertTrue(contract_path.is_file())
+            self.assertEqual(listed.status_code, 200)
+            self.assertEqual(listed.json["storage_path"], str(Path(temporary_directory).resolve()))
+            self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
+            self.assertEqual(listed.json["contracts"][0]["client_name"], "〇〇楽団")
+
+            loaded = client.get(
+                f'/api/contracts/{saved.json["contract_id"]}', headers=headers
+            )
+            self.assertEqual(loaded.status_code, 200)
+            self.assertEqual(loaded.json["contract"]["values"]["cargo"], "管楽器一式")
+
+            server_contract_path = (
+                Path(server_directory) / "transport" / f'{saved.json["contract_id"]}.json'
+            )
+            server_contract_path.parent.mkdir(parents=True)
+            server_contract_path.write_text(contract_path.read_text(encoding="utf-8"), encoding="utf-8")
+
+            first_confirmation = client.delete(
+                f'/api/contracts/{saved.json["contract_id"]}',
+                json={"confirmation_id": "incorrect-id"},
+                headers=headers,
+            )
+            self.assertEqual(first_confirmation.status_code, 400)
+            self.assertTrue(contract_path.is_file())
+            deleted = client.delete(
+                f'/api/contracts/{saved.json["contract_id"]}',
+                json={"confirmation_id": saved.json["contract_id"]},
+                headers=headers,
+            )
+
+            self.assertEqual(deleted.status_code, 200)
+            self.assertTrue(deleted.json["deleted"])
+            self.assertEqual(deleted.json["deleted_count"], 2)
+            self.assertFalse(contract_path.exists())
+            self.assertFalse(server_contract_path.exists())
+
+    def test_contract_api_requires_editor_password(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+
+            self.assertEqual(client.get("/api/contracts").status_code, 401)
+            self.assertEqual(
+                client.post("/api/contracts", json={}).status_code, 401
+            )
+            self.assertEqual(
+                client.delete(
+                    "/api/contracts/typeB-20260821-1234abcd",
+                    json={"confirmation_id": "typeB-20260821-1234abcd"},
+                ).status_code,
+                401,
+            )
+
     def test_explicit_empty_database_url_disables_database_initialization(self):
         with patch.dict(os.environ, {"DATABASE_URL": "postgresql://example/db"}):
             with patch("app.initialize_database") as initialize_database:
@@ -35,6 +577,16 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertEqual(response.data, b"")
+
+    def test_shared_back_navigation_script_is_served(self):
+        response = create_app(database_url="").test_client().get("/back-navigation.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/javascript")
+        script = response.get_data(as_text=True)
+        self.assertIn("window.history.back()", script)
+        self.assertIn("[data-history-back]", script)
+        self.assertIn("window.siteHistoryBack = goBack", script)
 
     def test_static_app_directory_urls_serve_index_without_exposing_data_root(self):
         test_app = create_app(database_url="")
@@ -249,7 +801,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var writeActions = ["create", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
+        self.assertIn('var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
         self.assertIn("if (writeActions.indexOf(action) !== -1)", do_post)
         self.assertIn("var spreadsheet = getSpreadsheet();", do_post)
         self.assertIn("getReservationSheet(spreadsheet)", do_post)
@@ -261,7 +813,12 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";', script)
+        self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
+        self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
+        self.assertIn('return "admin:" + Utilities.getUuid();', script)
+        self.assertIn("legacyAdminTimes[dateText].push", script)
+        self.assertIn("minutes - minuteValues[index - 1] > 15", script)
         self.assertIn('data.request_id || ""', script)
         self.assertIn('get("admin:" + requestId)', script)
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
@@ -529,6 +1086,26 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('6: ["要相談"]', page)
         self.assertIn("土・日：要相談", page)
         self.assertIn("体験レッスン・小学生は毎時00分／30分開始", page)
+        self.assertIn('id="elementary-lesson-toggle" type="button" aria-expanded="false"', page)
+        self.assertIn('id="elementary-trial" aria-labelledby="elementary-trial-title" hidden', page)
+        elementary_card_start = page.index('<article class="price-card">')
+        elementary_card_end = page.index("</article>", elementary_card_start)
+        self.assertIn('id="elementary-trial"', page[elementary_card_start:elementary_card_end])
+        self.assertIn("トランペット体験レッスン！憧れの音を鳴らしてみよう♪", page)
+        self.assertIn("鳴らなくてもOK！感覚を掴もう", page)
+        self.assertIn('id="junior-high-lesson-toggle" type="button" aria-expanded="false"', page)
+        self.assertIn('id="junior-high-trial" aria-labelledby="junior-high-trial-title" hidden', page)
+        self.assertIn("中学生のためのトランペットレッスン！", page)
+        self.assertIn("コンクール・ソロ曲の攻略", page)
+        self.assertIn('id="high-school-adult-lesson-toggle" type="button" aria-expanded="false"', page)
+        self.assertIn('id="high-school-adult-trial" aria-labelledby="high-school-adult-trial-title" hidden', page)
+        self.assertIn("【高校生・大人向け】トランペット オーダーメイド・レッスン", page)
+        self.assertIn("本格的な技術UP・音大受験対策", page)
+        self.assertIn('content: "詳細を見る ＋"', page)
+        self.assertIn('document.querySelectorAll(".lesson-detail-toggle")', page)
+        self.assertIn("detail.hidden = true", page)
+        self.assertIn("detail.hidden = isOpen", page)
+        self.assertIn("scroll-snap-type: none", page)
         self.assertIn("function availableTimesForLesson", page)
         self.assertIn('lessonType === "グループ・部活動指導"', page)
         self.assertIn('time === "要相談"', page)
@@ -635,6 +1212,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="schedule-lesson-type"', page)
         self.assertIn('id="schedule-retry"', page)
         self.assertIn('id="admin-login-form"', page)
+        self.assertIn('id="admin-logout"', page)
+        self.assertIn('adminLogout.addEventListener("click"', page)
+        self.assertIn('adminStatus.textContent = "ログアウトしました。"', page)
+        self.assertIn("reservationList.replaceChildren()", page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
         self.assertIn('requestApi("/api/lesson-admin-health"', page)
@@ -645,6 +1226,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
         self.assertIn('id="reservation-retry"', page)
         self.assertIn('id="reservation-save-all"', page)
+        self.assertIn('id="admin-slot-calendar"', page)
+        self.assertIn('id="admin-slot-list"', page)
+        self.assertIn("function renderAdminSlotCalendar()", page)
+        self.assertIn("function renderAdminSlotDetails(value)", page)
+        self.assertIn("scheduleSlots = result.slots || []", page)
         self.assertIn('reservationRetry.addEventListener("click"', page)
         self.assertIn('reservationSaveAll.addEventListener("click"', page)
         self.assertIn("for (const editor of editors)", page)
@@ -729,8 +1315,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-20-confirmed-counts-v18",
-                "capabilities": ["list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                "version": "2026-08-23-transport-sheet-v22",
+                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -1641,8 +2227,137 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('<a href="cafe-live-plan-1.pdf">cafe-live-plan-1.pdf</a>', page)
-        self.assertIn('<a href="dayservice.pdf">dayservice.pdf</a>', page)
+        self.assertIn('id="adminToggle"', page)
+        self.assertIn('id="adminLoginForm"', page)
+        self.assertIn('id="pdfUploadForm" hidden', page)
+        self.assertIn('id="deleteStepOne"', page)
+        self.assertIn('id="deleteStepTwo" hidden', page)
+        self.assertNotIn("sessionStorage", page)
+        expected_documents = {
+            "dayservice.pdf": "音でつながる！懐かしのメロディと呼吸のストレッチ",
+            "gakudou.pdf": "学童向け トランペット・ミニコンサート＆ワークショップ",
+            "hoikuen.pdf": "見て・聴いて・あそんで楽しむ！トランペット・ミニコンサート＆リズム体験ワークショップ",
+            "shukatsu.pdf": "カフェで紡ぐ「思い出のメロディ」ライブ【スタンダードプラン】",
+            "cafe-live-plan-1.pdf": "音のパスポート ～トランペットで巡る 世界の街角と名曲たち～",
+            "cafe-live-plan-2.pdf": "カフェ・ド・トランペット ～午後の紅茶と、心ひろがる名曲の旅～",
+            "cafe-live-plan-3.pdf": "ノスタルジック・ノーツ ～トランペットの音色でたどる 昭和・ジャズ・名画の旅～",
+        }
+        for filename, title in expected_documents.items():
+            with self.subTest(filename=filename):
+                self.assertIn(f'<a href="{filename}">{title}</a>', page)
+                self.assertNotIn(f'>{filename}</a>', page)
+
+    def test_admin_can_upload_and_delete_event_pdf_from_server_replicas(self):
+        with tempfile.TemporaryDirectory() as static_directory, tempfile.TemporaryDirectory() as upload_directory, tempfile.TemporaryDirectory() as replica_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="",
+                pdf_dir=Path(static_directory),
+                pdf_upload_dir=Path(upload_directory),
+                pdf_replica_dirs=(Path(replica_directory),),
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+
+            uploaded = client.post(
+                "/api/event-pdfs",
+                data={
+                    "title": "新しいイベント企画書",
+                    "pdf": (BytesIO(b"%PDF-1.4\n%%EOF"), "proposal.pdf"),
+                },
+                headers=headers,
+                content_type="multipart/form-data",
+            )
+
+            self.assertEqual(uploaded.status_code, 201)
+            filename = uploaded.json["document"]["filename"]
+            upload_path = Path(upload_directory) / filename
+            replica_path = Path(replica_directory) / filename
+            self.assertTrue(upload_path.is_file())
+            replica_path.write_bytes(upload_path.read_bytes())
+            page = client.get("/pdf/").get_data(as_text=True)
+            self.assertIn(f'<a href="{filename}">新しいイベント企画書</a>', page)
+            served = client.get(f"/pdf/{filename}")
+            self.assertEqual(served.status_code, 200)
+            self.assertEqual(served.mimetype, "application/pdf")
+
+            rejected = client.delete(
+                f"/api/event-pdfs/{filename}",
+                json={"confirmation_filename": "wrong.pdf"},
+                headers=headers,
+            )
+            self.assertEqual(rejected.status_code, 400)
+            self.assertTrue(upload_path.is_file())
+            deleted = client.delete(
+                f"/api/event-pdfs/{filename}",
+                json={"confirmation_filename": filename},
+                headers=headers,
+            )
+            self.assertEqual(deleted.status_code, 200)
+            self.assertEqual(deleted.json["deleted_count"], 2)
+            self.assertFalse(upload_path.exists())
+            self.assertFalse(replica_path.exists())
+            self.assertEqual(client.get(f"/pdf/{filename}").status_code, 404)
+            manifest = json.loads(
+                (Path(upload_directory) / "documents.json").read_text(encoding="utf-8")
+            )
+            self.assertIn(filename, manifest["__deleted__"])
+
+    def test_deleted_bundled_pdf_stays_hidden_when_server_file_returns(self):
+        with tempfile.TemporaryDirectory() as static_directory, tempfile.TemporaryDirectory() as upload_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            static_path = Path(static_directory) / "dayservice.pdf"
+            static_path.write_bytes(b"%PDF-1.4\n%%EOF")
+            client = create_app(
+                database_url="",
+                pdf_dir=Path(static_directory),
+                pdf_upload_dir=Path(upload_directory),
+            ).test_client()
+            headers = {"X-Editor-Password": "editor-secret"}
+
+            deleted = client.delete(
+                "/api/event-pdfs/dayservice.pdf",
+                json={"confirmation_filename": "dayservice.pdf"},
+                headers=headers,
+            )
+            self.assertEqual(deleted.status_code, 200)
+            static_path.write_bytes(b"%PDF-1.4\n%%EOF")
+
+            self.assertNotIn("dayservice.pdf", client.get("/pdf/").get_data(as_text=True))
+            self.assertEqual(client.get("/pdf/dayservice.pdf").status_code, 404)
+
+    def test_event_pdf_management_requires_admin_password_and_valid_pdf(self):
+        with tempfile.TemporaryDirectory() as upload_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", pdf_upload_dir=Path(upload_directory)
+            ).test_client()
+            invalid_upload = {
+                "title": "不正ファイル",
+                "pdf": (BytesIO(b"not a pdf"), "invalid.pdf"),
+            }
+
+            self.assertEqual(
+                client.post(
+                    "/api/event-pdfs",
+                    data=invalid_upload,
+                    content_type="multipart/form-data",
+                ).status_code,
+                401,
+            )
+            response = client.post(
+                "/api/event-pdfs",
+                data={
+                    "title": "不正ファイル",
+                    "pdf": (BytesIO(b"not a pdf"), "invalid.pdf"),
+                },
+                headers={"X-Editor-Password": "editor-secret"},
+                content_type="multipart/form-data",
+            )
+            self.assertEqual(response.status_code, 400)
+            self.assertIn("正しいPDF", response.json["error"])
 
     def test_index_uses_sticky_responsive_navigation(self):
         client = create_app().test_client()
@@ -1762,7 +2477,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("updatesEditorSave.disabled = true", page)
         self.assertIn("updatesEditorSave.disabled = false", page)
         self.assertIn("timeZone: 'Asia/Tokyo'", page)
-        self.assertIn("sessionStorage.removeItem('updatesEditorPassword')", page)
+        self.assertNotIn("sessionStorage.setItem('updatesEditorPassword'", page)
         self.assertIn("通信できませんでした。時間をおいて再度お試しください。", page)
         self.assertIn("zuomuj924@gmail.com", page)
         self.assertNotIn("info@example.com", page)

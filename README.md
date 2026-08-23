@@ -22,6 +22,22 @@ EDITOR_PASSWORD='自分で決めたパスワード' ./manage-site.sh start
 
 更新内容はホストの `data/updates.txt` に保存され、コンテナを作り直しても残ります。
 
+## イベント企画PDFの管理
+
+`/pdf/` の「管理者モード」から `EDITOR_PASSWORD` でログインすると、PDF内に表示されるタイトルを指定して15MB以内のPDFを追加できます。公開URLには安全なASCIIファイル名が自動発行され、PDF本体と表示タイトルは `data/event-pdfs` に保存されます。Renderでは `/app/data` の永続ディスク、Docker Composeではホストの `data` ボリュームに保存されます。
+
+削除は対象確認とファイル名再入力の二段階です。完了時は公開領域、アップロード領域、設定されたサーバー複製にある同名PDFを削除し、永続削除記録によって再起動や再デプロイ後の再表示・再配信も防止します。
+
+## 契約書の保存先
+
+管理者用の契約書作成画面で保存した契約書は、このPCの `~/Documents/なめがわブラス・ラボ/契約書管理` に部門別で保存されます。画面の表示・保存・読込・削除には `EDITOR_PASSWORD` が必要です。削除時は確認後、契約書IDの再入力が必要です。削除が完了すると、PC側の保存先とサーバー内の旧保存先にある同一契約IDのデータをまとめて削除します。
+
+保存先を変更する場合は `.env` に次を設定してサイトを再起動します。
+
+```text
+CONTRACTS_DIR=/保存先の絶対パス
+```
+
 ## Renderで投稿を永続保存する
 
 RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化されるため、公開サイトではPostgreSQLを使用します。
@@ -38,16 +54,16 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 ## 練習アプリのStripe販売
 
-教室ページではWeb版を無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は初期値OFFで、教室ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
+練習アプリのWeb版は無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。メトロノームの販売状態は初期値OFFで、商品ページの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。
 
-Flow Harmonyは無料Web版とオフライン版の公開を停止しています。商品ページの起動リンクと埋め込みを外し、直接URLとCheckout APIも`503`で停止しています。再公開準備ではStripeに1回払い・1,000円・JPYの商品価格を作成し、Renderへ次の環境変数を追加してください。
+Trumpet Transpose Labは無料Web版で全機能を公開し、オフライン版のみ1,000円で販売します。商品ページは設定と商品ZIPの検証が通った場合だけ購入ボタンを有効にします。既存環境との互換性のため、Renderでは次の環境変数名を継続利用します。
 
 ```text
 STRIPE_FLOW_HARMONY_PRICE_ID=price_...
 FLOW_HARMONY_PRICE_YEN=1000
 ```
 
-デプロイ後は`/products/`でFlow Harmonyが「公開停止中」と表示されること、`/flow-harmony/`とCheckout APIが`503`を返すことを確認します。販売開始時はStripeのPriceを既存ストアと同じテスト・本番モードへ揃えてください。
+デプロイ後は`/trumpet-transpose-lab/`がHTTP 200で表示され、`/products/`の無料版リンクと埋め込みが動作することを確認します。旧`/flow-harmony/`は新URLへリダイレクトされます。オフライン版の購入ボタンはStripeのPriceを既存ストアと同じテスト・本番モードへ揃えた場合だけ有効になります。
 
 ### 管理者向け・説明付き設定ウィザード
 
@@ -62,7 +78,7 @@ cd /Users/kazuuu/hp
 
 - 「開発者」→「APIキー」: `sk_test_`または`sk_live_`から始まる秘密鍵
 - 「商品カタログ」: 500円・JPY・1回払いの`price_`から始まるPrice ID
-- 「商品カタログ」: Flow Harmony用の1,000円・JPY・1回払いの別のPrice ID
+- 「商品カタログ」: Trumpet Transpose Lab用の1,000円・JPY・1回払いの別のPrice ID
 - 「開発者」→「Webhook」: `/api/store/webhook`送信先の`whsec_`から始まる署名シークレット
 
 初回はウィザードの「1: テストモード」を選択してください。入力形式が正しくない場合や、本番・テストの鍵を取り違えた場合は保存前に停止します。ローカルの`.env`へ保存した後、同じ変数名をRender DashboardのEnvironmentにも登録してください。秘密値そのものはREADME、HTML、Git、チャットへ貼り付けないでください。
@@ -110,12 +126,12 @@ curl -sS 'https://公開APIのドメイン/api/store/health' \
 	-H 'X-Editor-Password: 編集用パスワード' | python -m json.tool
 ```
 
-テストモードでは`ready: true`かつ`production_ready: false`が正常です。`checks.flow_harmony_configuration`、`checks.flow_harmony_product_archive`、`checks.flow_harmony_stripe_price`もすべて`true`になることを確認します。テスト用カードで2商品をそれぞれ決済し、Flow Harmonyでは`flow-harmony-offline.zip`をダウンロードできることを確認してください。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ販売を開始します。
+テストモードでは`ready: true`かつ`production_ready: false`が正常です。互換用の診断キー`checks.flow_harmony_configuration`、`checks.flow_harmony_product_archive`、`checks.flow_harmony_stripe_price`もすべて`true`になることを確認します。テスト用カードで2商品をそれぞれ決済し、Trumpet Transpose Labでは`trumpet-transpose-lab-offline.zip`をダウンロードできることを確認してください。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ販売を開始します。
 
 販売ON前の確認項目:
 
 - Stripe DashboardのPriceが有効・一回払い・500円・JPYである
-- Flow HarmonyのPriceが有効・一回払い・1,000円・JPYで、メトロノームとは別のPrice IDである
+- Trumpet Transpose LabのPriceが有効・一回払い・1,000円・JPYで、メトロノームとは別のPrice IDである
 - Webhookの送信先が`https://公開APIのドメイン/api/store/webhook`で、署名検証付きのテスト送信がHTTP 200になる
 - 診断APIが`production_ready: true`を返す
 - テストモードで正常決済、キャンセル、未払い、再ダウンロードを確認済みである
@@ -149,6 +165,15 @@ export GOOGLE_APPS_SCRIPT_SECRET='API_SECRETと同じ文字列'
 ```
 
 初回の予約送信時に`レッスン予約`シートと`予約枠状態`シートが自動作成されます。
+
+### Brass-Logi輸送明細シート
+
+契約書作成画面のB見積書では、`Code.gs` v22の`generate_transport_sheet`を使い、輸送対象物明細と料金規定を同じGoogleスプレッドシートへ発行します。生成ファイルは一般公開せず、画面で指定した共有先メールアドレスだけを編集者へ追加します。
+
+- `Code.gs`更新後は既存ウェブアプリを新バージョンで再デプロイしてください。
+- 専用の保存先フォルダを使う場合は、スクリプトプロパティ`TRANSPORT_DOCUMENT_FOLDER_ID`へGoogleドライブのフォルダIDを設定します。未設定時は実行ユーザーのマイドライブ直下へ作成されます。
+- 楽器価格と運賃・料金は、画面で基準日、出典URL、確認済み状態を登録した場合だけ保存・自動反映できます。固定値を国土交通省の現行基準として扱わないでください。
+- Google Mapsや市場価格APIの認証情報はリポジトリへ保存しません。経路距離と価格は、権限を持つ管理者が公表資料または契約済みAPIで確認して入力します。
 
 - 予約受付時の状態は`調整中`として保存されます。
 - 同時に、該当する希望日時の枠へ`調整中`が自動反映されます。

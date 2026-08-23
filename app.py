@@ -9,6 +9,8 @@ import tempfile
 import threading
 import time
 import uuid
+from base64 import b64decode
+from binascii import Error as Base64Error
 from calendar import monthrange
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -28,16 +30,28 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
 STORE_FILE = BASE_DIR / "data" / "store.json"
+SERVER_CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
+SERVER_PDF_DIR = BASE_DIR / "pdf"
+PDF_UPLOAD_DIR = Path(
+    os.environ.get("PDF_UPLOAD_DIR", BASE_DIR / "data" / "event-pdfs")
+).expanduser()
+CONTRACTS_DIR = Path(
+    os.environ.get(
+        "CONTRACTS_DIR",
+        Path.home() / "Documents" / "なめがわブラス・ラボ" / "契約書管理",
+    )
+).expanduser()
 PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-metronome.zip"
 PRODUCT_ID = "trumpet-metronome"
 PRODUCT_NAME = "トランペット練習メトロノーム オフライン版"
 PRODUCT_PRICE_YEN = 500
 PRODUCT_REQUIRED_FILES = {"index.html", "README.txt"}
-FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "flow-harmony.zip"
-FLOW_HARMONY_PRODUCT_ID = "flow-harmony"
-FLOW_HARMONY_PRODUCT_NAME = "Flow Harmony オフライン版"
+FLOW_HARMONY_PRODUCT_FILE = BASE_DIR / "private" / "products" / "trumpet-transpose-lab.zip"
+FLOW_HARMONY_PRODUCT_ID = "trumpet-transpose-lab"
+FLOW_HARMONY_LEGACY_PRODUCT_ID = "flow-harmony"
+FLOW_HARMONY_PRODUCT_NAME = "Trumpet Transpose Lab オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
-FLOW_HARMONY_SALES_ENABLED = False
+FLOW_HARMONY_SALES_ENABLED = True
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -76,7 +90,134 @@ CONSULTATION_TIME = "要相談"
 RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 40
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
-LESSON_APPS_SCRIPT_VERSION = "2026-08-20-confirmed-counts-v18"
+CONSULTATION_MODES = {
+    "allinone": "オールインワン依頼（指導・セッティング・運搬一式）",
+    "planning": "イベント企画・プロデュースのみ",
+    "cargo": "一般輸送・単体搬送",
+}
+CONSULTATION_SUPPORT_TYPES = {
+    "コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）",
+    "合宿・出張レッスン統合サポート",
+    "定期レッスン＋楽器点検・セッティング",
+}
+CONSULTATION_PLANNING_TYPES = {
+    "演奏会・ライブ等のプロデュース",
+    "外部講師・指導者派遣の調整",
+    "ワークショップ・講習会の企画",
+    "その他",
+}
+CONSULTATION_INSTRUMENT_VALUES = {
+    "300": "〜300万円まで",
+    "1000": "300万円〜1,000万円",
+    "3000": "1,000万円〜3,000万円",
+    "over3000": "3,000万円超",
+}
+CONSULTATION_ATTACHMENT_EXTENSIONS = {
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".doc",
+    ".docx",
+    ".xls",
+    ".xlsx",
+    ".ppt",
+    ".pptx",
+    ".txt",
+    ".csv",
+    ".zip",
+}
+CONSULTATION_ATTACHMENT_MIME_TYPES = {
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    "text/plain",
+    "text/csv",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/octet-stream",
+}
+CONSULTATION_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
+EVENT_PDF_MAX_BYTES = 15 * 1024 * 1024
+EVENT_PDF_MANIFEST = "documents.json"
+EVENT_PDF_TITLES = {
+    "dayservice.pdf": "音でつながる！懐かしのメロディと呼吸のストレッチ",
+    "gakudou.pdf": "学童向け トランペット・ミニコンサート＆ワークショップ",
+    "hoikuen.pdf": "見て・聴いて・あそんで楽しむ！トランペット・ミニコンサート＆リズム体験ワークショップ",
+    "shukatsu.pdf": "カフェで紡ぐ「思い出のメロディ」ライブ【スタンダードプラン】",
+    "cafe-live-plan-1.pdf": "音のパスポート ～トランペットで巡る 世界の街角と名曲たち～",
+    "cafe-live-plan-2.pdf": "カフェ・ド・トランペット ～午後の紅茶と、心ひろがる名曲の旅～",
+    "cafe-live-plan-3.pdf": "ノスタルジック・ノーツ ～トランペットの音色でたどる 昭和・ジャズ・名画の旅～",
+}
+CONTRACT_TYPES = {
+    "master": {"department": "基本契約", "directory": "master", "keys": set()},
+    "typeA": {
+        "department": "音楽指導・支援",
+        "directory": "music-support",
+        "keys": {"work", "amount", "term", "special_terms"},
+    },
+    "typeB": {
+        "department": "楽器輸送",
+        "directory": "transport",
+        "keys": {"cargo", "value", "route", "special_terms"},
+    },
+    "estimateB": {
+        "department": "楽器輸送",
+        "directory": "transport",
+        "keys": {
+            "transport_name",
+            "validity",
+            "permit_number",
+            "office_information",
+            "operation_manager",
+            "cargo_document_url",
+            "route_document_url",
+            "compliance_document_url",
+            "fee_document_url",
+            "waiting_fee",
+            "ancillary_fee",
+            "detour_expenses",
+            "cargo_restrictions_agreed",
+            "cargo_contact_email",
+            "external_vehicle_budget",
+            "route_origin",
+            "route_destination",
+            "route_distance_km",
+            "total_hours",
+            "instrument_price_master",
+            "freight_rate_master",
+            "cargo_items",
+            "estimate_items",
+        },
+    },
+    "estimateC": {
+        "department": "WEB・アプリ",
+        "directory": "web-app",
+        "keys": {
+            "project_name",
+            "operating_system",
+            "runtime_environment",
+            "delivery_date",
+            "estimate_items",
+        },
+    },
+    "typeC": {
+        "department": "WEB・アプリ",
+        "directory": "web-app",
+        "keys": {"deliverable", "amount", "deadline", "special_terms"},
+    },
+}
+LESSON_APPS_SCRIPT_VERSION = "2026-08-23-transport-sheet-v22"
 
 
 def current_japan_date():
@@ -475,6 +616,493 @@ def validate_update(payload):
     return values
 
 
+def validate_consultation(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("入力内容を確認してください。")
+
+    mode = str(payload.get("service_mode", "")).strip()
+    values = {
+        "service_mode": CONSULTATION_MODES.get(mode, ""),
+        "org_name": str(payload.get("org_name", "")).strip(),
+        "email": str(payload.get("email", "")).strip(),
+        "event_date": "",
+        "support_content": "",
+        "instrument_value": "",
+        "planning_type": "",
+        "cargo_detail": "",
+        "message": str(payload.get("message", "")).strip(),
+        "attachment_name": "",
+        "attachment_type": "",
+        "attachment_data": "",
+    }
+    if not values["service_mode"]:
+        raise ValueError("サービス種別を選択してください。")
+    if not values["org_name"] or len(values["org_name"]) > 100:
+        raise ValueError("団体名・お申込者名を100文字以内で入力してください。")
+    if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", values["email"]):
+        raise ValueError("メールアドレスを正しく入力してください。")
+    if len(values["message"]) > 1000:
+        raise ValueError("ご相談詳細は1,000文字以内で入力してください。")
+    if payload.get("terms_agree") is not True:
+        raise ValueError("プライバシーポリシーへの同意が必要です。")
+
+    attachment = payload.get("attachment")
+    if attachment:
+        if not isinstance(attachment, dict):
+            raise ValueError("添付データを確認してください。")
+        attachment_name = str(attachment.get("name", "")).strip()
+        attachment_type = str(attachment.get("type", "")).strip().lower()
+        attachment_data = str(attachment.get("data", "")).strip()
+        extension = Path(attachment_name).suffix.lower()
+        if (
+            not attachment_name
+            or len(attachment_name) > 120
+            or Path(attachment_name).name != attachment_name
+            or extension not in CONSULTATION_ATTACHMENT_EXTENSIONS
+            or attachment_type not in CONSULTATION_ATTACHMENT_MIME_TYPES
+        ):
+            raise ValueError("添付できない形式のデータです。")
+        try:
+            decoded_attachment = b64decode(attachment_data, validate=True)
+        except (Base64Error, ValueError) as exc:
+            raise ValueError("添付データを読み取れません。") from exc
+        if not decoded_attachment:
+            raise ValueError("添付データが空です。")
+        if len(decoded_attachment) > CONSULTATION_ATTACHMENT_MAX_BYTES:
+            raise ValueError("添付データは5MB以内にしてください。")
+        values.update(
+            {
+                "attachment_name": attachment_name,
+                "attachment_type": attachment_type,
+                "attachment_data": attachment_data,
+            }
+        )
+
+    if mode == "allinone":
+        event_date = str(payload.get("event_date", "")).strip()
+        try:
+            parsed_event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+        except ValueError as exc:
+            raise ValueError("実施予定日を正しく入力してください。") from exc
+        if parsed_event_date < current_japan_date():
+            raise ValueError("実施予定日は本日以降の日付を指定してください。")
+        support_content = str(payload.get("support_content", "")).strip()
+        if support_content not in CONSULTATION_SUPPORT_TYPES:
+            raise ValueError("ご希望の指導・サポート内容を選択してください。")
+        instrument_value = str(payload.get("instrument_value", "")).strip()
+        if instrument_value not in CONSULTATION_INSTRUMENT_VALUES:
+            raise ValueError("楽器総評価額を選択してください。")
+        values.update(
+            {
+                "event_date": event_date,
+                "support_content": support_content,
+                "instrument_value": CONSULTATION_INSTRUMENT_VALUES[instrument_value],
+            }
+        )
+    elif mode == "planning":
+        planning_type = str(payload.get("planning_type", "")).strip()
+        if planning_type not in CONSULTATION_PLANNING_TYPES:
+            raise ValueError("企画・プロデュースのご相談種別を選択してください。")
+        if planning_type == "その他" and not values["message"]:
+            raise ValueError("ご相談詳細・特記事項に概略・要望事項を記入してください。")
+        values["planning_type"] = planning_type
+    else:
+        cargo_detail = str(payload.get("cargo_detail", "")).strip()
+        if not cargo_detail or len(cargo_detail) > 1000:
+            raise ValueError("搬送希望のお荷物・機材概要を1,000文字以内で入力してください。")
+        values["cargo_detail"] = cargo_detail
+
+    return values
+
+
+def validate_contract(payload):
+    if not isinstance(payload, dict):
+        raise ValueError("契約書の入力内容を確認してください。")
+    doc_type = str(payload.get("doc_type", "")).strip()
+    configuration = CONTRACT_TYPES.get(doc_type)
+    if not configuration:
+        raise ValueError("契約書の種類を選択してください。")
+    client_name = str(payload.get("client_name", "")).strip()
+    client_representative = str(payload.get("client_representative", "")).strip()
+    contract_date = str(payload.get("contract_date", "")).strip()
+    if not client_name or len(client_name) > 120:
+        raise ValueError("取引先名を120文字以内で入力してください。")
+    if len(client_representative) > 80:
+        raise ValueError("代表者名を80文字以内で入力してください。")
+    try:
+        datetime.strptime(contract_date, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("契約締結日を正しく入力してください。") from exc
+    raw_values = payload.get("values", {})
+    if not isinstance(raw_values, dict):
+        raise ValueError("契約条件を確認してください。")
+    values = {}
+    for key in configuration["keys"]:
+        if key == "cargo_restrictions_agreed":
+            if raw_values.get(key) is not True:
+                raise ValueError("貴重品等を輸送対象外とする確認への同意が必要です。")
+            values[key] = True
+            continue
+        if key == "freight_rate_master":
+            raw_master = raw_values.get(key, {})
+            rate_keys = {
+                "distance_base_20",
+                "distance_per_km_21_50",
+                "distance_per_km_51_100",
+                "distance_per_km_101_plus",
+                "charter_4h",
+                "charter_8h",
+                "extra_hour",
+                "waiting_per_30m",
+                "loading_base",
+                "loading_per_25_points",
+                "fuel_reference_price",
+                "fuel_current_price",
+                "fuel_per_km_per_yen",
+                "external_2t_charter",
+            }
+            if not isinstance(raw_master, dict) or raw_master.get("verified") is not True:
+                raise ValueError("料金マスターの出典を確認し、確認済みにしてください。")
+            effective_date = str(raw_master.get("effective_date", "")).strip()
+            source_url = str(raw_master.get("source_url", "")).strip()
+            try:
+                datetime.strptime(effective_date, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValueError("料金マスターの基準日を正しく入力してください。") from exc
+            if re.fullmatch(r"https?://[^\s]+", source_url) is None:
+                raise ValueError("料金マスターの出典URLを入力してください。")
+            rate_master = {
+                "effective_date": effective_date,
+                "source_url": source_url,
+                "verified": True,
+            }
+            for rate_key in rate_keys:
+                rate_value = str(raw_master.get(rate_key, "")).strip()
+                if re.fullmatch(r"\d{1,9}", rate_value) is None:
+                    raise ValueError("料金マスターの金額・係数を0以上の整数で入力してください。")
+                rate_master[rate_key] = rate_value
+            values[key] = rate_master
+            continue
+        if key == "instrument_price_master":
+            raw_master = raw_values.get(key, {})
+            if not isinstance(raw_master, dict):
+                raise ValueError("楽器価格マスターを確認してください。")
+            verified = raw_master.get("verified") is True
+            effective_date = str(raw_master.get("effective_date", "")).strip()
+            source_url = str(raw_master.get("source_url", "")).strip()
+            if verified:
+                try:
+                    datetime.strptime(effective_date, "%Y-%m-%d")
+                except ValueError as exc:
+                    raise ValueError("楽器価格マスターの基準日を正しく入力してください。") from exc
+                if re.fullmatch(r"https?://[^\s]+", source_url) is None:
+                    raise ValueError("楽器価格マスターの出典URLを入力してください。")
+            values[key] = {
+                "effective_date": effective_date,
+                "source_url": source_url,
+                "verified": verified,
+            }
+            continue
+        if key == "cargo_items":
+            raw_items = raw_values.get(key, [])
+            if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 10:
+                raise ValueError("輸送対象物は1件以上10件以内で入力してください。")
+            cargo_items = []
+            for raw_item in raw_items:
+                if not isinstance(raw_item, dict):
+                    raise ValueError("輸送対象物明細を正しく入力してください。")
+                item = {
+                    "category": str(raw_item.get("category", "")).strip(),
+                    "instrument_key": str(raw_item.get("instrument_key", "")).strip(),
+                    "description": str(raw_item.get("description", "")).strip(),
+                    "maker_model": str(raw_item.get("maker_model", "")).strip(),
+                    "quantity": str(raw_item.get("quantity", "")).strip(),
+                    "condition": str(raw_item.get("condition", "")).strip(),
+                    "valuation_mode": str(raw_item.get("valuation_mode", "")).strip(),
+                    "unit_value": str(raw_item.get("unit_value", "")).strip(),
+                    "total_value": str(raw_item.get("total_value", "")).strip(),
+                    "volume_points": str(raw_item.get("volume_points", "")).strip(),
+                    "notes": str(raw_item.get("notes", "")).strip(),
+                }
+                if (
+                    not item["category"]
+                    or len(item["category"]) > 40
+                    or not item["instrument_key"]
+                    or len(item["instrument_key"]) > 60
+                    or not item["description"]
+                    or len(item["description"]) > 120
+                    or len(item["maker_model"]) > 120
+                    or re.fullmatch(r"\d{1,4}", item["quantity"]) is None
+                    or not item["condition"]
+                    or len(item["condition"]) > 80
+                    or item["valuation_mode"] not in {"master", "manual"}
+                    or re.fullmatch(r"\d{1,12}", item["unit_value"]) is None
+                    or re.fullmatch(r"\d{1,12}", item["total_value"]) is None
+                    or re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", item["volume_points"])
+                    is None
+                    or len(item["notes"]) > 200
+                    or int(item["quantity"]) * int(item["unit_value"])
+                    != int(item["total_value"])
+                ):
+                    raise ValueError("輸送対象物明細の入力内容と評価額を確認してください。")
+                cargo_items.append(item)
+            values[key] = cargo_items
+            continue
+        if key == "estimate_items":
+            raw_items = raw_values.get(key, [])
+            if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 10:
+                raise ValueError("見積明細は1件以上10件以内で入力してください。")
+            estimate_items = []
+            for raw_item in raw_items:
+                if not isinstance(raw_item, dict):
+                    raise ValueError("見積明細を正しく入力してください。")
+                item = {
+                    "description": str(raw_item.get("description", "")).strip(),
+                    "quantity": str(raw_item.get("quantity", "")).strip(),
+                    "unit": str(raw_item.get("unit", "")).strip(),
+                    "unit_price": str(raw_item.get("unit_price", "")).strip(),
+                    "amount": str(raw_item.get("amount", "")).strip(),
+                    "details": str(raw_item.get("details", "")).strip(),
+                }
+                if (
+                    not item["description"]
+                    or len(item["description"]) > 120
+                    or not item["quantity"]
+                    or len(item["quantity"]) > 20
+                    or not item["unit"]
+                    or len(item["unit"]) > 20
+                    or re.fullmatch(r"\d{1,9}", item["unit_price"]) is None
+                    or re.fullmatch(r"\d{1,9}", item["amount"]) is None
+                    or len(item["details"]) > 300
+                ):
+                    raise ValueError("見積明細の入力内容を確認してください。")
+                estimate_items.append(item)
+            values[key] = estimate_items
+            continue
+        value = str(raw_values.get(key, "")).strip()
+        maximum_length = 3000 if key == "special_terms" else 500
+        if not value or len(value) > maximum_length:
+            raise ValueError(
+                f"契約条件は{maximum_length}文字以内で入力してください。"
+            )
+        if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
+            raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
+        if key == "cargo_contact_email" and re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value) is None:
+            raise ValueError("シート共有先メールアドレスを正しく入力してください。")
+        if key in {"external_vehicle_budget", "route_distance_km", "total_hours"} and re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", value) is None:
+            raise ValueError("距離・時間・予算は0以上の数値で入力してください。")
+        values[key] = value
+    if doc_type == "estimateB" and any(
+        item["valuation_mode"] == "master" for item in values["cargo_items"]
+    ) and not values["instrument_price_master"]["verified"]:
+        raise ValueError("マスター参考額を使う場合は楽器価格マスターの出典を確認してください。")
+    return {
+        "doc_type": doc_type,
+        "department": configuration["department"],
+        "client_name": client_name,
+        "client_representative": client_representative,
+        "contract_date": contract_date,
+        "values": values,
+    }
+
+
+def save_contract(values, contracts_dir=CONTRACTS_DIR):
+    configuration = CONTRACT_TYPES[values["doc_type"]]
+    contracts_root = Path(contracts_dir)
+    department_dir = contracts_root / configuration["directory"]
+    department_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    contracts_root.chmod(0o700)
+    department_dir.chmod(0o700)
+    contract_id = (
+        f'{values["doc_type"]}-{values["contract_date"].replace("-", "")}-'
+        f'{uuid.uuid4().hex[:8]}'
+    )
+    saved_at = datetime.now(ZoneInfo("Asia/Tokyo")).isoformat(timespec="seconds")
+    contract = {"contract_id": contract_id, "saved_at": saved_at, **values}
+    target_path = department_dir / f"{contract_id}.json"
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=department_dir, delete=False
+    ) as temporary_file:
+        json.dump(contract, temporary_file, ensure_ascii=False, indent=2)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, target_path)
+    return contract
+
+
+def list_contracts(contracts_dir=CONTRACTS_DIR):
+    contracts = []
+    for configuration in CONTRACT_TYPES.values():
+        department_dir = Path(contracts_dir) / configuration["directory"]
+        for contract_path in department_dir.glob("*.json") if department_dir.exists() else []:
+            try:
+                contract = json.loads(contract_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            if isinstance(contract, dict):
+                contracts.append(contract)
+    return sorted(contracts, key=lambda item: str(item.get("saved_at", "")), reverse=True)
+
+
+def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
+    contract_id = str(contract_id).strip()
+    match = re.fullmatch(
+        r"(master|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+    )
+    if not match:
+        return None
+    configuration = CONTRACT_TYPES[match.group(1)]
+    contract_path = Path(contracts_dir) / configuration["directory"] / f"{contract_id}.json"
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return None
+    return contract if isinstance(contract, dict) else None
+
+
+def delete_contract(
+    contract_id,
+    confirmation_id,
+    contracts_dir=CONTRACTS_DIR,
+    replica_dirs=(SERVER_CONTRACTS_DIR,),
+):
+    contract_id = str(contract_id).strip()
+    confirmation_id = str(confirmation_id).strip()
+    if not hmac.compare_digest(contract_id, confirmation_id):
+        raise ValueError("確認用の契約書IDが一致しません。")
+    match = re.fullmatch(
+        r"(master|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+    )
+    if not match:
+        return 0
+    configuration = CONTRACT_TYPES[match.group(1)]
+    storage_roots = {Path(contracts_dir).expanduser().resolve()}
+    storage_roots.update(Path(directory).expanduser().resolve() for directory in replica_dirs)
+    deleted_count = 0
+    for storage_root in storage_roots:
+        contract_path = storage_root / configuration["directory"] / f"{contract_id}.json"
+        try:
+            contract_path.unlink()
+            deleted_count += 1
+        except FileNotFoundError:
+            continue
+    return deleted_count
+
+
+def load_event_pdf_manifest(pdf_upload_dir=PDF_UPLOAD_DIR):
+    manifest_path = Path(pdf_upload_dir) / EVENT_PDF_MANIFEST
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, OSError, json.JSONDecodeError):
+        return {}
+    return manifest if isinstance(manifest, dict) else {}
+
+
+def save_event_pdf_manifest(manifest, pdf_upload_dir=PDF_UPLOAD_DIR):
+    upload_dir = Path(pdf_upload_dir)
+    upload_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    manifest_path = upload_dir / EVENT_PDF_MANIFEST
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", dir=upload_dir, delete=False
+    ) as temporary_file:
+        json.dump(manifest, temporary_file, ensure_ascii=False, indent=2)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, manifest_path)
+
+
+def list_event_pdfs(pdf_dir=SERVER_PDF_DIR, pdf_upload_dir=PDF_UPLOAD_DIR):
+    manifest = load_event_pdf_manifest(pdf_upload_dir)
+    deleted_filenames = set(manifest.get("__deleted__", []))
+    documents = []
+    seen = set()
+    upload_dir = Path(pdf_upload_dir)
+    static_dir = Path(pdf_dir)
+    for filename, title in manifest.items():
+        if (
+            isinstance(filename, str)
+            and not filename.startswith("__")
+            and filename not in deleted_filenames
+            and isinstance(title, str)
+            and title.strip()
+            and ((upload_dir / filename).is_file() or (static_dir / filename).is_file())
+        ):
+            documents.append({"filename": filename, "title": title.strip()})
+            seen.add(filename)
+    for filename, title in EVENT_PDF_TITLES.items():
+        if (
+            filename not in seen
+            and filename not in deleted_filenames
+            and (static_dir / filename).is_file()
+        ):
+            documents.append({"filename": filename, "title": title})
+    return documents
+
+
+def save_event_pdf(upload, title, pdf_upload_dir=PDF_UPLOAD_DIR):
+    title = str(title).strip()
+    if not title or len(title) > 160:
+        raise ValueError("PDF内の表示タイトルを160文字以内で入力してください。")
+    original_name = str(getattr(upload, "filename", "") or "").strip()
+    if Path(original_name).suffix.lower() != ".pdf":
+        raise ValueError("PDFファイルを選択してください。")
+    content = upload.stream.read(EVENT_PDF_MAX_BYTES + 1)
+    if len(content) > EVENT_PDF_MAX_BYTES:
+        raise ValueError("PDFファイルは15MB以内にしてください。")
+    if not content.startswith(b"%PDF-"):
+        raise ValueError("正しいPDFファイルを選択してください。")
+    upload_dir = Path(pdf_upload_dir)
+    upload_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    filename = f"event-{uuid.uuid4().hex}.pdf"
+    target_path = upload_dir / filename
+    with tempfile.NamedTemporaryFile("wb", dir=upload_dir, delete=False) as temporary_file:
+        temporary_file.write(content)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, target_path)
+    manifest = load_event_pdf_manifest(upload_dir)
+    manifest[filename] = title
+    save_event_pdf_manifest(manifest, upload_dir)
+    return {"filename": filename, "title": title}
+
+
+def delete_event_pdf(
+    filename,
+    confirmation_filename,
+    pdf_dir=SERVER_PDF_DIR,
+    pdf_upload_dir=PDF_UPLOAD_DIR,
+    replica_dirs=(),
+):
+    filename = str(filename).strip()
+    confirmation_filename = str(confirmation_filename).strip()
+    if not hmac.compare_digest(filename, confirmation_filename):
+        raise ValueError("確認用のPDFファイル名が一致しません。")
+    if re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*\.pdf", filename) is None:
+        return 0
+    storage_roots = {
+        Path(pdf_dir).expanduser().resolve(),
+        Path(pdf_upload_dir).expanduser().resolve(),
+    }
+    storage_roots.update(Path(directory).expanduser().resolve() for directory in replica_dirs)
+    deleted_count = 0
+    for storage_root in storage_roots:
+        pdf_path = storage_root / filename
+        try:
+            pdf_path.unlink()
+            deleted_count += 1
+        except FileNotFoundError:
+            pass
+        manifest = load_event_pdf_manifest(storage_root)
+        if filename in manifest:
+            del manifest[filename]
+            save_event_pdf_manifest(manifest, storage_root)
+    if deleted_count:
+        manifest = load_event_pdf_manifest(pdf_upload_dir)
+        manifest.pop(filename, None)
+        deleted_filenames = set(manifest.get("__deleted__", []))
+        deleted_filenames.add(filename)
+        manifest["__deleted__"] = sorted(deleted_filenames)
+        save_event_pdf_manifest(manifest, pdf_upload_dir)
+    return deleted_count
+
+
 def validate_lesson_reservation(payload):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
@@ -676,7 +1304,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -736,6 +1364,11 @@ def create_app(
     database_url=None,
     store_file=STORE_FILE,
     product_file=PRODUCT_FILE,
+    contracts_dir=CONTRACTS_DIR,
+    contract_replica_dirs=(SERVER_CONTRACTS_DIR,),
+    pdf_dir=SERVER_PDF_DIR,
+    pdf_upload_dir=PDF_UPLOAD_DIR,
+    pdf_replica_dirs=(),
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
@@ -1177,7 +1810,7 @@ def create_app(
                 )
             )
         except Exception:
-            app.logger.error("Flow Harmony Stripe price readiness check failed")
+            app.logger.error("Trumpet Transpose Lab Stripe price readiness check failed")
             return False
 
     def retrieve_flow_harmony_checkout(session_id, configuration):
@@ -1185,18 +1818,25 @@ def create_app(
             session_id,
             expand=["payment_intent.latest_charge"],
         )
-        if not checkout_payment_is_valid(
-            checkout,
-            configuration["price_yen"],
-            configuration["stripe_mode"] == "live",
-            FLOW_HARMONY_PRODUCT_ID,
-        ):
+        valid_product = any(
+            checkout_payment_is_valid(
+                checkout,
+                configuration["price_yen"],
+                configuration["stripe_mode"] == "live",
+                product_id,
+            )
+            for product_id in (
+                FLOW_HARMONY_PRODUCT_ID,
+                FLOW_HARMONY_LEGACY_PRODUCT_ID,
+            )
+        )
+        if not valid_product:
             return None
         return checkout
 
     def personalized_flow_harmony_product(session_id):
         license_text = (
-            "Flow Harmony オフライン版 利用ライセンス\n\n"
+            "Trumpet Transpose Lab オフライン版 利用ライセンス\n\n"
             "本商品は購入者本人のみ利用できます。第三者への譲渡、共有、再配布、\n"
             "販売、公衆送信を禁止します。購入者本人が所有する複数端末では利用できます。\n\n"
             f"購入参照ID: {purchase_reference(session_id)}\n"
@@ -1262,11 +1902,19 @@ def create_app(
 
     @app.get("/")
     def index():
-        return render_template("index.html")
+        response = make_response(render_template("index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+        return response
 
     @app.get("/favicon.ico")
     def favicon():
         return app.response_class(status=204)
+
+    @app.get("/back-navigation.js")
+    def back_navigation_script():
+        return send_file(BASE_DIR / "back-navigation.js", mimetype="application/javascript")
 
     @app.get("/health")
     def health():
@@ -1297,12 +1945,176 @@ def create_app(
     def download_guide():
         return render_template("download-guide/index.html")
 
-    @app.get("/flow-harmony/")
-    def flow_harmony():
-        response = make_response("Flow Harmonyは現在公開を停止しています。", 503)
+    @app.get("/trumpet-transpose-lab/")
+    def trumpet_transpose_lab():
+        response = make_response(render_template("trumpet-transpose-lab/index.html"))
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        response.headers["Retry-After"] = "86400"
         return response
+
+    @app.get("/flow-harmony/")
+    def flow_harmony_legacy_redirect():
+        query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""
+        return redirect(f"/trumpet-transpose-lab/{query}", code=308)
+
+    @app.get("/contract-generator/")
+    def contract_generator():
+        response = make_response(render_template("contract-generator/index.html"))
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow"
+        return response
+
+    @app.route("/api/contracts", methods=["GET", "POST"])
+    def contracts_api():
+        error = require_editor()
+        if error:
+            return error
+        if request.method == "GET":
+            return jsonify(
+                {
+                    "contracts": list_contracts(contracts_dir),
+                    "storage_path": str(Path(contracts_dir).expanduser().resolve()),
+                }
+            )
+        try:
+            values = validate_contract(request.get_json(silent=True))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        contract = save_contract(values, contracts_dir)
+        return jsonify(contract), 201
+
+    @app.post("/api/contracts/transport-sheet")
+    def create_transport_sheet():
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "シート発行内容を確認してください。"}), 400
+        client_name = str(payload.get("client_name", "")).strip()
+        transport_name = str(payload.get("transport_name", "")).strip()
+        editor_email = str(payload.get("editor_email", "")).strip()
+        cargo_items = payload.get("cargo_items")
+        rate_master = payload.get("freight_rate_master")
+        instrument_master = payload.get("instrument_price_master")
+        if not client_name or len(client_name) > 120 or not transport_name or len(transport_name) > 160:
+            return jsonify({"error": "取引先名と輸送案件名を入力してください。"}), 400
+        if re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", editor_email) is None:
+            return jsonify({"error": "シート共有先メールアドレスを正しく入力してください。"}), 400
+        if not isinstance(cargo_items, list) or not 1 <= len(cargo_items) <= 10 or not isinstance(rate_master, dict) or not isinstance(instrument_master, dict):
+            return jsonify({"error": "輸送対象物と料金マスターを確認してください。"}), 400
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return jsonify({"error": "Google Apps Scriptの接続設定が不足しています。"}), 503
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {
+                    "client_name": client_name,
+                    "transport_name": transport_name,
+                    "editor_email": editor_email,
+                    "cargo_items": cargo_items,
+                    "freight_rate_master": rate_master,
+                    "instrument_price_master": instrument_master,
+                },
+                action="generate_transport_sheet",
+            )
+        except (LessonReservationDeliveryError, OSError, urllib_error.URLError, json.JSONDecodeError):
+            app.logger.exception("Apps Script rejected transport sheet generation")
+            return jsonify({"error": "輸送明細シートを発行できませんでした。"}), 502
+        return jsonify(
+            {"cargo_url": result.get("cargoUrl", ""), "fee_url": result.get("feeUrl", "")}
+        ), 201
+
+    @app.route("/api/contracts/<contract_id>", methods=["GET", "DELETE"])
+    def contract_api(contract_id):
+        error = require_editor()
+        if error:
+            return error
+        if request.method == "DELETE":
+            payload = request.get_json(silent=True)
+            confirmation_id = payload.get("confirmation_id", "") if isinstance(payload, dict) else ""
+            try:
+                deleted_count = delete_contract(
+                    contract_id,
+                    confirmation_id,
+                    contracts_dir,
+                    contract_replica_dirs,
+                )
+            except ValueError as exc:
+                return jsonify({"error": str(exc)}), 400
+            if not deleted_count:
+                return jsonify({"error": "保存済み契約書が見つかりません。"}), 404
+            return jsonify(
+                {
+                    "deleted": True,
+                    "deleted_count": deleted_count,
+                    "contract_id": contract_id,
+                }
+            )
+        contract = load_contract(contract_id, contracts_dir)
+        if not contract:
+            return jsonify({"error": "保存済み契約書が見つかりません。"}), 404
+        return jsonify({"contract": contract})
+
+    @app.post("/api/event-pdfs")
+    def upload_event_pdf():
+        error = require_editor()
+        if error:
+            return error
+        upload = request.files.get("pdf")
+        if upload is None:
+            return jsonify({"error": "PDFファイルを選択してください。"}), 400
+        try:
+            document = save_event_pdf(upload, request.form.get("title", ""), pdf_upload_dir)
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        return jsonify({"saved": True, "document": document}), 201
+
+    @app.delete("/api/event-pdfs/<filename>")
+    def remove_event_pdf(filename):
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        confirmation_filename = (
+            payload.get("confirmation_filename", "") if isinstance(payload, dict) else ""
+        )
+        try:
+            deleted_count = delete_event_pdf(
+                filename,
+                confirmation_filename,
+                pdf_dir,
+                pdf_upload_dir,
+                pdf_replica_dirs,
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        if not deleted_count:
+            return jsonify({"error": "PDFファイルが見つかりません。"}), 404
+        return jsonify({"deleted": True, "deleted_count": deleted_count, "filename": filename})
+
+    @app.get("/pdf/")
+    def event_pdf_index():
+        return render_template(
+            "pdf/index.html",
+            pdf_documents=list_event_pdfs(pdf_dir, pdf_upload_dir),
+        )
+
+    @app.get("/pdf/<path:filename>")
+    def event_pdf_file(filename):
+        if Path(filename).name != filename:
+            return app.response_class(status=404)
+        deleted_filenames = set(
+            load_event_pdf_manifest(pdf_upload_dir).get("__deleted__", [])
+        )
+        if filename in deleted_filenames:
+            return app.response_class(status=404)
+        for directory in (Path(pdf_upload_dir), Path(pdf_dir)):
+            if (directory / filename).is_file():
+                return send_from_directory(directory, filename)
+        return app.response_class(status=404)
 
     @app.get("/legal/")
     def legal():
@@ -1475,6 +2287,7 @@ def create_app(
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
+    @app.get("/api/store/trumpet-transpose-lab/product")
     @app.get("/api/store/flow-harmony/product")
     def flow_harmony_store_product():
         configuration = flow_harmony_configuration()
@@ -1490,6 +2303,9 @@ def create_app(
             }
         )
 
+    @app.route(
+        "/api/store/trumpet-transpose-lab/checkout", methods=["POST", "OPTIONS"]
+    )
     @app.route("/api/store/flow-harmony/checkout", methods=["POST", "OPTIONS"])
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
@@ -1524,18 +2340,18 @@ def create_app(
                 },
                 success_url=(
                     f"{configuration['site_url']}/products/?flow_purchase=success"
-                    "&flow_session_id={CHECKOUT_SESSION_ID}#flow-harmony"
+                    "&flow_session_id={CHECKOUT_SESSION_ID}#trumpet-transpose-lab"
                 ),
                 cancel_url=(
                     f"{configuration['site_url']}/products/"
-                    "?flow_purchase=cancelled#flow-harmony"
+                    "?flow_purchase=cancelled#trumpet-transpose-lab"
                 ),
                 idempotency_key=(
                     f"{FLOW_HARMONY_PRODUCT_ID}:{checkout_request_id}"
                 ),
             )
         except Exception as exc:
-            app.logger.exception("Flow Harmony Checkout session creation failed")
+            app.logger.exception("Trumpet Transpose Lab Checkout session creation failed")
             return store_json(
                 {
                     "error": "決済画面を開始できませんでした。",
@@ -1545,6 +2361,9 @@ def create_app(
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
+    @app.route(
+        "/api/store/trumpet-transpose-lab/download-link", methods=["POST", "OPTIONS"]
+    )
     @app.route(
         "/api/store/flow-harmony/download-link", methods=["POST", "OPTIONS"]
     )
@@ -1566,7 +2385,7 @@ def create_app(
         try:
             checkout = retrieve_flow_harmony_checkout(session_id, configuration)
         except Exception:
-            app.logger.exception("Flow Harmony payment verification failed")
+            app.logger.exception("Trumpet Transpose Lab payment verification failed")
             return store_json({"error": "決済情報を確認できませんでした。"}, 502)
         if checkout is None:
             return store_json({"error": "支払いの完了を確認できません。"}, 403)
@@ -1576,12 +2395,13 @@ def create_app(
         return store_json(
             {
                 "download_url": (
-                    f"{request.url_root.rstrip('/')}/api/store/flow-harmony/download/{token}"
+                    f"{request.url_root.rstrip('/')}/api/store/trumpet-transpose-lab/download/{token}"
                 ),
                 "expires_in": 86400,
             }
         )
 
+    @app.get("/api/store/trumpet-transpose-lab/download/<token>")
     @app.get("/api/store/flow-harmony/download/<token>")
     def download_flow_harmony_product(token):
         serializer = download_serializer()
@@ -1593,14 +2413,17 @@ def create_app(
             return store_json({"error": "ダウンロード期限が切れました。"}, 410)
         except BadSignature:
             return store_json({"error": "ダウンロードURLが正しくありません。"}, 403)
-        if payload.get("product_id") != FLOW_HARMONY_PRODUCT_ID:
+        if payload.get("product_id") not in {
+            FLOW_HARMONY_PRODUCT_ID,
+            FLOW_HARMONY_LEGACY_PRODUCT_ID,
+        }:
             return store_json({"error": "商品が見つかりません。"}, 404)
         session_id = str(payload.get("session_id", "")).strip()
         configuration = flow_harmony_configuration()
         try:
             checkout = retrieve_flow_harmony_checkout(session_id, configuration)
         except Exception:
-            app.logger.exception("Flow Harmony payment revalidation failed")
+            app.logger.exception("Trumpet Transpose Lab payment revalidation failed")
             return store_json({"error": "決済情報を再確認できませんでした。"}, 502)
         if checkout is None:
             return store_json({"error": "現在この商品をダウンロードできません。"}, 403)
@@ -1609,7 +2432,7 @@ def create_app(
         response = send_file(
             personalized_flow_harmony_product(session_id),
             as_attachment=True,
-            download_name="flow-harmony-offline.zip",
+            download_name="trumpet-transpose-lab-offline.zip",
             mimetype="application/zip",
             conditional=True,
         )
@@ -1901,6 +2724,53 @@ def create_app(
             201,
         )
 
+    @app.route("/api/consultation", methods=["POST", "OPTIONS"])
+    def create_consultation():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(app.response_class(status=204))
+        payload = request.get_json(silent=True)
+        if isinstance(payload, dict) and payload.get("website"):
+            return lesson_reservation_json({"saved": True}, 201)
+        try:
+            values = validate_consultation(payload)
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {
+                    "error": "現在、Webフォームを利用できません。メールまたは電話でお問い合わせください。"
+                },
+                503,
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url, script_secret, values, action="consultation"
+            )
+        except (
+            LessonReservationDeliveryError,
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            urllib_error.URLError,
+        ):
+            app.logger.exception("Failed to send consultation")
+            return lesson_reservation_json(
+                {"error": "送信に失敗しました。時間をおいて再度お試しください。"},
+                502,
+            )
+
+        return lesson_reservation_json(
+            {
+                "saved": True,
+                "consultation_id": result.get("consultationId", ""),
+                "auto_reply_sent": bool(result.get("autoReplySent", False)),
+            },
+            201,
+        )
+
     @app.get("/api/lesson-reservations")
     def list_lesson_reservations():
         error = require_editor()
@@ -2027,7 +2897,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"list", "update", "delete", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
