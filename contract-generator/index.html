@@ -15,6 +15,8 @@
       --surface: #ffffff;
       --canvas: #e9eef4;
       --danger: #b91c1c;
+      --paper-width: 210mm;
+      --paper-height: 297mm;
     }
 
     * { box-sizing: border-box; }
@@ -170,8 +172,9 @@
     }
 
     .document {
-      width: 210mm;
-      min-height: 297mm;
+      width: var(--paper-width);
+      min-height: var(--paper-height);
+      aspect-ratio: 210 / 297;
       padding: 18mm 20mm;
       color: #222222;
       background: #ffffff;
@@ -200,7 +203,7 @@
       .generator { grid-template-columns: 1fr; }
       .sidebar { position: static; height: auto; }
       .preview-container { justify-content: flex-start; padding: 20px; }
-      .document { min-width: 210mm; }
+      .document { min-width: var(--paper-width); }
     }
 
     @page { size: A4 portrait; margin: 12mm; }
@@ -278,7 +281,7 @@
       <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
       <div class="save-actions">
         <button class="primary-button" id="saveContract" type="button">部門別に保存</button>
-        <button class="secondary-button" id="printContract" type="button">PDF出力 / 印刷</button>
+        <button class="secondary-button" id="printContract" type="button">A4縦 PDF出力 / 印刷</button>
       </div>
       <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
 
@@ -299,7 +302,7 @@
     </aside>
 
     <section class="preview-container" aria-label="契約書プレビュー">
-      <article class="document" id="documentPreview"></article>
+      <article class="document" id="documentPreview" data-paper-size="A4" data-orientation="portrait"></article>
     </section>
   </main>
 

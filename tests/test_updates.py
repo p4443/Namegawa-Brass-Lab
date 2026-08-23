@@ -189,6 +189,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("不可抗力", page)
         self.assertIn("未成年者", page)
         self.assertIn("@page { size: A4 portrait;", page)
+        self.assertIn('data-paper-size="A4" data-orientation="portrait"', page)
+        self.assertIn("A4縦 PDF出力 / 印刷", page)
         self.assertIn("break-inside: avoid;", page)
         self.assertIn("print-color-adjust: exact;", page)
         self.assertIn("ハラスメント", page)
