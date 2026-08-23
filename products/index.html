@@ -227,7 +227,7 @@
             <div>
               <span class="product-label">無料Web版</span>
               <h2>Trumpet Transpose Lab</h2>
-              <p>録音したフレーズを自動採譜し、音高・音価・タイミングを編集。B♭トランペット譜の移調からMIDI・MusicXML出力まで、譜面作りを一つの画面で完結できます。</p>
+              <p>録音したフレーズを自動採譜し、音高・音価・タイミングを編集。無料Web版では録音・採譜・移調を試せて、買い切り版ではWAV・MIDI・MusicXML保存も利用できます。</p>
             </div>
             <a class="launch-link" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">無料Web版を開く</a>
           </header>
@@ -239,7 +239,7 @@
               <h3>買い切りアプリ版（ZIP）</h3>
               <p>追加料金なしの1回払いで、インターネット接続なしでも利用できるZIPファイルを購入できます。</p>
               <ul class="store-benefits">
-                <li>Web版は無料で全機能を利用可能</li>
+                <li>無料Web版は録音・採譜・編集に対応（データ保存不可）</li>
                 <li>購入者本人の所有端末で利用可能</li>
                 <li>決済確認後、24時間有効のリンクを発行</li>
               </ul>
@@ -438,7 +438,7 @@
         : "オフライン版 販売停止中";
       appStoreStatus.textContent = product.enabled && !product.checkout_available
         ? "決済機能を準備中です。Web版は引き続き利用できます。"
-        : "Web版は無料で全機能を利用できます。";
+        : "無料Web版は録音・採譜・編集を利用できます。データ保存は買い切り版に対応しています。";
     }
 
     async function loadStoreProduct() {

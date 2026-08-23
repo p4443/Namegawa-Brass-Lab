@@ -218,6 +218,13 @@ class StoreTest(unittest.TestCase):
         self.assertIn("changeSelectedNoteDuration", html)
         self.assertIn("showSaveFilePicker", html)
         self.assertIn("保存先を選んでWAV保存", html)
+        self.assertIn("const isFreeWebVersion", html)
+        self.assertIn("if (!allowDataSave()) return;", html)
+        self.assertIn("無料Web版では録音・採譜を利用できますが、データ保存はできません。", html)
+        self.assertIn("document.querySelectorAll('.save-output')", html)
+        self.assertIn("if (!isFreeWebVersion && !await chooseRecordingDestination())", html)
+        self.assertIn("if (isFreeWebVersion) return null;", html)
+        self.assertIn("無料Web版の録音・採譜データは画面を閉じると破棄されます。", html)
         self.assertIn("prepareRecordedSamples(buffer)", html)
         self.assertIn("AUDIO_DECODE_FAILED", html)
         self.assertIn("previousScoreNotes", html)
@@ -254,7 +261,7 @@ class StoreTest(unittest.TestCase):
         self.assertIn('id="flow-purchase-button" type="button" disabled>販売状況を確認中', html)
         self.assertIn("録音したフレーズを自動採譜し、音高・音価・タイミングを編集", html)
         self.assertNotIn("allow=\"microphone; autoplay; bluetooth\"", html)
-        self.assertIn("Web版は無料で全機能を利用できます", html)
+        self.assertIn("無料Web版は録音・採譜・編集に対応（データ保存不可）", html)
         self.assertIn('requestStore("trumpet-transpose-lab/checkout"', html)
 
     def test_products_separates_free_web_and_one_time_zip_apps(self):

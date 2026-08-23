@@ -153,6 +153,15 @@
       box-shadow: 0 0 22px rgba(168, 255, 62, 0.2);
     }
 
+    .btn-tone:disabled {
+      color: var(--text-muted);
+      border-color: var(--line-color);
+      background: transparent;
+      box-shadow: none;
+      cursor: not-allowed;
+      opacity: 0.65;
+    }
+
     .bluetooth-box {
       background: var(--panel-bg);
       border: 1px solid var(--line-color);
@@ -1286,7 +1295,7 @@
       <input id="playbackProgress" type="range" min="0" max="1" step="0.01" value="0" aria-label="録音の再生位置" oninput="seekPlayback(this.value)">
       <span id="playbackTime">0:00 / 0:00</span>
       <div class="recording-actions">
-        <button class="btn-tone" type="button" onclick="downloadRecording()">保存先を選んでWAV保存</button>
+        <button class="btn-tone save-output" type="button" onclick="downloadRecording()">保存先を選んでWAV保存</button>
         <label>再生速度
           <select id="playbackRate" onchange="changePlaybackRate(this.value)">
             <option value="0.5">0.5倍</option>
@@ -1306,8 +1315,8 @@
       <strong id="scoreTitle">自動採譜（B♭トランペット）</strong>
       <div class="score-toolbar-actions">
         <div class="score-export-actions" aria-label="DAW・楽譜ソフトへ書き出し">
-          <button class="btn-tone" type="button" onclick="downloadMidi()">MIDI</button>
-          <button class="btn-tone" type="button" onclick="downloadMusicXml()">MusicXML</button>
+          <button class="btn-tone save-output" type="button" onclick="downloadMidi()">MIDI</button>
+          <button class="btn-tone save-output" type="button" onclick="downloadMusicXml()">MusicXML</button>
           <button class="btn-tone" type="button" onclick="optimizeTrumpetKey()">演奏しやすい調へ</button>
         </div>
         <div class="transpose-control" aria-label="楽譜の移調">
@@ -1350,6 +1359,7 @@
 </div>
 
 <script>
+  const isFreeWebVersion = new URLSearchParams(window.location.search).get('mode') === 'free';
   let audioCtx;
   let micStream;
   let microphoneAutoOffTimer = null;
@@ -1440,6 +1450,12 @@
     return `trumpet-transpose-lab-${timestamp}.wav`;
   }
 
+  function allowDataSave() {
+    if (!isFreeWebVersion) return true;
+    document.getElementById('scoreStatus').innerText = '無料Web版では録音・採譜を利用できますが、データ保存はできません。';
+    return false;
+  }
+
   async function chooseRecordingDestination() {
     recordingFilename = recordingFilenameForNow();
     recordingFileHandle = null;
@@ -1459,6 +1475,7 @@
 
   async function writeRecordingToDestination(blob) {
     currentRecordingBlob = blob;
+    if (!allowDataSave()) throw new Error('DATA_SAVE_DISABLED');
     if (recordingFileHandle) {
       const writable = await recordingFileHandle.createWritable();
       await writable.write(blob);
@@ -1810,6 +1827,8 @@
   }
 
   async function saveLatestRecording(blob) {
+    currentRecordingBlob = blob;
+    if (isFreeWebVersion) return null;
     return writeRecordingToDestination(blob);
   }
 
@@ -2028,6 +2047,7 @@
   }
 
   async function downloadRecording() {
+    if (!allowDataSave()) return;
     const recording = await readLatestRecording();
     if (!recording?.blob?.size) {
       document.getElementById('scoreStatus').innerText = 'ダウンロードできる録音がありません。';
@@ -2102,6 +2122,7 @@
   }
 
   function downloadMidi() {
+    if (!allowDataSave()) return;
     const melody = finalizedFirstPartNotes();
     if (!melody.length) {
       document.getElementById('scoreStatus').innerText = 'MIDIに書き出せる楽譜がありません。';
@@ -2193,6 +2214,7 @@
   }
 
   function downloadMusicXml() {
+    if (!allowDataSave()) return;
     const melody = finalizedFirstPartNotes();
     if (!melody.length) {
       document.getElementById('scoreStatus').innerText = 'MusicXMLに書き出せる楽譜がありません。';
@@ -3294,6 +3316,12 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
+    if (isFreeWebVersion) {
+      document.querySelectorAll('.save-output').forEach(button => {
+        button.disabled = true;
+        button.title = 'データ保存は買い切りアプリ版で利用できます';
+      });
+    }
     const audioPlayback = document.getElementById('audioPlayback');
     audioPlayback.addEventListener('play', updatePlaybackButton);
     audioPlayback.addEventListener('pause', updatePlaybackButton);
@@ -3863,7 +3891,7 @@
     }
 
     if (!isRecording) {
-      if (!await chooseRecordingDestination()) {
+      if (!isFreeWebVersion && !await chooseRecordingDestination()) {
         document.getElementById('scoreStatus').innerText = '録音を開始せず、保存先の選択を中止しました。';
         return;
       }
@@ -3942,7 +3970,9 @@
             const analysisLabel = recordedAudioNoteCount
               ? `録音音声から${recordedAudioNoteCount}音を再解析`
               : `リアルタイム検出${liveNoteCount}音を使用`;
-            document.getElementById('scoreStatus').innerText = `${analysisLabel}し、${savedName} に録音を保存しました（${durationSeconds.toFixed(1)}秒 / ${(blob.size / 1024).toFixed(1)}KB）。`;
+            document.getElementById('scoreStatus').innerText = savedName
+              ? `${analysisLabel}し、${savedName} に録音を保存しました（${durationSeconds.toFixed(1)}秒 / ${(blob.size / 1024).toFixed(1)}KB）。`
+              : `${analysisLabel}しました。無料Web版の録音・採譜データは画面を閉じると破棄されます。`;
           } catch (error) {
             document.getElementById('scoreStatus').innerText = `録音は再生できますが、指定した場所への保存に失敗しました（${(blob.size / 1024).toFixed(1)}KB）。`;
           }
