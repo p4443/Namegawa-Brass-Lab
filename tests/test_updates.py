@@ -181,6 +181,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('value="master"', page)
         self.assertIn('value="typeA"', page)
         self.assertIn('value="typeB"', page)
+        self.assertIn('value="estimateB"', page)
+        self.assertIn("B契約前 次世代型御見積書", page)
         self.assertIn('value="estimateC"', page)
         self.assertIn("C契約前 御見積書（選択・任意入力対応）", page)
         self.assertIn("C契約前見積書の編集", page)
@@ -217,6 +219,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("ハラスメント", page)
         self.assertIn("運送中止", page)
         self.assertIn("事故、滅失、毀損または遅延", page)
+        self.assertIn("待機料・付帯作業料", page)
+        self.assertIn("燃油特別付加運賃", page)
+        self.assertIn("事業許可証、管轄営業所情報、運行管理者情報", page)
+        self.assertIn("function renderTransportEstimate(date, safeClient)", page)
         self.assertIn("変更管理", page)
         self.assertIn("生成AI支援 アプリケーション実装費", page)
         self.assertIn("検収完了後14日以内", page)
@@ -229,7 +235,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function applyEstimatePreset(select)", page)
         self.assertIn("function estimatePreviewEditor(key, value, rowIndex = '')", page)
         self.assertIn("data-preview-estimate-key", page)
-        self.assertIn("function calculateEstimateTotals()", page)
+        self.assertIn("function calculateEstimateTotals(type = activeEstimateType())", page)
         self.assertIn("脆弱性", page)
         self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
         self.assertIn(".party-trade-name { white-space: nowrap; }", page)
@@ -277,6 +283,55 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(
                 response.json["values"]["estimate_items"][0]["amount"], "40000"
             )
+
+    def test_contract_api_saves_transport_estimate(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateB",
+                    "client_name": "〇〇楽団",
+                    "client_representative": "代表 山田様",
+                    "contract_date": "2026-08-23",
+                    "values": {
+                        "transport_name": "楽器輸送業務一式",
+                        "validity": "発行日より30日間",
+                        "permit_number": "許可番号を入力",
+                        "office_information": "管轄営業所情報を入力",
+                        "operation_manager": "運行管理者情報を入力",
+                        "cargo_document_url": "https://example.com/cargo",
+                        "route_document_url": "https://example.com/route",
+                        "compliance_document_url": "https://example.com/compliance",
+                        "fee_document_url": "https://example.com/fees",
+                        "waiting_fee": "30分毎に5,000円",
+                        "ancillary_fee": "1名1時間毎に8,000円",
+                        "detour_expenses": "実費精算",
+                        "estimate_items": [
+                            {
+                                "description": "基本運賃（貸切）",
+                                "quantity": "1",
+                                "unit": "運行",
+                                "unit_price": "100000",
+                                "amount": "100000",
+                                "details": "走行距離および拘束時間に基づく基本運賃",
+                            }
+                        ],
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertRegex(
+                response.json["contract_id"],
+                r"^estimateB-20260823-[a-f0-9]{8}$",
+            )
+            self.assertEqual(response.json["department"], "楽器輸送")
 
     def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
         client = create_app(database_url="").test_client()

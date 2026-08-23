@@ -295,6 +295,7 @@
     .estimate-conditions { margin: 0; padding: 0; list-style: none; }
     .estimate-conditions li { margin-bottom: 11px; }
     .estimate-conditions strong { display: block; margin-bottom: 2px; font-size: 9.5pt; }
+    .document-links a, .document-url-missing { overflow-wrap: anywhere; }
     .estimate-preview-editor {
       display: grid;
       grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
@@ -381,6 +382,7 @@
           </optgroup>
           <optgroup label="個別契約書">
             <option value="typeA">個別契約書 A（音楽指導・支援）</option>
+            <option value="estimateB">B契約前 次世代型御見積書（楽器輸送）</option>
             <option value="typeB">個別契約書 B（楽器輸送）</option>
             <option value="estimateC">C契約前 御見積書（選択・任意入力対応）</option>
             <option value="typeC">個別契約書 C（WEB・アプリ）</option>
@@ -496,7 +498,20 @@
       },
       typeB: {
         cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
-        special_terms: '1. 甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. 引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. 補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. 天候、災害、道路事情、車両故障、行政上の要請その他安全または適法な運行が困難な場合、乙は経路・日時の変更または運送中止を判断できる。甲乙は代替手段および費用を速やかに協議する。\n5. 運送主体、必要な許認可、積卸しの担当範囲、待機時間、保管、再委託および追加費用は事前に明確化し、法令および運送主体の約款が適用される場合はこれを優先する。'
+        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機料・付帯作業料）甲または施設側の都合により、事前の運行計画で定めた積卸し時間を超える待機が発生した場合、または申告のない付帯作業（過度な梱包作業、階段荷揚げ等）が発生した場合、乙は事前に提示した運賃・料金規定に基づき甲へ追加料金を請求できる。\n6. （運賃等の見直し）契約締結後、著しい経済情勢の変動、燃油価格の急激な高騰または関連法令の改定が生じた場合、乙は根拠資料を提示し、運賃および料金の改定（燃油特別付加運賃の導入を含む）を甲乙協議の上で請求できる。\n7. （情報の開示と共有）乙は適法な運送体制を確認できるよう、事業許可証、管轄営業所情報、運行管理者情報を、法令上および個人情報保護上開示可能な範囲で、書面または電子データ（見積書添付URL等）により甲へ提示する。'
+      },
+      estimateB: {
+        transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
+        permit_number: '', office_information: '', operation_manager: '',
+        cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
+        waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
+        estimate_items: [
+          { description: '基本運賃（貸切）', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '走行距離および拘束時間に基づく基本運賃' },
+          { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
+          { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
+          { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
+          { description: '燃料サーチャージ（予定）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '燃油価格に応じた特別付加料金' }
+        ]
       },
       estimateC: {
         project_name: '生成AI活用型 Web・アプリケーション開発一式',
@@ -537,14 +552,14 @@
     function field(label, key, value, multiline = false, maximumLength = 500) {
       const element = multiline
         ? `<textarea data-contract-key="${key}" maxlength="${maximumLength}">${escapeHtml(value)}</textarea>`
-        : `<input data-contract-key="${key}" type="text" maxlength="160" value="${escapeHtml(value)}">`;
+        : `<input data-contract-key="${key}" type="text" maxlength="${maximumLength}" value="${escapeHtml(value)}">`;
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
 
     const estimatePresets = {
-      description: ['要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
+      description: ['基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
       quantity: ['1', '2', '3', '5', '10'],
-      unit: ['式', '件', '画面', '時間', '日'],
+      unit: ['運行', '式', '件', '画面', '時間', '日'],
       unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
       amount: ['10000', '30000', '40000', '50000', '90000', '100000']
     };
@@ -583,6 +598,35 @@
           <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}`;
     }
 
+    function renderTransportEstimateFields(values) {
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>許認可・営業所・運行管理者情報と添付URLは、確認済みの実情報だけを入力してください。明細は登録内容から選択または任意入力できます。</div>`
+        + field('輸送案件名', 'transport_name', values.transport_name)
+        + field('見積有効期限', 'validity', values.validity)
+        + field('事業許可番号', 'permit_number', values.permit_number)
+        + field('管轄営業所情報', 'office_information', values.office_information, true)
+        + field('運行管理者情報', 'operation_manager', values.operation_manager)
+        + field('輸送対象物明細・評価額証明 URL', 'cargo_document_url', values.cargo_document_url)
+        + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
+        + field('事業許可・営業所・運行管理情報 URL', 'compliance_document_url', values.compliance_document_url)
+        + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
+        + field('待機料', 'waiting_fee', values.waiting_fee)
+        + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
+        + field('迂回・延泊実費', 'detour_expenses', values.detour_expenses)
+        + renderEstimateItemEditors(values);
+    }
+
+    function renderEstimateItemEditors(values) {
+      return values.estimate_items.map((item, index) => `
+        <section class="estimate-editor" data-estimate-row="${index}">
+          <h2>明細 ${index + 1}</h2><div class="estimate-editor-grid">
+            ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
+            ${estimateInput('数量', 'quantity', item.quantity)}${estimateInput('単位', 'unit', item.unit)}
+            ${estimateInput('単価（円）', 'unit_price', item.unit_price)}${estimateInput('金額（円）', 'amount', item.amount)}
+            <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
+          </div>
+        </section>`).join('');
+    }
+
     function applyEstimatePreset(select) {
       if (!select.value) return;
       const row = select.closest('[data-estimate-row]');
@@ -598,13 +642,15 @@
 
     function renderDynamicFields() {
       const type = docType.value;
-      documentDateLabel.textContent = type === 'estimateC' ? '見積発行日' : '契約締結日';
+      documentDateLabel.textContent = type === 'estimateB' || type === 'estimateC' ? '見積発行日' : '契約締結日';
       if (type === 'master') {
         dynamicFields.replaceChildren();
         return;
       }
       const values = contractValues[type];
-      if (type === 'estimateC') {
+      if (type === 'estimateB') {
+        dynamicFields.innerHTML = renderTransportEstimateFields(values);
+      } else if (type === 'estimateC') {
         dynamicFields.innerHTML = renderEstimateFields(values);
       } else if (type === 'typeA') {
         dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
@@ -644,8 +690,12 @@
       return /^\d+$/.test(normalized) ? Number(normalized) : 0;
     }
 
-    function calculateEstimateTotals() {
-      const subtotal = contractValues.estimateC.estimate_items.reduce(
+    function activeEstimateType() {
+      return preview.dataset.contractType === 'estimateB' ? 'estimateB' : 'estimateC';
+    }
+
+    function calculateEstimateTotals(type = activeEstimateType()) {
+      const subtotal = contractValues[type].estimate_items.reduce(
         (total, item) => total + estimateNumber(item.amount), 0
       );
       const tax = Math.round(subtotal * 0.1);
@@ -671,14 +721,16 @@
     function estimatePreviewEditor(key, value, rowIndex = '') {
       const presets = key === 'project_name'
         ? ['生成AI活用型 Web・アプリケーション開発一式', 'コーポレートWebサイト制作一式', '業務支援Webアプリケーション開発一式', '既存Webサイト改修・機能追加一式']
-        : estimatePresets[key];
+        : key === 'transport_name'
+          ? ['楽器輸送業務一式', '演奏会楽器輸送', '学校・部活動楽器輸送', '打楽器・大型機材輸送']
+          : estimatePresets[key];
       const rowAttribute = rowIndex === '' ? '' : ` data-preview-estimate-row="${rowIndex}"`;
       return `<span class="estimate-preview-editor"${rowAttribute}><select data-preview-estimate-preset="${key}" aria-label="登録内容から選択">${presetOptions(presets)}</select><input data-preview-estimate-key="${key}" type="text" value="${escapeHtml(value)}" aria-label="任意入力"></span><span class="estimate-print-value">${escapeHtml(value)}</span>`;
     }
 
     function renderWebAppEstimate(date, safeClient) {
       const values = contractValues.estimateC;
-      const totals = calculateEstimateTotals();
+      const totals = calculateEstimateTotals('estimateC');
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
@@ -711,6 +763,59 @@
             <li><strong>8. 有効期限</strong>本見積書の発行日より30日間有効といたします。</li>
             <li><strong>9. 契約書との関係</strong>ご発注時は業務委託基本契約書および「個別契約書 C（WEB・アプリ）」を締結し、本見積書を個別契約の一部として取り扱います。文書間に差異がある場合は、後に成立した個別の合意を優先します。</li>
           </ul>
+        </section>`;
+    }
+
+    function transportDocumentLink(label, value) {
+      const safeValue = escapeHtml(value || '未設定');
+      const link = /^https?:\/\/[^\s]+$/.test(value)
+        ? `<a href="${safeValue}" target="_blank" rel="noopener noreferrer">${safeValue}</a>`
+        : '<span class="document-url-missing">未設定（保存前に実在する共有URLを入力）</span>';
+      return `<li><strong>${label}</strong>${link}</li>`;
+    }
+
+    function renderTransportEstimate(date, safeClient) {
+      const values = contractValues.estimateB;
+      const totals = calculateEstimateTotals('estimateB');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      preview.innerHTML = `
+        <section class="contract-page estimate-page" data-page-number="1">
+          <h1>御見積書（B契約：楽器輸送業務）</h1>
+          <p class="doc-date">${date}</p>
+          <div class="estimate-client"><strong>${safeClient} 様</strong><br>${safeRepresentative}</div>
+          <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
+          <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
+          <div class="estimate-issuer"><strong>受託者（乙）</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>住所：埼玉県比企郡滑川町月の輪5丁目1-3</div>
+          <h2>1. 法定開示・クラウド添付書類</h2>
+          <p>以下は入力された情報と添付先です。本見積書の表示だけで許認可の有効性を自動証明するものではないため、甲は原本・発行主体・有効期限を確認してください。</p>
+          <table class="individual-contract-table"><tbody>
+            <tr><th scope="row">事業許可番号</th><td>${escapeHtml(values.permit_number || '未設定')}</td></tr>
+            <tr><th scope="row">管轄営業所情報</th><td>${escapeHtml(values.office_information || '未設定')}</td></tr>
+            <tr><th scope="row">運行管理者情報</th><td>${escapeHtml(values.operation_manager || '未設定')}</td></tr>
+          </tbody></table>
+          <ul class="estimate-conditions document-links">
+            ${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}
+            ${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}
+            ${transportDocumentLink('事業許可・管轄営業所・運行管理者情報', values.compliance_document_url)}
+            ${transportDocumentLink('追加料金規定表', values.fee_document_url)}
+          </ul>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="2">
+          <h1>御見積明細（運賃・料金分離型）</h1>
+          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <table class="estimate-table">
+            <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
+            <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <h2>2. 現場発生時の追加請求予定項目</h2>
+          <ul class="estimate-conditions">
+            <li><strong>待機料</strong>${escapeHtml(values.waiting_fee)}</li>
+            <li><strong>付帯作業料</strong>${escapeHtml(values.ancillary_fee)}</li>
+            <li><strong>迂回・延泊実費</strong>${escapeHtml(values.detour_expenses)}</li>
+          </ul>
+          <p>追加料金は個別契約書B第4項・第5項および事前提示した料金規定に基づき、発生理由と算定根拠を示して精算します。燃油価格や法令改定による運賃見直しは第6項に基づき協議します。</p>
+          <p><strong>契約書との関係：</strong>発注時は業務委託基本契約書および個別契約書Bを締結し、本見積書および添付書類を個別契約の一部として扱います。</p>
         </section>`;
     }
 
@@ -764,7 +869,10 @@
       preview.dataset.contractType = type;
       const date = formatJapaneseDate(contractDate.value);
       const parties = partyHtml();
-      if (type === 'estimateC') {
+      if (type === 'estimateB') {
+        const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
+        renderTransportEstimate(date, safeClient);
+      } else if (type === 'estimateC') {
         const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
         renderWebAppEstimate(date, safeClient);
       } else if (type === 'master') {
@@ -926,7 +1034,7 @@
       if (estimateKey) {
         const row = event.target.closest('[data-estimate-row]');
         const rowIndex = Number(row?.dataset.estimateRow);
-        const item = contractValues.estimateC.estimate_items[rowIndex];
+        const item = contractValues[docType.value]?.estimate_items?.[rowIndex];
         if (!item) return;
         item[estimateKey] = event.target.value;
         if (estimateKey === 'quantity' || estimateKey === 'unit_price') {
@@ -967,13 +1075,14 @@
     preview.addEventListener('input', event => {
       const key = event.target.dataset.previewEstimateKey;
       if (!key) return;
-      if (key === 'project_name') {
-        contractValues.estimateC.project_name = event.target.value;
-        const sidebarInput = dynamicFields.querySelector('[data-contract-key="project_name"]');
+      const estimateType = activeEstimateType();
+      if (key === 'project_name' || key === 'transport_name') {
+        contractValues[estimateType][key] = event.target.value;
+        const sidebarInput = dynamicFields.querySelector(`[data-contract-key="${key}"]`);
         if (sidebarInput) sidebarInput.value = event.target.value;
       } else {
         const rowIndex = Number(event.target.closest('[data-preview-estimate-row]')?.dataset.previewEstimateRow);
-        const item = contractValues.estimateC.estimate_items[rowIndex];
+        const item = contractValues[estimateType].estimate_items[rowIndex];
         if (!item) return;
         item[key] = event.target.value;
         const sidebarInput = dynamicFields.querySelector(`[data-estimate-row="${rowIndex}"] [data-estimate-key="${key}"]`);
