@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21";
+var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -65,19 +65,19 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["consultation", "list", "update", "delete", "cancel", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"]
       });
     }
 
     var requestId = String(data.request_id || "").trim();
-    if ((action === "consultation" || action === "update" || action === "delete" || action === "cancel") && requestId) {
+    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "cancel") && requestId) {
       var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
       if (cachedResult) {
         return jsonResponse(JSON.parse(cachedResult));
       }
     }
 
-    var writeActions = ["create", "consultation", "upsert_slot_status_range", "update", "delete", "cancel"];
+    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel"];
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
@@ -87,6 +87,9 @@ function doPost(event) {
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
+    if (action === "generate_transport_sheet") {
+      return adminActionResponse(generateTransportWorkbook(data), requestId);
+    }
     if (action === "consultation") {
       var consultationSheet = getConsultationSheet(spreadsheet);
       var consultationNow = new Date();
@@ -419,6 +422,85 @@ function doPost(event) {
 function getSpreadsheet() {
   var spreadsheetId = PropertiesService.getScriptProperties().getProperty("SPREADSHEET_ID");
   return SpreadsheetApp.openById(spreadsheetId);
+}
+
+function generateTransportWorkbook(data) {
+  var clientName = String(data.client_name || "").trim();
+  var transportName = String(data.transport_name || "").trim();
+  var editorEmail = String(data.editor_email || "").trim();
+  var cargoItems = Array.isArray(data.cargo_items) ? data.cargo_items : [];
+  var rateMaster = data.freight_rate_master || {};
+  var instrumentMaster = data.instrument_price_master || {};
+  if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length) {
+    throw new Error("Invalid transport sheet request");
+  }
+
+  var createdAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss");
+  var workbook = SpreadsheetApp.create("輸送対象物明細_" + clientName + "_" + transportName + "_" + createdAt);
+  var file = DriveApp.getFileById(workbook.getId());
+  var folderId = String(PropertiesService.getScriptProperties().getProperty("TRANSPORT_DOCUMENT_FOLDER_ID") || "").trim();
+  if (folderId) {
+    file.moveTo(DriveApp.getFolderById(folderId));
+  }
+  file.addEditor(editorEmail);
+
+  var cargoSheet = workbook.getSheets()[0];
+  cargoSheet.setName("輸送対象物明細");
+  var cargoHeaders = ["区分", "楽器・機材", "メーカー・型番", "数量", "状態", "評価方式", "単価・評価額", "行評価額", "容積pt/個", "容積pt合計", "備考"];
+  cargoSheet.getRange(1, 1, 1, cargoHeaders.length).setValues([cargoHeaders]);
+  var cargoRows = cargoItems.map(function (item) {
+    var quantity = Number(item.quantity || 0);
+    var volumePoints = Number(item.volume_points || 0);
+    return [
+      safeCell(item.category), safeCell(item.description), safeCell(item.maker_model), quantity,
+      safeCell(item.condition), safeCell(item.valuation_mode), Number(item.unit_value || 0),
+      Number(item.total_value || 0), volumePoints, quantity * volumePoints, safeCell(item.notes)
+    ];
+  });
+  cargoSheet.getRange(2, 1, cargoRows.length, cargoHeaders.length).setValues(cargoRows);
+  var totalRow = cargoRows.length + 2;
+  cargoSheet.getRange(totalRow, 1, 1, 7).merge().setValue("申告総評価額");
+  cargoSheet.getRange(totalRow, 8).setFormula("=SUM(H2:H" + (totalRow - 1) + ")");
+  cargoSheet.getRange(totalRow, 9).setValue("容積ポイント合計");
+  cargoSheet.getRange(totalRow, 10).setFormula("=SUM(J2:J" + (totalRow - 1) + ")");
+  cargoSheet.getRange(1, 1, 1, cargoHeaders.length).setBackground("#14532d").setFontColor("#ffffff").setFontWeight("bold");
+  cargoSheet.getRange("G:H").setNumberFormat("¥#,##0");
+  cargoSheet.setFrozenRows(1);
+  cargoSheet.autoResizeColumns(1, cargoHeaders.length);
+
+  var feeSheet = workbook.insertSheet("料金規定");
+  var feeRows = [
+    ["楽器価格マスター基準日", safeCell(instrumentMaster.effective_date)],
+    ["楽器価格マスター出典URL", safeCell(instrumentMaster.source_url)],
+    ["料金マスター基準日", safeCell(rateMaster.effective_date)],
+    ["出典URL", safeCell(rateMaster.source_url)],
+    ["確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
+    ["20kmまでの距離制基本運賃", Number(rateMaster.distance_base_20 || 0)],
+    ["21〜50km 1km加算", Number(rateMaster.distance_per_km_21_50 || 0)],
+    ["51〜100km 1km加算", Number(rateMaster.distance_per_km_51_100 || 0)],
+    ["101km以上 1km加算", Number(rateMaster.distance_per_km_101_plus || 0)],
+    ["4時間制運賃", Number(rateMaster.charter_4h || 0)],
+    ["8時間制運賃", Number(rateMaster.charter_8h || 0)],
+    ["超過1時間", Number(rateMaster.extra_hour || 0)],
+    ["待機30分", Number(rateMaster.waiting_per_30m || 0)],
+    ["荷役基本料金", Number(rateMaster.loading_base || 0)],
+    ["荷役25ptごとの加算", Number(rateMaster.loading_per_25_points || 0)],
+    ["燃料基準価格", Number(rateMaster.fuel_reference_price || 0)],
+    ["見積時燃料価格", Number(rateMaster.fuel_current_price || 0)],
+    ["燃料差額1円・1kmあたり係数", Number(rateMaster.fuel_per_km_per_yen || 0)],
+    ["外部2t車参考チャーター額", Number(rateMaster.external_2t_charter || 0)]
+  ];
+  feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
+  feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
+  feeSheet.getRange(7, 2, feeRows.length - 5, 1).setNumberFormat("¥#,##0");
+  feeSheet.setFrozenRows(1);
+  feeSheet.autoResizeColumns(1, 2);
+
+  return {
+    ok: true,
+    cargoUrl: workbook.getUrl() + "#gid=" + cargoSheet.getSheetId(),
+    feeUrl: workbook.getUrl() + "#gid=" + feeSheet.getSheetId()
+  };
 }
 
 function getReservationSheet(spreadsheet) {

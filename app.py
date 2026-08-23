@@ -187,6 +187,16 @@ CONTRACT_TYPES = {
             "waiting_fee",
             "ancillary_fee",
             "detour_expenses",
+            "cargo_restrictions_agreed",
+            "cargo_contact_email",
+            "external_vehicle_budget",
+            "route_origin",
+            "route_destination",
+            "route_distance_km",
+            "total_hours",
+            "instrument_price_master",
+            "freight_rate_master",
+            "cargo_items",
             "estimate_items",
         },
     },
@@ -207,7 +217,7 @@ CONTRACT_TYPES = {
         "keys": {"deliverable", "amount", "deadline", "special_terms"},
     },
 }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-23-transport-sheet-v22"
 
 
 def current_japan_date():
@@ -728,6 +738,116 @@ def validate_contract(payload):
         raise ValueError("契約条件を確認してください。")
     values = {}
     for key in configuration["keys"]:
+        if key == "cargo_restrictions_agreed":
+            if raw_values.get(key) is not True:
+                raise ValueError("貴重品等を輸送対象外とする確認への同意が必要です。")
+            values[key] = True
+            continue
+        if key == "freight_rate_master":
+            raw_master = raw_values.get(key, {})
+            rate_keys = {
+                "distance_base_20",
+                "distance_per_km_21_50",
+                "distance_per_km_51_100",
+                "distance_per_km_101_plus",
+                "charter_4h",
+                "charter_8h",
+                "extra_hour",
+                "waiting_per_30m",
+                "loading_base",
+                "loading_per_25_points",
+                "fuel_reference_price",
+                "fuel_current_price",
+                "fuel_per_km_per_yen",
+                "external_2t_charter",
+            }
+            if not isinstance(raw_master, dict) or raw_master.get("verified") is not True:
+                raise ValueError("料金マスターの出典を確認し、確認済みにしてください。")
+            effective_date = str(raw_master.get("effective_date", "")).strip()
+            source_url = str(raw_master.get("source_url", "")).strip()
+            try:
+                datetime.strptime(effective_date, "%Y-%m-%d")
+            except ValueError as exc:
+                raise ValueError("料金マスターの基準日を正しく入力してください。") from exc
+            if re.fullmatch(r"https?://[^\s]+", source_url) is None:
+                raise ValueError("料金マスターの出典URLを入力してください。")
+            rate_master = {
+                "effective_date": effective_date,
+                "source_url": source_url,
+                "verified": True,
+            }
+            for rate_key in rate_keys:
+                rate_value = str(raw_master.get(rate_key, "")).strip()
+                if re.fullmatch(r"\d{1,9}", rate_value) is None:
+                    raise ValueError("料金マスターの金額・係数を0以上の整数で入力してください。")
+                rate_master[rate_key] = rate_value
+            values[key] = rate_master
+            continue
+        if key == "instrument_price_master":
+            raw_master = raw_values.get(key, {})
+            if not isinstance(raw_master, dict):
+                raise ValueError("楽器価格マスターを確認してください。")
+            verified = raw_master.get("verified") is True
+            effective_date = str(raw_master.get("effective_date", "")).strip()
+            source_url = str(raw_master.get("source_url", "")).strip()
+            if verified:
+                try:
+                    datetime.strptime(effective_date, "%Y-%m-%d")
+                except ValueError as exc:
+                    raise ValueError("楽器価格マスターの基準日を正しく入力してください。") from exc
+                if re.fullmatch(r"https?://[^\s]+", source_url) is None:
+                    raise ValueError("楽器価格マスターの出典URLを入力してください。")
+            values[key] = {
+                "effective_date": effective_date,
+                "source_url": source_url,
+                "verified": verified,
+            }
+            continue
+        if key == "cargo_items":
+            raw_items = raw_values.get(key, [])
+            if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 10:
+                raise ValueError("輸送対象物は1件以上10件以内で入力してください。")
+            cargo_items = []
+            for raw_item in raw_items:
+                if not isinstance(raw_item, dict):
+                    raise ValueError("輸送対象物明細を正しく入力してください。")
+                item = {
+                    "category": str(raw_item.get("category", "")).strip(),
+                    "instrument_key": str(raw_item.get("instrument_key", "")).strip(),
+                    "description": str(raw_item.get("description", "")).strip(),
+                    "maker_model": str(raw_item.get("maker_model", "")).strip(),
+                    "quantity": str(raw_item.get("quantity", "")).strip(),
+                    "condition": str(raw_item.get("condition", "")).strip(),
+                    "valuation_mode": str(raw_item.get("valuation_mode", "")).strip(),
+                    "unit_value": str(raw_item.get("unit_value", "")).strip(),
+                    "total_value": str(raw_item.get("total_value", "")).strip(),
+                    "volume_points": str(raw_item.get("volume_points", "")).strip(),
+                    "notes": str(raw_item.get("notes", "")).strip(),
+                }
+                if (
+                    not item["category"]
+                    or len(item["category"]) > 40
+                    or not item["instrument_key"]
+                    or len(item["instrument_key"]) > 60
+                    or not item["description"]
+                    or len(item["description"]) > 120
+                    or len(item["maker_model"]) > 120
+                    or re.fullmatch(r"\d{1,4}", item["quantity"]) is None
+                    or not item["condition"]
+                    or len(item["condition"]) > 80
+                    or item["valuation_mode"] not in {"master", "manual"}
+                    or re.fullmatch(r"\d{1,12}", item["unit_value"]) is None
+                    or re.fullmatch(r"\d{1,12}", item["total_value"]) is None
+                    or re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", item["volume_points"])
+                    is None
+                    or len(item["notes"]) > 200
+                    or int(item["quantity"]) * int(item["unit_value"])
+                    != int(item["total_value"])
+                ):
+                    raise ValueError("輸送対象物明細の入力内容と評価額を確認してください。")
+                cargo_items.append(item)
+            values[key] = cargo_items
+            continue
         if key == "estimate_items":
             raw_items = raw_values.get(key, [])
             if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 10:
@@ -767,7 +887,15 @@ def validate_contract(payload):
             )
         if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
             raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
+        if key == "cargo_contact_email" and re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", value) is None:
+            raise ValueError("シート共有先メールアドレスを正しく入力してください。")
+        if key in {"external_vehicle_budget", "route_distance_km", "total_hours"} and re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", value) is None:
+            raise ValueError("距離・時間・予算は0以上の数値で入力してください。")
         values[key] = value
+    if doc_type == "estimateB" and any(
+        item["valuation_mode"] == "master" for item in values["cargo_items"]
+    ) and not values["instrument_price_master"]["verified"]:
+        raise ValueError("マスター参考額を使う場合は楽器価格マスターの出典を確認してください。")
     return {
         "doc_type": doc_type,
         "department": configuration["department"],
@@ -1176,7 +1304,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -1853,6 +1981,51 @@ def create_app(
             return jsonify({"error": str(exc)}), 400
         contract = save_contract(values, contracts_dir)
         return jsonify(contract), 201
+
+    @app.post("/api/contracts/transport-sheet")
+    def create_transport_sheet():
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "シート発行内容を確認してください。"}), 400
+        client_name = str(payload.get("client_name", "")).strip()
+        transport_name = str(payload.get("transport_name", "")).strip()
+        editor_email = str(payload.get("editor_email", "")).strip()
+        cargo_items = payload.get("cargo_items")
+        rate_master = payload.get("freight_rate_master")
+        instrument_master = payload.get("instrument_price_master")
+        if not client_name or len(client_name) > 120 or not transport_name or len(transport_name) > 160:
+            return jsonify({"error": "取引先名と輸送案件名を入力してください。"}), 400
+        if re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", editor_email) is None:
+            return jsonify({"error": "シート共有先メールアドレスを正しく入力してください。"}), 400
+        if not isinstance(cargo_items, list) or not 1 <= len(cargo_items) <= 10 or not isinstance(rate_master, dict) or not isinstance(instrument_master, dict):
+            return jsonify({"error": "輸送対象物と料金マスターを確認してください。"}), 400
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return jsonify({"error": "Google Apps Scriptの接続設定が不足しています。"}), 503
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {
+                    "client_name": client_name,
+                    "transport_name": transport_name,
+                    "editor_email": editor_email,
+                    "cargo_items": cargo_items,
+                    "freight_rate_master": rate_master,
+                    "instrument_price_master": instrument_master,
+                },
+                action="generate_transport_sheet",
+            )
+        except (LessonReservationDeliveryError, OSError, urllib_error.URLError, json.JSONDecodeError):
+            app.logger.exception("Apps Script rejected transport sheet generation")
+            return jsonify({"error": "輸送明細シートを発行できませんでした。"}), 502
+        return jsonify(
+            {"cargo_url": result.get("cargoUrl", ""), "fee_url": result.get("feeUrl", "")}
+        ), 201
 
     @app.route("/api/contracts/<contract_id>", methods=["GET", "DELETE"])
     def contract_api(contract_id):
@@ -2724,7 +2897,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"list", "update", "delete", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,

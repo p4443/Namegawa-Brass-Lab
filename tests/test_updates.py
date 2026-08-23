@@ -223,6 +223,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("燃油特別付加運賃", page)
         self.assertIn("事業許可証、管轄営業所情報、運行管理者情報", page)
         self.assertIn("function renderTransportEstimate(date, safeClient)", page)
+        self.assertIn("輸送対象物明細・評価額証明（付属書）", page)
+        self.assertIn("function calculateCargoValuation()", page)
+        self.assertIn("function calculateCargoVolume()", page)
+        self.assertIn("function calculateOptimalFreight(distance, totalHours)", page)
+        self.assertIn('data-freight-input="route_origin"', page)
+        self.assertIn("楽器価格マスターの確認", page)
+        self.assertIn("data-cargo-consent", page)
+        self.assertIn("data-generate-transport-sheet", page)
+        self.assertIn("外部2t車チャーター（要正式見積り）", page)
+        self.assertIn('data-cargo-item-key="unit_value"', page)
+        self.assertIn('data-cargo-total="valuation"', page)
         self.assertIn("変更管理", page)
         self.assertIn("生成AI支援 アプリケーション実装費", page)
         self.assertIn("検収完了後14日以内", page)
@@ -312,6 +323,52 @@ class UpdatesTest(unittest.TestCase):
                         "waiting_fee": "30分毎に5,000円",
                         "ancillary_fee": "1名1時間毎に8,000円",
                         "detour_expenses": "実費精算",
+                        "cargo_restrictions_agreed": True,
+                        "cargo_contact_email": "music@example.com",
+                        "external_vehicle_budget": "150000",
+                        "route_origin": "〇〇高等学校",
+                        "route_destination": "〇〇市民ホール",
+                        "route_distance_km": "30",
+                        "total_hours": "8",
+                        "instrument_price_master": {
+                            "effective_date": "2026-08-23",
+                            "source_url": "https://example.com/instrument-prices",
+                            "verified": True,
+                        },
+                        "freight_rate_master": {
+                            "effective_date": "2026-08-23",
+                            "source_url": "https://www.mlit.go.jp/example",
+                            "verified": True,
+                            "distance_base_20": "5000",
+                            "distance_per_km_21_50": "200",
+                            "distance_per_km_51_100": "180",
+                            "distance_per_km_101_plus": "160",
+                            "charter_4h": "15000",
+                            "charter_8h": "25000",
+                            "extra_hour": "3000",
+                            "waiting_per_30m": "2000",
+                            "loading_base": "5000",
+                            "loading_per_25_points": "1500",
+                            "fuel_reference_price": "170",
+                            "fuel_current_price": "180",
+                            "fuel_per_km_per_yen": "2",
+                            "external_2t_charter": "120000",
+                        },
+                        "cargo_items": [
+                            {
+                                "category": "金管楽器",
+                                "instrument_key": "trumpet",
+                                "description": "トランペット",
+                                "maker_model": "YAMAHA YTR-8335",
+                                "quantity": "10",
+                                "condition": "良好",
+                                "valuation_mode": "master",
+                                "unit_value": "500000",
+                                "total_value": "5000000",
+                                "volume_points": "1",
+                                "notes": "ハードケース入り",
+                            }
+                        ],
                         "estimate_items": [
                             {
                                 "description": "基本運賃（貸切）",
@@ -332,6 +389,49 @@ class UpdatesTest(unittest.TestCase):
                 r"^estimateB-20260823-[a-f0-9]{8}$",
             )
             self.assertEqual(response.json["department"], "楽器輸送")
+            self.assertEqual(
+                response.json["values"]["cargo_items"][0]["total_value"],
+                "5000000",
+            )
+            self.assertTrue(response.json["values"]["cargo_restrictions_agreed"])
+            self.assertEqual(
+                response.json["values"]["freight_rate_master"]["external_2t_charter"],
+                "120000",
+            )
+
+    def test_transport_sheet_api_uses_authenticated_apps_script(self):
+        payload = {
+            "client_name": "〇〇高等学校吹奏楽部",
+            "transport_name": "演奏会楽器輸送",
+            "editor_email": "music@example.com",
+            "cargo_items": [{"description": "チューバ", "quantity": "2"}],
+            "freight_rate_master": {"effective_date": "2026-08-23"},
+            "instrument_price_master": {"effective_date": "2026-08-23"},
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "editor-secret",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_request:
+            send_request.return_value = {
+                "ok": True,
+                "cargoUrl": "https://docs.google.com/spreadsheets/d/cargo/edit",
+                "feeUrl": "https://docs.google.com/spreadsheets/d/cargo/edit#gid=2",
+            }
+            response = create_app(database_url="").test_client().post(
+                "/api/contracts/transport-sheet",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=payload,
+            )
+
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json["cargo_url"], send_request.return_value["cargoUrl"])
+        self.assertEqual(response.json["fee_url"], send_request.return_value["feeUrl"])
+        self.assertEqual(send_request.call_args.kwargs["action"], "generate_transport_sheet")
+        self.assertEqual(send_request.call_args.args[2]["editor_email"], "music@example.com")
 
     def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
         client = create_app(database_url="").test_client()
@@ -701,7 +801,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var writeActions = ["create", "consultation", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
+        self.assertIn('var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
         self.assertIn("if (writeActions.indexOf(action) !== -1)", do_post)
         self.assertIn("var spreadsheet = getSpreadsheet();", do_post)
         self.assertIn("getReservationSheet(spreadsheet)", do_post)
@@ -713,7 +813,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-21-consultation-attachment-v21";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-23-transport-sheet-v22";', script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
         self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
         self.assertIn('return "admin:" + Utilities.getUuid();', script)
@@ -1215,8 +1315,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-21-consultation-attachment-v21",
-                "capabilities": ["consultation", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                "version": "2026-08-23-transport-sheet-v22",
+                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
