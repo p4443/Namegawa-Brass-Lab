@@ -181,6 +181,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('value="master"', page)
         self.assertIn('value="typeA"', page)
         self.assertIn('value="typeB"', page)
+        self.assertIn('value="estimateC"', page)
         self.assertIn('value="typeC"', page)
         self.assertIn("window.print()", page)
         self.assertIn("法令等の制定または改廃", page)
@@ -196,6 +197,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('<optgroup label="個別契約書">', page)
         self.assertIn("function renderMasterContract(date, safeClient, parties)", page)
         self.assertIn("function renderIndividualContract(type, date, parties)", page)
+        self.assertIn("function renderWebAppEstimate(date, safeClient)", page)
         self.assertEqual(page.count('<section class="contract-page" data-page-number="2">'), 1)
         self.assertIn(".contract-page:last-child { break-after: auto; }", page)
         self.assertIn("width: var(--paper-width);", page)
@@ -214,9 +216,43 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("運送中止", page)
         self.assertIn("事故、滅失、毀損または遅延", page)
         self.assertIn("変更管理", page)
+        self.assertIn("生成AI支援 アプリケーション実装費", page)
+        self.assertIn("検収完了後14日以内", page)
+        self.assertIn("売り切り（買い切り）契約", page)
         self.assertIn("脆弱性", page)
         self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
         self.assertIn(".party-trade-name { white-space: nowrap; }", page)
+
+    def test_contract_api_saves_web_app_estimate(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateC",
+                    "client_name": "株式会社テスト",
+                    "client_representative": "担当者 山田様",
+                    "contract_date": "2026-08-23",
+                    "values": {
+                        "project_name": "生成AI活用型Webアプリ開発",
+                        "operating_system": "Windows 11 / macOS 最新版",
+                        "runtime_environment": "Google Chrome 最新版",
+                        "delivery_date": "双方協議のうえ定める日",
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertRegex(
+                response.json["contract_id"],
+                r"^estimateC-20260823-[a-f0-9]{8}$",
+            )
+            self.assertEqual(response.json["department"], "WEB・アプリ")
 
     def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
         client = create_app(database_url="").test_client()

@@ -224,6 +224,36 @@
     .document th { width: 30%; background: #f1f5f9; }
     .document td { white-space: pre-wrap; }
 
+    .estimate-page { font-size: 9pt; line-height: 1.45; }
+    .estimate-page h1 { margin-bottom: 10px; }
+    .estimate-client { margin: 14px 0 16px; font-size: 11pt; }
+    .estimate-total {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border: 2px solid #222222;
+      text-align: center;
+      font-size: 13pt;
+      font-weight: 700;
+    }
+    .estimate-value {
+      margin: 12px 0;
+      padding: 10px 12px;
+      border-left: 4px solid #1e40af;
+      background: #eff6ff;
+    }
+    .estimate-table { margin-top: 10px !important; font-size: 8pt; }
+    .estimate-table th, .estimate-table td { padding: 6px; }
+    .estimate-table th { width: auto; }
+    .estimate-table .number { width: 13%; text-align: right; white-space: nowrap; }
+    .estimate-table .quantity { width: 7%; text-align: center; white-space: nowrap; }
+    .estimate-summary { width: 48% !important; margin: 10px 0 0 auto !important; }
+    .estimate-summary th, .estimate-summary td { padding: 5px 7px; }
+    .estimate-summary td { text-align: right; white-space: nowrap; }
+    .estimate-issuer { margin-top: 12px; }
+    .estimate-conditions { margin: 0; padding: 0; list-style: none; }
+    .estimate-conditions li { margin-bottom: 11px; }
+    .estimate-conditions strong { display: block; margin-bottom: 2px; font-size: 9.5pt; }
+
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
       .sidebar { position: static; height: auto; }
@@ -287,6 +317,9 @@
           <optgroup label="共通契約書">
             <option value="master">業務委託基本契約書</option>
           </optgroup>
+          <optgroup label="WEB・アプリ契約前書類">
+            <option value="estimateC">御見積書（生成AIクリエイター仕様）</option>
+          </optgroup>
           <optgroup label="個別契約書">
             <option value="typeA">個別契約書 A（音楽指導・支援）</option>
             <option value="typeB">個別契約書 B（楽器輸送）</option>
@@ -306,7 +339,7 @@
       </div>
 
       <div class="field">
-        <label for="contractDate">契約締結日</label>
+        <label for="contractDate" id="documentDateLabel">契約締結日</label>
         <input type="date" id="contractDate">
       </div>
 
@@ -379,6 +412,7 @@
     const clientName = document.getElementById('clientName');
     const clientRepresentative = document.getElementById('clientRepresentative');
     const contractDate = document.getElementById('contractDate');
+    const documentDateLabel = document.getElementById('documentDateLabel');
     const dynamicFields = document.getElementById('dynamicFields');
     const preview = document.getElementById('documentPreview');
     const saveButton = document.getElementById('saveContract');
@@ -404,9 +438,15 @@
         cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
         special_terms: '1. 甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. 引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. 補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. 天候、災害、道路事情、車両故障、行政上の要請その他安全または適法な運行が困難な場合、乙は経路・日時の変更または運送中止を判断できる。甲乙は代替手段および費用を速やかに協議する。\n5. 運送主体、必要な許認可、積卸しの担当範囲、待機時間、保管、再委託および追加費用は事前に明確化し、法令および運送主体の約款が適用される場合はこれを優先する。'
       },
+      estimateC: {
+        project_name: '生成AI活用型 Web・アプリケーション開発一式',
+        operating_system: 'Windows 11 / macOS 最新版',
+        runtime_environment: 'Google Chrome 最新版',
+        delivery_date: '双方協議のうえ定める日'
+      },
       typeC: {
         deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
-        special_terms: '1. 成果物、対応環境、受入基準、検査期間および納品方法は仕様書等で定める。検査期間内に具体的な不適合の通知がない場合の取扱いは個別に合意し、乙は合意した仕様への適合を保証するが、障害が一切生じないことを保証しない。\n2. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。\n3. 既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。成果物固有部分の知的財産権、利用許諾、ソースコードの引渡しおよび実績公開の可否は個別に定める。\n4. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とし、代替対応、移行および追加費用は協議する。甲は必要なアカウントおよび利用権限を適法に準備する。\n5. 甲乙は、個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。保守、監視、バックアップ、更新およびサポートは、別途合意した範囲に限る。'
+        special_terms: '1. 成果物はプログラム一式をZIPファイル等の電子データで納品し、納品時に合意する指定動作環境での稼働を受入基準とする。甲はデータ受領後14日以内に検収し、期間内に具体的な不適合の通知がない場合は検収完了とみなす。\n2. 検収完了後14日以内に発見された、合意仕様に対するプログラム固有の不具合は乙が無償で修正する。仕様変更、機能追加、指定外環境への対応および第三者サービスの変更対応は無償修正に含まれない。\n3. 本件はプログラムの売り切り（買い切り）契約とし、検収完了後の継続的な運用保守、監視、バックアップ、将来のOS・ブラウザ・API等の更新への追従および機能追加は含まれず、必要な場合は別途有償で合意する。\n4. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。\n5. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とする。甲乙は個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。'
       }
     };
 
@@ -436,12 +476,18 @@
 
     function renderDynamicFields() {
       const type = docType.value;
+      documentDateLabel.textContent = type === 'estimateC' ? '見積発行日' : '契約締結日';
       if (type === 'master') {
         dynamicFields.replaceChildren();
         return;
       }
       const values = contractValues[type];
-      if (type === 'typeA') {
+      if (type === 'estimateC') {
+        dynamicFields.innerHTML = field('案件名', 'project_name', values.project_name, true)
+          + field('指定OS', 'operating_system', values.operating_system)
+          + field('ブラウザ・実行環境', 'runtime_environment', values.runtime_environment)
+          + field('納期', 'delivery_date', values.delivery_date);
+      } else if (type === 'typeA') {
         dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
           + field('委託料', 'amount', values.amount)
           + field('契約期間・実施日', 'term', values.term)
@@ -472,6 +518,47 @@
 
     function contractTable(rows) {
       return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function renderWebAppEstimate(date, safeClient) {
+      const values = contractValues.estimateC;
+      const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      preview.innerHTML = `
+        <section class="contract-page estimate-page" data-page-number="1">
+          <h1>御見積書</h1>
+          <p class="doc-date">${date}</p>
+          <div class="estimate-client"><strong>${safeClient} 御中</strong><br>${safeRepresentative}</div>
+          <p>以下の通り、御見積申し上げます。</p>
+          <div class="estimate-total">御見積金額（税込）：￥220,000 -</div>
+          <div class="estimate-value"><strong>生成AIを活用するプロのWebクリエイターとしての提供価値</strong><br>生成AIによる設計・実装支援で制作工程を高速化しながら、要件定義、プロンプト設計、コード監査、セキュリティ検証および最終品質保証は制作者が責任を持って行います。これにより、高品質・短納期・適正価格を両立します。</div>
+          <p><strong>案件名：</strong>${escapeHtml(values.project_name)}</p>
+          <table class="estimate-table">
+            <thead><tr><th>品目・作業内容</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>概要・内訳</th></tr></thead>
+            <tbody>
+              <tr><td>要件定義・プロンプト設計費</td><td class="quantity">1式</td><td class="number">40,000</td><td class="number">40,000</td><td>業務要件のヒアリング、UI構成案策定、AI生成用プロンプト・アーキテクチャ設計</td></tr>
+              <tr><td>生成AI支援 アプリケーション実装費</td><td class="quantity">1式</td><td class="number">90,000</td><td class="number">90,000</td><td>生成AIを活用したフロントエンド・バックエンドの高速コード生成および機能実装</td></tr>
+              <tr><td>UI/UXデザイン・スタイリング費</td><td class="quantity">1式</td><td class="number">30,000</td><td class="number">30,000</td><td>レスポンシブ対応、UIコンポーネント調整、操作性最適化</td></tr>
+              <tr><td>コード監査・セキュリティ検証費</td><td class="quantity">1式</td><td class="number">30,000</td><td class="number">30,000</td><td>AI生成コードの人間による精査・リファクタリング、指定環境での動作・安全性検証</td></tr>
+              <tr><td>パッケージング・納品諸経費</td><td class="quantity">1式</td><td class="number">10,000</td><td class="number">10,000</td><td>納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理</td></tr>
+            </tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td>200,000円</td></tr><tr><th>消費税（10%）</th><td>20,000円</td></tr><tr><th>合計金額（税込）</th><td><strong>220,000円</strong></td></tr></tbody></table>
+          <div class="estimate-issuer"><strong>発行者情報</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>業務区分：生成AI活用型 Web・アプリケーション開発 / クリエイティブ制作</div>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="2">
+          <h1>お見積り条件・特記事項</h1>
+          <ul class="estimate-conditions">
+            <li><strong>1. 納品形態</strong>完成したプログラム一式をZIPファイル等の電子データ形式にて引き渡します。</li>
+            <li><strong>2. 指定動作環境</strong>本見積りは納品時に合意する指定動作環境での稼働を前提とします。<br>OS：${escapeHtml(values.operating_system)}<br>ブラウザ・実行環境：${escapeHtml(values.runtime_environment)}</li>
+            <li><strong>3. 納期</strong>${escapeHtml(values.delivery_date)}</li>
+            <li><strong>4. 検収および無償修正期間</strong>検収期間：データ受領後14日以内に指定環境での動作確認をお願いいたします。期間内に具体的な不適合の通知がない場合は検収完了とみなします。<br>無償修正期間：検収完了後14日以内に発見されたプログラム固有の不具合（バグ）について無償対応いたします。仕様変更、機能追加および指定外環境への対応は対象外です。</li>
+            <li><strong>5. 売り切り（保守対象外）の確認</strong>本件はプログラムの売り切り（買い切り）契約であり、検収完了後の継続的な運用保守、将来的なOS・ブラウザ・APIアップデートへの追従改修、監視、バックアップおよび機能追加等は含まれません。必要時は別途有償にて承ります。</li>
+            <li><strong>6. 生成AIおよび第三者サービス</strong>生成AIは制作支援に使用し、成果物の品質確認と納品責任は発行者が負います。第三者サービス、オープンソースソフトウェア等の権利・規約は各提供者の条件に従い、将来の仕様変更や料金改定への対応は別途協議します。</li>
+            <li><strong>7. お支払条件</strong>検収完了後、当月末締め・翌月末日までに指定口座へのお振込みをお願いいたします。振込手数料はご依頼者様のご負担とします。</li>
+            <li><strong>8. 有効期限</strong>本見積書の発行日より30日間有効といたします。</li>
+            <li><strong>9. 契約書との関係</strong>ご発注時は業務委託基本契約書および「個別契約書 C（WEB・アプリ）」を締結し、本見積書を個別契約の一部として取り扱います。文書間に差異がある場合は、後に成立した個別の合意を優先します。</li>
+          </ul>
+        </section>`;
     }
 
     function renderMasterContract(date, safeClient, parties) {
@@ -524,7 +611,10 @@
       preview.dataset.contractType = type;
       const date = formatJapaneseDate(contractDate.value);
       const parties = partyHtml();
-      if (type === 'master') {
+      if (type === 'estimateC') {
+        const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
+        renderWebAppEstimate(date, safeClient);
+      } else if (type === 'master') {
         const safeClient = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
         renderMasterContract(date, safeClient, parties);
       } else {

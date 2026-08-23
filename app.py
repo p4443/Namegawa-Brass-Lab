@@ -171,6 +171,16 @@ CONTRACT_TYPES = {
         "directory": "transport",
         "keys": {"cargo", "value", "route", "special_terms"},
     },
+    "estimateC": {
+        "department": "WEB・アプリ",
+        "directory": "web-app",
+        "keys": {
+            "project_name",
+            "operating_system",
+            "runtime_environment",
+            "delivery_date",
+        },
+    },
     "typeC": {
         "department": "WEB・アプリ",
         "directory": "web-app",
@@ -754,7 +764,9 @@ def list_contracts(contracts_dir=CONTRACTS_DIR):
 
 def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
     contract_id = str(contract_id).strip()
-    match = re.fullmatch(r"(master|typeA|typeB|typeC)-\d{8}-[a-f0-9]{8}", contract_id)
+    match = re.fullmatch(
+        r"(master|typeA|typeB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+    )
     if not match:
         return None
     configuration = CONTRACT_TYPES[match.group(1)]
@@ -776,7 +788,9 @@ def delete_contract(
     confirmation_id = str(confirmation_id).strip()
     if not hmac.compare_digest(contract_id, confirmation_id):
         raise ValueError("確認用の契約書IDが一致しません。")
-    match = re.fullmatch(r"(master|typeA|typeB|typeC)-\d{8}-[a-f0-9]{8}", contract_id)
+    match = re.fullmatch(
+        r"(master|typeA|typeB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+    )
     if not match:
         return 0
     configuration = CONTRACT_TYPES[match.group(1)]
