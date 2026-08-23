@@ -182,6 +182,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('value="typeA"', page)
         self.assertIn('value="typeB"', page)
         self.assertIn('value="estimateC"', page)
+        self.assertIn("C契約前 御見積書（選択・任意入力対応）", page)
+        self.assertIn("C契約前見積書の編集", page)
         self.assertIn('value="typeC"', page)
         self.assertIn("window.print()", page)
         self.assertIn("法令等の制定または改廃", page)
@@ -219,6 +221,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("生成AI支援 アプリケーション実装費", page)
         self.assertIn("検収完了後14日以内", page)
         self.assertIn("売り切り（買い切り）契約", page)
+        self.assertIn('id="estimateProjectPresets"', page)
+        self.assertIn('id="estimateItemPresets"', page)
+        self.assertIn('data-estimate-row="${index}"', page)
+        self.assertIn('data-estimate-preset="project_name"', page)
+        self.assertIn('data-estimate-preset-key="${key}"', page)
+        self.assertIn("function applyEstimatePreset(select)", page)
+        self.assertIn("function estimatePreviewEditor(key, value, rowIndex = '')", page)
+        self.assertIn("data-preview-estimate-key", page)
+        self.assertIn("function calculateEstimateTotals()", page)
         self.assertIn("脆弱性", page)
         self.assertIn('class="party-trade-name">屋号：なめがわブラス・ラボ', page)
         self.assertIn(".party-trade-name { white-space: nowrap; }", page)
@@ -243,6 +254,16 @@ class UpdatesTest(unittest.TestCase):
                         "operating_system": "Windows 11 / macOS 最新版",
                         "runtime_environment": "Google Chrome 最新版",
                         "delivery_date": "双方協議のうえ定める日",
+                        "estimate_items": [
+                            {
+                                "description": "要件定義・プロンプト設計費",
+                                "quantity": "1",
+                                "unit": "式",
+                                "unit_price": "40000",
+                                "amount": "40000",
+                                "details": "要件定義と設計",
+                            }
+                        ],
                     },
                 },
             )
@@ -253,6 +274,9 @@ class UpdatesTest(unittest.TestCase):
                 r"^estimateC-20260823-[a-f0-9]{8}$",
             )
             self.assertEqual(response.json["department"], "WEB・アプリ")
+            self.assertEqual(
+                response.json["values"]["estimate_items"][0]["amount"], "40000"
+            )
 
     def test_admin_pages_hide_password_form_and_require_explicit_logout(self):
         client = create_app(database_url="").test_client()

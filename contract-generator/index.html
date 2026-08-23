@@ -110,6 +110,48 @@
     }
     .field textarea { min-height: 90px; resize: vertical; }
     .field textarea[data-contract-key="special_terms"] { min-height: 260px; }
+    .estimate-editor {
+      margin-bottom: 14px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #f8fafc;
+    }
+    .estimate-edit-guide {
+      margin: 4px 0 14px;
+      padding: 12px;
+      border: 1px solid #60a5fa;
+      border-left: 4px solid var(--primary);
+      border-radius: 6px;
+      color: #1e3a8a;
+      background: #eff6ff;
+      font-size: 0.8rem;
+      line-height: 1.6;
+    }
+    .estimate-edit-guide strong { display: block; font-size: 0.9rem; }
+    .estimate-editor h2 { margin: 0 0 10px; font-size: 0.9rem; }
+    .estimate-editor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .estimate-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
+    .estimate-editor-grid input, .estimate-editor-grid textarea {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      background: #ffffff;
+    }
+    .estimate-preset {
+      width: 100%;
+      margin-bottom: 4px;
+      padding: 7px 8px;
+      border: 1px solid #93c5fd;
+      border-radius: 5px;
+      color: #1e3a8a;
+      background: #eff6ff;
+      font-size: 0.75rem;
+    }
+    .estimate-editor-grid .estimate-description,
+    .estimate-editor-grid .estimate-details { grid-column: 1 / -1; }
+    .estimate-editor-grid textarea { min-height: 66px; resize: vertical; }
     .field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--primary); }
 
     .sidebar-note {
@@ -253,6 +295,24 @@
     .estimate-conditions { margin: 0; padding: 0; list-style: none; }
     .estimate-conditions li { margin-bottom: 11px; }
     .estimate-conditions strong { display: block; margin-bottom: 2px; font-size: 9.5pt; }
+    .estimate-preview-editor {
+      display: grid;
+      grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+      gap: 3px;
+    }
+    .estimate-preview-editor select,
+    .estimate-preview-editor input {
+      width: 100%;
+      min-width: 0;
+      padding: 4px 5px;
+      border: 1px solid #93c5fd;
+      border-radius: 4px;
+      color: #172554;
+      background: #ffffff;
+      font: inherit;
+    }
+    .estimate-preview-editor select { color: #1e40af; background: #eff6ff; }
+    .estimate-print-value { display: none; }
 
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
@@ -287,6 +347,8 @@
       .document p { orphans: 3; widows: 3; }
       .document table { break-inside: auto; }
       .document tr, .doc-parties, .party-box { break-inside: avoid; }
+      .estimate-preview-editor { display: none; }
+      .estimate-print-value { display: inline; }
     }
   </style>
 </head>
@@ -317,12 +379,10 @@
           <optgroup label="共通契約書">
             <option value="master">業務委託基本契約書</option>
           </optgroup>
-          <optgroup label="WEB・アプリ契約前書類">
-            <option value="estimateC">御見積書（生成AIクリエイター仕様）</option>
-          </optgroup>
           <optgroup label="個別契約書">
             <option value="typeA">個別契約書 A（音楽指導・支援）</option>
             <option value="typeB">個別契約書 B（楽器輸送）</option>
+            <option value="estimateC">C契約前 御見積書（選択・任意入力対応）</option>
             <option value="typeC">個別契約書 C（WEB・アプリ）</option>
           </optgroup>
         </select>
@@ -442,7 +502,14 @@
         project_name: '生成AI活用型 Web・アプリケーション開発一式',
         operating_system: 'Windows 11 / macOS 最新版',
         runtime_environment: 'Google Chrome 最新版',
-        delivery_date: '双方協議のうえ定める日'
+        delivery_date: '双方協議のうえ定める日',
+        estimate_items: [
+          { description: '要件定義・プロンプト設計費', quantity: '1', unit: '式', unit_price: '40000', amount: '40000', details: '業務要件のヒアリング、UI構成案策定、AI生成用プロンプト・アーキテクチャ設計' },
+          { description: '生成AI支援 アプリケーション実装費', quantity: '1', unit: '式', unit_price: '90000', amount: '90000', details: '生成AIを活用したフロントエンド・バックエンドの高速コード生成および機能実装' },
+          { description: 'UI/UXデザイン・スタイリング費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'レスポンシブ対応、UIコンポーネント調整、操作性最適化' },
+          { description: 'コード監査・セキュリティ検証費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'AI生成コードの人間による精査・リファクタリング、指定環境での動作・安全性検証' },
+          { description: 'パッケージング・納品諸経費', quantity: '1', unit: '式', unit_price: '10000', amount: '10000', details: '納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理' }
+        ]
       },
       typeC: {
         deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
@@ -474,6 +541,61 @@
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
 
+    const estimatePresets = {
+      description: ['要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
+      quantity: ['1', '2', '3', '5', '10'],
+      unit: ['式', '件', '画面', '時間', '日'],
+      unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
+      amount: ['10000', '30000', '40000', '50000', '90000', '100000']
+    };
+
+    function presetOptions(values) {
+      return `<option value="">登録内容から選択</option>${values.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join('')}`;
+    }
+
+    function estimateInput(label, key, value, className = '') {
+      return `<label class="${className}">${label}<select class="estimate-preset" data-estimate-preset-key="${key}" aria-label="${label}の登録内容から選択">${presetOptions(estimatePresets[key])}</select><input data-estimate-key="${key}" type="text" maxlength="120" value="${escapeHtml(value)}" aria-label="${label}の任意入力"></label>`;
+    }
+
+    function renderEstimateFields(values) {
+      const items = values.estimate_items.map((item, index) => `
+        <section class="estimate-editor" data-estimate-row="${index}">
+          <h2>明細 ${index + 1}</h2>
+          <div class="estimate-editor-grid">
+            ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
+            ${estimateInput('数量', 'quantity', item.quantity)}
+            ${estimateInput('単位', 'unit', item.unit)}
+            ${estimateInput('単価（円）', 'unit_price', item.unit_price)}
+            ${estimateInput('金額（円）', 'amount', item.amount)}
+            <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
+          </div>
+        </section>`).join('');
+      return `<div class="estimate-edit-guide"><strong>C契約前見積書の編集</strong>各項目は青い「登録内容から選択」で通常内容を選べます。その下の白い入力欄へ任意の内容を直接入力することもできます。</div>
+        <div class="field"><label>案件名（選択または任意入力）<select class="estimate-preset" data-estimate-preset="project_name" aria-label="案件名の登録内容から選択">${presetOptions(['生成AI活用型 Web・アプリケーション開発一式', 'コーポレートWebサイト制作一式', '業務支援Webアプリケーション開発一式', '既存Webサイト改修・機能追加一式'])}</select><input data-contract-key="project_name" type="text" maxlength="160" value="${escapeHtml(values.project_name)}" aria-label="案件名の任意入力"></label></div>`
+        + field('指定OS', 'operating_system', values.operating_system)
+        + field('ブラウザ・実行環境', 'runtime_environment', values.runtime_environment)
+        + field('納期', 'delivery_date', values.delivery_date)
+        + `<datalist id="estimateProjectPresets"><option value="生成AI活用型 Web・アプリケーション開発一式"><option value="コーポレートWebサイト制作一式"><option value="業務支援Webアプリケーション開発一式"><option value="既存Webサイト改修・機能追加一式"></datalist>
+          <datalist id="estimateItemPresets"><option value="要件定義・プロンプト設計費"><option value="生成AI支援 アプリケーション実装費"><option value="UI/UXデザイン・スタイリング費"><option value="コード監査・セキュリティ検証費"><option value="パッケージング・納品諸経費"><option value="追加機能開発費"><option value="データ移行費"></datalist>
+          <datalist id="estimateQuantityPresets"><option value="1"><option value="2"><option value="3"><option value="5"><option value="10"></datalist>
+          <datalist id="estimateUnitPresets"><option value="式"><option value="件"><option value="画面"><option value="時間"><option value="日"></datalist>
+          <datalist id="estimatePricePresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>
+          <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}`;
+    }
+
+    function applyEstimatePreset(select) {
+      if (!select.value) return;
+      const row = select.closest('[data-estimate-row]');
+      const key = select.dataset.estimatePresetKey || select.dataset.estimatePreset;
+      const input = row
+        ? row.querySelector(`[data-estimate-key="${key}"]`)
+        : dynamicFields.querySelector(`[data-contract-key="${key}"]`);
+      if (!input) return;
+      input.value = select.value;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      select.value = '';
+    }
+
     function renderDynamicFields() {
       const type = docType.value;
       documentDateLabel.textContent = type === 'estimateC' ? '見積発行日' : '契約締結日';
@@ -483,10 +605,7 @@
       }
       const values = contractValues[type];
       if (type === 'estimateC') {
-        dynamicFields.innerHTML = field('案件名', 'project_name', values.project_name, true)
-          + field('指定OS', 'operating_system', values.operating_system)
-          + field('ブラウザ・実行環境', 'runtime_environment', values.runtime_environment)
-          + field('納期', 'delivery_date', values.delivery_date);
+        dynamicFields.innerHTML = renderEstimateFields(values);
       } else if (type === 'typeA') {
         dynamicFields.innerHTML = field('委託業務の内容', 'work', values.work, true)
           + field('委託料', 'amount', values.amount)
@@ -520,8 +639,46 @@
       return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
     }
 
+    function estimateNumber(value) {
+      const normalized = String(value || '').replace(/,/g, '').trim();
+      return /^\d+$/.test(normalized) ? Number(normalized) : 0;
+    }
+
+    function calculateEstimateTotals() {
+      const subtotal = contractValues.estimateC.estimate_items.reduce(
+        (total, item) => total + estimateNumber(item.amount), 0
+      );
+      const tax = Math.round(subtotal * 0.1);
+      return { subtotal, tax, total: subtotal + tax };
+    }
+
+    function formatEstimateYen(value) {
+      return Number(value).toLocaleString('ja-JP');
+    }
+
+    function updateEstimatePreviewTotals() {
+      const totals = calculateEstimateTotals();
+      const totalHeading = preview.querySelector('.estimate-total');
+      if (totalHeading) totalHeading.textContent = `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -`;
+      const subtotalCell = preview.querySelector('[data-estimate-total="subtotal"]');
+      const taxCell = preview.querySelector('[data-estimate-total="tax"]');
+      const totalCell = preview.querySelector('[data-estimate-total="total"]');
+      if (subtotalCell) subtotalCell.textContent = `${formatEstimateYen(totals.subtotal)}円`;
+      if (taxCell) taxCell.textContent = `${formatEstimateYen(totals.tax)}円`;
+      if (totalCell) totalCell.textContent = `${formatEstimateYen(totals.total)}円`;
+    }
+
+    function estimatePreviewEditor(key, value, rowIndex = '') {
+      const presets = key === 'project_name'
+        ? ['生成AI活用型 Web・アプリケーション開発一式', 'コーポレートWebサイト制作一式', '業務支援Webアプリケーション開発一式', '既存Webサイト改修・機能追加一式']
+        : estimatePresets[key];
+      const rowAttribute = rowIndex === '' ? '' : ` data-preview-estimate-row="${rowIndex}"`;
+      return `<span class="estimate-preview-editor"${rowAttribute}><select data-preview-estimate-preset="${key}" aria-label="登録内容から選択">${presetOptions(presets)}</select><input data-preview-estimate-key="${key}" type="text" value="${escapeHtml(value)}" aria-label="任意入力"></span><span class="estimate-print-value">${escapeHtml(value)}</span>`;
+    }
+
     function renderWebAppEstimate(date, safeClient) {
       const values = contractValues.estimateC;
+      const totals = calculateEstimateTotals();
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
@@ -529,20 +686,16 @@
           <p class="doc-date">${date}</p>
           <div class="estimate-client"><strong>${safeClient} 御中</strong><br>${safeRepresentative}</div>
           <p>以下の通り、御見積申し上げます。</p>
-          <div class="estimate-total">御見積金額（税込）：￥220,000 -</div>
+          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
           <div class="estimate-value"><strong>生成AIを活用するプロのWebクリエイターとしての提供価値</strong><br>生成AIによる設計・実装支援で制作工程を高速化しながら、要件定義、プロンプト設計、コード監査、セキュリティ検証および最終品質保証は制作者が責任を持って行います。これにより、高品質・短納期・適正価格を両立します。</div>
-          <p><strong>案件名：</strong>${escapeHtml(values.project_name)}</p>
+          <div><strong>案件名（直接編集できます）：</strong>${estimatePreviewEditor('project_name', values.project_name)}</div>
           <table class="estimate-table">
             <thead><tr><th>品目・作業内容</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>概要・内訳</th></tr></thead>
             <tbody>
-              <tr><td>要件定義・プロンプト設計費</td><td class="quantity">1式</td><td class="number">40,000</td><td class="number">40,000</td><td>業務要件のヒアリング、UI構成案策定、AI生成用プロンプト・アーキテクチャ設計</td></tr>
-              <tr><td>生成AI支援 アプリケーション実装費</td><td class="quantity">1式</td><td class="number">90,000</td><td class="number">90,000</td><td>生成AIを活用したフロントエンド・バックエンドの高速コード生成および機能実装</td></tr>
-              <tr><td>UI/UXデザイン・スタイリング費</td><td class="quantity">1式</td><td class="number">30,000</td><td class="number">30,000</td><td>レスポンシブ対応、UIコンポーネント調整、操作性最適化</td></tr>
-              <tr><td>コード監査・セキュリティ検証費</td><td class="quantity">1式</td><td class="number">30,000</td><td class="number">30,000</td><td>AI生成コードの人間による精査・リファクタリング、指定環境での動作・安全性検証</td></tr>
-              <tr><td>パッケージング・納品諸経費</td><td class="quantity">1式</td><td class="number">10,000</td><td class="number">10,000</td><td>納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理</td></tr>
+              ${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}
             </tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td>200,000円</td></tr><tr><th>消費税（10%）</th><td>20,000円</td></tr><tr><th>合計金額（税込）</th><td><strong>220,000円</strong></td></tr></tbody></table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
           <div class="estimate-issuer"><strong>発行者情報</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>業務区分：生成AI活用型 Web・アプリケーション開発 / クリエイティブ制作</div>
         </section>
         <section class="contract-page estimate-page" data-page-number="2">
@@ -769,10 +922,79 @@
     docType.addEventListener('change', () => { renderDynamicFields(); renderPreview(); });
     [clientName, clientRepresentative, contractDate].forEach(input => input.addEventListener('input', renderPreview));
     dynamicFields.addEventListener('input', event => {
+      const estimateKey = event.target.dataset.estimateKey;
+      if (estimateKey) {
+        const row = event.target.closest('[data-estimate-row]');
+        const rowIndex = Number(row?.dataset.estimateRow);
+        const item = contractValues.estimateC.estimate_items[rowIndex];
+        if (!item) return;
+        item[estimateKey] = event.target.value;
+        if (estimateKey === 'quantity' || estimateKey === 'unit_price') {
+          const quantity = Number(String(item.quantity).replace(/,/g, ''));
+          const unitPrice = estimateNumber(item.unit_price);
+          if (Number.isFinite(quantity) && quantity >= 0 && unitPrice >= 0) {
+            item.amount = String(Math.round(quantity * unitPrice));
+            const amountInput = row.querySelector('[data-estimate-key="amount"]');
+            if (amountInput) amountInput.value = item.amount;
+          }
+        }
+        renderPreview();
+        return;
+      }
       const key = event.target.dataset.contractKey;
       if (!key) return;
       contractValues[docType.value][key] = event.target.value;
       renderPreview();
+    });
+    dynamicFields.addEventListener('change', event => {
+      if (event.target.matches('[data-estimate-preset], [data-estimate-preset-key]')) {
+        applyEstimatePreset(event.target);
+      }
+    });
+    preview.addEventListener('change', event => {
+      const presetKey = event.target.dataset.previewEstimatePreset;
+      if (presetKey && event.target.value) {
+        const editor = event.target.closest('.estimate-preview-editor');
+        const input = editor?.querySelector(`[data-preview-estimate-key="${presetKey}"]`);
+        if (input) {
+          input.value = event.target.value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        event.target.value = '';
+        return;
+      }
+    });
+    preview.addEventListener('input', event => {
+      const key = event.target.dataset.previewEstimateKey;
+      if (!key) return;
+      if (key === 'project_name') {
+        contractValues.estimateC.project_name = event.target.value;
+        const sidebarInput = dynamicFields.querySelector('[data-contract-key="project_name"]');
+        if (sidebarInput) sidebarInput.value = event.target.value;
+      } else {
+        const rowIndex = Number(event.target.closest('[data-preview-estimate-row]')?.dataset.previewEstimateRow);
+        const item = contractValues.estimateC.estimate_items[rowIndex];
+        if (!item) return;
+        item[key] = event.target.value;
+        const sidebarInput = dynamicFields.querySelector(`[data-estimate-row="${rowIndex}"] [data-estimate-key="${key}"]`);
+        if (sidebarInput) sidebarInput.value = event.target.value;
+        if (key === 'quantity' || key === 'unit_price') {
+          const quantity = Number(String(item.quantity).replace(/,/g, ''));
+          const unitPrice = estimateNumber(item.unit_price);
+          if (Number.isFinite(quantity) && quantity >= 0) {
+            item.amount = String(Math.round(quantity * unitPrice));
+            const amountInput = preview.querySelector(`[data-preview-estimate-row="${rowIndex}"] [data-preview-estimate-key="amount"]`);
+            const sidebarAmount = dynamicFields.querySelector(`[data-estimate-row="${rowIndex}"] [data-estimate-key="amount"]`);
+            if (amountInput) amountInput.value = item.amount;
+            if (sidebarAmount) sidebarAmount.value = item.amount;
+            const amountPrintValue = amountInput?.closest('.estimate-preview-editor')?.nextElementSibling;
+            if (amountPrintValue?.classList.contains('estimate-print-value')) amountPrintValue.textContent = item.amount;
+          }
+        }
+      }
+      const printValue = event.target.closest('.estimate-preview-editor')?.nextElementSibling;
+      if (printValue?.classList.contains('estimate-print-value')) printValue.textContent = event.target.value;
+      updateEstimatePreviewTotals();
     });
     document.getElementById('printContract').addEventListener('click', () => window.print());
     saveButton.addEventListener('click', async () => {

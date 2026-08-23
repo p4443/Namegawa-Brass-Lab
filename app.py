@@ -179,6 +179,7 @@ CONTRACT_TYPES = {
             "operating_system",
             "runtime_environment",
             "delivery_date",
+            "estimate_items",
         },
     },
     "typeC": {
@@ -708,6 +709,37 @@ def validate_contract(payload):
         raise ValueError("契約条件を確認してください。")
     values = {}
     for key in configuration["keys"]:
+        if key == "estimate_items":
+            raw_items = raw_values.get(key, [])
+            if not isinstance(raw_items, list) or not 1 <= len(raw_items) <= 10:
+                raise ValueError("見積明細は1件以上10件以内で入力してください。")
+            estimate_items = []
+            for raw_item in raw_items:
+                if not isinstance(raw_item, dict):
+                    raise ValueError("見積明細を正しく入力してください。")
+                item = {
+                    "description": str(raw_item.get("description", "")).strip(),
+                    "quantity": str(raw_item.get("quantity", "")).strip(),
+                    "unit": str(raw_item.get("unit", "")).strip(),
+                    "unit_price": str(raw_item.get("unit_price", "")).strip(),
+                    "amount": str(raw_item.get("amount", "")).strip(),
+                    "details": str(raw_item.get("details", "")).strip(),
+                }
+                if (
+                    not item["description"]
+                    or len(item["description"]) > 120
+                    or not item["quantity"]
+                    or len(item["quantity"]) > 20
+                    or not item["unit"]
+                    or len(item["unit"]) > 20
+                    or re.fullmatch(r"\d{1,9}", item["unit_price"]) is None
+                    or re.fullmatch(r"\d{1,9}", item["amount"]) is None
+                    or len(item["details"]) > 300
+                ):
+                    raise ValueError("見積明細の入力内容を確認してください。")
+                estimate_items.append(item)
+            values[key] = estimate_items
+            continue
         value = str(raw_values.get(key, "")).strip()
         maximum_length = 3000 if key == "special_terms" else 500
         if not value or len(value) > maximum_length:
