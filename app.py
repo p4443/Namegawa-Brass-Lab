@@ -1054,8 +1054,13 @@ def save_contract(values, contracts_dir=CONTRACTS_DIR):
 
 def list_contracts(contracts_dir=CONTRACTS_DIR):
     contracts = []
+    scanned_directories = set()
     for configuration in CONTRACT_TYPES.values():
-        department_dir = Path(contracts_dir) / configuration["directory"]
+        directory = configuration["directory"]
+        if directory in scanned_directories:
+            continue
+        scanned_directories.add(directory)
+        department_dir = Path(contracts_dir) / directory
         for contract_path in department_dir.glob("*.json") if department_dir.exists() else []:
             try:
                 contract = json.loads(contract_path.read_text(encoding="utf-8"))

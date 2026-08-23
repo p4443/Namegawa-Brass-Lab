@@ -661,6 +661,7 @@ class UpdatesTest(unittest.TestCase):
             self.assertTrue(contract_path.is_file())
             self.assertEqual(listed.status_code, 200)
             self.assertEqual(listed.json["storage_path"], str(Path(temporary_directory).resolve()))
+            self.assertEqual(len(listed.json["contracts"]), 1)
             self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
             self.assertEqual(listed.json["contracts"][0]["client_name"], "〇〇楽団")
 
