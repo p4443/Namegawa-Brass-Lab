@@ -2281,6 +2281,16 @@ def create_app(
 
     def require_editor():
         configured_password = os.environ.get("EDITOR_PASSWORD", "")
+        supplied_token = request.headers.get("X-Editor-Token", "")
+        if configured_password and supplied_token:
+            try:
+                token_payload = URLSafeTimedSerializer(
+                    configured_password, salt="editor-session"
+                ).loads(supplied_token, max_age=8 * 60 * 60)
+                if isinstance(token_payload, dict) and token_payload.get("scope") == "editor":
+                    return None
+            except (BadData, SignatureExpired):
+                return jsonify({"error": "管理者セッションの有効期限が切れました。再ログインしてください。"}), 401
         payload = request.get_json(silent=True)
         supplied_password = request.headers.get("X-Editor-Password", "")
         if not supplied_password and isinstance(payload, dict):
@@ -3635,13 +3645,13 @@ def create_app(
                 headers="Content-Type, X-Editor-Password",
             )
 
-    @app.route("/api/editor", methods=["GET", "OPTIONS"])
+    @app.route("/api/editor", methods=["GET", "POST", "OPTIONS"])
     def editor_status():
         if request.method == "OPTIONS":
             return with_lesson_reservation_cors(
                 app.response_class(status=204),
-                methods="GET, OPTIONS",
-                headers="Content-Type, X-Editor-Password",
+                methods="GET, POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password, X-Editor-Token",
             )
         error = require_editor()
         if error:
@@ -3649,13 +3659,19 @@ def create_app(
             response.status_code = status_code
             return with_lesson_reservation_cors(
                 response,
-                methods="GET, OPTIONS",
-                headers="Content-Type, X-Editor-Password",
+                methods="GET, POST, OPTIONS",
+                headers="Content-Type, X-Editor-Password, X-Editor-Token",
             )
+        result = {"authenticated": True}
+        if request.method == "POST":
+            configured_password = os.environ.get("EDITOR_PASSWORD", "")
+            result["editor_token"] = URLSafeTimedSerializer(
+                configured_password, salt="editor-session"
+            ).dumps({"scope": "editor"})
         return with_lesson_reservation_cors(
-            jsonify({"authenticated": True}),
-            methods="GET, OPTIONS",
-            headers="Content-Type, X-Editor-Password",
+            jsonify(result),
+            methods="GET, POST, OPTIONS",
+            headers="Content-Type, X-Editor-Password, X-Editor-Token",
         )
 
     @app.post("/api/updates")

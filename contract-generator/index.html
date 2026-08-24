@@ -607,7 +607,7 @@
     const freightCalculatorDialog = document.getElementById('freightCalculatorDialog');
     const freightCalculatorStatus = document.getElementById('freightCalculatorStatus');
     let pendingDeleteContractId = '';
-    let adminPassword = '';
+    let editorToken = '';
     const instrumentLookupResults = new Map();
 
     const contractValues = {
@@ -1523,7 +1523,7 @@
     }
 
     function adminHeaders() {
-      return { 'Content-Type': 'application/json', 'X-Editor-Password': adminPassword };
+      return { 'Content-Type': 'application/json', 'X-Editor-Token': editorToken };
     }
 
     async function readApiError(response, fallback) {
@@ -1631,9 +1631,13 @@
     }
 
     async function authenticate(password) {
-      const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
-      if (!response.ok) throw new Error('管理者パスワードが違います。');
-      adminPassword = password;
+      const response = await fetch('/api/editor', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ editor_password: password })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '管理者パスワードが違います。'));
+      const result = await response.json();
+      if (!result.editor_token) throw new Error('管理者セッションを開始できませんでした。');
+      editorToken = result.editor_token;
       passwordInput.value = '';
       showGenerator();
     }
@@ -1650,7 +1654,7 @@
     });
 
     logoutButton.addEventListener('click', () => {
-      adminPassword = '';
+      editorToken = '';
       generator.hidden = true;
       loginScreen.hidden = false;
       passwordInput.value = '';

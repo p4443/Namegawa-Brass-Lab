@@ -333,8 +333,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="contractLoginForm"', page)
         self.assertIn('id="contractGenerator"', page)
         self.assertIn("/api/editor", page)
-        self.assertIn("X-Editor-Password", page)
-        self.assertIn("let adminPassword = '';", page)
+        self.assertIn("X-Editor-Token", page)
+        self.assertIn("let editorToken = '';", page)
+        self.assertIn("JSON.stringify({ editor_password: password })", page)
+        self.assertNotIn("X-Editor-Password': adminPassword", page)
         self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
         self.assertIn('id="contractLogout" type="button" data-history-back', page)
         self.assertIn('data-fallback="../#web">戻る（ログアウト）</button>', page)
@@ -1396,6 +1398,28 @@ class UpdatesTest(unittest.TestCase):
                 )
 
             self.assertEqual(response.status_code, 200)
+
+    def test_contract_editor_uses_token_after_non_ascii_password_login(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "契約管理パスワード"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            login = client.post(
+                "/api/editor",
+                json={"editor_password": "契約管理パスワード"},
+            )
+
+            self.assertEqual(login.status_code, 200)
+            self.assertTrue(login.json["editor_token"])
+            listed = client.get(
+                "/api/contracts",
+                headers={"X-Editor-Token": login.json["editor_token"]},
+            )
+
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.json["contracts"], [])
 
     def test_update_editor_requires_iso_calendar_date(self):
         valid_payload = {
