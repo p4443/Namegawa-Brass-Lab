@@ -977,12 +977,17 @@
     }
 
     function instrumentPricesConfirmable(values, catalogStatus) {
-      const masterItems = values.cargo_items.filter(item => item.valuation_mode === 'master');
       const sourceUrls = values.instrument_price_master.source_urls || [];
-      return catalogStatus.ready && masterItems.length > 0
-        && masterItems.every(item => sourceUrls.includes(item.price_source_url)
-          && item.price_checked_at && item.price_checked_at <= contractDate.value
-          && ['tax_included', 'tax_excluded'].includes(item.price_tax_status));
+      return catalogStatus.state !== 'error' && values.cargo_items.length > 0
+        && values.cargo_items.every(item => {
+          const sourceUrl = item.price_source_url || item.lookup_source_url;
+          return item.maker_model.trim()
+            && sourceUrls.includes(item.lookup_source_url)
+            && isOfficialInstrumentPriceUrl(sourceUrl)
+            && estimateNumber(item.catalog_price || item.unit_value) > 0
+            && ['tax_included', 'tax_excluded'].includes(item.price_tax_status)
+            && (!item.price_checked_at || item.price_checked_at <= contractDate.value);
+        });
     }
 
     const lightCargoReferenceRateHistory = [{
@@ -2274,6 +2279,9 @@
         const values = contractValues.estimateB;
         const status = instrumentCatalogStatus(values.instrument_price_master, values.instrument_price_master.source_urls || [], contractDate.value);
         values.instrument_price_master.verified = event.target.checked && instrumentPricesConfirmable(values, status);
+        event.target.checked = values.instrument_price_master.verified;
+        updateTransportWorkflowStatus();
+        renderPreview();
         return;
       }
       const cargoKey = event.target.dataset.cargoItemKey;
