@@ -1138,7 +1138,7 @@
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
             <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">公式価格を照会して最高額を反映</button>
-            ${item.price_source_url ? `<p class="price-proof">反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</p>` : ''}
+            ${item.price_source_url ? `<p class="price-proof"><strong>反映済み：単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円 ／ 行評価額 ${formatEstimateYen(estimateNumber(item.total_value))}円</strong><br>反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</p>` : ''}
             ${renderInstrumentPriceCandidates(index)}
           </div>
         </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>輸送品目を追加</button>`;
@@ -1171,6 +1171,29 @@
       applyInstrumentPrice(rowIndex);
       renderDynamicFields();
       renderPreview();
+    }
+
+    function instrumentLookupReady(rowIndex) {
+      const values = contractValues.estimateB;
+      const item = values.cargo_items[rowIndex];
+      return Boolean(values.instrument_price_master.effective_date
+        && item?.lookup_source_url
+        && item.maker_model.trim());
+    }
+
+    async function lookupInstrumentPriceWithFeedback(rowIndex) {
+      const item = contractValues.estimateB.cargo_items[rowIndex];
+      saveStatus.textContent = `輸送対象物 ${rowIndex + 1}の公式価格を照会しています...`;
+      saveStatus.removeAttribute('data-state');
+      try {
+        await lookupInstrumentPrice(rowIndex);
+        saveStatus.textContent = `輸送対象物 ${rowIndex + 1}へ単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円、行評価額 ${formatEstimateYen(estimateNumber(item.total_value))}円を反映しました。`;
+        saveStatus.dataset.state = 'success';
+      } catch (error) {
+        reportTransportError(error.message || '公式価格を照会できませんでした。', rowIndex);
+        renderDynamicFields();
+        renderPreview();
+      }
     }
 
     function applyInstrumentPrice(rowIndex) {
@@ -2289,7 +2312,12 @@
       updateTransportWorkflowStatus();
       renderPreview();
     });
-    dynamicFields.addEventListener('change', event => {
+    dynamicFields.addEventListener('change', async event => {
+      if (event.target.matches('[data-cargo-item-key="maker_model"]')) {
+        const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
+        if (instrumentLookupReady(rowIndex)) await lookupInstrumentPriceWithFeedback(rowIndex);
+        return;
+      }
       if (event.target.matches('[data-cargo-price-source]')) {
         const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
         const item = contractValues.estimateB.cargo_items[rowIndex];
@@ -2304,6 +2332,7 @@
         contractValues.estimateB.instrument_price_master.verified = false;
         renderDynamicFields();
         renderPreview();
+        if (instrumentLookupReady(rowIndex)) await lookupInstrumentPriceWithFeedback(rowIndex);
         return;
       }
       if (event.target.matches('[data-instrument-source-preset]')) {
@@ -2361,13 +2390,7 @@
       if (lookupButton) {
         const rowIndex = Number(lookupButton.dataset.lookupInstrumentPrice);
         lookupButton.disabled = true;
-        try {
-          await lookupInstrumentPrice(rowIndex);
-        } catch (error) {
-          reportTransportError(error.message || '公式価格を照会できませんでした。', rowIndex);
-          renderDynamicFields();
-          renderPreview();
-        }
+        await lookupInstrumentPriceWithFeedback(rowIndex);
         return;
       }
       if (event.target.closest('[data-open-freight-calculator]')) {
