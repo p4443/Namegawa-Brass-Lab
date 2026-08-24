@@ -217,6 +217,7 @@ CONTRACT_TYPES = {
             "total_hours",
             "instrument_price_master",
             "freight_rate_master",
+            "freight_operation",
             "cargo_items",
             "estimate_items",
         },
@@ -1158,8 +1159,8 @@ def validate_contract(payload):
             values[key] = vehicle_class
             continue
         if key == "pricing_basis":
-            pricing_basis = str(raw_values.get(key, "light_cargo_reference")).strip()
-            if pricing_basis != "light_cargo_reference":
+            pricing_basis = str(raw_values.get(key, "self_light_cargo_rate")).strip()
+            if pricing_basis not in {"self_light_cargo_rate", "light_cargo_reference"}:
                 raise ValueError("B見積の料金根拠は軽貨物料金に限定されています。")
             values[key] = pricing_basis
             continue
@@ -1256,6 +1257,28 @@ def validate_contract(payload):
                     raise ValueError("料金マスターの金額・係数を0以上の整数で入力してください。")
                 rate_master[rate_key] = rate_value
             values[key] = rate_master
+            continue
+        if key == "freight_operation":
+            raw_operation = raw_values.get(key, {})
+            if not isinstance(raw_operation, dict):
+                raise ValueError("運賃計算条件を確認してください。")
+            operation = {}
+            for operation_key in {"waiting_minutes", "loading_minutes", "actual_expenses", "instrument_surcharge_amount", "special_work_amount"}:
+                operation_value = str(raw_operation.get(operation_key, "0")).strip()
+                if re.fullmatch(r"\d{1,9}", operation_value) is None:
+                    raise ValueError("運賃計算条件の時間・金額は0以上の整数で入力してください。")
+                operation[operation_key] = operation_value
+            loading_support_mode = str(raw_operation.get("loading_support_mode", "carrier")).strip()
+            cancellation_type = str(raw_operation.get("cancellation_type", "none")).strip()
+            surcharge_mode = str(raw_operation.get("instrument_surcharge_mode", "none")).strip()
+            if loading_support_mode not in {"carrier", "customer_assisted", "customer_loads"}:
+                raise ValueError("積卸し方法を確認してください。")
+            if cancellation_type not in {"none", "previous_day", "same_day_before", "same_day_after"}:
+                raise ValueError("キャンセル区分を確認してください。")
+            if surcharge_mode not in {"none", "securement", "overnight", "assistant", "custom"}:
+                raise ValueError("楽器等運搬の上乗せ区分を確認してください。")
+            operation.update({"loading_support_mode": loading_support_mode, "cancellation_type": cancellation_type, "instrument_surcharge_mode": surcharge_mode, "holiday": raw_operation.get("holiday") is True, "night": raw_operation.get("night") is True})
+            values[key] = operation
             continue
         if key == "instrument_price_master":
             raw_master = raw_values.get(key, {})
@@ -1355,6 +1378,7 @@ def validate_contract(payload):
                 if not isinstance(raw_item, dict):
                     raise ValueError("見積明細を正しく入力してください。")
                 item = {
+                    "role": str(raw_item.get("role", "")).strip(),
                     "description": str(raw_item.get("description", "")).strip(),
                     "quantity": str(raw_item.get("quantity", "")).strip(),
                     "unit": str(raw_item.get("unit", "")).strip(),
@@ -1363,6 +1387,8 @@ def validate_contract(payload):
                     "details": str(raw_item.get("details", "")).strip(),
                 }
                 if (
+                    (item["role"] and re.fullmatch(r"[a-z_]{1,40}", item["role"]) is None)
+                    or
                     not item["description"]
                     or len(item["description"]) > 120
                     or not item["quantity"]

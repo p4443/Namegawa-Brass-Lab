@@ -536,6 +536,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("お客様のお手伝いあり（追加スタッフ不要）", page)
         self.assertIn("お客様が積卸し（荷役料なし）", page)
         self.assertIn("loadingSupportMode === 'customer_loads'", page)
+        self.assertIn("role: 'freight'", page)
+        self.assertIn("role: 'loading'", page)
+        self.assertIn("const itemByRole = role", page)
+        self.assertIn("if (items[rowIndex]?.role) return;", page)
+        self.assertIn("values.freight_operation", page)
+        self.assertIn("[50, 'distance_per_km_101_150']", page)
+        self.assertIn("[Infinity, 'distance_per_km_151_plus']", page)
+        self.assertIn("data-partner-2t-requested", page)
+        self.assertIn("発行準備完了後に確定", page)
         self.assertIn('data-freight-input="route_origin"', page)
         self.assertIn("data-measure-google-route", page)
         self.assertIn("function measureGoogleRouteDistance()", page)
@@ -615,7 +624,7 @@ class UpdatesTest(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.status_code, 201, response.get_json())
             self.assertRegex(
                 response.json["contract_id"],
                 r"^estimateC-20260823-[a-f0-9]{8}$",
@@ -680,6 +689,10 @@ class UpdatesTest(unittest.TestCase):
                     "client_representative": "代表 山田様",
                     "contract_date": "2026-08-23",
                     "values": {
+                        "workflow_status": "draft",
+                        "transport_provider_mode": "self_light_cargo",
+                        "vehicle_class": "light_cargo",
+                        "pricing_basis": "self_light_cargo_rate",
                         "transport_name": "楽器輸送業務一式",
                         "validity": "発行日より30日間",
                         "permit_number": "許可番号を入力",
@@ -699,6 +712,18 @@ class UpdatesTest(unittest.TestCase):
                         "route_destination": "〇〇市民ホール",
                         "route_distance_km": "30",
                         "total_hours": "8",
+                        "freight_operation": {
+                            "waiting_minutes": "90",
+                            "loading_minutes": "60",
+                            "loading_support_mode": "customer_assisted",
+                            "cancellation_type": "none",
+                            "actual_expenses": "1000",
+                            "instrument_surcharge_mode": "securement",
+                            "instrument_surcharge_amount": "1500",
+                            "special_work_amount": "0",
+                            "holiday": False,
+                            "night": False,
+                        },
                         "instrument_price_master": {
                             "effective_date": "2026-08-23",
                             "source_url": "https://example.com/instrument-prices",
@@ -758,6 +783,8 @@ class UpdatesTest(unittest.TestCase):
                 r"^estimateB-20260823-[a-f0-9]{8}$",
             )
             self.assertEqual(response.json["department"], "楽器輸送")
+            self.assertEqual(response.json["values"]["pricing_basis"], "self_light_cargo_rate")
+            self.assertEqual(response.json["values"]["freight_operation"]["waiting_minutes"], "90")
             self.assertEqual(
                 response.json["values"]["cargo_items"][0]["total_value"],
                 "5000000",
@@ -785,7 +812,7 @@ class UpdatesTest(unittest.TestCase):
                     "contract_date": "2026-08-23",
                     "values": {
                         "workflow_status": "quote_pending",
-                        "transport_provider_mode": "external_carrier",
+                        "transport_provider_mode": "self_light_cargo",
                         "vehicle_class": "light_cargo",
                         "pricing_basis": "light_cargo_reference",
                         "carrier_name": "",
@@ -810,6 +837,18 @@ class UpdatesTest(unittest.TestCase):
                         "route_destination": "",
                         "route_distance_km": "0",
                         "total_hours": "0",
+                        "freight_operation": {
+                            "waiting_minutes": "0",
+                            "loading_minutes": "0",
+                            "loading_support_mode": "customer_assisted",
+                            "cancellation_type": "none",
+                            "actual_expenses": "0",
+                            "instrument_surcharge_mode": "none",
+                            "instrument_surcharge_amount": "0",
+                            "special_work_amount": "0",
+                            "holiday": False,
+                            "night": False,
+                        },
                         "instrument_price_master": {
                             "effective_date": "",
                             "source_url": "",
@@ -867,10 +906,11 @@ class UpdatesTest(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.status_code, 201, response.get_json())
             self.assertEqual(response.json["values"]["workflow_status"], "quote_pending")
             self.assertEqual(response.json["values"]["vehicle_class"], "light_cargo")
             self.assertEqual(response.json["values"]["pricing_basis"], "light_cargo_reference")
+            self.assertEqual(response.json["values"]["freight_operation"]["loading_support_mode"], "customer_assisted")
             self.assertEqual(response.json["values"]["freight_rate_master"]["distance_per_km_151_plus"], "132")
             self.assertTrue(response.json["values"]["freight_rate_master"]["tax_included"])
             self.assertFalse(response.json["values"]["freight_rate_master"]["verified"])
