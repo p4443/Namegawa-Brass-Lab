@@ -343,10 +343,19 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("passwordInput.focus();", page)
         self.assertNotIn("X-Editor-Password': adminPassword", page)
         self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
-        self.assertIn('id="contractLogout" type="button" data-history-back', page)
-        self.assertIn('data-fallback="../#web">戻る（ログアウト）</button>', page)
+        self.assertIn('id="contractLogout" type="button">戻る（ログアウト）</button>', page)
+        self.assertNotIn('id="contractLogout" type="button" data-history-back', page)
+        self.assertNotIn('data-fallback="../#web">戻る（ログアウト）</button>', page)
         self.assertIn("passwordInput.value = '';", page)
         self.assertIn('id="contractStoragePath"', page)
+        self.assertIn("const initialContractValues = JSON.parse(JSON.stringify(contractValues));", page)
+        self.assertIn("function resetContractEditor()", page)
+        self.assertIn("docType.value = 'master';", page)
+        self.assertIn("clientName.value = '';", page)
+        self.assertIn("clientRepresentative.value = '';", page)
+        self.assertIn("dynamicFields.replaceChildren();", page)
+        self.assertIn("preview.replaceChildren();", page)
+        self.assertIn("resetContractEditor();", page)
         self.assertIn('id="deleteContract"', page)
         self.assertIn('id="deleteConfirmStep"', page)
         self.assertIn('id="deleteIdStep" hidden', page)
@@ -365,6 +374,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("A契約前見積書の編集", page)
         self.assertIn("function renderMusicSupportEstimate(date, safeClient)", page)
         self.assertIn("音楽指導および地域クラブ移行支援に関する御見積", page)
+        self.assertIn("type === 'estimateA' ? 0 : Math.round(subtotal * 0.1)", page)
+        self.assertIn("単価（税込・円）", page)
+        self.assertIn("金額（税込・円）", page)
+        self.assertIn("明細合計（税込）", page)
         self.assertIn("data-add-estimate-row", page)
         self.assertIn("data-remove-estimate-row", page)
         self.assertIn('value="typeB"', page)
@@ -383,6 +396,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("@page { size: A4 portrait; margin: 0; }", page)
         self.assertIn('data-paper-size="A4" data-orientation="portrait"', page)
         self.assertIn("A4縦 PDF出力 / 印刷", page)
+        self.assertIn(".login-screen, .sidebar, dialog { display: none !important; }", page)
+        self.assertIn("html, body, .generator, .preview-container { width: var(--paper-width); }", page)
+        self.assertIn("height: auto;", page)
+        self.assertIn("overflow: visible;", page)
         self.assertNotIn("aspect-ratio: 210 / 297;", page)
         self.assertIn('<optgroup label="共通契約書">', page)
         self.assertIn('<optgroup label="個別契約書">', page)
@@ -879,6 +896,60 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("'\"enabled\":true'", healthcheck)
         self.assertIn("'\"checkout_available\":true'", healthcheck)
         self.assertNotIn("Trumpet Transpose Lab is not in unpublished mode", healthcheck)
+
+    def test_contract_api_saves_individual_contracts_a_and_c(self):
+        cases = [
+            (
+                "typeA",
+                "音楽指導・支援",
+                {
+                    "work": "吹奏楽部の合奏指導",
+                    "amount": "税込30,000円",
+                    "term": "2026年9月1日",
+                    "special_terms": "安全管理体制を事前に確認する。",
+                },
+                "work",
+            ),
+            (
+                "typeC",
+                "WEB・アプリ",
+                {
+                    "deliverable": "予約管理Webアプリケーション一式",
+                    "amount": "税込220,000円",
+                    "deadline": "2026年10月31日",
+                    "special_terms": "指定環境で検収を行う。",
+                },
+                "deliverable",
+            ),
+        ]
+        for doc_type, department, values, preserved_key in cases:
+            with self.subTest(doc_type=doc_type), tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+                os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+            ):
+                client = create_app(
+                    database_url="", contracts_dir=Path(temporary_directory)
+                ).test_client()
+                response = client.post(
+                    "/api/contracts",
+                    headers={"X-Editor-Password": "editor-secret"},
+                    json={
+                        "doc_type": doc_type,
+                        "client_name": "契約先テスト",
+                        "client_representative": "代表 山田 太郎",
+                        "contract_date": "2026-08-24",
+                        "values": values,
+                    },
+                )
+
+                self.assertEqual(response.status_code, 201)
+                self.assertRegex(
+                    response.json["contract_id"],
+                    rf"^{doc_type}-20260824-[a-f0-9]{{8}}$",
+                )
+                self.assertEqual(response.json["department"], department)
+                self.assertEqual(
+                    response.json["values"][preserved_key], values[preserved_key]
+                )
 
     def test_contract_api_saves_and_lists_by_department(self):
         with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as server_directory, patch.dict(

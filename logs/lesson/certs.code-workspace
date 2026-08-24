@@ -1,0 +1,22 @@
+{
+	"folders": [
+		{
+			"path": "../certs"
+		},
+		{
+			"path": "../data"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../pdf"
+		},
+		{
+			"path": "../tests"
+		},
+		{
+			"path": "../video"
+		}
+	]
+}

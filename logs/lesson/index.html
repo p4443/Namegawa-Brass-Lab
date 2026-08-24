@@ -1,0 +1,2077 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="kazooささきトランペット教室。初心者から経験者まで、一人ひとりに合わせたトランペットレッスンをご案内します。">
+  <title>kazooささきトランペット教室 | なめがわブラス・ラボ</title>
+  <style>
+    :root {
+      --navy: #1a56db;
+      --blue: #1e40af;
+      --gold: #f59e0b;
+      --gold-dark: #d97706;
+      --ink: #1f2937;
+      --muted: #4b5563;
+      --line: #e2e8f0;
+      --surface: #ffffff;
+      --background: #f8fafc;
+      --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: linear-gradient(180deg, #f8fafc 0%, var(--background) 100%);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.7;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page-header {
+      border-bottom: 1px solid rgba(255, 255, 255, 0.18);
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .nav,
+    .hero,
+    .content {
+      width: min(100% - 24px, 860px);
+      margin: 0 auto;
+    }
+
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 58px;
+      gap: 16px;
+    }
+
+    .nav-brand {
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    .back-link {
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.82);
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+
+    .section-title,
+    #contact-title,
+    #reservation-title,
+    #schedule-callout-title {
+      scroll-margin-top: 110px;
+    }
+
+    .page-nav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      width: min(100% - 24px, 860px);
+      margin: 0 auto;
+      padding: 12px 0 0;
+    }
+
+    .page-nav-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .page-nav-list a {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 11px;
+      border: 1px solid rgba(11, 37, 69, 0.12);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.94);
+      color: var(--navy);
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 6px 16px rgba(11, 37, 69, 0.08);
+    }
+
+    .page-nav-list a:hover,
+    .page-nav-list a:focus-visible {
+      color: #ffffff;
+      background: var(--navy);
+      border-color: var(--navy);
+      text-decoration: none;
+    }
+
+    .hero {
+      padding: 58px 0 64px;
+      text-align: center;
+    }
+
+    .hero-icon {
+      display: grid;
+      width: 88px;
+      height: 88px;
+      margin: 0 auto 20px;
+      place-items: center;
+      border: 2px solid var(--gold);
+      border-radius: 50%;
+      background: var(--blue);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+      font-size: 2.5rem;
+      animation: heroReveal 0.7s ease-out both;
+    }
+
+    .eyebrow {
+      margin: 0 0 8px;
+      color: #f1d46d;
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.55rem, 6vw, 2.35rem);
+      line-height: 1.35;
+    }
+
+    .hero-copy {
+      max-width: 560px;
+      margin: 16px auto 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.96rem;
+    }
+
+    .content {
+      padding: 34px 0 60px;
+    }
+
+    .section {
+      margin-bottom: 34px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 16px;
+      color: var(--navy);
+      font-size: 1.18rem;
+    }
+
+    .section-title::before {
+      width: 4px;
+      height: 22px;
+      border-radius: 2px;
+      background: var(--gold);
+      content: "";
+    }
+
+    .feature-list {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .feature-list li,
+    .price-card,
+    .instructor-panel,
+    .contact-panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(11, 37, 69, 0.06);
+    }
+
+    .feature-list li {
+      padding: 18px 14px;
+      text-align: center;
+      font-size: 0.88rem;
+      font-weight: 700;
+    }
+
+    .feature-icon {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 1.5rem;
+    }
+
+    .app-shelf {
+      margin-top: 12px;
+      padding: 18px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface);
+      box-shadow: 0 6px 18px rgba(11, 37, 69, 0.06);
+      scroll-margin-top: 24px;
+    }
+
+    .app-shelf-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .app-shelf-title {
+      color: var(--navy);
+      font-size: 1rem;
+    }
+
+    .carousel-controls {
+      display: flex;
+      flex: 0 0 auto;
+      gap: 8px;
+    }
+
+    .carousel-button {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border: 1px solid var(--navy);
+      border-radius: 50%;
+      color: var(--navy);
+      background: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+
+    .carousel-button:hover,
+    .carousel-button:focus-visible {
+      color: #fff;
+      background: var(--navy);
+    }
+
+    .carousel-button:disabled {
+      cursor: default;
+      opacity: 0.35;
+    }
+
+    .app-track {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      padding: 2px 2px 10px;
+      scroll-behavior: smooth;
+      scroll-snap-type: x mandatory;
+      scrollbar-color: var(--gold) var(--line);
+      scrollbar-width: thin;
+    }
+
+    .lesson-app-card {
+      display: grid;
+      flex: 0 0 min(78vw, 680px);
+      min-height: 128px;
+      align-content: center;
+      gap: 5px;
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      color: var(--navy);
+      background: var(--background);
+      scroll-snap-align: start;
+      text-decoration: none;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
+    }
+
+    .lesson-app-card:hover,
+    .lesson-app-card:focus-visible {
+      border-color: var(--navy);
+      background: #fff;
+    }
+
+    .lesson-app-card:focus-visible {
+      outline: 3px solid var(--gold);
+      outline-offset: -3px;
+    }
+
+    .lesson-app-card strong {
+      font-size: 1rem;
+    }
+
+    .lesson-app-card span {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .price-list {
+      display: grid;
+      gap: 12px;
+    }
+
+    .price-card {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 20px;
+    }
+
+    .price-card h3 {
+      margin: 0;
+      color: var(--navy);
+      font-size: 0.96rem;
+    }
+
+    .price-card p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .price {
+      color: var(--blue);
+      font-size: 1rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .price-note {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .lesson-detail-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 38px;
+      padding: 7px 16px;
+      border: 1px solid var(--navy);
+      border-radius: 6px;
+      color: #ffffff;
+      background: var(--navy);
+      font: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .lesson-detail-toggle::after {
+      content: "詳細を見る ＋";
+      font-size: 0.76rem;
+    }
+
+    .lesson-detail-toggle[aria-expanded="true"]::after {
+      content: "閉じる −";
+    }
+
+    .lesson-detail-toggle:hover,
+    .lesson-detail-toggle:focus-visible {
+      color: var(--navy);
+      background: #ffffff;
+    }
+
+    .lesson-detail {
+      grid-column: 1 / -1;
+      margin-top: 4px;
+      padding: 24px;
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: var(--background);
+      scroll-margin-top: 110px;
+    }
+
+    .lesson-detail[hidden] {
+      display: none;
+    }
+
+    .lesson-detail h3 {
+      margin: 0 0 12px;
+      color: var(--navy);
+      font-size: 1.12rem;
+    }
+
+    .lesson-detail p {
+      margin: 0;
+    }
+
+    .lesson-detail ol,
+    .lesson-detail ul {
+      margin: 14px 0;
+      padding-left: 1.5rem;
+    }
+
+    .lesson-detail li + li {
+      margin-top: 6px;
+    }
+
+    .instructor-panel {
+      padding: 24px;
+      border-left: 4px solid var(--gold);
+    }
+
+    .instructor-name {
+      margin: 0 0 14px;
+      color: var(--navy);
+      font-size: 1.08rem;
+    }
+
+    .instructor-name span {
+      display: block;
+      margin-bottom: 3px;
+      color: var(--gold-dark);
+      font-size: 0.72rem;
+      font-weight: 800;
+    }
+
+    .instructor-panel p {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+
+    .instructor-panel p + p {
+      margin-top: 12px;
+    }
+
+    .teaching-points {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .teaching-point {
+      padding: 16px;
+      border-left: 3px solid var(--gold);
+      background: #f7f9fc;
+    }
+
+    .teaching-point strong {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--navy);
+      font-size: 0.9rem;
+    }
+
+    .teaching-point p {
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+
+    .contact-panel {
+      padding: 24px;
+      border-top: 3px solid var(--gold);
+      text-align: center;
+    }
+
+    .contact-panel h2 {
+      margin: 0 0 8px;
+      color: var(--navy);
+      font-size: 1.22rem;
+    }
+
+    .contact-panel p {
+      margin: 0 0 18px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .actions {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .button {
+      display: inline-flex;
+      min-height: 44px;
+      align-items: center;
+      justify-content: center;
+      padding: 10px 18px;
+      border: 1px solid var(--navy);
+      border-radius: 6px;
+      color: var(--navy);
+      background: #ffffff;
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-decoration: none;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .button-primary {
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 18px rgba(11, 37, 69, 0.16);
+    }
+
+    .footer {
+      padding: 44px 16px 26px;
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .schedule-callout {
+      display: grid;
+      width: min(100%, 760px);
+      margin: 0 auto 30px;
+      padding: 18px;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 14px;
+      border: 1px solid rgba(212, 175, 55, 0.7);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      text-align: left;
+    }
+
+    .schedule-callout-icon {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      place-items: center;
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--gold);
+      font-size: 1.2rem;
+    }
+
+    .schedule-callout-copy strong,
+    .schedule-callout-copy span {
+      display: block;
+    }
+
+    .schedule-callout-copy strong {
+      color: #ffffff;
+      font-size: 1rem;
+    }
+
+    .schedule-callout-copy span {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+    }
+
+    .schedule-callout-link {
+      display: inline-flex;
+      min-height: 42px;
+      align-items: center;
+      justify-content: center;
+      padding: 8px 14px;
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--gold);
+      font-size: 0.84rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .schedule-callout-link:hover,
+    .schedule-callout-link:focus-visible {
+      background: #f1d46d;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.18);
+    }
+
+    .reservation {
+      display: grid;
+      width: min(100%, 760px);
+      margin: 0 auto 36px;
+      grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
+      gap: 34px;
+      text-align: left;
+    }
+
+    .reservation-copy h2 {
+      margin: 0 0 10px;
+      color: #ffffff;
+      font-size: 1.35rem;
+      line-height: 1.4;
+    }
+
+    .reservation-copy p {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.9rem;
+      line-height: 1.75;
+    }
+
+    .reservation-hours {
+      margin-top: 16px;
+      padding: 6px 14px;
+      border-top: 1px solid rgba(212, 175, 55, 0.7);
+      border-bottom: 1px solid rgba(212, 175, 55, 0.7);
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.07);
+      font-size: 0.82rem;
+    }
+
+    .reservation-hours div {
+      display: grid;
+      grid-template-columns: 64px minmax(0, 1fr);
+      align-items: center;
+      gap: 12px;
+      min-height: 44px;
+      padding: 7px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+    }
+
+    .reservation-hours div:last-child {
+      border-bottom: 0;
+    }
+
+    .reservation-hours dt {
+      color: #f1d46d;
+      font-weight: 800;
+    }
+
+    .reservation-hours dd {
+      display: grid;
+      align-content: center;
+      gap: 2px;
+      margin: 0;
+      line-height: 1.4;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .reservation-time-range {
+      display: block;
+      white-space: nowrap;
+    }
+
+    .reservation-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 5px;
+    }
+
+    .form-field-wide,
+    .form-actions {
+      grid-column: 1 / -1;
+    }
+
+    .form-note {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .form-agreement {
+      display: flex;
+      grid-column: 1 / -1;
+      align-items: flex-start;
+      gap: 8px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+
+    .form-agreement input {
+      flex: 0 0 auto;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--gold);
+    }
+
+    .form-agreement a {
+      color: #f1d46d;
+    }
+
+    .form-field label {
+      color: rgba(255, 255, 255, 0.9);
+      font-size: 0.78rem;
+      font-weight: 700;
+    }
+
+    .required {
+      margin-left: 4px;
+      color: #f1d46d;
+      font-size: 0.7rem;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      min-height: 44px;
+      padding: 10px 11px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      border-radius: 5px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+      font-size: 0.88rem;
+    }
+
+    .form-field textarea {
+      min-height: 92px;
+      resize: vertical;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--gold);
+      outline: 3px solid rgba(212, 175, 55, 0.25);
+    }
+
+    .reservation-cancel {
+      grid-column: 1 / -1;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .reservation-cancel summary {
+      width: fit-content;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.82rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .reservation-cancel-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+      align-items: end;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .reservation-cancel-form > p {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.72);
+      font-size: 0.82rem;
+      line-height: 1.7;
+    }
+
+    .reservation-cancel-form .reservation-submit {
+      min-height: 44px;
+      background: #963f35;
+    }
+
+    .reservation-cancel-form .form-status {
+      grid-column: 1 / -1;
+    }
+
+    .form-actions {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .reservation-submit {
+      min-height: 46px;
+      padding: 10px 20px;
+      border: 1px solid var(--gold);
+      border-radius: 5px;
+      color: var(--navy);
+      background: var(--gold);
+      font: inherit;
+      font-size: 0.88rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .reservation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .form-status {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 0.8rem;
+    }
+
+    .form-status[data-state="success"] {
+      color: #b8f3cc;
+    }
+
+    .form-status[data-state="error"] {
+      color: #ffd0ca;
+    }
+
+    .form-trap {
+      position: absolute;
+      left: -10000px;
+    }
+
+
+    .footer-bottom {
+      display: flex;
+      width: min(100%, 1000px);
+      margin: 0 auto;
+      padding-top: 22px;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      flex-direction: column;
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
+      text-align: center;
+    }
+
+    .footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px 20px;
+      margin: 0;
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 0.78rem;
+    }
+
+    .footer-links a {
+      color: rgba(255, 255, 255, 0.88);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .footer-links a:hover,
+    .footer-links a:focus-visible {
+      color: #ffffff;
+    }
+
+    .copyright {
+      margin: 0;
+      color: rgba(255, 255, 255, 0.58);
+      font-size: 0.76rem;
+      white-space: nowrap;
+    }
+
+    /* Main-site visual system */
+    body {
+      background: var(--background);
+    }
+
+    .page-header {
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .nav,
+    .hero,
+    .content {
+      width: min(calc(100% - 40px), 1160px);
+    }
+
+    .nav {
+      min-height: 70px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-brand {
+      color: var(--navy);
+      font-size: 1.05rem;
+    }
+
+    .back-link {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .back-link:hover {
+      color: var(--navy);
+    }
+
+    .hero {
+      padding: 72px 0 80px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(240px, 340px);
+      align-items: center;
+      gap: 56px;
+      text-align: left;
+    }
+
+    .hero-icon {
+      width: 72px;
+      height: 72px;
+      margin: 0 0 20px;
+      border: 0;
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--navy);
+      box-shadow: var(--shadow);
+      font-size: 2.2rem;
+    }
+
+    .eyebrow {
+      color: var(--gold-dark);
+      letter-spacing: 0.08em;
+    }
+
+    .mobile-break {
+      display: none;
+    }
+
+    h1 {
+      color: #0f172a;
+      font-size: clamp(2rem, 5vw, 3rem);
+    }
+
+    .hero-copy {
+      margin-left: 0;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    .hero-photo {
+      display: block;
+      width: min(100%, 320px);
+      height: auto;
+      aspect-ratio: 2 / 3;
+      justify-self: end;
+      object-fit: cover;
+      border: 4px solid #ffffff;
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+    }
+
+    .page-nav {
+      width: 100%;
+      padding: 10px max(20px, calc((100% - 1160px) / 2));
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      backdrop-filter: blur(8px);
+    }
+
+    .page-nav-list {
+      gap: 10px;
+    }
+
+    .page-nav-list a {
+      border-color: var(--line);
+      border-radius: 6px;
+      color: var(--navy);
+      background: var(--surface);
+      box-shadow: none;
+    }
+
+    .page-nav-list a:hover,
+    .page-nav-list a:focus-visible {
+      border-color: var(--navy);
+      background: var(--navy);
+    }
+
+    .content {
+      padding: 72px 0 88px;
+    }
+
+    .section {
+      margin-bottom: 64px;
+    }
+
+    .section-title {
+      display: block;
+      margin-bottom: 24px;
+      color: var(--navy);
+      font-size: 1.8rem;
+      text-align: center;
+    }
+
+    .section-title::before {
+      display: none;
+    }
+
+    .feature-list {
+      gap: 24px;
+    }
+
+    .feature-list li,
+    .price-card,
+    .instructor-panel,
+    .contact-panel {
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-list li {
+      padding: 26px 18px;
+      border-top: 3px solid var(--navy);
+      background: var(--surface);
+    }
+
+    .app-shelf {
+      margin-top: 24px;
+      padding: 24px;
+      border-top: 3px solid var(--gold);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .feature-icon {
+      color: var(--navy);
+    }
+
+    .instructor-panel,
+    .contact-panel {
+      padding: 32px;
+      border-left-color: var(--gold);
+    }
+
+    .teaching-points {
+      gap: 20px;
+    }
+
+    .teaching-point {
+      border-left-color: var(--gold);
+      border-radius: 0 8px 8px 0;
+      background: var(--background);
+    }
+
+    .price-note {
+      text-align: center;
+    }
+
+    .price-list {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .price-card {
+      padding: 24px;
+      border-top: 3px solid var(--navy);
+    }
+
+    .button,
+    .schedule-callout-link,
+    .reservation-submit {
+      border-radius: 50px;
+    }
+
+    .button {
+      min-height: 48px;
+      padding: 12px 28px;
+      border-color: var(--navy);
+      color: var(--navy);
+    }
+
+    .button-primary {
+      color: #ffffff;
+      background: var(--navy);
+    }
+
+    .footer {
+      padding: 64px 20px 28px;
+      background: #0f172a;
+    }
+
+    .schedule-callout,
+    .reservation {
+      width: min(100%, 1000px);
+    }
+
+    .schedule-callout {
+      padding: 22px;
+      border-color: rgba(245, 158, 11, 0.7);
+      border-radius: 8px;
+    }
+
+    .schedule-callout-icon,
+    .schedule-callout-link,
+    .reservation-submit {
+      color: #ffffff;
+      background: var(--gold-dark);
+    }
+
+    .reservation {
+      grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr);
+      gap: 48px;
+    }
+
+    .reservation-hours {
+      border-color: rgba(245, 158, 11, 0.7);
+    }
+
+    .reservation-hours dt,
+    .required {
+      color: #fbbf24;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      border-color: #cbd5e1;
+      border-radius: 8px;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--navy);
+      outline: 3px solid rgba(26, 86, 219, 0.2);
+    }
+
+    @keyframes heroReveal {
+      from { opacity: 0; transform: translateY(10px) scale(0.94); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @media (max-width: 760px) {
+      .hero {
+        grid-template-columns: 1fr;
+        padding: 48px 0 54px;
+        gap: 32px;
+        text-align: center;
+      }
+
+      .hero-icon {
+        margin: 0 auto 20px;
+      }
+
+      .hero-copy {
+        margin-left: auto;
+      }
+
+      .hero-photo {
+        width: min(78vw, 280px);
+        justify-self: center;
+      }
+
+      .page-nav-list {
+        gap: 6px;
+      }
+
+      .price-list {
+        grid-template-columns: 1fr;
+      }
+
+      .reservation {
+        grid-template-columns: 1fr;
+        gap: 22px;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .mobile-break {
+        display: block;
+      }
+
+      .hero {
+        padding: 42px 0 48px;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        line-height: 1.3;
+      }
+
+      .section-title {
+        margin-bottom: 20px;
+        font-size: 1.45rem;
+        line-height: 1.4;
+      }
+
+      .instructor-name {
+        font-size: 1.05rem;
+        line-height: 1.55;
+      }
+
+      .contact-panel h2 {
+        font-size: 1.25rem;
+        line-height: 1.45;
+      }
+
+      .feature-list {
+        grid-template-columns: 1fr;
+      }
+
+      .teaching-points {
+        grid-template-columns: 1fr;
+      }
+
+      .carousel-controls {
+        display: none;
+      }
+
+      .app-track {
+        display: grid;
+        overflow-x: visible;
+        padding-bottom: 2px;
+        scroll-snap-type: none;
+      }
+
+      .lesson-app-card {
+        width: 100%;
+        min-height: 112px;
+      }
+
+      .price-card {
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .button {
+        width: 100%;
+      }
+
+      .schedule-callout {
+        grid-template-columns: auto 1fr;
+      }
+
+      .schedule-callout-link {
+        width: 100%;
+        grid-column: 1 / -1;
+      }
+
+      .reservation-form {
+        grid-template-columns: 1fr;
+      }
+
+      .reservation-cancel-form {
+        grid-template-columns: 1fr;
+      }
+
+      .reservation-copy h2 {
+        font-size: 1.4rem;
+        line-height: 1.4;
+      }
+
+      .reservation-copy p,
+      .reservation-hours {
+        font-size: 0.9rem;
+        line-height: 1.65;
+      }
+
+      .form-field-wide,
+      .form-actions {
+        grid-column: auto;
+      }
+
+      .form-actions {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .footer-bottom {
+        align-items: center;
+        gap: 12px;
+      }
+
+      .footer-links {
+        align-items: center;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+
+      .hero-icon {
+        animation: none;
+      }
+
+      .button {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <nav class="nav" aria-label="ページナビゲーション">
+      <a class="nav-brand" href="../">なめがわブラス・ラボ</a>
+      <a class="back-link" href="../" data-history-back>← 1つ前へ戻る</a>
+    </nav>
+    <div class="hero">
+      <div class="hero-content">
+        <div class="hero-icon" aria-hidden="true">🎺</div>
+        <p class="eyebrow">TRUMPET LESSON</p>
+        <h1>kazooささき<br>トランペット教室</h1>
+        <p class="hero-copy">初めての音出しから音大受験まで。一人ひとりの目標に合わせた個別指導で、楽しく着実な上達を支えます。</p>
+      </div>
+      <img class="hero-photo" src="../data/media/lesson-header-photo.jpg" alt="トランペットを持つ講師の佐々木久和" width="1200" height="1800" decoding="async">
+    </div>
+  </header>
+
+  <nav class="page-nav" aria-label="教室内ページナビ">
+    <ul class="page-nav-list">
+      <li><a href="../schedule/">空き状況</a></li>
+      <li><a href="#instructor-title">講師プロフィール</a></li>
+      <li><a href="#method-title">レッスン内容</a></li>
+      <li><a href="#features-title">特徴</a></li>
+      <li><a href="#price-title">料金</a></li>
+      <li><a href="#contact-title">お問い合わせ</a></li>
+    </ul>
+  </nav>
+
+  <main class="content">
+    <section class="section" aria-labelledby="instructor-title">
+      <h2 class="section-title" id="instructor-title">講師プロフィール</h2>
+      <div class="instructor-panel">
+        <h3 class="instructor-name"><span>トランペット奏者</span>佐々木 久和（ささき ひさかず）</h3>
+        <p>1969年生まれ、茨城県牛久市出身。小学4年生で鼓笛隊のトランペットを始め、東京コンセルヴァトワール尚美専門コースのトランペット専攻を1991年に卒業。杉木峯夫氏（東京藝術大学名誉教授）に師事しました。</p>
+        <p>トランペット奏者・指導者として30年以上の経験を重ね、現在はフリーランス奏者として演奏と指導に取り組んでいます。</p>
+        <p>現在は「kazooささきトランペット教室」と「アンサンブルNEST」を主宰するほか、EYS音楽教室のインストラクター、熊谷・深谷のカルチャー教室での演奏指導、学校の吹奏楽部指導などを通して、幅広い世代をサポートしています。</p>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="method-title">
+      <h2 class="section-title" id="method-title">レッスンで<span class="mobile-break"></span>大切にしていること</h2>
+      <div class="instructor-panel">
+        <p>トランペット歴30年以上のプロ奏者として、初心者から上達を目指す経験者まで、それぞれの課題と目標に合わせて丁寧に指導します。</p>
+        <div class="teaching-points">
+          <div class="teaching-point">
+            <strong>力を抜いてリラックス</strong>
+            <p>無理に音を出すのではなく、自然な呼吸と身体の使い方を通して、響きのある音を育てます。</p>
+          </div>
+          <div class="teaching-point">
+            <strong>一人ひとりのペースで</strong>
+            <p>基礎練習、部活動、演奏曲など、目的に合わせた内容で着実な上達を支えます。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="features-title">
+      <h2 class="section-title" id="features-title">レッスンの特徴</h2>
+      <ul class="feature-list">
+        <li><span class="feature-icon" aria-hidden="true">♪</span>初めての音出しから音大受験まで対応</li>
+        <li><span class="feature-icon" aria-hidden="true">◎</span>演奏・指導経験を生かした個別レッスン</li>
+      </ul>
+      <div class="app-shelf" id="lesson-apps">
+        <div class="app-shelf-header">
+          <h3 class="app-shelf-title" id="lesson-apps-title">練習ツールも活用した分かりやすい指導</h3>
+          <div class="carousel-controls" aria-label="練習アプリのスクロール操作">
+            <button class="carousel-button" type="button" data-carousel-prev="lesson-app-track" aria-label="前のアプリ">←</button>
+            <button class="carousel-button" type="button" data-carousel-next="lesson-app-track" aria-label="次のアプリ">→</button>
+          </div>
+        </div>
+        <div class="app-track" id="lesson-app-track" aria-labelledby="lesson-apps-title" tabindex="0">
+          <a class="lesson-app-card" href="../music%20App/" target="_blank" rel="noopener">
+            <strong>トランペット練習メトロノーム</strong>
+            <span>呼吸・テンポ・連符をまとめて練習</span>
+          </a>
+          <a class="lesson-app-card" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">
+            <strong>Trumpet Transpose Lab</strong>
+            <span>録音から採譜、音符編集、B♭譜の移調まで無料で体験</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-labelledby="price-title">
+      <h2 class="section-title" id="price-title">レッスン料金</h2>
+      <div class="price-list">
+        <article class="price-card">
+          <div>
+            <h3><button class="lesson-detail-toggle" id="elementary-lesson-toggle" type="button" aria-expanded="false" aria-controls="elementary-trial">小学生</button></h3>
+            <p>個人レッスン（1回30分）</p>
+          </div>
+          <div class="price">月2回：3,000円</div>
+          <aside class="lesson-detail" id="elementary-trial" aria-labelledby="elementary-trial-title" hidden>
+            <h3 id="elementary-trial-title">トランペット体験レッスン！憧れの音を鳴らしてみよう♪</h3>
+            <p>初めてでも大丈夫！段階を踏んで自分のペースで挑戦できます。</p>
+            <ol>
+              <li><strong>カッコいい構え方</strong>（基本の姿勢からスタート）</li>
+              <li><strong>息出しのコツ</strong>（焦らず音を出す準備）</li>
+              <li><strong>音出しチャレンジ</strong>（鳴らなくてもOK！感覚を掴もう）</li>
+              <li><strong>メロディに挑戦</strong>（指使いを覚えて一歩ずつ）</li>
+            </ol>
+            <p>鳴らなくても大丈夫。「音が出た！」の喜びを焦らず一緒に体験してみませんか？</p>
+          </aside>
+        </article>
+        <article class="price-card">
+          <div>
+            <h3><button class="lesson-detail-toggle" id="junior-high-lesson-toggle" type="button" aria-expanded="false" aria-controls="junior-high-trial">中学生</button></h3>
+            <p>個人レッスン（1回45分）</p>
+          </div>
+          <div class="price">月2回：5,000円</div>
+          <aside class="lesson-detail" id="junior-high-trial" aria-labelledby="junior-high-trial-title" hidden>
+            <h3 id="junior-high-trial-title">中学生のためのトランペットレッスン！</h3>
+            <p>部活での悩みやステップアップを全力でサポートします！</p>
+            <ul>
+              <li><strong>ウォームアップと基礎練習</strong>（体の準備と上達のための練習を明確に区別！）</li>
+              <li><strong>部活動のお悩み相談</strong>（音量・バテ・合奏の不安を一緒に解決）</li>
+              <li><strong>コンクール・ソロ曲の攻略</strong>（曲の表現力や難しいフレーズの練習法を伝授）</li>
+            </ul>
+            <p>自分の音に自信をつけて、演奏をもっと楽しもう！お気軽にご相談ください♪</p>
+          </aside>
+        </article>
+        <article class="price-card">
+          <div>
+            <h3><button class="lesson-detail-toggle" id="high-school-adult-lesson-toggle" type="button" aria-expanded="false" aria-controls="high-school-adult-trial">高校生以上</button></h3>
+            <p>個人レッスン（1回60分）</p>
+          </div>
+          <div class="price">基本料金：1回7,000円</div>
+          <aside class="lesson-detail" id="high-school-adult-trial" aria-labelledby="high-school-adult-trial-title" hidden>
+            <h3 id="high-school-adult-trial-title">【高校生・大人向け】トランペット オーダーメイド・レッスン</h3>
+            <p>一人ひとりの「なりたい姿」やライフスタイルに合わせた、完全オーダーメイドのレッスンをご提案します！</p>
+            <ul>
+              <li><strong>憧れの曲を吹いてみたい</strong>（ジャズ、ポップス、クラシックなど好きなジャンルに挑戦）</li>
+              <li><strong>趣味として楽しく続けたい</strong>（ブランクがある方の再開や、マイペースな趣味づくりに）</li>
+              <li><strong>本格的な技術UP・音大受験対策</strong>（基礎の見直しから専門的な表現力、受験課題曲まで徹底サポート）</li>
+            </ul>
+            <p>「もっと上手くなりたい」「音色を磨きたい」といった経験者はもちろん、大人になってから始める初心者の方も大歓迎です。あなただけのレッスンメニューで、トランペットをもっと楽しみませんか？</p>
+          </aside>
+        </article>
+        <article class="price-card">
+          <div>
+            <h3>その他</h3>
+            <p>グループレッスン・部活動指導</p>
+          </div>
+          <div class="price">要相談</div>
+        </article>
+      </div>
+      <p class="price-note">グループレッスン、部活動指導なども承ります。内容や日程についてはお問い合わせください。</p>
+    </section>
+
+    <section class="contact-panel" aria-labelledby="contact-title">
+      <h2 id="contact-title">体験・各種レッスンの<span class="mobile-break"></span>お問い合わせ</h2>
+      <p>ご希望のレッスン内容、年代、日時を添えてご連絡ください。</p>
+      <div class="actions">
+        <a class="button button-primary" href="mailto:zuomuj924@gmail.com">メールでお問い合わせ</a>
+        <a class="button" href="tel:09057690830">電話する（10:00〜18:00）</a>
+        <a class="button" href="application-form.html">受講申込書を表示・印刷</a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <section class="schedule-callout" aria-labelledby="schedule-callout-title">
+      <span class="schedule-callout-icon" aria-hidden="true">▣</span>
+      <div class="schedule-callout-copy">
+        <strong id="schedule-callout-title">レッスン予約スケジュール</strong>
+        <span>月間カレンダーで空き状況を確認し、そのまま予約できます。</span>
+      </div>
+      <a class="schedule-callout-link" href="../schedule/">空き状況を見る</a>
+    </section>
+    <section class="reservation" aria-labelledby="reservation-title">
+      <div class="reservation-copy">
+        <h2 id="reservation-title">レッスン予約</h2>
+        <p>予約できる期間は、明日から1か月先までです。同じメールアドレスで予約できる今後の予定は、最大4枠までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
+        <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
+          <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜09:00</span><span class="reservation-time-range">20:30〜22:00</span></dd></div>
+          <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜12:00</span></dd></div>
+          <div><dt>金曜日</dt><dd><span>06:45〜17:00／それ以外は要相談</span></dd></div>
+          <div><dt>土・日</dt><dd><span>土・日：要相談</span></dd></div>
+        </dl>
+        <p class="price-note">体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
+        <p>体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
+      </div>
+      <form class="reservation-form" id="reservation-form">
+        <div class="form-field">
+          <label for="reservation-name">お名前<span class="required">必須</span></label>
+          <input id="reservation-name" name="name" type="text" autocomplete="name" maxlength="80" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-email">メールアドレス<span class="required">必須</span></label>
+          <input id="reservation-email" name="email" type="email" autocomplete="email" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-phone">電話番号</label>
+          <input id="reservation-phone" name="phone" type="tel" autocomplete="tel" inputmode="tel">
+        </div>
+        <div class="form-field">
+          <label for="reservation-type">レッスン種別<span class="required">必須</span></label>
+          <select id="reservation-type" name="lesson_type" required>
+            <option value="">選択してください</option>
+            <option value="体験レッスン">無料体験レッスン</option>
+            <option>小学生</option>
+            <option>中学生</option>
+            <option>高校生以上</option>
+            <option>グループ・部活動指導</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label>所要時間</label>
+          <p class="form-note" id="reservation-duration" aria-live="polite">レッスン種別を選択してください</p>
+          <input id="reservation-duration-minutes" name="duration_minutes" type="hidden" value="">
+        </div>
+        <div class="form-field">
+          <label for="reservation-date">希望日<span class="required">必須</span></label>
+          <input id="reservation-date" name="preferred_date" type="date" required>
+        </div>
+        <div class="form-field">
+          <label for="reservation-time">希望時間<span class="required">必須</span></label>
+          <select id="reservation-time" name="preferred_time" disabled required>
+            <option value="">先に希望日を選択してください</option>
+          </select>
+        </div>
+        <div class="form-field form-field-wide">
+          <label for="reservation-message">ご要望・経験年数など</label>
+          <textarea id="reservation-message" name="message" maxlength="500"></textarea>
+        </div>
+        <div class="form-trap" aria-hidden="true">
+          <label for="reservation-website">ウェブサイト</label>
+          <input id="reservation-website" name="website" type="text" tabindex="-1" autocomplete="off">
+        </div>
+        <label class="form-agreement" for="reservation-privacy-agreed">
+          <input id="reservation-privacy-agreed" name="privacy_agreed" type="checkbox" value="同意する" required>
+          <span><a href="../legal/privacy-policy.html" target="_blank" rel="noopener">トランペット教室プライバシーポリシー</a>を確認し、個人情報の取り扱いに同意します。<span class="required">必須</span></span>
+        </label>
+        <div class="form-actions">
+          <button class="reservation-submit" type="submit">予約希望を送信する</button>
+          <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
+        </div>
+      </form>
+      <details class="reservation-cancel">
+        <summary>予約をキャンセルする</summary>
+        <form class="reservation-cancel-form" id="reservation-cancel-form">
+          <p>確認中・確定済みの予約をキャンセルできます。受付メールまたは確定メールに記載された受付番号を入力してください。</p>
+          <div class="form-field">
+            <label for="cancel-reservation-id">受付番号<span class="required">必須</span></label>
+            <input id="cancel-reservation-id" name="reservation_id" type="text" placeholder="R-20260820-001" pattern="R-\d{8}-\d{3,}" required>
+          </div>
+          <div class="form-field">
+            <label for="cancel-reservation-email">予約時のメールアドレス<span class="required">必須</span></label>
+            <input id="cancel-reservation-email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <button class="reservation-submit" type="submit">予約をキャンセル</button>
+          <p class="form-status" id="reservation-cancel-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+    </section>
+    <div class="footer-bottom">
+      <nav class="footer-links" aria-label="フッターナビゲーション">
+        <a href="/lesson/application-form.html">受講申込書</a>
+        <a href="/legal/privacy-policy.html">トランペット教室プライバシーポリシー</a>
+      </nav>
+      <p class="copyright">© なめがわブラス・ラボ</p>
+    </div>
+  </footer>
+  <script src="../back-navigation.js"></script>
+  <script>
+    document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
+      const detail = document.getElementById(toggle.getAttribute("aria-controls"));
+      if (!detail) return;
+      toggle.setAttribute("aria-expanded", "false");
+      detail.hidden = true;
+      toggle.addEventListener("click", () => {
+        const isOpen = toggle.getAttribute("aria-expanded") === "true";
+        toggle.setAttribute("aria-expanded", String(!isOpen));
+        detail.hidden = isOpen;
+        if (!isOpen) detail.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    });
+
+    document.querySelectorAll(".lesson-app-card").forEach((link) => {
+      link.addEventListener("click", (event) => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        history.replaceState(history.state, "", `${location.pathname}${location.search}#lesson-apps`);
+      });
+    });
+
+    document.querySelectorAll("[data-carousel-next], [data-carousel-prev]").forEach((button) => {
+      const targetId = button.dataset.carouselNext || button.dataset.carouselPrev;
+      const track = document.getElementById(targetId);
+      if (!track) return;
+
+      const updateButtons = () => {
+        const atStart = track.scrollLeft <= 1;
+        const atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 1;
+        document.querySelector(`[data-carousel-prev="${targetId}"]`).disabled = atStart;
+        document.querySelector(`[data-carousel-next="${targetId}"]`).disabled = atEnd;
+      };
+
+      button.addEventListener("click", () => {
+        const direction = button.dataset.carouselNext ? 1 : -1;
+        track.scrollBy({ left: direction * track.clientWidth * 0.85, behavior: "smooth" });
+      });
+      track.addEventListener("scroll", updateButtons, { passive: true });
+      window.addEventListener("resize", updateButtons);
+      updateButtons();
+    });
+
+    const reservationForm = document.getElementById("reservation-form");
+    const reservationType = document.getElementById("reservation-type");
+    const reservationDuration = document.getElementById("reservation-duration");
+    const reservationDurationMinutes = document.getElementById("reservation-duration-minutes");
+    const reservationDate = document.getElementById("reservation-date");
+    const reservationTime = document.getElementById("reservation-time");
+    const reservationStatus = document.getElementById("reservation-status");
+    const reservationSubmit = reservationForm.querySelector("button[type='submit']");
+    const reservationCancelForm = document.getElementById("reservation-cancel-form");
+    const reservationCancelStatus = document.getElementById("reservation-cancel-status");
+    const reservationCancelSubmit = reservationCancelForm.querySelector("button[type='submit']");
+    const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
+    const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
+    const buildApiCandidates = (renderApi, relativePath) => {
+      const urls = location.hostname.endsWith("github.io")
+        ? [renderApi, `../${relativePath}`, `/${relativePath}`]
+        : [`/${relativePath}`, renderApi];
+      return [...new Set(urls.map((url) => new URL(url, location.href).href))];
+    };
+
+    const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
+    const reservationCancelApiCandidates = buildApiCandidates(`${renderReservationApi}/cancel`, "api/lesson-reservations/cancel");
+    const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
+    let slotRequestId = 0;
+    const slotStatusCache = new Map();
+    const slotStatusCacheDuration = 30 * 1000;
+    let slotStatusPreloadPromise = null;
+
+    const japanDateText = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date());
+    const today = new Date(`${japanDateText}T00:00:00`);
+    const firstAvailableDate = new Date(today);
+    firstAvailableDate.setDate(firstAvailableDate.getDate() + 1);
+    const lastAvailableDate = new Date(today);
+    const targetMonth = lastAvailableDate.getMonth() + 1;
+    lastAvailableDate.setDate(1);
+    lastAvailableDate.setMonth(targetMonth + 1);
+    lastAvailableDate.setDate(0);
+    lastAvailableDate.setDate(Math.min(today.getDate(), lastAvailableDate.getDate()));
+
+    const dateValue = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
+      return `${year}-${month}-${day}`;
+    };
+    reservationDate.min = dateValue(firstAvailableDate);
+    reservationDate.max = dateValue(lastAvailableDate);
+
+    const makeTimeRange = (startHour, startMinute, endHour, endMinute) => {
+      const times = [];
+      let minutes = startHour * 60 + startMinute;
+      const end = endHour * 60 + endMinute;
+      while (minutes <= end) {
+        times.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
+        minutes += 15;
+      }
+      return times;
+    };
+
+    const timesByDay = {
+      0: ["要相談"],
+      1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      2: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      3: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      4: makeTimeRange(6, 45, 12, 0),
+      5: [...makeTimeRange(6, 45, 17, 0), "要相談"],
+      6: ["要相談"],
+    };
+
+    const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
+    const blocksReservationTime = (time, status) => time === "要相談"
+      ? status === "お休み"
+      : blockedStatuses.has(status);
+    const lessonDurations = {
+      "体験レッスン": 30,
+      "無料体験レッスン": 30,
+      "小学生": 30,
+      "中学生": 45,
+      "高校生以上": 60,
+      "グループ・部活動指導": null,
+    };
+
+    function updateReservationDuration() {
+      const durationMinutes = lessonDurations[reservationType.value];
+      reservationDuration.textContent = durationMinutes
+        ? `${durationMinutes}分`
+        : reservationType.value === "グループ・部活動指導"
+          ? "要相談"
+          : "レッスン種別を選択してください";
+      reservationDurationMinutes.value = durationMinutes || "";
+    }
+
+    function availableTimesForLesson(lessonType, day) {
+      const dayTimes = timesByDay[day] || [];
+      if (lessonType === "グループ・部活動指導") {
+        return ["要相談"];
+      }
+      return dayTimes.filter((time) => {
+        if (time === "要相談") return true;
+        const minute = Number(time.slice(3));
+        return lessonType === "体験レッスン" || lessonType === "小学生"
+          ? minute === 0 || minute === 30
+          : minute === 0;
+      });
+    }
+
+    function occupiedTimes(startTime, durationMinutes) {
+      if (startTime === "要相談") {
+        return ["要相談"];
+      }
+      const [hour, minute] = startTime.split(":").map(Number);
+      const start = hour * 60 + minute;
+      return Array.from({ length: durationMinutes / 15 }, (_, index) => {
+        const value = start + index * 15;
+        return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+      });
+    }
+
+    function endTime(startTime, durationMinutes) {
+      if (startTime === "要相談") {
+        return "要相談";
+      }
+      const [hour, minute] = startTime.split(":").map(Number);
+      const value = hour * 60 + minute + durationMinutes;
+      return `${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`;
+    }
+
+    function buildSlotMap(slots) {
+      const map = new Map();
+      slots.forEach((slot) => {
+        const dateText = String(slot.date || "").trim();
+        const timeText = String(slot.time || "").trim();
+        const statusText = String(slot.status || "").trim();
+        if (!dateText || !timeText || !statusText) {
+          return;
+        }
+        map.set(`${dateText}|${timeText}`, statusText);
+      });
+      return map;
+    }
+
+    async function requestSlotStatuses(fromDateText, toDateText) {
+      let lastError = null;
+      for (const endpoint of slotStatusApiCandidates) {
+        try {
+          const url = new URL(endpoint, location.href);
+          url.searchParams.set("from", fromDateText);
+          url.searchParams.set("to", toDateText);
+          const response = await fetch(url.toString(), { method: "GET" });
+          if (!response.ok) {
+            lastError = new Error("現在、空き状況を確認できません。");
+            continue;
+          }
+          const result = await response.json();
+          return Array.isArray(result.slots) ? result.slots : [];
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      if (lastError) {
+        console.warn(lastError);
+      }
+      throw lastError || new Error("現在、空き状況を確認できません。");
+    }
+
+    function cacheSlotStatuses(fromDateText, toDateText, slots) {
+      const slotsByDate = new Map();
+      slots.forEach((slot) => {
+        const dateText = String(slot.date || "").trim();
+        if (!slotsByDate.has(dateText)) {
+          slotsByDate.set(dateText, []);
+        }
+        slotsByDate.get(dateText).push(slot);
+      });
+
+      const endDate = new Date(`${toDateText}T00:00:00`);
+      for (
+        let currentDate = new Date(`${fromDateText}T00:00:00`);
+        currentDate <= endDate;
+        currentDate.setDate(currentDate.getDate() + 1)
+      ) {
+        const dateText = dateValue(currentDate);
+        slotStatusCache.set(dateText, {
+          slots: slotsByDate.get(dateText) || [],
+          expiresAt: Date.now() + slotStatusCacheDuration,
+        });
+      }
+    }
+
+    async function preloadSlotStatuses() {
+      if (slotStatusPreloadPromise) {
+        return slotStatusPreloadPromise;
+      }
+      const fromDateText = dateValue(firstAvailableDate);
+      const toDateText = dateValue(lastAvailableDate);
+      slotStatusPreloadPromise = requestSlotStatuses(fromDateText, toDateText)
+        .then((slots) => cacheSlotStatuses(fromDateText, toDateText, slots))
+        .catch(() => {})
+        .finally(() => {
+          slotStatusPreloadPromise = null;
+        });
+      return slotStatusPreloadPromise;
+    }
+
+    async function fetchSlotStatuses(dateText) {
+      const cached = slotStatusCache.get(dateText);
+      if (cached && cached.expiresAt > Date.now()) {
+        return cached.slots;
+      }
+      if (slotStatusPreloadPromise) {
+        await slotStatusPreloadPromise;
+        const preloaded = slotStatusCache.get(dateText);
+        if (preloaded && preloaded.expiresAt > Date.now()) {
+          return preloaded.slots;
+        }
+      }
+      const slots = await requestSlotStatuses(dateText, dateText);
+      cacheSlotStatuses(dateText, dateText, slots);
+      return slots;
+    }
+
+    function renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, slotMap, selectedValue) {
+      reservationTime.replaceChildren(new Option("時間を選択してください", ""));
+      let selectableCount = 0;
+      availableTimes.forEach((time) => {
+        const occupied = occupiedTimes(time, durationMinutes);
+        const status = occupied
+          .map((slotTime) => slotMap.get(`${selectedDateText}|${slotTime}`) || "空き")
+          .find((slotStatus) => blocksReservationTime(time, slotStatus)) || "空き";
+        const timeLabel = time === "要相談"
+          ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
+          : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
+        const option = new Option(status === "空き" ? timeLabel : `${timeLabel}（${status}）`, time);
+        option.disabled = blocksReservationTime(time, status);
+        if (!option.disabled) {
+          selectableCount += 1;
+        }
+        reservationTime.add(option);
+      });
+      reservationTime.disabled = selectableCount === 0;
+      if (selectedValue && [...reservationTime.options].some((option) => option.value === selectedValue && !option.disabled)) {
+        reservationTime.value = selectedValue;
+      }
+      return selectableCount;
+    }
+
+    async function updateReservationTimeOptions() {
+      const requestId = ++slotRequestId;
+      const selectedDateText = reservationDate.value;
+      const selectedDate = new Date(`${selectedDateText}T00:00:00`);
+      const availableTimes = availableTimesForLesson(reservationType.value, selectedDate.getDay());
+      const durationMinutes = lessonDurations[reservationType.value];
+      reservationTime.replaceChildren();
+      reservationTime.disabled = true;
+
+      if (!reservationType.value) {
+        reservationTime.add(new Option("先にレッスン種別を選択してください", ""));
+        reservationStatus.dataset.state = "";
+        reservationStatus.textContent = "";
+        return;
+      }
+
+      renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, new Map(), "");
+      reservationStatus.dataset.state = "";
+      reservationStatus.textContent = "空き状況を確認しています…";
+
+      let slotMap;
+      try {
+        slotMap = buildSlotMap(await fetchSlotStatuses(selectedDateText));
+      } catch (error) {
+        if (requestId !== slotRequestId) {
+          return;
+        }
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = "空き状況を確認できませんでした。時間を選択して送信できますが、予約済みの場合は別の時間をご案内します。";
+        return;
+      }
+      if (requestId !== slotRequestId) {
+        return;
+      }
+      const selectedValue = reservationTime.value;
+      const selectableCount = renderReservationTimeOptions(
+        selectedDateText,
+        availableTimes,
+        durationMinutes,
+        slotMap,
+        selectedValue
+      );
+      if (selectableCount === 0) {
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = "予約可能な空き枠がありません。別の日を選択してください。";
+      } else {
+        reservationStatus.dataset.state = "";
+        reservationStatus.textContent = "";
+      }
+    }
+
+    reservationDate.addEventListener("change", updateReservationTimeOptions);
+    reservationType.addEventListener("change", () => {
+      updateReservationDuration();
+      if (reservationDate.value) {
+        updateReservationTimeOptions();
+      }
+    });
+
+    async function applyRequestedSlot() {
+      const parameters = new URLSearchParams(location.search);
+      const requestedType = parameters.get("lesson_type") || "";
+      const requestedDate = parameters.get("date") || "";
+      const requestedTime = parameters.get("time") || "";
+      if ([...reservationType.options].some((option) => option.value === requestedType)) {
+        reservationType.value = requestedType;
+        updateReservationDuration();
+      }
+      if (requestedDate < reservationDate.min || requestedDate > reservationDate.max) {
+        return;
+      }
+      reservationDate.value = requestedDate;
+      await updateReservationTimeOptions();
+      if ([...reservationTime.options].some((option) => option.value === requestedTime && !option.disabled)) {
+        reservationTime.value = requestedTime;
+      }
+    }
+
+    async function submitReservation(payload) {
+      let lastError = null;
+      for (const endpoint of reservationApiCandidates) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=UTF-8" },
+            body: JSON.stringify(payload),
+          });
+
+          let result = {};
+          const contentType = (response.headers.get("content-type") || "").toLowerCase();
+          try {
+            if (contentType.includes("application/json")) {
+              result = await response.json();
+            }
+          } catch (error) {
+            result = {};
+          }
+
+          if (response.ok) {
+            return result;
+          }
+          if (response.status === 409 && result.conflict) {
+            return result;
+          }
+          if (response.status === 404 || response.status === 405 || !contentType.includes("application/json")) {
+            continue;
+          }
+          if (result.error) {
+            throw new Error(result.error);
+          }
+          continue;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("送信先サーバーに接続できませんでした。");
+    }
+
+    async function cancelReservation(payload) {
+      let lastError = null;
+      for (const endpoint of reservationCancelApiCandidates) {
+        try {
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json; charset=UTF-8" },
+            body: JSON.stringify(payload),
+          });
+          const result = await response.json().catch(() => ({}));
+          if (response.ok) return result;
+          if ((response.status === 404 || response.status === 405) && !result.error) continue;
+          throw new Error(result.error || "予約をキャンセルできませんでした。");
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      throw lastError || new Error("送信先サーバーに接続できませんでした。");
+    }
+
+    reservationForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      reservationSubmit.disabled = true;
+      reservationStatus.dataset.state = "";
+      reservationStatus.textContent = "送信しています…";
+
+      try {
+        const result = await submitReservation(Object.fromEntries(new FormData(reservationForm)));
+
+        if (result.conflict) {
+          reservationStatus.dataset.state = "error";
+          reservationStatus.textContent = "この時間帯にはすでに予約が入っているため、受け付けできません。別の時間をお選びください。";
+          await updateReservationTimeOptions();
+          return;
+        }
+        reservationForm.reset();
+        updateReservationDuration();
+        reservationTime.replaceChildren(new Option("先に希望日を選択してください", ""));
+        reservationTime.disabled = true;
+        reservationStatus.dataset.state = "success";
+        if (result.duplicate) {
+          reservationStatus.textContent = result.reservation_id
+            ? `同じ内容の予約をすでに受け付けています。受付番号：${result.reservation_id}`
+            : "同じ内容の予約をすでに受け付けています。";
+          return;
+        }
+        const baseMessage = result.reservation_id
+          ? `予約希望を受け付けました（状態：${result.status || "確認中"}）。受付番号：${result.reservation_id}`
+          : "予約希望を受け付けました（状態：確認中）。";
+        reservationStatus.textContent = result.auto_reply_sent
+          ? `${baseMessage} 確認メールを送信しました。`
+          : `${baseMessage} 確認メールを送信できませんでした。必要に応じて、お問い合わせください。`;
+      } catch (error) {
+        reservationStatus.dataset.state = "error";
+        reservationStatus.textContent = error.message;
+      } finally {
+        reservationSubmit.disabled = false;
+      }
+    });
+
+    reservationCancelForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const cancellationData = Object.fromEntries(new FormData(reservationCancelForm));
+      if (!window.confirm(`受付番号 ${cancellationData.reservation_id} の予約をキャンセルしますか？`)) {
+        return;
+      }
+      reservationCancelSubmit.disabled = true;
+      reservationCancelStatus.dataset.state = "";
+      reservationCancelStatus.textContent = "キャンセルしています…";
+      try {
+        const result = await cancelReservation(cancellationData);
+        reservationCancelForm.reset();
+        reservationCancelStatus.dataset.state = "success";
+        if (result.already_cancelled) {
+          reservationCancelStatus.textContent = `受付番号 ${result.reservation_id} はすでにキャンセル済みです。`;
+        } else {
+          const emailMessage = result.cancellation_email_sent === true
+            ? " キャンセル完了メールを送信しました。"
+            : result.cancellation_email_sent === false
+              ? " キャンセル完了メールを送信できませんでした。必要に応じてお問い合わせください。"
+              : "";
+          reservationCancelStatus.textContent = `受付番号 ${result.reservation_id} をキャンセルしました。予約枠は予約可能へ戻りました。${emailMessage}`;
+        }
+      } catch (error) {
+        reservationCancelStatus.dataset.state = "error";
+        reservationCancelStatus.textContent = error.message;
+      } finally {
+        reservationCancelSubmit.disabled = false;
+      }
+    });
+
+    preloadSlotStatuses();
+    applyRequestedSlot();
+  </script>
+</body>
+</html>

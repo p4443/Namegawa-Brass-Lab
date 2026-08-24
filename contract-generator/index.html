@@ -412,7 +412,8 @@
     @page { size: A4 portrait; margin: 0; }
 
     @media print {
-      .sidebar { display: none; }
+      .login-screen, .sidebar, dialog { display: none !important; }
+      html, body, .generator, .preview-container { width: var(--paper-width); }
       body, .generator, .preview-container { display: block; min-height: auto; padding: 0; overflow: visible; background: #ffffff; }
       .document {
         display: block;
@@ -422,11 +423,11 @@
       }
       .contract-page {
         width: var(--paper-width);
-        height: var(--paper-height);
+        height: auto;
         min-height: var(--paper-height);
         margin: 0;
         padding: 16mm 18mm;
-        overflow: hidden;
+        overflow: visible;
         box-shadow: none;
         break-after: page;
       }
@@ -435,6 +436,7 @@
       .document p { orphans: 3; widows: 3; }
       .document table { break-inside: auto; }
       .document tr, .doc-parties, .party-box { break-inside: avoid; }
+      .individual-contract-table tr { break-inside: auto; }
       .estimate-preview-editor { display: none; }
       .estimate-print-value { display: inline; }
     }
@@ -458,7 +460,7 @@
     <aside class="sidebar">
       <div class="sidebar-header">
         <h1>契約書作成</h1>
-        <button class="logout-button" id="contractLogout" type="button" data-history-back data-fallback="../#web">戻る（ログアウト）</button>
+        <button class="logout-button" id="contractLogout" type="button">戻る（ログアウト）</button>
       </div>
 
       <div class="field">
@@ -694,6 +696,7 @@
         special_terms: '1. 成果物はプログラム一式をZIPファイル等の電子データで納品し、納品時に合意する指定動作環境での稼働を受入基準とする。甲はデータ受領後14日以内に検収し、期間内に具体的な不適合の通知がない場合は検収完了とみなす。\n2. 検収完了後14日以内に発見された、合意仕様に対するプログラム固有の不具合は乙が無償で修正する。仕様変更、機能追加、指定外環境への対応および第三者サービスの変更対応は無償修正に含まれない。\n3. 本件はプログラムの売り切り（買い切り）契約とし、検収完了後の継続的な運用保守、監視、バックアップ、将来のOS・ブラウザ・API等の更新への追従および機能追加は含まれず、必要な場合は別途有償で合意する。\n4. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。\n5. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とする。甲乙は個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。'
       }
     };
+    const initialContractValues = JSON.parse(JSON.stringify(contractValues));
 
     function escapeHtml(value) {
       return String(value || '')
@@ -861,7 +864,7 @@
             + field('実施予定期間', 'implementation_period', values.implementation_period)
             + `<div class="field"><label>見積有効期限（発行日より日数）<input data-contract-key="validity_days" type="number" min="1" max="365" value="${escapeHtml(values.validity_days)}"></label></div>`
             + field('適格請求書発行事業者登録番号（なければ「該当なし」）', 'invoice_registration_number', values.invoice_registration_number)
-            + renderEstimateItemEditors(values);
+            + renderEstimateItemEditors(values, true);
             }
 
     function renderTransportEstimateFields(values) {
@@ -968,13 +971,13 @@
       syncCargoValuation();
     }
 
-    function renderEstimateItemEditors(values) {
+    function renderEstimateItemEditors(values, taxIncluded = false) {
       return values.estimate_items.map((item, index) => `
         <section class="estimate-editor" data-estimate-row="${index}">
           <h2>明細 ${index + 1}<button class="estimate-row-remove" data-remove-estimate-row="${index}" type="button" aria-label="明細${index + 1}を削除">削除</button></h2><div class="estimate-editor-grid">
             ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
             ${estimateInput('数量', 'quantity', item.quantity)}${estimateInput('単位', 'unit', item.unit)}
-            ${estimateInput('単価（円）', 'unit_price', item.unit_price)}${estimateInput('金額（円）', 'amount', item.amount)}
+            ${estimateInput(taxIncluded ? '単価（税込・円）' : '単価（円）', 'unit_price', item.unit_price)}${estimateInput(taxIncluded ? '金額（税込・円）' : '金額（円）', 'amount', item.amount)}
             <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
           </div>
         </section>`).join('') + `<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`;
@@ -1095,7 +1098,7 @@
       const subtotal = contractValues[type].estimate_items.reduce(
         (total, item) => total + estimateNumber(item.amount), 0
       );
-      const tax = Math.round(subtotal * 0.1);
+      const tax = type === 'estimateA' ? 0 : Math.round(subtotal * 0.1);
       return { subtotal, tax, total: subtotal + tax };
     }
 
@@ -1423,10 +1426,10 @@
           <p>下記の通り、音楽指導および地域クラブ移行支援に関する御見積を申し上げます。</p>
           <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
           <table class="estimate-table">
-            <thead><tr><th>指導・支援内容</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>概要・内訳</th></tr></thead>
+            <thead><tr><th>指導・支援内容</th><th class="quantity">数量</th><th class="number">単価（税込・円）</th><th class="number">金額（税込・円）</th><th>概要・内訳</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <table class="estimate-summary"><tbody><tr><th>明細合計（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
           <ul class="estimate-conditions">
             <li><strong>見積有効期限</strong>発行日より${escapeHtml(values.validity_days)}日間</li>
             <li><strong>実施条件</strong>具体的な日程、会場、対象人数、指導内容、交通費その他の実費は、発注前に双方で確認します。</li>
@@ -1691,6 +1694,28 @@
       if (step === 2) deleteContractId.focus();
     }
 
+    function resetContractEditor() {
+      Object.entries(initialContractValues).forEach(([type, values]) => {
+        contractValues[type] = JSON.parse(JSON.stringify(values));
+      });
+      docType.value = 'master';
+      clientName.value = '';
+      clientRepresentative.value = '';
+      contractDate.value = '';
+      dynamicFields.replaceChildren();
+      preview.replaceChildren();
+      preview.removeAttribute('data-contract-type');
+      savedContractSelect.replaceChildren(new Option('保存済み契約書を選択', ''));
+      storagePath.textContent = '';
+      saveStatus.textContent = '';
+      saveStatus.removeAttribute('data-state');
+      saveButton.disabled = false;
+      pendingDeleteContractId = '';
+      instrumentLookupResults.clear();
+      if (deleteDialog.open) deleteDialog.close();
+      if (freightCalculatorDialog.open) freightCalculatorDialog.close();
+    }
+
     function showGenerator() {
       contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
       renderDynamicFields();
@@ -1739,6 +1764,7 @@
       editorToken = '';
       generator.hidden = true;
       loginScreen.hidden = false;
+      resetContractEditor();
       passwordInput.value = '';
       passwordInput.focus();
     });
