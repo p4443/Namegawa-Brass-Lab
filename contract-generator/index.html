@@ -429,6 +429,20 @@
     }
     .estimate-preview-editor select { color: #1e40af; background: #eff6ff; }
     .estimate-print-value { display: none; }
+    .transport-estimate-detail { font-size: 8.5pt; line-height: 1.35; }
+    .transport-estimate-detail .estimate-total { margin: 8px 0; padding: 7px 10px; }
+    .transport-estimate-detail .estimate-table { margin-top: 7px !important; font-size: 7.5pt; }
+    .transport-estimate-detail .estimate-table th,
+    .transport-estimate-detail .estimate-table td { padding: 4px; }
+    .transport-estimate-detail .estimate-preview-editor { gap: 2px; }
+    .transport-estimate-detail .estimate-preview-editor select,
+    .transport-estimate-detail .estimate-preview-editor input { padding: 2px 3px; }
+    .transport-estimate-detail .estimate-summary { margin-top: 7px !important; }
+    .transport-estimate-detail .estimate-summary th,
+    .transport-estimate-detail .estimate-summary td { padding: 3px 6px; }
+    .transport-estimate-detail h2 { margin-top: 9px; }
+    .transport-estimate-detail .estimate-conditions li { margin-bottom: 5px; }
+    .transport-estimate-detail p { margin-bottom: 4px; }
 
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
@@ -1628,7 +1642,7 @@
             ${transportDocumentLink('追加料金規定表', values.fee_document_url)}
           </ul>
         </section>
-        <section class="contract-page estimate-page" data-page-number="2">
+        <section class="contract-page estimate-page transport-estimate-detail" data-page-number="2">
           <h1>御見積明細（運賃・料金分離型）</h1>
           <div class="estimate-total">${isReady ? `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -` : '御見積金額：未確定（外部運送会社の正式見積取得後に確定）'}</div>
           <table class="estimate-table">
