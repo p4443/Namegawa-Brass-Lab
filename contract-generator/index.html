@@ -1230,6 +1230,24 @@
       return taxIncludedPrice;
     }
 
+    function updateCargoTaxStatus(select) {
+      const rowIndex = Number(select.closest('[data-cargo-row]')?.dataset.cargoRow);
+      const item = contractValues.estimateB.cargo_items[rowIndex];
+      if (!item) return;
+      clearTransportError(rowIndex);
+      const taxIncludedPrice = applyCargoTaxStatus(item, select.value);
+      contractValues.estimateB.instrument_price_master.verified = false;
+      syncCargoValuation();
+      renderDynamicFields();
+      renderPreview();
+      saveStatus.textContent = select.value === 'tax_excluded'
+        ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。確認チェックが有効になりました。`
+        : select.value === 'tax_included'
+          ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。確認チェックが有効になりました。`
+          : 'カタログ価格の税区分を選択してください。';
+      saveStatus.dataset.state = select.value ? 'success' : 'error';
+    }
+
     function renderEstimateItemEditors(values, taxIncluded = false) {
       return values.estimate_items.map((item, index) => `
         <section class="estimate-editor" data-estimate-row="${index}">
@@ -2281,17 +2299,7 @@
           if (verified) { verified.checked = false; verified.disabled = true; }
         }
         if (cargoKey === 'price_tax_status') {
-          const taxIncludedPrice = applyCargoTaxStatus(item, event.target.value);
-          contractValues.estimateB.instrument_price_master.verified = false;
-          syncCargoValuation();
-          renderDynamicFields();
-          renderPreview();
-          saveStatus.textContent = event.target.value === 'tax_excluded'
-            ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。`
-            : event.target.value === 'tax_included'
-              ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。`
-              : 'カタログ価格の税区分を選択してください。';
-          saveStatus.dataset.state = event.target.value ? 'success' : 'error';
+          updateCargoTaxStatus(event.target);
           return;
         }
         if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
@@ -2336,6 +2344,10 @@
       renderPreview();
     });
     dynamicFields.addEventListener('change', async event => {
+      if (event.target.matches('[data-cargo-item-key="price_tax_status"]')) {
+        updateCargoTaxStatus(event.target);
+        return;
+      }
       if (event.target.matches('[data-cargo-item-key="maker_model"]')) {
         const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
         if (instrumentLookupReady(rowIndex)) await lookupInstrumentPriceWithFeedback(rowIndex);
