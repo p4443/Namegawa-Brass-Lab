@@ -1348,6 +1348,7 @@ def validate_contract(payload):
                     "condition": str(raw_item.get("condition", "")).strip(),
                     "valuation_mode": str(raw_item.get("valuation_mode", "")).strip(),
                     "unit_value": str(raw_item.get("unit_value", "")).strip(),
+                    "catalog_price": str(raw_item.get("catalog_price", raw_item.get("unit_value", ""))).strip(),
                     "total_value": str(raw_item.get("total_value", "")).strip(),
                     "volume_points": str(raw_item.get("volume_points", "")).strip(),
                     "notes": str(raw_item.get("notes", "")).strip(),
@@ -1369,6 +1370,7 @@ def validate_contract(payload):
                     or len(item["condition"]) > 80
                     or item["valuation_mode"] not in {"master", "manual"}
                     or re.fullmatch(r"\d{1,12}", item["unit_value"]) is None
+                    or re.fullmatch(r"\d{1,12}", item["catalog_price"]) is None
                     or re.fullmatch(r"\d{1,12}", item["total_value"]) is None
                     or re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", item["volume_points"])
                     is None

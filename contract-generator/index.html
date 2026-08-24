@@ -1132,8 +1132,9 @@
             <label>数量<input data-cargo-item-key="quantity" type="text" inputmode="numeric" maxlength="4" value="${escapeHtml(item.quantity)}"></label>
             <label>引渡時の状態<input data-cargo-item-key="condition" type="text" maxlength="80" value="${escapeHtml(item.condition)}"></label>
             <label>評価根拠<output>${item.valuation_mode === 'master' && item.price_source_url ? '公式価格を反映' : '手入力'}</output></label>
-            <label>価格の税区分<select data-cargo-item-key="price_tax_status"><option value=""${!item.price_tax_status ? ' selected' : ''}>確認してください</option><option value="tax_included"${item.price_tax_status === 'tax_included' ? ' selected' : ''}>税込</option><option value="tax_excluded"${item.price_tax_status === 'tax_excluded' ? ' selected' : ''}>税別</option></select></label>
-            <label>単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
+            <label>カタログ価格（円）<output data-catalog-price>${formatEstimateYen(estimateNumber(item.catalog_price || item.unit_value))}円</output></label>
+            <label>カタログ価格の税区分<select data-cargo-item-key="price_tax_status"><option value=""${!item.price_tax_status ? ' selected' : ''}>確認してください</option><option value="tax_included"${item.price_tax_status === 'tax_included' ? ' selected' : ''}>税込（そのまま反映）</option><option value="tax_excluded"${item.price_tax_status === 'tax_excluded' ? ' selected' : ''}>税別（10%加算）</option></select></label>
+            <label>税込単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
@@ -1200,8 +1201,7 @@
       const item = contractValues.estimateB.cargo_items[rowIndex];
       const result = instrumentLookupResults.get(rowIndex);
       if (!item || !result) return;
-      item.unit_value = String(result.recommended_price);
-      item.total_value = String(estimateNumber(item.quantity) * result.recommended_price);
+      item.catalog_price = String(result.recommended_price);
       item.valuation_mode = 'master';
       item.price_source_url = result.recommended_source_url;
       item.price_checked_at = result.checked_at;
@@ -1209,12 +1209,25 @@
       item.price_tax_status = recommendedCandidate?.tax_status === 'tax_included' || recommendedCandidate?.tax_status === 'tax_excluded'
         ? recommendedCandidate.tax_status
         : '';
+      applyCargoTaxStatus(item, item.price_tax_status);
       const master = contractValues.estimateB.instrument_price_master;
       master.source_url = master.source_url || result.recommended_source_url;
       master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])];
       master.catalog_year = contractDate.value.slice(0, 4);
       master.verified = false;
       syncCargoValuation();
+    }
+
+    function applyCargoTaxStatus(item, taxStatus) {
+      const catalogPrice = estimateNumber(item.catalog_price || item.unit_value);
+      item.catalog_price = String(catalogPrice);
+      item.price_tax_status = taxStatus;
+      const taxIncludedPrice = taxStatus === 'tax_excluded'
+        ? Math.round(catalogPrice * 1.1)
+        : catalogPrice;
+      item.unit_value = String(taxIncludedPrice);
+      item.total_value = String(estimateNumber(item.quantity) * taxIncludedPrice);
+      return taxIncludedPrice;
     }
 
     function renderEstimateItemEditors(values, taxIncluded = false) {
@@ -1312,6 +1325,7 @@
         condition: item.condition || '要確認',
         valuation_mode: item.valuation_mode || 'manual',
         unit_value: item.unit_value || '0',
+        catalog_price: item.catalog_price || item.unit_value || '0',
         total_value: item.total_value || '0',
         volume_points: item.volume_points || '0',
         notes: item.notes || '',
@@ -2267,12 +2281,21 @@
           if (verified) { verified.checked = false; verified.disabled = true; }
         }
         if (cargoKey === 'price_tax_status') {
+          const taxIncludedPrice = applyCargoTaxStatus(item, event.target.value);
           contractValues.estimateB.instrument_price_master.verified = false;
+          syncCargoValuation();
           renderDynamicFields();
           renderPreview();
+          saveStatus.textContent = event.target.value === 'tax_excluded'
+            ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。`
+            : event.target.value === 'tax_included'
+              ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。`
+              : 'カタログ価格の税区分を選択してください。';
+          saveStatus.dataset.state = event.target.value ? 'success' : 'error';
           return;
         }
         if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
+          if (cargoKey === 'unit_value' && item.valuation_mode === 'manual') item.catalog_price = item.unit_value;
           item.total_value = String(
             estimateNumber(item.quantity) * estimateNumber(item.unit_value)
           );

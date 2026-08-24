@@ -822,6 +822,7 @@ class UpdatesTest(unittest.TestCase):
                                 "condition": "良好",
                                 "valuation_mode": "master",
                                 "unit_value": "500000",
+                                "catalog_price": "500000",
                                 "total_value": "5000000",
                                 "volume_points": "1",
                                 "notes": "ハードケース入り",
@@ -856,6 +857,10 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(
                 response.json["values"]["cargo_items"][0]["total_value"],
                 "5000000",
+            )
+            self.assertEqual(
+                response.json["values"]["cargo_items"][0]["catalog_price"],
+                "500000",
             )
             self.assertEqual(
                 response.json["values"]["cargo_items"][0]["price_tax_status"],
