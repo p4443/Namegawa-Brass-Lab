@@ -2310,12 +2310,17 @@
         if (!event.target.value) return;
         const master = contractValues.estimateB.instrument_price_master;
         if ((master.source_urls || []).length >= 7) return;
-        master.source_urls = [...new Set([...(master.source_urls || []), event.target.value])];
+        const selectedSourceUrl = event.target.value;
+        master.source_urls = [...new Set([...(master.source_urls || []), selectedSourceUrl])];
         master.source_url = master.source_urls[0];
-        master.effective_date = '';
-        master.catalog_year = '';
         master.verified = false;
+        contractValues.estimateB.cargo_items.forEach(item => {
+          if (!item.lookup_source_url) item.lookup_source_url = selectedSourceUrl;
+        });
+        clearTransportError();
         renderDynamicFields();
+        updateTransportWorkflowStatus();
+        renderPreview();
         return;
       }
       if (event.target.matches('[data-cargo-instrument]')) {
