@@ -360,6 +360,13 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="docType"', page)
         self.assertIn('value="master"', page)
         self.assertIn('value="typeA"', page)
+        self.assertIn('value="estimateA"', page)
+        self.assertIn("A契約前 御見積書（音楽指導・地域支援）", page)
+        self.assertIn("A契約前見積書の編集", page)
+        self.assertIn("function renderMusicSupportEstimate(date, safeClient)", page)
+        self.assertIn("音楽指導および地域クラブ移行支援に関する御見積", page)
+        self.assertIn("data-add-estimate-row", page)
+        self.assertIn("data-remove-estimate-row", page)
         self.assertIn('value="typeB"', page)
         self.assertIn('value="estimateB"', page)
         self.assertIn("B契約前 次世代型御見積書", page)
@@ -501,6 +508,45 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(
                 response.json["values"]["estimate_items"][0]["amount"], "40000"
             )
+
+    def test_contract_api_saves_music_support_estimate(self):
+        with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}
+        ):
+            client = create_app(
+                database_url="", contracts_dir=Path(temporary_directory)
+            ).test_client()
+            response = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json={
+                    "doc_type": "estimateA",
+                    "client_name": "テスト吹奏楽部",
+                    "client_representative": "担当者 山田様",
+                    "contract_date": "2026-08-24",
+                    "values": {
+                        "subject": "音楽指導および地域クラブ移行支援に関する御見積",
+                        "implementation_period": "2026年9月から2027年3月まで",
+                        "validity_days": "30",
+                        "invoice_registration_number": "該当なし",
+                        "estimate_items": [{
+                            "description": "合奏指導",
+                            "quantity": "2",
+                            "unit": "回",
+                            "unit_price": "15000",
+                            "amount": "30000",
+                            "details": "吹奏楽部の合奏指導",
+                        }],
+                    },
+                },
+            )
+
+            self.assertEqual(response.status_code, 201)
+            self.assertRegex(
+                response.json["contract_id"],
+                r"^estimateA-20260824-[a-f0-9]{8}$",
+            )
+            self.assertEqual(response.json["department"], "音楽指導・支援")
 
     def test_contract_api_saves_transport_estimate(self):
         with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(

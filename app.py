@@ -168,6 +168,17 @@ CONTRACT_TYPES = {
         "directory": "music-support",
         "keys": {"work", "amount", "term", "special_terms"},
     },
+    "estimateA": {
+        "department": "音楽指導・支援",
+        "directory": "music-support",
+        "keys": {
+            "subject",
+            "implementation_period",
+            "validity_days",
+            "invoice_registration_number",
+            "estimate_items",
+        },
+    },
     "typeB": {
         "department": "楽器輸送",
         "directory": "transport",
@@ -1291,6 +1302,10 @@ def validate_contract(payload):
             raise ValueError(
                 f"契約条件は{maximum_length}文字以内で入力してください。"
             )
+        if key == "validity_days" and (
+            re.fullmatch(r"\d{1,3}", value) is None or not 1 <= int(value) <= 365
+        ):
+            raise ValueError("見積有効期限は1日以上365日以内で入力してください。")
         if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
             raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
         if key == "carrier_quote_date":
@@ -1362,7 +1377,7 @@ def list_contracts(contracts_dir=CONTRACTS_DIR):
 def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
     contract_id = str(contract_id).strip()
     match = re.fullmatch(
-        r"(master|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+        r"(master|estimateA|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
     )
     if not match:
         return None
@@ -1386,7 +1401,7 @@ def delete_contract(
     if not hmac.compare_digest(contract_id, confirmation_id):
         raise ValueError("確認用の契約書IDが一致しません。")
     match = re.fullmatch(
-        r"(master|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+        r"(master|estimateA|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
     )
     if not match:
         return 0

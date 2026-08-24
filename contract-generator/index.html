@@ -245,8 +245,8 @@
     }
     .cargo-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
     .cargo-editor-grid .cargo-instrument { grid-column: span 2; }
-    .cargo-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
-    .cargo-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
+    .cargo-row-remove, .estimate-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
+    .cargo-row-add, .estimate-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
     .price-source-tools { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
     .price-source-tools select { grid-column: 1 / -1; }
     .price-lookup-button { min-height: 38px; }
@@ -468,6 +468,7 @@
             <option value="master">業務委託基本契約書</option>
           </optgroup>
           <optgroup label="個別契約書">
+            <option value="estimateA">A契約前 御見積書（音楽指導・地域支援）</option>
             <option value="typeA">個別契約書 A（音楽指導・支援）</option>
             <option value="estimateB">B契約前 次世代型御見積書（楽器輸送）</option>
             <option value="typeB">個別契約書 B（楽器輸送）</option>
@@ -628,6 +629,17 @@
     const instrumentLookupResults = new Map();
 
     const contractValues = {
+      estimateA: {
+        subject: '音楽指導および地域クラブ移行支援に関する御見積',
+        implementation_period: '実施日または別途定める契約期間',
+        validity_days: '30',
+        invoice_registration_number: '該当なし',
+        estimate_items: [
+          { description: '楽器別・パート指導', quantity: '1', unit: '回', unit_price: '15000', amount: '15000', details: '管楽器の奏法、基礎練習および課題曲に関する指導' },
+          { description: '合奏指導', quantity: '1', unit: '回', unit_price: '20000', amount: '20000', details: '基礎合奏、楽曲解釈、アンサンブルおよび本番に向けた指導' },
+          { description: '地域クラブ移行支援', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: '運営体制、指導計画、関係者調整および移行課題の整理・助言' }
+        ]
+      },
       typeA: {
         work: '管楽器指導、および地域クラブ移行支援', amount: '30,000円（交通費別途）', term: '実施日または別途定める期間',
         special_terms: '1. 本業務は善良な管理者の注意をもって行う準委任業務であり、技能向上、進学、受賞その他特定の成果を保証するものではない。\n2. 甲は、会場、設備、参加者情報、緊急連絡体制その他安全な実施に必要な環境を整える。未成年者が参加する場合、甲は保護者同意、引渡し、撮影・公開の可否および健康上の配慮事項を管理する。\n3. 甲乙は、事故、災害、感染症、気象、交通障害その他安全な実施が困難な事情がある場合、延期、中止または実施方法の変更を協議する。緊急時は人命および安全を優先する。\n4. 参加者へのハラスメント、差別、暴力、危険行為その他信頼関係を損なう行為を禁止し、改善されない場合、乙は業務を中断または終了できる。\n5. 日程、人数、会場、業務範囲および教材利用の変更ならびにキャンセル料、交通費、宿泊費等は、実施前に電磁的方法を含む記録可能な方法で合意する。'
@@ -726,9 +738,9 @@
     }
 
     const estimatePresets = {
-      description: ['基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
+      description: ['楽器別・パート指導', '合奏指導', 'アンサンブル指導', '地域クラブ移行支援', '指導計画・教材作成', '運営会議・関係者調整', '演奏会・発表会支援', '交通費・出張費', '基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
       quantity: ['1', '2', '3', '5', '10'],
-      unit: ['運行', '式', '件', '画面', '時間', '日'],
+      unit: ['回', '時間', '日', '月', '名', '運行', '式', '件', '画面'],
       unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
       amount: ['10000', '30000', '40000', '50000', '90000', '100000']
     };
@@ -820,7 +832,7 @@
     function renderEstimateFields(values) {
       const items = values.estimate_items.map((item, index) => `
         <section class="estimate-editor" data-estimate-row="${index}">
-          <h2>明細 ${index + 1}</h2>
+          <h2>明細 ${index + 1}<button class="estimate-row-remove" data-remove-estimate-row="${index}" type="button" aria-label="明細${index + 1}を削除">削除</button></h2>
           <div class="estimate-editor-grid">
             ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
             ${estimateInput('数量', 'quantity', item.quantity)}
@@ -840,8 +852,17 @@
           <datalist id="estimateQuantityPresets"><option value="1"><option value="2"><option value="3"><option value="5"><option value="10"></datalist>
           <datalist id="estimateUnitPresets"><option value="式"><option value="件"><option value="画面"><option value="時間"><option value="日"></datalist>
           <datalist id="estimatePricePresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>
-          <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}`;
+              <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`;
     }
+
+            function renderMusicSupportEstimateFields(values) {
+          return `<div class="estimate-edit-guide"><strong>A契約前見積書の編集</strong>指導・支援内容は登録内容から選択するか、任意の内容を直接入力できます。回数と単価を入力すると金額を自動計算します。</div>`
+            + field('件名', 'subject', values.subject)
+            + field('実施予定期間', 'implementation_period', values.implementation_period)
+            + `<div class="field"><label>見積有効期限（発行日より日数）<input data-contract-key="validity_days" type="number" min="1" max="365" value="${escapeHtml(values.validity_days)}"></label></div>`
+            + field('適格請求書発行事業者登録番号（なければ「該当なし」）', 'invoice_registration_number', values.invoice_registration_number)
+            + renderEstimateItemEditors(values);
+            }
 
     function renderTransportEstimateFields(values) {
       syncCargoValuation();
@@ -950,13 +971,13 @@
     function renderEstimateItemEditors(values) {
       return values.estimate_items.map((item, index) => `
         <section class="estimate-editor" data-estimate-row="${index}">
-          <h2>明細 ${index + 1}</h2><div class="estimate-editor-grid">
+          <h2>明細 ${index + 1}<button class="estimate-row-remove" data-remove-estimate-row="${index}" type="button" aria-label="明細${index + 1}を削除">削除</button></h2><div class="estimate-editor-grid">
             ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
             ${estimateInput('数量', 'quantity', item.quantity)}${estimateInput('単位', 'unit', item.unit)}
             ${estimateInput('単価（円）', 'unit_price', item.unit_price)}${estimateInput('金額（円）', 'amount', item.amount)}
             <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
           </div>
-        </section>`).join('');
+        </section>`).join('') + `<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`;
     }
 
     function applyEstimatePreset(select) {
@@ -974,13 +995,15 @@
 
     function renderDynamicFields() {
       const type = docType.value;
-      documentDateLabel.textContent = type === 'estimateB' || type === 'estimateC' ? '見積発行日' : '契約締結日';
+      documentDateLabel.textContent = ['estimateA', 'estimateB', 'estimateC'].includes(type) ? '見積発行日' : '契約締結日';
       if (type === 'master') {
         dynamicFields.replaceChildren();
         return;
       }
       const values = contractValues[type];
-      if (type === 'estimateB') {
+      if (type === 'estimateA') {
+        dynamicFields.innerHTML = renderMusicSupportEstimateFields(values);
+      } else if (type === 'estimateB') {
         dynamicFields.innerHTML = renderTransportEstimateFields(values);
       } else if (type === 'estimateC') {
         dynamicFields.innerHTML = renderEstimateFields(values);
@@ -1063,7 +1086,9 @@
     }
 
     function activeEstimateType() {
-      return preview.dataset.contractType === 'estimateB' ? 'estimateB' : 'estimateC';
+      return ['estimateA', 'estimateB', 'estimateC'].includes(preview.dataset.contractType)
+        ? preview.dataset.contractType
+        : 'estimateC';
     }
 
     function calculateEstimateTotals(type = activeEstimateType()) {
@@ -1384,6 +1409,33 @@
         </section>`;
     }
 
+    function renderMusicSupportEstimate(date, safeClient) {
+      const values = contractValues.estimateA;
+      const totals = calculateEstimateTotals('estimateA');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      preview.innerHTML = `
+        <section class="contract-page estimate-page" data-page-number="1">
+          <h1>御見積書</h1>
+          <p class="doc-date">発行日：${date}</p>
+          <div class="estimate-client"><strong>${safeClient} 御中</strong><br>${safeRepresentative}</div>
+          <p><strong>件名：</strong>${escapeHtml(values.subject)}</p>
+          <p><strong>実施予定期間：</strong>${escapeHtml(values.implementation_period)}</p>
+          <p>下記の通り、音楽指導および地域クラブ移行支援に関する御見積を申し上げます。</p>
+          <div class="estimate-total">御見積金額（税込）：￥${formatEstimateYen(totals.total)} -</div>
+          <table class="estimate-table">
+            <thead><tr><th>指導・支援内容</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>概要・内訳</th></tr></thead>
+            <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <ul class="estimate-conditions">
+            <li><strong>見積有効期限</strong>発行日より${escapeHtml(values.validity_days)}日間</li>
+            <li><strong>実施条件</strong>具体的な日程、会場、対象人数、指導内容、交通費その他の実費は、発注前に双方で確認します。</li>
+            <li><strong>契約書との関係</strong>発注時は業務委託基本契約書および個別契約書Aを締結し、本見積書を個別契約の一部として取り扱います。</li>
+          </ul>
+          <div class="estimate-issuer"><strong>発行者</strong><br>なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>適格請求書発行事業者登録番号：${escapeHtml(values.invoice_registration_number)}</div>
+        </section>`;
+    }
+
     function transportDocumentLink(label, value) {
       const safeValue = escapeHtml(value || '未設定');
       const link = /^https?:\/\/[^\s]+$/.test(value)
@@ -1516,7 +1568,10 @@
       preview.dataset.contractType = type;
       const date = formatJapaneseDate(contractDate.value);
       const parties = partyHtml();
-      if (type === 'estimateB') {
+      if (type === 'estimateA') {
+        const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
+        renderMusicSupportEstimate(date, safeClient);
+      } else if (type === 'estimateB') {
         const safeClient = escapeHtml(clientName.value || '［取引先名・貴社名］');
         renderTransportEstimate(date, safeClient);
       } else if (type === 'estimateC') {
@@ -1855,6 +1910,23 @@
         if (contractValues.estimateB.cargo_items.length >= 10) return;
         contractValues.estimateB.cargo_items.push({ category: 'その他', instrument_key: 'other', description: 'その他', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '' });
         instrumentLookupResults.clear();
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      if (event.target.closest('[data-add-estimate-row]')) {
+        const items = contractValues[docType.value]?.estimate_items;
+        if (!items || items.length >= 10) return;
+        items.push({ description: '任意の指導・作業内容', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '' });
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      const removeEstimateButton = event.target.closest('[data-remove-estimate-row]');
+      if (removeEstimateButton) {
+        const items = contractValues[docType.value]?.estimate_items;
+        if (!items || items.length <= 1) return;
+        items.splice(Number(removeEstimateButton.dataset.removeEstimateRow), 1);
         renderDynamicFields();
         renderPreview();
         return;
