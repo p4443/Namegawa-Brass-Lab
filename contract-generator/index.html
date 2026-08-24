@@ -236,6 +236,15 @@
     .cargo-editor-grid .cargo-instrument { grid-column: span 2; }
     .cargo-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
     .cargo-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
+    .price-source-tools { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .price-source-tools select { grid-column: 1 / -1; }
+    .price-lookup-button { min-height: 38px; }
+    .price-lookup-results { grid-column: 1 / -1; padding: 10px; border-left: 3px solid var(--primary); background: #eff6ff; }
+    .price-lookup-results p { margin: 0 0 8px; color: var(--muted); font-size: 0.75rem; }
+    .price-candidate { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; width: 100%; margin-top: 7px; padding: 9px; text-align: left; }
+    .price-candidate strong { color: var(--primary-dark); }
+    .price-candidate small { overflow-wrap: anywhere; }
+    .price-proof { grid-column: 1 / -1; margin: 0; color: #047857; font-size: 0.75rem; overflow-wrap: anywhere; }
     .document-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
     .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
     .freight-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
@@ -245,6 +254,9 @@
     .rate-master-grid label { display: grid; gap: 4px; font-size: 0.78rem; font-weight: 800; }
     .rate-master-grid input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; }
     .rate-master-grid .rate-wide { grid-column: 1 / -1; }
+    .route-distance-tools { display: grid; grid-template-columns: 1fr auto; grid-column: 1 / -1; gap: 8px; align-items: end; }
+    .route-distance-tools label { min-width: 0; }
+    .route-distance-tools button { min-height: 38px; }
     .rate-confirm { display: flex !important; grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: start; }
     .rate-confirm input { width: auto; margin-top: 3px; }
 
@@ -530,7 +542,7 @@
       <div class="rate-master-grid">
         <label>出発地<input data-freight-input="route_origin" type="text"></label>
         <label>目的地<input data-freight-input="route_destination" type="text"></label>
-        <label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label>
+        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">Googleで距離測定</button></div>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
         <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
         <label>積卸し作業時間（分）<input data-operation-input="loading_minutes" type="number" min="0" step="1" value="0"></label>
@@ -596,6 +608,7 @@
     const freightCalculatorStatus = document.getElementById('freightCalculatorStatus');
     let pendingDeleteContractId = '';
     let adminPassword = '';
+    const instrumentLookupResults = new Map();
 
     const contractValues = {
       typeA: {
@@ -615,7 +628,7 @@
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
         cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
         route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
-        instrument_price_master: { effective_date: '', source_url: '', verified: false },
+        instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', verified: false },
         freight_rate_master: {
           effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
           distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
@@ -692,6 +705,7 @@
       if (!values.carrier_quote_url || !values.carrier_quote_date) missing.push('正式見積書・取得日');
       if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
       if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
+      if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
       return missing;
     }
@@ -721,6 +735,20 @@
       contrabass: { category: '弦楽器', name: 'コントラバス', volumePoints: 20 },
       music_stand: { category: '備品', name: '譜面台', volumePoints: 0.5 }
     };
+
+    const instrumentPriceSources = [
+      { name: 'ヤマハ', url: 'https://jp.yamaha.com/products/musical_instruments/winds/' },
+      { name: 'ビュッフェ・クランポン', url: 'https://www.buffetcrampon.com/' },
+      { name: 'パール楽器', url: 'https://pearldrum.com/ja/' },
+      { name: 'こおろぎ社', url: 'https://www.korogi.co.jp/' },
+      { name: '鈴木楽器製作所', url: 'https://www.suzuki-music.co.jp/' },
+      { name: '野中貿易', url: 'https://www.nonaka.com/' },
+      { name: 'グローバル', url: 'https://global-inst.co.jp/' }
+    ];
+
+    function instrumentPriceSourceOptions(sourceUrl) {
+      return `<option value="">公式サイトを選択</option>${instrumentPriceSources.map(source => `<option value="${source.url}"${sourceUrl.startsWith(source.url) ? ' selected' : ''}>${source.name}</option>`).join('')}`;
+    }
 
     const lightCargoReferenceRateHistory = [{
       effective_date: '2026-08-23',
@@ -805,6 +833,11 @@
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
       const missing = transportReadiness(values);
+      const catalogUrls = values.instrument_price_master.source_urls?.length
+        ? values.instrument_price_master.source_urls
+        : (values.instrument_price_master.source_url ? [values.instrument_price_master.source_url] : []);
+      const currentCatalogYear = contractDate.value.slice(0, 4);
+      const catalogIsCurrent = !catalogUrls.length || values.instrument_price_master.catalog_year === currentCatalogYear;
       return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>国土交通省「標準的な運賃」は参考額の確認だけに使い、請求額は外部運送会社の正式見積で確定してください。</div>`
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}"><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '外部運送会社へ見積依頼中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
@@ -833,7 +866,7 @@
         + `<p class="save-status" data-document-tool-status role="status"></p>`
         + `<div${overCapacity ? '' : ' hidden'} data-external-budget>${field('外注・追加車両手配の希望予算（円）', 'external_vehicle_budget', values.external_vehicle_budget)}</div>`
         + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
-        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">メーカー・販売店等の出典URL<input data-instrument-master-key="source_url" type="url" value="${escapeHtml(values.instrument_price_master.source_url)}"></label><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}> 案件の型番と再調達価格を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly></label><label class="cargo-instrument">公開カタログURL（1行1件・最大7件）<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(values.instrument_price_master.source_url)}</select><textarea data-instrument-catalog-urls maxlength="3500" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く">先頭URLを開く</button></div></label><p class="price-proof">${catalogIsCurrent ? `${escapeHtml(values.instrument_price_master.catalog_year || currentCatalogYear)}年版：照会可能` : `${escapeHtml(values.instrument_price_master.catalog_year || '未照会')}年の記録です。${escapeHtml(currentCatalogYear)}年の公開カタログを再照会してください。`}</p><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}${catalogIsCurrent ? '' : ' disabled'}> 最高額候補と案件の型番・税込／税別を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
     }
 
@@ -854,8 +887,54 @@
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
+            <button class="secondary-button price-lookup-button" data-lookup-instrument-price="${index}" type="button">公式価格を照会</button>
+            ${item.price_source_url ? `<p class="price-proof">反映元：${escapeHtml(item.price_checked_at)} / ${escapeHtml(item.price_source_url)}</p>` : ''}
+            ${renderInstrumentPriceCandidates(index)}
           </div>
         </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>その他の品目行を追加</button>`;
+    }
+
+    function renderInstrumentPriceCandidates(rowIndex) {
+      const result = instrumentLookupResults.get(rowIndex);
+      if (!result) return '';
+      return `<div class="price-lookup-results"><p>同一型番の候補を高い順に比較し、最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用しました。</p>${result.candidates.map((candidate, candidateIndex) => `<div class="secondary-button price-candidate"><strong>${formatEstimateYen(candidate.price)}円${candidateIndex === 0 ? '（採用）' : ''}</strong><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></div>`).join(')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
+    }
+
+    async function lookupInstrumentPrice(rowIndex) {
+      const item = contractValues.estimateB.cargo_items[rowIndex];
+      const master = contractValues.estimateB.instrument_price_master;
+      const sourceUrls = master.source_urls?.filter(Boolean) || [];
+      if (!sourceUrls.length) throw new Error('型番と価格が掲載された公式カタログURLを入力してください。');
+      if (!item?.maker_model.trim()) throw new Error('照会するメーカー・型番を入力してください。');
+      const response = await fetch('/api/contracts/instrument-price-lookup', {
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify({ source_urls: sourceUrls, maker_model: item.maker_model })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, '公式価格を照会できませんでした。'));
+      const result = await response.json();
+      if (result.checked_at > contractDate.value) throw new Error('見積作成日以前に照会した公開カタログ価格だけを反映できます。');
+      instrumentLookupResults.set(rowIndex, result);
+      applyInstrumentPrice(rowIndex);
+      renderDynamicFields();
+      renderPreview();
+    }
+
+    function applyInstrumentPrice(rowIndex) {
+      const item = contractValues.estimateB.cargo_items[rowIndex];
+      const result = instrumentLookupResults.get(rowIndex);
+      if (!item || !result) return;
+      item.unit_value = String(result.recommended_price);
+      item.total_value = String(estimateNumber(item.quantity) * result.recommended_price);
+      item.valuation_mode = 'master';
+      item.price_source_url = result.recommended_source_url;
+      item.price_checked_at = result.checked_at;
+      contractValues.estimateB.instrument_price_master = {
+        effective_date: result.checked_at,
+        source_url: result.recommended_source_url,
+        source_urls: result.source_urls,
+        catalog_year: result.catalog_year,
+        verified: false
+      };
+      syncCargoValuation();
     }
 
     function renderEstimateItemEditors(values) {
@@ -924,7 +1003,7 @@
         carrier_quote_date: values.carrier_quote_date || ''
       });
       values.instrument_price_master = {
-        effective_date: '', source_url: '', verified: false,
+        effective_date: '', source_url: '', source_urls: [], catalog_year: '', verified: false,
         ...(values.instrument_price_master || {})
       };
       values.freight_rate_master = {
@@ -1107,6 +1186,28 @@
       freightCalculatorStatus.textContent = '';
       freightCalculatorStatus.dataset.state = '';
       freightCalculatorDialog.showModal();
+    }
+
+    async function measureGoogleRouteDistance() {
+      const originInput = freightCalculatorDialog.querySelector('[data-freight-input="route_origin"]');
+      const destinationInput = freightCalculatorDialog.querySelector('[data-freight-input="route_destination"]');
+      const distanceInput = freightCalculatorDialog.querySelector('[data-freight-input="route_distance_km"]');
+      const origin = originInput.value.trim();
+      const destination = destinationInput.value.trim();
+      if (!origin || !destination) throw new Error('出発地と目的地を入力してください。');
+      const response = await fetch('/api/contracts/route-distance', {
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify({ origin, destination })
+      });
+      if (!response.ok) throw new Error(await readApiError(response, 'Google Mapsから距離を取得できませんでした。'));
+      const result = await response.json();
+      distanceInput.value = String(result.distance_km);
+      const values = contractValues.estimateB;
+      values.route_origin = origin;
+      values.route_destination = destination;
+      values.route_distance_km = String(result.distance_km);
+      freightCalculatorStatus.textContent = `Google Mapsの自動車ルート：${result.distance_km}km、走行時間の目安${result.duration_minutes}分。総拘束時間には荷役・待機時間を含めて入力してください。`;
+      freightCalculatorStatus.dataset.state = 'success';
+      freightCalculatorStatus.dataset.mapsUrl = result.maps_url;
     }
 
     function loadLightCargoReference() {
@@ -1557,7 +1658,11 @@
     });
 
     docType.addEventListener('change', () => { renderDynamicFields(); renderPreview(); });
-    [clientName, clientRepresentative, contractDate].forEach(input => input.addEventListener('input', renderPreview));
+    [clientName, clientRepresentative].forEach(input => input.addEventListener('input', renderPreview));
+    contractDate.addEventListener('input', () => {
+      if (docType.value === 'estimateB') renderDynamicFields();
+      renderPreview();
+    });
     dynamicFields.addEventListener('input', event => {
       if (event.target.matches('[data-cargo-consent]')) {
         contractValues.estimateB.cargo_restrictions_agreed = event.target.checked;
@@ -1566,9 +1671,20 @@
         renderPreview();
         return;
       }
+      if (event.target.matches('[data-instrument-catalog-urls]')) {
+        const sourceUrls = event.target.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
+        const master = contractValues.estimateB.instrument_price_master;
+        master.source_urls = [...new Set(sourceUrls)].slice(0, 7);
+        master.source_url = master.source_urls[0] || '';
+        master.catalog_year = '';
+        master.verified = false;
+        instrumentLookupResults.clear();
+        return;
+      }
       const instrumentMasterKey = event.target.dataset.instrumentMasterKey;
       if (instrumentMasterKey) {
         contractValues.estimateB.instrument_price_master[instrumentMasterKey] = event.target.value;
+        contractValues.estimateB.instrument_price_master.verified = false;
         return;
       }
       if (event.target.matches('[data-instrument-master-verified]')) {
@@ -1582,6 +1698,12 @@
         const item = contractValues.estimateB.cargo_items[rowIndex];
         if (!item) return;
         item[cargoKey] = event.target.value;
+        if (cargoKey === 'maker_model' || cargoKey === 'unit_value') {
+          item.price_source_url = '';
+          item.price_checked_at = '';
+          item.valuation_mode = 'manual';
+          instrumentLookupResults.delete(rowIndex);
+        }
         if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
           item.total_value = String(
             estimateNumber(item.quantity) * estimateNumber(item.unit_value)
@@ -1621,6 +1743,16 @@
       renderPreview();
     });
     dynamicFields.addEventListener('change', event => {
+      if (event.target.matches('[data-instrument-source-preset]')) {
+        if (!event.target.value) return;
+        const master = contractValues.estimateB.instrument_price_master;
+        master.source_urls = [...new Set([...(master.source_urls || []), event.target.value])].slice(0, 7);
+        master.source_url = master.source_urls[0];
+        master.catalog_year = '';
+        master.verified = false;
+        renderDynamicFields();
+        return;
+      }
       if (event.target.matches('[data-cargo-instrument]')) {
         const row = event.target.closest('[data-cargo-row]');
         const item = contractValues.estimateB.cargo_items[Number(row?.dataset.cargoRow)];
@@ -1640,6 +1772,7 @@
         } else {
           Object.assign(item, { category: 'その他', description: 'その他', maker_model: '', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0' });
         }
+        instrumentLookupResults.clear();
         renderDynamicFields();
         renderPreview();
         return;
@@ -1649,17 +1782,46 @@
       }
     });
     dynamicFields.addEventListener('click', async event => {
+      if (event.target.closest('[data-open-instrument-source]')) {
+        const sourceUrl = contractValues.estimateB.instrument_price_master.source_urls?.[0] || '';
+        if (sourceUrl) window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+        return;
+      }
+      const lookupButton = event.target.closest('[data-lookup-instrument-price]');
+      if (lookupButton) {
+        lookupButton.disabled = true;
+        try {
+          await lookupInstrumentPrice(Number(lookupButton.dataset.lookupInstrumentPrice));
+        } catch (error) {
+          lookupButton.disabled = false;
+          const row = lookupButton.closest('[data-cargo-row]');
+          let result = row?.querySelector('[data-price-lookup-error]');
+          if (!result && row) {
+            result = document.createElement('p');
+            result.dataset.priceLookupError = '';
+            result.className = 'save-status';
+            row.appendChild(result);
+          }
+          if (result) { result.textContent = error.message; result.dataset.state = 'error'; }
+        }
+        return;
+      }
       if (event.target.closest('[data-open-freight-calculator]')) {
         openFreightCalculator();
         return;
       }
       if (event.target.closest('[data-open-route-map]')) {
-        window.open('https://www.google.com/maps/dir/', '_blank', 'noopener,noreferrer');
+        const values = contractValues.estimateB;
+        const routeUrl = values.route_origin && values.route_destination
+          ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(values.route_origin)}&destination=${encodeURIComponent(values.route_destination)}&travelmode=driving`
+          : 'https://www.google.com/maps/dir/';
+        window.open(routeUrl, '_blank', 'noopener,noreferrer');
         return;
       }
       if (event.target.closest('[data-add-cargo-row]')) {
         if (contractValues.estimateB.cargo_items.length >= 10) return;
         contractValues.estimateB.cargo_items.push({ category: 'その他', instrument_key: 'other', description: 'その他', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '' });
+        instrumentLookupResults.clear();
         renderDynamicFields();
         renderPreview();
         return;
@@ -1668,6 +1830,7 @@
       if (removeButton) {
         if (contractValues.estimateB.cargo_items.length <= 1) return;
         contractValues.estimateB.cargo_items.splice(Number(removeButton.dataset.removeCargoRow), 1);
+        instrumentLookupResults.clear();
         renderDynamicFields();
         renderPreview();
         return;
@@ -1733,6 +1896,19 @@
     document.getElementById('printContract').addEventListener('click', () => window.print());
     document.getElementById('cancelFreightCalculator').addEventListener('click', () => freightCalculatorDialog.close());
     freightCalculatorDialog.querySelector('[data-load-light-cargo-reference]').addEventListener('click', loadLightCargoReference);
+    freightCalculatorDialog.querySelector('[data-measure-google-route]').addEventListener('click', async event => {
+      event.currentTarget.disabled = true;
+      freightCalculatorStatus.textContent = 'Google Mapsで距離を測定しています...';
+      freightCalculatorStatus.dataset.state = '';
+      try {
+        await measureGoogleRouteDistance();
+      } catch (error) {
+        freightCalculatorStatus.textContent = error.message;
+        freightCalculatorStatus.dataset.state = 'error';
+      } finally {
+        event.currentTarget.disabled = false;
+      }
+    });
     document.getElementById('applyFreightCalculator').addEventListener('click', applyFreightCalculator);
     saveButton.addEventListener('click', async () => {
       saveStatus.textContent = '保存しています...';

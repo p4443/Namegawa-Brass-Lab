@@ -166,6 +166,22 @@ export GOOGLE_APPS_SCRIPT_SECRET='API_SECRETと同じ文字列'
 
 初回の予約送信時に`レッスン予約`シートと`予約枠状態`シートが自動作成されます。
 
+### B契約書のGoogle Maps距離測定
+
+B契約前見積書の運賃計算画面では、Google Maps PlatformのRoutes APIから自動車ルートの走行距離と参考所要時間を取得できます。APIキーはブラウザへ送信せず、Flaskサーバーからのみ使用します。
+
+1. Google Cloud Consoleで請求先アカウントを設定し、対象プロジェクトの`Routes API`を有効化します。
+2. APIキーを作成し、APIの制限を`Routes API`だけに設定します。
+3. 固定送信元IPを利用できる環境では、アプリケーションの制限をRender等の送信元IPアドレスに限定します。固定IPを利用できない場合も、API制限、予算アラート、割り当て上限を設定します。
+4. RenderのEnvironmentへ`GOOGLE_MAPS_ROUTES_API_KEY`をSecretとして登録し、再デプロイします。ローカルでは次の環境変数を設定して再起動します。
+
+```bash
+export GOOGLE_MAPS_ROUTES_API_KEY='Google Cloudで発行したRoutes APIキー'
+docker compose up -d --build
+```
+
+契約書作成画面でB契約前見積書を選び、「距離・時間から参考運賃を算出」から出発地・目的地を入力して「Googleで距離測定」を押します。取得した距離は実車走行距離へ反映されます。参考所要時間には荷役・待機時間が含まれないため、総拘束時間は案件条件に合わせて別途入力してください。
+
 ### Brass-Logi輸送明細シート
 
 契約書作成画面のB見積書では、`Code.gs` v25の`generate_transport_sheet`を使い、輸送対象物明細と料金規定を同じGoogleスプレッドシートへ発行します。生成ファイルは一般公開せず、画面で指定した共有先メールアドレスだけを編集者へ追加します。料金規定では金額を円、休日・深夜割増をパーセント、燃料差額係数を数値として表示します。

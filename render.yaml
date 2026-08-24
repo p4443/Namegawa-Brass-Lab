@@ -19,6 +19,8 @@ services:
         sync: false
       - key: GOOGLE_APPS_SCRIPT_SECRET
         sync: false
+      - key: GOOGLE_MAPS_ROUTES_API_KEY
+        sync: false
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET

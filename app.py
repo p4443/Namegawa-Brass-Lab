@@ -8,15 +8,17 @@ import re
 import tempfile
 import threading
 import time
+import unicodedata
 import uuid
 from base64 import b64decode
 from binascii import Error as Base64Error
 from calendar import monthrange
 from datetime import date, datetime, timedelta
+from html.parser import HTMLParser
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode, urljoin, urlparse
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
@@ -224,6 +226,247 @@ CONTRACT_TYPES = {
         "keys": {"deliverable", "amount", "deadline", "special_terms"},
     },
 }
+
+INSTRUMENT_PRICE_SOURCE_DOMAINS = {
+    "yamaha.com": "ヤマハ",
+    "buffetcrampon.com": "ビュッフェ・クランポン",
+    "pearldrum.com": "パール楽器",
+    "korogi.co.jp": "こおろぎ社",
+    "suzuki-music.co.jp": "鈴木楽器製作所",
+    "nonaka.com": "野中貿易",
+    "global-inst.co.jp": "グローバル",
+}
+INSTRUMENT_PRICE_PAGE_MAX_BYTES = 2 * 1024 * 1024
+INSTRUMENT_MODEL_CODE_PATTERN = re.compile(
+    r"[A-Za-z](?=[A-Za-z0-9._/-]*\d)[A-Za-z0-9._/-]{2,}"
+)
+GOOGLE_ROUTES_API_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+
+
+def instrument_price_source(source_url):
+    parsed = urlparse(str(source_url).strip())
+    hostname = (parsed.hostname or "").lower().rstrip(".")
+    if parsed.scheme != "https" or parsed.username or parsed.password or parsed.port not in {None, 443}:
+        raise ValueError("公式メーカーのHTTPS URLを入力してください。")
+    for domain, source_name in INSTRUMENT_PRICE_SOURCE_DOMAINS.items():
+        if hostname == domain or hostname.endswith(f".{domain}"):
+            return source_name
+    raise ValueError("対応している公式メーカー・国内代理店のURLを入力してください。")
+
+
+class OfficialInstrumentPriceRedirectHandler(urllib_request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirect_url = urljoin(req.full_url, newurl)
+        instrument_price_source(redirect_url)
+        return super().redirect_request(
+            req, fp, code, msg, headers, redirect_url
+        )
+
+
+class InstrumentPricePageParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+        self.ignored_depth = 0
+
+    def handle_starttag(self, tag, attrs):
+        if tag in {"script", "style", "noscript"}:
+            self.ignored_depth += 1
+
+    def handle_endtag(self, tag):
+        if tag in {"script", "style", "noscript"} and self.ignored_depth:
+            self.ignored_depth -= 1
+
+    def handle_data(self, data):
+        if not self.ignored_depth:
+            self.parts.append(data)
+
+    def text(self):
+        return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
+
+
+def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
+    source_url = str(source_url).strip()
+    maker_model = unicodedata.normalize("NFKC", str(maker_model).strip())
+    source_name = instrument_price_source(source_url)
+    if not 2 <= len(maker_model) <= 120:
+        raise ValueError("照会するメーカー・型番を入力してください。")
+
+    page_opener = opener or urllib_request.build_opener(
+        OfficialInstrumentPriceRedirectHandler()
+    )
+    page_request = urllib_request.Request(
+        source_url,
+        headers={"User-Agent": "NamegawaBrassLab-PriceLookup/1.0"},
+    )
+    with page_opener.open(page_request, timeout=8) as response:
+        final_url = response.geturl()
+        instrument_price_source(final_url)
+        content_type = response.headers.get_content_type()
+        if content_type not in {"text/html", "application/xhtml+xml"}:
+            raise ValueError("現在は公式製品ページのHTML価格表示に対応しています。")
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > INSTRUMENT_PRICE_PAGE_MAX_BYTES:
+            raise ValueError("価格ページのサイズが上限を超えています。")
+        body = response.read(INSTRUMENT_PRICE_PAGE_MAX_BYTES + 1)
+        if len(body) > INSTRUMENT_PRICE_PAGE_MAX_BYTES:
+            raise ValueError("価格ページのサイズが上限を超えています。")
+        charset = response.headers.get_content_charset() or "utf-8"
+
+    parser = InstrumentPricePageParser()
+    parser.feed(body.decode(charset, errors="replace"))
+    page_text = unicodedata.normalize("NFKC", parser.text())
+    search_text = page_text.casefold()
+    model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(maker_model)
+    exact_model = max(model_codes, key=len) if model_codes else maker_model
+    exact_model_folded = exact_model.casefold()
+    model_pattern = re.compile(
+        rf"(?<![a-z0-9]){re.escape(exact_model_folded)}(?![a-z0-9])"
+    )
+    positions = [match.start() for match in model_pattern.finditer(search_text)][:20]
+    if not positions:
+        raise ValueError("公式ページ内に完全一致する型番が見つかりませんでした。")
+
+    price_pattern = re.compile(
+        r"(?:[¥￥]\s*([0-9][0-9,]{2,})|([0-9][0-9,]{2,})\s*円)"
+    )
+    candidates = []
+    seen_prices = set()
+    for position in positions:
+        snippet_start = max(0, position - 180)
+        snippet_end = min(len(page_text), position + len(exact_model) + 260)
+        snippet = page_text[snippet_start:snippet_end]
+        model_offset = position - snippet_start
+        for match in price_pattern.finditer(snippet):
+            between_start = min(model_offset, match.start())
+            between_end = max(model_offset + len(exact_model), match.end())
+            intervening_models = INSTRUMENT_MODEL_CODE_PATTERN.findall(
+                snippet[between_start:between_end]
+            )
+            if any(model.casefold() != exact_model_folded for model in intervening_models):
+                continue
+            price = int((match.group(1) or match.group(2)).replace(",", ""))
+            if not 1000 <= price <= 100000000 or price in seen_prices:
+                continue
+            seen_prices.add(price)
+            context_start = max(0, match.start() - 70)
+            context_end = min(len(snippet), match.end() + 70)
+            candidates.append(
+                {
+                    "price": price,
+                    "context": snippet[context_start:context_end].strip(),
+                }
+            )
+            if len(candidates) >= 10:
+                break
+        if len(candidates) >= 10:
+            break
+    if not candidates:
+        raise ValueError("型番付近に円価格が見つかりませんでした。")
+    return {
+        "source_name": source_name,
+        "source_url": final_url,
+        "checked_at": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat(),
+        "maker_model": maker_model,
+        "exact_model": exact_model,
+        "candidates": candidates,
+    }
+
+
+def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
+    if not isinstance(source_urls, list) or not 1 <= len(source_urls) <= 7:
+        raise ValueError("公式カタログURLを1件以上7件以内で入力してください。")
+    urls = list(dict.fromkeys(str(url).strip() for url in source_urls if str(url).strip()))
+    if not urls:
+        raise ValueError("公式カタログURLを入力してください。")
+    for source_url in urls:
+        instrument_price_source(source_url)
+
+    price_fetcher = fetcher or fetch_instrument_price_candidates
+    results = []
+    failures = []
+    for source_url in urls:
+        try:
+            results.append(price_fetcher(source_url, maker_model))
+        except (ValueError, OSError, urllib_error.URLError, UnicodeError) as exc:
+            failures.append({"source_url": source_url, "error": str(exc)})
+    if not results:
+        raise ValueError("指定した公式カタログから型番価格を取得できませんでした。")
+
+    candidates = []
+    for result in results:
+        candidates.extend(
+            {
+                **candidate,
+                "source_name": result["source_name"],
+                "source_url": result["source_url"],
+            }
+            for candidate in result["candidates"]
+        )
+    recommended = max(candidates, key=lambda candidate: candidate["price"])
+    checked_at = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
+    return {
+        "checked_at": checked_at,
+        "catalog_year": checked_at[:4],
+        "maker_model": str(maker_model).strip(),
+        "source_urls": [result["source_url"] for result in results],
+        "candidates": sorted(candidates, key=lambda candidate: candidate["price"], reverse=True),
+        "recommended_price": recommended["price"],
+        "recommended_source_name": recommended["source_name"],
+        "recommended_source_url": recommended["source_url"],
+        "failures": failures,
+    }
+
+
+def compute_google_route(origin, destination, api_key, urlopen=None):
+    origin = str(origin).strip()
+    destination = str(destination).strip()
+    api_key = str(api_key).strip()
+    if not origin or not destination or len(origin) > 300 or len(destination) > 300:
+        raise ValueError("出発地と目的地を300文字以内で入力してください。")
+    if not api_key:
+        raise ValueError("Google Routes APIキーが設定されていません。")
+    request_body = json.dumps(
+        {
+            "origin": {"address": origin},
+            "destination": {"address": destination},
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_UNAWARE",
+            "computeAlternativeRoutes": False,
+            "languageCode": "ja-JP",
+            "units": "METRIC",
+        }
+    ).encode("utf-8")
+    route_request = urllib_request.Request(
+        GOOGLE_ROUTES_API_URL,
+        data=request_body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": api_key,
+            "X-Goog-FieldMask": "routes.distanceMeters,routes.duration",
+        },
+        method="POST",
+    )
+    request_opener = urlopen or urllib_request.urlopen
+    with request_opener(route_request, timeout=8) as response:
+        result = json.loads(response.read(256 * 1024).decode("utf-8"))
+    routes = result.get("routes", []) if isinstance(result, dict) else []
+    if not routes or not isinstance(routes[0], dict):
+        raise ValueError("Google Mapsで自動車ルートを確認できませんでした。")
+    distance_meters = routes[0].get("distanceMeters")
+    duration_text = str(routes[0].get("duration", ""))
+    if not isinstance(distance_meters, int) or distance_meters <= 0:
+        raise ValueError("Google Mapsから走行距離を取得できませんでした。")
+    duration_match = re.fullmatch(r"(\d+(?:\.\d+)?)s", duration_text)
+    duration_seconds = float(duration_match.group(1)) if duration_match else 0
+    return {
+        "origin": origin,
+        "destination": destination,
+        "distance_km": round(distance_meters / 1000, 1),
+        "duration_minutes": max(1, round(duration_seconds / 60)) if duration_seconds else 0,
+        "maps_url": "https://www.google.com/maps/dir/?api=1&"
+        + urlencode({"origin": origin, "destination": destination, "travelmode": "driving"}),
+    }
 LESSON_APPS_SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25"
 
 
@@ -900,6 +1143,13 @@ def validate_contract(payload):
             verified = raw_master.get("verified") is True
             effective_date = str(raw_master.get("effective_date", "")).strip()
             source_url = str(raw_master.get("source_url", "")).strip()
+            source_urls = raw_master.get("source_urls", [])
+            catalog_year = str(raw_master.get("catalog_year", "")).strip()
+            if not isinstance(source_urls, list) or len(source_urls) > 7:
+                raise ValueError("楽器価格の公式カタログURLを確認してください。")
+            source_urls = list(dict.fromkeys(str(url).strip() for url in source_urls if str(url).strip()))
+            for catalog_url in source_urls:
+                instrument_price_source(catalog_url)
             if verified:
                 try:
                     datetime.strptime(effective_date, "%Y-%m-%d")
@@ -909,9 +1159,13 @@ def validate_contract(payload):
                     raise ValueError("見積作成日以前に確認された楽器価格マスターを使用してください。")
                 if re.fullmatch(r"https?://[^\s]+", source_url) is None:
                     raise ValueError("楽器価格マスターの出典URLを入力してください。")
+                if catalog_year and catalog_year != contract_date[:4]:
+                    raise ValueError("見積作成年の公開カタログで楽器価格を再照会してください。")
             values[key] = {
                 "effective_date": effective_date,
                 "source_url": source_url,
+                "source_urls": source_urls,
+                "catalog_year": catalog_year,
                 "verified": verified,
             }
             continue
@@ -935,6 +1189,8 @@ def validate_contract(payload):
                     "total_value": str(raw_item.get("total_value", "")).strip(),
                     "volume_points": str(raw_item.get("volume_points", "")).strip(),
                     "notes": str(raw_item.get("notes", "")).strip(),
+                    "price_source_url": str(raw_item.get("price_source_url", "")).strip(),
+                    "price_checked_at": str(raw_item.get("price_checked_at", "")).strip(),
                 }
                 if (
                     not item["category"]
@@ -953,10 +1209,19 @@ def validate_contract(payload):
                     or re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", item["volume_points"])
                     is None
                     or len(item["notes"]) > 200
+                    or len(item["price_source_url"]) > 500
                     or int(item["quantity"]) * int(item["unit_value"])
                     != int(item["total_value"])
                 ):
                     raise ValueError("輸送対象物明細の入力内容と評価額を確認してください。")
+                if item["price_source_url"]:
+                    instrument_price_source(item["price_source_url"])
+                    try:
+                        datetime.strptime(item["price_checked_at"], "%Y-%m-%d")
+                    except ValueError as exc:
+                        raise ValueError("楽器価格の照会日を正しく入力してください。") from exc
+                    if item["price_checked_at"] > contract_date:
+                        raise ValueError("見積作成日以前に照会した楽器価格を使用してください。")
                 cargo_items.append(item)
             values[key] = cargo_items
             continue
@@ -2109,6 +2374,51 @@ def create_app(
             return jsonify({"error": str(exc)}), 400
         contract = save_contract(values, contracts_dir)
         return jsonify(contract), 201
+
+    @app.post("/api/contracts/instrument-price-lookup")
+    def instrument_price_lookup():
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "価格照会内容を確認してください。"}), 400
+        try:
+            source_urls = payload.get("source_urls")
+            if source_urls is None:
+                source_urls = [payload.get("source_url", "")]
+            result = fetch_instrument_catalog_prices(source_urls, payload.get("maker_model", ""))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except (OSError, urllib_error.URLError, UnicodeError):
+            app.logger.exception("Official instrument price lookup failed")
+            return jsonify({"error": "公式価格ページを取得できませんでした。"}), 502
+        return jsonify(result)
+
+    @app.post("/api/contracts/route-distance")
+    def contract_route_distance():
+        error = require_editor()
+        if error:
+            return error
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({"error": "距離測定内容を確認してください。"}), 400
+        api_key = os.environ.get("GOOGLE_MAPS_ROUTES_API_KEY", "").strip()
+        if not api_key:
+            return jsonify({"error": "Google Routes APIの接続設定が不足しています。"}), 503
+        try:
+            result = compute_google_route(
+                payload.get("origin", ""), payload.get("destination", ""), api_key
+            )
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        except urllib_error.HTTPError as exc:
+            app.logger.warning("Google Routes API rejected route request: %s", exc.code)
+            return jsonify({"error": "Google Routes APIが距離測定を受け付けませんでした。設定と住所を確認してください。"}), 502
+        except (OSError, urllib_error.URLError, json.JSONDecodeError, UnicodeError):
+            app.logger.exception("Google Routes API request failed")
+            return jsonify({"error": "Google Mapsから距離を取得できませんでした。"}), 502
+        return jsonify(result)
 
     @app.post("/api/contracts/transport-sheet")
     def create_transport_sheet():

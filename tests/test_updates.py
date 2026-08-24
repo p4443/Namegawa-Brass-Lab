@@ -3,6 +3,7 @@ import os
 import tempfile
 import unittest
 from io import BytesIO
+from email.message import Message
 from base64 import b64encode
 from datetime import date
 from pathlib import Path
@@ -10,7 +11,10 @@ from unittest.mock import MagicMock, patch
 
 from app import (
     LessonReservationDeliveryError,
+    compute_google_route,
     create_app,
+    fetch_instrument_catalog_prices,
+    fetch_instrument_price_candidates,
     load_updates,
     normalize_media_url,
     normalize_slot_statuses,
@@ -25,6 +29,171 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_compute_google_route_returns_distance_without_exposing_api_key(self):
+        class FakeResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size):
+                return b'{"routes":[{"distanceMeters":1234,"duration":"165s"}]}'
+
+        api_key = "secret-google-key"
+        urlopen = MagicMock(return_value=FakeResponse())
+
+        result = compute_google_route("東京駅", "東京タワー", api_key, urlopen)
+
+        self.assertEqual(result["distance_km"], 1.2)
+        self.assertEqual(result["duration_minutes"], 3)
+        self.assertNotIn(api_key, json.dumps(result, ensure_ascii=False))
+        route_request = urlopen.call_args.args[0]
+        self.assertEqual(route_request.full_url, "https://routes.googleapis.com/directions/v2:computeRoutes")
+        self.assertEqual(route_request.get_header("X-goog-api-key"), api_key)
+        self.assertEqual(route_request.get_method(), "POST")
+
+    def test_contract_route_distance_api_requires_editor_and_google_key(self):
+        payload = {"origin": "東京駅", "destination": "東京タワー"}
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
+            os.environ.pop("GOOGLE_MAPS_ROUTES_API_KEY", None)
+            client = create_app(database_url="").test_client()
+            self.assertEqual(
+                client.post("/api/contracts/route-distance", json=payload).status_code,
+                401,
+            )
+            missing = client.post(
+                "/api/contracts/route-distance",
+                json=payload,
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(missing.status_code, 503)
+        self.assertIn("接続設定", missing.json["error"])
+
+    def test_contract_route_distance_api_returns_google_route(self):
+        payload = {"origin": "東京駅", "destination": "東京タワー"}
+        route = {
+            **payload,
+            "distance_km": 4.1,
+            "duration_minutes": 13,
+            "maps_url": "https://www.google.com/maps/dir/?api=1",
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "editor-secret",
+                "GOOGLE_MAPS_ROUTES_API_KEY": "secret-google-key",
+            },
+        ), patch("app.compute_google_route", return_value=route) as compute_route:
+            response = create_app(database_url="").test_client().post(
+                "/api/contracts/route-distance",
+                json=payload,
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["distance_km"], 4.1)
+        compute_route.assert_called_once_with(
+            payload["origin"], payload["destination"], "secret-google-key"
+        )
+
+    def test_instrument_price_lookup_extracts_model_nearby_official_prices(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/ytr-8335.html"
+
+            def read(self, size):
+                return """<html><body><h1>YTR-8335</h1><p>希望小売価格：423,500円（税込）</p><p>YTR-8335RS 希望小売価格：900,000円（税込）</p><script>YTR-8335 1,000円</script></body></html>""".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/ytr-8335.html", "YAMAHA YTR-8335", opener
+        )
+
+        self.assertEqual(result["source_name"], "ヤマハ")
+        self.assertEqual(result["exact_model"], "YTR-8335")
+        self.assertEqual([candidate["price"] for candidate in result["candidates"]], [423500])
+        self.assertIn("YTR-8335 希望小売価格:423,500円", result["candidates"][0]["context"])
+
+    def test_instrument_price_lookup_rejects_non_official_url_before_request(self):
+        opener = MagicMock()
+
+        with self.assertRaisesRegex(ValueError, "対応している公式"):
+            fetch_instrument_price_candidates(
+                "https://example.com/ytr-8335", "YTR-8335", opener
+            )
+
+        opener.open.assert_not_called()
+
+    def test_instrument_catalog_prices_adopts_highest_price(self):
+        catalog_results = {
+            "https://jp.yamaha.com/catalog-a": {
+                "source_name": "ヤマハ",
+                "source_url": "https://jp.yamaha.com/catalog-a",
+                "candidates": [{"price": 420000, "context": "2026価格表"}],
+            },
+            "https://www.nonaka.com/catalog-b": {
+                "source_name": "野中貿易",
+                "source_url": "https://www.nonaka.com/catalog-b",
+                "candidates": [{"price": 435000, "context": "2026カタログ"}],
+            },
+        }
+
+        result = fetch_instrument_catalog_prices(
+            list(catalog_results), "MODEL-100", lambda source_url, maker_model: catalog_results[source_url]
+        )
+
+        self.assertEqual(result["recommended_price"], 435000)
+        self.assertEqual(result["recommended_source_name"], "野中貿易")
+        self.assertEqual(result["catalog_year"], "2026")
+
+    def test_instrument_price_lookup_api_aggregates_catalog_urls(self):
+        payload = {
+            "source_urls": [
+                "https://jp.yamaha.com/catalog-a",
+                "https://www.nonaka.com/catalog-b",
+            ],
+            "maker_model": "MODEL-100",
+        }
+        result = {
+            "checked_at": "2026-08-24",
+            "catalog_year": "2026",
+            "recommended_price": 435000,
+            "recommended_source_url": payload["source_urls"][1],
+            "candidates": [],
+            "failures": [],
+        }
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}), patch(
+            "app.fetch_instrument_catalog_prices", return_value=result
+        ) as lookup:
+            client = create_app(database_url="").test_client()
+            self.assertEqual(
+                client.post("/api/contracts/instrument-price-lookup", json=payload).status_code,
+                401,
+            )
+            response = client.post(
+                "/api/contracts/instrument-price-lookup",
+                json=payload,
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["recommended_price"], 435000)
+        lookup.assert_called_once_with(payload["source_urls"], payload["maker_model"])
+
     def test_consultation_validation_requires_mode_specific_fields(self):
         valid = {
             "service_mode": "allinone",
@@ -238,7 +407,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('data-operation-input="holiday"', page)
         self.assertIn("法定運賃ではありません", page)
         self.assertIn('data-freight-input="route_origin"', page)
+        self.assertIn("data-measure-google-route", page)
+        self.assertIn("function measureGoogleRouteDistance()", page)
+        self.assertIn("/api/contracts/route-distance", page)
+        self.assertIn("Google Mapsの自動車ルート", page)
         self.assertIn("楽器再調達価格の確認", page)
+        self.assertIn("公開カタログURL（1行1件・最大7件）", page)
+        self.assertIn("最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用", page)
+        self.assertIn("見積作成年の公開カタログで再照会", page)
+        self.assertIn("source_urls: result.source_urls", page)
         self.assertIn("function transportReadiness(values)", page)
         self.assertIn("案件受付（下書き）", page)
         self.assertIn("外部運送会社へ見積依頼中", page)
