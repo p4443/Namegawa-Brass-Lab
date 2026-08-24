@@ -664,6 +664,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function updateCargoTaxStatus(select)", page)
         self.assertIn("確認チェックが有効になりました。", page)
         self.assertIn("event.target.matches('[data-cargo-item-key=\"price_tax_status\"]')", page)
+        self.assertIn("if (cargoKey === 'price_tax_status') return;", page)
         self.assertIn("item.price_source_url || item.lookup_source_url", page)
         self.assertIn("estimateNumber(item.catalog_price || item.unit_value) > 0", page)
         self.assertIn("instrumentPricesConfirmable", page)

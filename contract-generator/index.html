@@ -2286,6 +2286,7 @@
       }
       const cargoKey = event.target.dataset.cargoItemKey;
       if (cargoKey) {
+        if (cargoKey === 'price_tax_status') return;
         const row = event.target.closest('[data-cargo-row]');
         const rowIndex = Number(row?.dataset.cargoRow);
         const item = contractValues.estimateB.cargo_items[rowIndex];
@@ -2305,10 +2306,6 @@
           if (valuationOutput) valuationOutput.textContent = '手入力';
           const verified = dynamicFields.querySelector('[data-instrument-master-verified]');
           if (verified) { verified.checked = false; verified.disabled = true; }
-        }
-        if (cargoKey === 'price_tax_status') {
-          updateCargoTaxStatus(event.target);
-          return;
         }
         if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
           if (cargoKey === 'unit_value' && item.valuation_mode === 'manual') item.catalog_price = item.unit_value;
