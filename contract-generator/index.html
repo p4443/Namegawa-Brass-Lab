@@ -432,7 +432,7 @@
       <form class="login-form" id="contractLoginForm">
         <label for="contractPassword">管理者パスワード</label>
         <input id="contractPassword" type="password" autocomplete="current-password" required>
-        <button class="primary-button" type="submit">開く</button>
+        <button class="primary-button" id="contractLoginButton" type="submit">開く</button>
         <p class="login-status" id="loginStatus" role="status" aria-live="polite"></p>
       </form>
     </section>
@@ -583,6 +583,7 @@
     const loginScreen = document.getElementById('loginScreen');
     const loginForm = document.getElementById('contractLoginForm');
     const passwordInput = document.getElementById('contractPassword');
+    const loginButton = document.getElementById('contractLoginButton');
     const loginStatus = document.getElementById('loginStatus');
     const generator = document.getElementById('contractGenerator');
     const logoutButton = document.getElementById('contractLogout');
@@ -897,7 +898,7 @@
     function renderInstrumentPriceCandidates(rowIndex) {
       const result = instrumentLookupResults.get(rowIndex);
       if (!result) return '';
-      return `<div class="price-lookup-results"><p>同一型番の候補を高い順に比較し、最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用しました。</p>${result.candidates.map((candidate, candidateIndex) => `<div class="secondary-button price-candidate"><strong>${formatEstimateYen(candidate.price)}円${candidateIndex === 0 ? '（採用）' : ''}</strong><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></div>`).join(')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
+      return `<div class="price-lookup-results"><p>同一型番の候補を高い順に比較し、最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用しました。</p>${result.candidates.map((candidate, candidateIndex) => `<div class="secondary-button price-candidate"><strong>${formatEstimateYen(candidate.price)}円${candidateIndex === 0 ? '（採用）' : ''}</strong><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></div>`).join('')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
     }
 
     async function lookupInstrumentPrice(rowIndex) {
@@ -1619,11 +1620,11 @@
     }
 
     function showGenerator() {
-      loginScreen.hidden = true;
-      generator.hidden = false;
       contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
       renderDynamicFields();
       renderPreview();
+      loginScreen.hidden = true;
+      generator.hidden = false;
       loadSavedContracts().catch(error => {
         saveStatus.textContent = error.message;
         saveStatus.dataset.state = 'error';
@@ -1637,19 +1638,28 @@
       if (!response.ok) throw new Error(await readApiError(response, '管理者パスワードが違います。'));
       const result = await response.json();
       if (!result.editor_token) throw new Error('管理者セッションを開始できませんでした。');
-      editorToken = result.editor_token;
-      passwordInput.value = '';
-      showGenerator();
+      return result.editor_token;
     }
 
     loginForm.addEventListener('submit', async event => {
       event.preventDefault();
       loginStatus.textContent = '';
+      loginButton.disabled = true;
+      loginButton.textContent = '確認中...';
       try {
-        await authenticate(passwordInput.value);
+        const token = await authenticate(passwordInput.value);
+        editorToken = token;
+        showGenerator();
+        passwordInput.value = '';
       } catch (error) {
+        editorToken = '';
+        generator.hidden = true;
+        loginScreen.hidden = false;
         loginStatus.textContent = error.message || 'ログインできませんでした。';
-        passwordInput.select();
+        passwordInput.focus();
+      } finally {
+        loginButton.disabled = false;
+        loginButton.textContent = '開く';
       }
     });
 
