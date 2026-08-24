@@ -239,7 +239,6 @@
     .partner-2t-panel p { margin: 0 0 10px; color: #78350f; font-size: 0.78rem; line-height: 1.5; }
     .partner-2t-panel .field { margin-bottom: 10px; }
     .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
-    .cargo-editor-fieldset:disabled { opacity: 0.5; }
     .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
       width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #ffffff;
     }
@@ -273,6 +272,18 @@
     .price-proof.is-error { color: var(--danger); font-weight: 800; }
     .document-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
     .document-tools > * { width: 100%; min-width: 0; }
+    .transport-creation-section {
+      margin-bottom: 14px;
+      padding: 14px;
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      background: #f8fbff;
+    }
+    .transport-creation-section h2 { margin: 0 0 5px; color: var(--primary-dark); font-size: 0.95rem; }
+    .transport-creation-section > p { margin: 0 0 12px; color: var(--muted); font-size: 0.78rem; line-height: 1.5; }
+    .route-map-button { border-color: #0f766e; color: #0f766e; background: #f0fdfa; }
+    .route-map-button:hover, .route-map-button:focus-visible { background: #ccfbf1; }
+    .estimate-auto-label { float: right; padding: 2px 6px; border-radius: 4px; color: #115e59; background: #ccfbf1; font-size: 0.68rem; }
     .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; overflow: hidden; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
     .freight-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
     .freight-dialog-body { max-height: calc(100vh - 40px); padding: 24px; overflow: auto; }
@@ -404,6 +415,8 @@
     .estimate-summary { width: 48% !important; margin: 10px 0 0 auto !important; }
     .estimate-summary th, .estimate-summary td { padding: 5px 7px; }
     .estimate-summary td { text-align: right; white-space: nowrap; }
+    .estimate-summary .estimate-grand-total > * { border-top: 2px solid #1e40af; border-bottom: 2px solid #1e40af; color: #172554; background: #eff6ff; }
+    .estimate-summary .estimate-grand-total td { font-size: 10pt; }
     .estimate-issuer { margin-top: 12px; }
     .estimate-conditions { margin: 0; padding: 0; list-style: none; }
     .estimate-conditions li { margin-bottom: 11px; }
@@ -458,6 +471,8 @@
     .transport-estimate-detail h2 { position: relative; top: -5px; margin-top: 9px; margin-bottom: -1px; }
     .transport-estimate-detail .estimate-conditions li { margin-bottom: 5px; }
     .transport-estimate-detail p { margin-bottom: 4px; }
+    .type-b-contract-page { height: auto; min-height: var(--paper-height); overflow: visible; }
+    .type-b-contract-page .doc-parties { margin-top: 24px; padding-top: 10px; border-top: 2px solid #222222; }
 
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
@@ -664,7 +679,7 @@
         </div>
       </details>
       <p class="save-status" id="freightCalculatorStatus" role="status"></p>
-      <div class="delete-dialog-actions freight-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">キャンセル</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映</button></div>
+      <div class="delete-dialog-actions freight-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">元の見積書作成へ戻る</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映して戻る</button></div>
     </div>
   </dialog>
 
@@ -699,14 +714,16 @@
     const freightCalculatorStatus = document.getElementById('freightCalculatorStatus');
     let pendingDeleteContractId = '';
     let editorToken = '';
+    let freightCalculatorReturnTarget = null;
     const instrumentLookupResults = new Map();
+    const invoiceRegistrationNumber = 'T2810320517878';
 
     const contractValues = {
       estimateA: {
         subject: '音楽指導および地域クラブ移行支援に関する御見積',
         implementation_period: '実施日または別途定める契約期間',
         validity_days: '30',
-        invoice_registration_number: '該当なし',
+        invoice_registration_number: invoiceRegistrationNumber,
         estimate_items: [
           { description: '楽器別・パート指導', quantity: '1', unit: '回', unit_price: '15000', amount: '15000', details: '管楽器の奏法、基礎練習および課題曲に関する指導' },
           { description: '合奏指導', quantity: '1', unit: '回', unit_price: '20000', amount: '20000', details: '基礎合奏、楽曲解釈、アンサンブルおよび本番に向けた指導' },
@@ -1000,7 +1017,7 @@
             + field('件名', 'subject', values.subject)
             + field('実施予定期間', 'implementation_period', values.implementation_period)
             + `<div class="field"><label>見積有効期限（発行日より日数）<input data-contract-key="validity_days" type="number" min="1" max="365" value="${escapeHtml(values.validity_days)}"></label></div>`
-            + field('適格請求書発行事業者登録番号（なければ「該当なし」）', 'invoice_registration_number', values.invoice_registration_number)
+            + `<div class="estimate-edit-guide"><strong>適格請求書発行事業者登録番号</strong>${invoiceRegistrationNumber}</div>`
             + renderEstimateItemEditors(values, true);
             }
 
@@ -1033,11 +1050,10 @@
         + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
         + field('迂回・延泊実費', 'detour_expenses', values.detour_expenses)
         + field('シート共有先メールアドレス', 'cargo_contact_email', values.cargo_contact_email)
-        + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><a class="secondary-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">経路図作成を開く</a></div>`
-        + `<p class="save-status" data-document-tool-status role="status"></p>`
+        + `<section class="transport-creation-section"><h2>輸送書類・経路図の作成</h2><p>入力済みの輸送情報から共有シートを発行し、出発地と目的地をGoogle マップで確認します。</p><div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを発行</button><a class="secondary-button route-map-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">経路図を作成・確認</a></div><p class="save-status" data-document-tool-status role="status"></p></section>`
         + `<section class="partner-2t-panel"><h2>協力会社 小型2t車の代理調整</h2><p>協力会社はお客様との契約・見積窓口にはなりません。当方が依頼、日程確認、費用調整を一括して行います。</p><label class="cargo-consent"><input data-partner-2t-requested type="checkbox"${values.partner_2t_requested ? ' checked' : ''}>小型2t車の代理調整を依頼する</label><div${values.partner_2t_requested || overCapacity ? '' : ' hidden'} data-partner-2t-details>${selectField('代理調整状況', 'partner_2t_status', values.partner_2t_status, [{ value: 'not_needed', label: '不要' }, { value: 'requested', label: '依頼受付' }, { value: 'adjusting', label: '協力会社と調整中' }, { value: 'confirmed', label: '車両・日程・費用を確定' }])}${field('小型2t車 調整予算（円）', 'partner_2t_budget', values.partner_2t_budget)}${field('代理調整メモ', 'partner_2t_notes', values.partner_2t_notes, true)}</div></section>`
         + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
-        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor instrument-price-panel"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly></label><label class="cargo-instrument">公式価格サイト<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(catalogUrls)}</select><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く"${catalogUrls.length && isOfficialInstrumentPriceUrl(catalogUrls[0]) ? '' : ' disabled'}>先頭URLを開く</button><textarea data-instrument-catalog-urls maxlength="3500" aria-label="公開カタログURL（1行1件・最大7件）" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><small class="price-source-count">登録 ${catalogUrls.length}/7件</small></div></label><p class="price-proof${catalogStatus.state === 'ready' ? '' : ` is-${catalogStatus.state}`}" data-instrument-catalog-status>${escapeHtml(catalogStatus.message)}</p><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified && pricesConfirmable ? ' checked' : ''}${pricesConfirmable ? '' : ' disabled'}> 型番・最高額候補・税込／税別を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor><div class="estimate-editor instrument-price-panel"><h2>再調達価格・評価根拠の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly></label><label class="cargo-instrument">公式価格サイト<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(catalogUrls)}</select><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く"${catalogUrls.length && isOfficialInstrumentPriceUrl(catalogUrls[0]) ? '' : ' disabled'}>先頭URLを開く</button><textarea data-instrument-catalog-urls maxlength="3500" aria-label="公開カタログURL（1行1件・最大7件）" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><small class="price-source-count">登録 ${catalogUrls.length}/7件</small></div></label><p class="price-proof${catalogStatus.state === 'ready' ? '' : ` is-${catalogStatus.state}`}" data-instrument-catalog-status>${escapeHtml(catalogStatus.message)}</p><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified && pricesConfirmable ? ' checked' : ''}${pricesConfirmable ? '' : ' disabled'}> 型番・最高額候補・税込／税別を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
     }
 
@@ -1063,7 +1079,7 @@
             ${item.price_source_url ? `<p class="price-proof">反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</p>` : ''}
             ${renderInstrumentPriceCandidates(index)}
           </div>
-        </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>その他の品目行を追加</button>`;
+        </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>輸送品目を追加</button>`;
     }
 
     function renderInstrumentPriceCandidates(rowIndex) {
@@ -1243,8 +1259,12 @@
         <div class="doc-parties with-divider">
           <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
           <div class="party-divider" aria-hidden="true"></div>
-          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><div class="sign-area">印</div></div>
+          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><p>適格請求書発行事業者登録番号：${invoiceRegistrationNumber}</p><div class="sign-area">印</div></div>
         </div>`;
+    }
+
+    function estimateIssuerHtml(label = '発行者情報') {
+      return `<div class="estimate-issuer"><strong>${label}</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>適格請求書発行事業者登録番号：${invoiceRegistrationNumber}</div>`;
     }
 
     function contractTable(rows) {
@@ -1412,6 +1432,7 @@
 
     function openFreightCalculator() {
       const values = contractValues.estimateB;
+      freightCalculatorReturnTarget = document.activeElement;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { input.value = values[input.dataset.freightInput]; });
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
       freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = values.freight_rate_master.tax_included === true;
@@ -1426,6 +1447,15 @@
       freightCalculatorStatus.textContent = '';
       freightCalculatorStatus.dataset.state = '';
       freightCalculatorDialog.showModal();
+    }
+
+    function closeFreightCalculator() {
+      freightCalculatorDialog.close();
+      const returnTarget = freightCalculatorReturnTarget?.isConnected
+        ? freightCalculatorReturnTarget
+        : dynamicFields.querySelector('[data-open-freight-calculator]');
+      returnTarget?.focus();
+      freightCalculatorReturnTarget = null;
     }
 
     async function measureGoogleRouteDistance() {
@@ -1526,9 +1556,9 @@
         values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
         syncCargoValuation();
         if (insurance) insurance.details = `申告総評価額${formatEstimateYen(calculateCargoValuation())}円に対する補償特約費`;
-        freightCalculatorDialog.close();
         renderDynamicFields();
         renderPreview();
+        closeFreightCalculator();
       } catch (error) {
         freightCalculatorStatus.textContent = error.message;
         freightCalculatorStatus.dataset.state = 'error';
@@ -1626,8 +1656,8 @@
               ${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}
             </tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
-          <div class="estimate-issuer"><strong>発行者情報</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>業務区分：生成AI活用型 Web・アプリケーション開発 / クリエイティブ制作</div>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr class="estimate-grand-total"><th>明細合計（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          ${estimateIssuerHtml()}
         </section>
         <section class="contract-page estimate-page" data-page-number="2">
           <h1>お見積り条件・特記事項</h1>
@@ -1662,13 +1692,13 @@
             <thead><tr><th>指導・支援内容</th><th class="quantity">数量</th><th class="number">単価（税込・円）</th><th class="number">金額（税込・円）</th><th>概要・内訳</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>明細合計（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <table class="estimate-summary"><tbody><tr class="estimate-grand-total"><th>明細合計（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
           <ul class="estimate-conditions">
             <li><strong>見積有効期限</strong>発行日より${escapeHtml(values.validity_days)}日間</li>
             <li><strong>実施条件</strong>具体的な日程、会場、対象人数、指導内容、交通費その他の実費は、発注前に双方で確認します。</li>
             <li><strong>契約書との関係</strong>発注時は業務委託基本契約書および個別契約書Aを締結し、本見積書を個別契約の一部として取り扱います。</li>
           </ul>
-          <div class="estimate-issuer"><strong>発行者</strong><br>なめがわブラス・ラボ　代表：佐々木 久和<br>所在地：埼玉県比企郡滑川町月の輪5丁目1-3<br>適格請求書発行事業者登録番号：${escapeHtml(values.invoice_registration_number)}</div>
+          ${estimateIssuerHtml('発行者')}
         </section>`;
     }
 
@@ -1700,7 +1730,7 @@
           <p><strong>運送実施：</strong>${values.transport_provider_mode === 'external_carrier' ? '外部の許可運送会社へ委託' : '自社運送（許認可確認必須）'}　<strong>参考車両：</strong>${escapeHtml(values.vehicle_class === 'undecided' ? '未定' : values.vehicle_class)}</p>
           <p><strong>運送会社：</strong>${escapeHtml(values.carrier_name || '未定')}　<strong>正式見積：</strong>${values.carrier_quote_url ? `<a href="${escapeHtml(values.carrier_quote_url)}" target="_blank" rel="noopener noreferrer">確認する</a>` : '未取得'}</p>
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
-          <div class="estimate-issuer"><strong>受託者（乙）</strong><br>屋号：なめがわブラス・ラボ　代表：佐々木 久和<br>住所：埼玉県比企郡滑川町月の輪5丁目1-3</div>
+          ${estimateIssuerHtml('受託者（乙）')}
           <h2>1. 法定開示・クラウド添付書類</h2>
           <p>以下は入力された情報と添付先です。本見積書の表示だけで許認可の有効性を自動証明するものではないため、甲は原本・発行主体・有効期限を確認してください。</p>
           <table class="individual-contract-table"><tbody>
@@ -1722,7 +1752,7 @@
             <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr><th>合計金額（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
+          <table class="estimate-summary"><tbody><tr><th>小計（税抜）</th><td data-estimate-total="subtotal">${formatEstimateYen(totals.subtotal)}円</td></tr><tr><th>消費税（10%）</th><td data-estimate-total="tax">${formatEstimateYen(totals.tax)}円</td></tr><tr class="estimate-grand-total"><th>明細合計（税込）</th><td><strong data-estimate-total="total">${formatEstimateYen(totals.total)}円</strong></td></tr></tbody></table>
           <h2>2. 現場発生時の追加請求予定項目</h2>
           <ul class="estimate-conditions">
             <li><strong>待機料</strong>${escapeHtml(values.waiting_fee)}</li>
@@ -1787,7 +1817,7 @@
           ['特記事項', values.special_terms]
         ])}${parties}</section>`;
       } else if (type === 'typeB') {
-        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
           ['特記事項', values.special_terms]
         ])}${parties}</section>`;
@@ -2315,7 +2345,7 @@
       updateEstimatePreviewTotals();
     });
     document.getElementById('printContract').addEventListener('click', () => window.print());
-    document.getElementById('cancelFreightCalculator').addEventListener('click', () => freightCalculatorDialog.close());
+    document.getElementById('cancelFreightCalculator').addEventListener('click', closeFreightCalculator);
     freightCalculatorDialog.querySelector('[data-load-light-cargo-reference]').addEventListener('click', loadLightCargoReference);
     freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]').addEventListener('change', () => updateInstrumentSurchargePreset(true));
     freightCalculatorDialog.querySelector('[data-measure-google-route]').addEventListener('click', async event => {
