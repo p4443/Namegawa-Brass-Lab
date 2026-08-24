@@ -258,10 +258,32 @@
     .price-proof { grid-column: 1 / -1; margin: 0; color: #047857; font-size: 0.75rem; overflow-wrap: anywhere; }
     .document-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
     .document-tools > * { width: 100%; min-width: 0; }
-    .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
+    .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; overflow: hidden; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
     .freight-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
-    .freight-dialog-body { padding: 24px; overflow: auto; }
+    .freight-dialog-body { max-height: calc(100vh - 40px); padding: 24px; overflow: auto; }
     .freight-dialog h2 { margin: 0 0 8px; }
+    .rate-section-title {
+      grid-column: 1 / -1;
+      margin: 4px 0 0;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--border);
+      color: var(--primary-dark);
+      font-size: 0.9rem;
+    }
+    .rate-master-details { margin-top: 14px; border: 1px solid var(--border); border-radius: 6px; background: #f8fafc; }
+    .rate-master-details summary { padding: 12px 14px; color: var(--primary-dark); font-weight: 800; cursor: pointer; }
+    .rate-master-details[open] summary { border-bottom: 1px solid var(--border); }
+    .rate-master-details .rate-master-grid { padding: 14px; }
+    .freight-dialog-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 2;
+      margin: 12px -24px -24px;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.97);
+      box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.08);
+    }
     .rate-master-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
     .rate-master-grid label { display: grid; gap: 4px; font-size: 0.78rem; font-weight: 800; }
     .rate-master-grid input { width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; }
@@ -274,11 +296,17 @@
 
     @media (max-width: 520px) {
       .document-tools { grid-template-columns: 1fr; }
+      .freight-dialog { width: calc(100% - 16px); max-height: calc(100vh - 16px); }
+      .freight-dialog-body { max-height: calc(100vh - 16px); padding: 16px; }
+      .rate-master-grid { grid-template-columns: 1fr; }
+      .route-distance-tools { grid-template-columns: 1fr; }
+      .rate-master-grid .rate-wide, .rate-confirm, .rate-section-title { grid-column: 1; }
+      .freight-dialog-actions { margin: 12px -16px -16px; padding: 12px 16px; }
     }
 
     .preview-container {
       display: flex;
-      justify-content: center;
+      justify-content: safe center;
       padding: 40px;
       overflow: auto;
     }
@@ -559,10 +587,12 @@
       <button class="secondary-button" data-load-light-cargo-reference type="button">2026年度 自社料金規定を読み込む</button>
       <p class="estimate-edit-guide">出発地・目的地は住所のほか、駅、学校、役所、文化施設など国内公共機関の固有名詞を入力できます。距離測定時に確定住所へ置き換えます。</p>
       <div class="rate-master-grid">
+        <h3 class="rate-section-title">経路と所要時間</h3>
         <label>出発地（住所・施設名）<input data-freight-input="route_origin" type="text" placeholder="例：滑川町役場"></label>
         <label>目的地（住所・施設名）<input data-freight-input="route_destination" type="text" placeholder="例：滑川町文化スポーツセンター"></label>
         <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">施設名・住所から距離測定</button></div>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
+        <h3 class="rate-section-title">積卸し・追加条件</h3>
         <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
         <label>積卸し作業時間（分）<input data-operation-input="loading_minutes" type="number" min="0" step="1" value="0"></label>
         <label>積卸し方法<select data-operation-input="loading_support_mode"><option value="carrier">当方が積卸し（荷役料を算定）</option><option value="customer_assisted">お客様のお手伝いあり（追加スタッフ不要）</option><option value="customer_loads">お客様が積卸し（荷役料なし）</option></select></label>
@@ -575,6 +605,10 @@
         <p class="estimate-edit-guide">前日キャンセル：お見積り運賃の50% ／ 当日出発前：80% ／ 当日出発後：100%。助手追加・特殊作業は別途見積です。</p>
         <label class="rate-confirm"><input data-operation-input="holiday" type="checkbox"><span>日曜・祝日（参考運賃を20%割増）</span></label>
         <label class="rate-confirm"><input data-operation-input="night" type="checkbox"><span>22:00〜翌5:00（参考運賃を30%割増）</span></label>
+      </div>
+      <details class="rate-master-details">
+        <summary>料金マスターを確認・編集</summary>
+        <div class="rate-master-grid">
         <label>料金マスター基準日<input data-rate-key="effective_date" type="date"></label>
         <label class="rate-wide">公表資料・料金規定の出典URL<input data-rate-key="source_url" type="url"></label>
         <label>20kmまでの距離制基本運賃（円）<input data-rate-key="distance_base_20" type="number" min="0"></label>
@@ -598,9 +632,10 @@
         <label>外部2t車参考チャーター額（円）<input data-rate-key="external_2t_charter" type="number" min="0"></label>
         <label class="rate-confirm"><input data-rate-tax-included type="checkbox"><span>入力した参考運賃は税込額</span></label>
         <label class="rate-confirm"><input data-rate-verified type="checkbox"><span>基準日現在の公表資料と自社料金規定を確認し、入力値を見積根拠として使用します。</span></label>
-      </div>
+        </div>
+      </details>
       <p class="save-status" id="freightCalculatorStatus" role="status"></p>
-      <div class="delete-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">キャンセル</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映</button></div>
+      <div class="delete-dialog-actions freight-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">キャンセル</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映</button></div>
     </div>
   </dialog>
 
