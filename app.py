@@ -1351,6 +1351,7 @@ def validate_contract(payload):
                     "total_value": str(raw_item.get("total_value", "")).strip(),
                     "volume_points": str(raw_item.get("volume_points", "")).strip(),
                     "notes": str(raw_item.get("notes", "")).strip(),
+                    "lookup_source_url": str(raw_item.get("lookup_source_url", "")).strip(),
                     "price_source_url": str(raw_item.get("price_source_url", "")).strip(),
                     "price_checked_at": str(raw_item.get("price_checked_at", "")).strip(),
                     "price_tax_status": str(raw_item.get("price_tax_status", "")).strip(),
@@ -1372,12 +1373,17 @@ def validate_contract(payload):
                     or re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", item["volume_points"])
                     is None
                     or len(item["notes"]) > 200
+                    or len(item["lookup_source_url"]) > 500
                     or len(item["price_source_url"]) > 500
                     or item["price_tax_status"] not in {"", "tax_included", "tax_excluded"}
                     or int(item["quantity"]) * int(item["unit_value"])
                     != int(item["total_value"])
                 ):
                     raise ValueError("輸送対象物明細の入力内容と評価額を確認してください。")
+                if item["lookup_source_url"]:
+                    instrument_price_source(item["lookup_source_url"])
+                    if item["lookup_source_url"] not in values["instrument_price_master"]["source_urls"]:
+                        raise ValueError("対象物の公式価格サイトをカタログ候補へ登録してください。")
                 if item["price_source_url"]:
                     instrument_price_source(item["price_source_url"])
                     try:
@@ -1463,9 +1469,8 @@ def validate_contract(payload):
         for item in values["cargo_items"]:
             if item["valuation_mode"] == "master" and (
                 item["price_source_url"] not in instrument_master["source_urls"]
-                or item["price_checked_at"] != instrument_master["effective_date"]
             ):
-                raise ValueError("楽器ごとの公式価格と価格マスターの照会情報が一致しません。")
+                raise ValueError("楽器ごとの公式価格サイトが価格マスターと一致しません。")
     return {
         "doc_type": doc_type,
         "department": configuration["department"],

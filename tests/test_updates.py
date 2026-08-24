@@ -602,7 +602,13 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("価格の税区分", page)
         self.assertIn("instrumentPricesConfirmable", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
-        self.assertIn("source_urls: result.source_urls", page)
+        self.assertIn("master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])]", page)
+        self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
+        self.assertNotIn('data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly', page)
+        self.assertIn("function cargoPriceSourceOptions(sourceUrls, selectedUrl)", page)
+        self.assertIn("data-cargo-price-source", page)
+        self.assertIn("source_urls: [sourceUrl]", page)
+        self.assertIn("lookup_source_url: item.lookup_source_url", page)
         self.assertIn("</small></article>`).join('')}", page)
         self.assertNotIn("</small></article>`).join(')}", page)
         self.assertIn("function transportReadiness(values)", page)
@@ -805,6 +811,7 @@ class UpdatesTest(unittest.TestCase):
                                 "total_value": "5000000",
                                 "volume_points": "1",
                                 "notes": "ハードケース入り",
+                                "lookup_source_url": "https://jp.yamaha.com/products/model-100.html",
                                 "price_source_url": "https://jp.yamaha.com/products/model-100.html",
                                 "price_checked_at": "2026-08-23",
                                 "price_tax_status": "tax_included",
@@ -839,6 +846,10 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(
                 response.json["values"]["cargo_items"][0]["price_tax_status"],
                 "tax_included",
+            )
+            self.assertEqual(
+                response.json["values"]["cargo_items"][0]["lookup_source_url"],
+                "https://jp.yamaha.com/products/model-100.html",
             )
             self.assertTrue(response.json["values"]["cargo_restrictions_agreed"])
             self.assertEqual(
