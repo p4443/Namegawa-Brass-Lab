@@ -366,10 +366,19 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
             seen_prices.add(price)
             context_start = max(0, match.start() - 70)
             context_end = min(len(snippet), match.end() + 70)
+            context = snippet[context_start:context_end].strip()
+            normalized_context = context.casefold()
+            if "税込" in normalized_context or "消費税込" in normalized_context:
+                tax_status = "tax_included"
+            elif "税別" in normalized_context or "税抜" in normalized_context or "本体価格" in normalized_context:
+                tax_status = "tax_excluded"
+            else:
+                tax_status = "unknown"
             candidates.append(
                 {
                     "price": price,
-                    "context": snippet[context_start:context_end].strip(),
+                    "context": context,
+                    "tax_status": tax_status,
                 }
             )
             if len(candidates) >= 10:
@@ -1292,6 +1301,8 @@ def validate_contract(payload):
             if not isinstance(source_urls, list) or len(source_urls) > 7:
                 raise ValueError("楽器価格の公式カタログURLを確認してください。")
             source_urls = list(dict.fromkeys(str(url).strip() for url in source_urls if str(url).strip()))
+            if not source_urls and source_url:
+                source_urls = [source_url]
             for catalog_url in source_urls:
                 instrument_price_source(catalog_url)
             if verified:
@@ -1303,6 +1314,9 @@ def validate_contract(payload):
                     raise ValueError("見積作成日以前に確認された楽器価格マスターを使用してください。")
                 if re.fullmatch(r"https?://[^\s]+", source_url) is None:
                     raise ValueError("楽器価格マスターの出典URLを入力してください。")
+                instrument_price_source(source_url)
+                if not source_urls:
+                    raise ValueError("楽器価格の公式カタログURLを入力してください。")
                 if catalog_year and catalog_year != contract_date[:4]:
                     raise ValueError("見積作成年の公開カタログで楽器価格を再照会してください。")
             values[key] = {

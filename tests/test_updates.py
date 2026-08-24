@@ -205,6 +205,34 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["recommended_source_name"], "野中貿易")
         self.assertEqual(result["catalog_year"], "2026")
 
+    def test_instrument_price_candidates_reports_tax_status(self):
+        class FakeResponse:
+            headers = Message()
+
+            def __init__(self):
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/model-100.html"
+
+            def read(self, size):
+                return "<p>MODEL-100 メーカー希望小売価格 435,000円（税込）</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/model-100.html", "MODEL-100", opener
+        )
+
+        self.assertEqual(result["candidates"][0]["tax_status"], "tax_included")
+
     def test_instrument_price_lookup_api_aggregates_catalog_urls(self):
         payload = {
             "source_urls": [
@@ -726,7 +754,9 @@ class UpdatesTest(unittest.TestCase):
                         },
                         "instrument_price_master": {
                             "effective_date": "2026-08-23",
-                            "source_url": "https://example.com/instrument-prices",
+                            "source_url": "https://jp.yamaha.com/products/model-100.html",
+                            "source_urls": ["https://jp.yamaha.com/products/model-100.html"],
+                            "catalog_year": "2026",
                             "verified": True,
                         },
                         "freight_rate_master": {
