@@ -174,16 +174,20 @@
     }
 
     .secondary-button {
+      box-sizing: border-box;
       min-height: 44px;
+      padding: 8px 12px;
       border: 1px solid var(--primary);
       border-radius: 6px;
       color: var(--primary);
       background: #ffffff;
       font-weight: 800;
+      line-height: 1.35;
       cursor: pointer;
     }
 
     .secondary-button:hover, .secondary-button:focus-visible { background: #eff6ff; }
+    a.secondary-button { display: inline-flex; align-items: center; justify-content: center; text-align: center; text-decoration: none; }
     .save-status { min-height: 1.5em; margin: 9px 0 0; color: var(--muted); font-size: 0.8rem; }
     .save-status[data-state="error"] { color: var(--danger); }
     .save-status[data-state="success"] { color: #047857; font-weight: 800; }
@@ -227,6 +231,13 @@
     .transport-workflow-status.is-ready { border-color: #16a34a; color: #14532d; background: #f0fdf4; }
     .transport-workflow-status strong { display: block; margin-bottom: 4px; }
     .transport-workflow-status ul { margin: 5px 0 0; padding-left: 20px; }
+    .light-cargo-spec { margin-bottom: 14px; padding: 14px; border: 1px solid #0f766e; border-left: 5px solid #0f766e; border-radius: 6px; background: #f0fdfa; }
+    .light-cargo-spec strong { display: block; color: #115e59; }
+    .light-cargo-spec p { margin: 5px 0 0; color: #134e4a; font-size: 0.8rem; }
+    .partner-2t-panel { margin-bottom: 14px; padding: 14px; border: 1px solid #d97706; border-radius: 6px; background: #fffbeb; }
+    .partner-2t-panel h2 { margin: 0 0 6px; font-size: 0.95rem; color: #78350f; }
+    .partner-2t-panel p { margin: 0 0 10px; color: #78350f; font-size: 0.78rem; line-height: 1.5; }
+    .partner-2t-panel .field { margin-bottom: 10px; }
     .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
     .cargo-editor-fieldset:disabled { opacity: 0.5; }
     .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
@@ -246,6 +257,7 @@
     .price-candidate small { overflow-wrap: anywhere; }
     .price-proof { grid-column: 1 / -1; margin: 0; color: #047857; font-size: 0.75rem; overflow-wrap: anywhere; }
     .document-tools { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 4px; }
+    .document-tools > * { width: 100%; min-width: 0; }
     .freight-dialog { width: min(760px, calc(100% - 32px)); max-height: calc(100vh - 40px); padding: 0; border: 0; border-radius: 8px; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25); }
     .freight-dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
     .freight-dialog-body { padding: 24px; overflow: auto; }
@@ -259,6 +271,10 @@
     .route-distance-tools button { min-height: 38px; }
     .rate-confirm { display: flex !important; grid-column: 1 / -1; grid-template-columns: auto 1fr; align-items: start; }
     .rate-confirm input { width: auto; margin-top: 3px; }
+
+    @media (max-width: 520px) {
+      .document-tools { grid-template-columns: 1fr; }
+    }
 
     .preview-container {
       display: flex;
@@ -622,8 +638,8 @@
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
-        workflow_status: 'quote_pending', transport_provider_mode: 'external_carrier', vehicle_class: 'undecided', pricing_basis: 'mlit_reference',
-        carrier_name: '', carrier_quote_url: '', carrier_quote_date: '',
+        workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'light_cargo_reference',
+        partner_2t_requested: false, partner_2t_status: 'not_needed', partner_2t_budget: '0', partner_2t_notes: '',
         permit_number: '', office_information: '', operation_manager: '',
         cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
@@ -641,7 +657,7 @@
         },
         cargo_items: [{ category: 'その他', instrument_key: 'other', description: '案件受付後に入力', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '型番・再調達価格を案件ごとに確認' }],
         estimate_items: [
-          { description: '外部運送会社の正式見積', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '国土交通省標準運賃は参考のみ。正式見積取得後に確定' },
+          { description: '軽貨物運賃', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '自社の軽貨物運賃・案件条件に基づき算定' },
           { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
           { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
           { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
@@ -699,11 +715,9 @@
       const missing = [];
       if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
-      if (values.vehicle_class === 'undecided') missing.push('車両区分');
-      if (values.transport_provider_mode !== 'external_carrier') missing.push('外部運送会社への委託設定');
-      if (values.pricing_basis !== 'carrier_quote') missing.push('正式見積を料金根拠に設定');
-      if (!values.carrier_name) missing.push('外部運送会社名');
-      if (!values.carrier_quote_url || !values.carrier_quote_date) missing.push('正式見積書・取得日');
+      if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
+      if (values.pricing_basis !== 'light_cargo_reference') missing.push('軽貨物料金の根拠確認');
+      if (calculateCargoVolume() >= 100 && (!values.partner_2t_requested || values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('協力会社2t車の代理調整確定');
       if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
       if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
@@ -839,15 +853,10 @@
         : (values.instrument_price_master.source_url ? [values.instrument_price_master.source_url] : []);
       const currentCatalogYear = contractDate.value.slice(0, 4);
       const catalogIsCurrent = !catalogUrls.length || values.instrument_price_master.catalog_year === currentCatalogYear;
-      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>国土交通省「標準的な運賃」は参考額の確認だけに使い、請求額は外部運送会社の正式見積で確定してください。</div>`
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>通常運行は自社の軽貨物車に限定します。軽貨物で積載できない場合のみ、当方が窓口となって協力会社の小型2t車を代理調整します。</div>`
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}"><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
-        + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '外部運送会社へ見積依頼中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
-        + selectField('運送実施形態', 'transport_provider_mode', values.transport_provider_mode, [{ value: 'external_carrier', label: '外部の許可運送会社へ委託' }, { value: 'self_light_cargo', label: '自社の軽貨物運送' }, { value: 'self_general_freight', label: '自社の一般貨物運送' }])
-        + selectField('参考車両区分', 'vehicle_class', values.vehicle_class, [{ value: 'undecided', label: '未定' }, { value: 'light_cargo', label: '軽貨物車（黒ナンバー・2t未満）' }, { value: 'small', label: '小型車（2トンクラス）' }, { value: 'medium', label: '中型車（4トンクラス）' }, { value: 'large', label: '大型車（10トンクラス）' }, { value: 'trailer', label: 'トレーラー' }])
-        + selectField('料金根拠', 'pricing_basis', values.pricing_basis, [{ value: 'mlit_reference', label: '国土交通省標準運賃は参考のみ' }, { value: 'light_cargo_reference', label: '軽貨物の業界相場は参考のみ' }, { value: 'carrier_quote', label: '外部運送会社の正式見積で確定' }])
-        + field('外部運送会社名', 'carrier_name', values.carrier_name)
-        + field('正式見積書の共有URL', 'carrier_quote_url', values.carrier_quote_url)
-        + `<div class="field"><label>正式見積取得日<input data-contract-key="carrier_quote_date" type="date" value="${escapeHtml(values.carrier_quote_date)}"></label></div>`
+        + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
+        + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + field('輸送案件名', 'transport_name', values.transport_name)
@@ -863,9 +872,9 @@
         + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
         + field('迂回・延泊実費', 'detour_expenses', values.detour_expenses)
         + field('シート共有先メールアドレス', 'cargo_contact_email', values.cargo_contact_email)
-        + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><button class="secondary-button" data-open-route-map type="button">経路図作成を開く</button></div>`
+        + `<div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを安全に発行</button><a class="secondary-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">経路図作成を開く</a></div>`
         + `<p class="save-status" data-document-tool-status role="status"></p>`
-        + `<div${overCapacity ? '' : ' hidden'} data-external-budget>${field('外注・追加車両手配の希望予算（円）', 'external_vehicle_budget', values.external_vehicle_budget)}</div>`
+        + `<section class="partner-2t-panel"><h2>協力会社 小型2t車の代理調整</h2><p>協力会社はお客様との契約・見積窓口にはなりません。当方が依頼、日程確認、費用調整を一括して行います。</p><label class="cargo-consent"><input data-partner-2t-requested type="checkbox"${values.partner_2t_requested ? ' checked' : ''}>小型2t車の代理調整を依頼する</label><div${values.partner_2t_requested || overCapacity ? '' : ' hidden'} data-partner-2t-details>${selectField('代理調整状況', 'partner_2t_status', values.partner_2t_status, [{ value: 'not_needed', label: '不要' }, { value: 'requested', label: '依頼受付' }, { value: 'adjusting', label: '協力会社と調整中' }, { value: 'confirmed', label: '車両・日程・費用を確定' }])}${field('小型2t車 調整予算（円）', 'partner_2t_budget', values.partner_2t_budget)}${field('代理調整メモ', 'partner_2t_notes', values.partner_2t_notes, true)}</div></section>`
         + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
         + `<fieldset class="cargo-editor-fieldset" data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}><div class="estimate-editor"><h2>楽器再調達価格の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly></label><label class="cargo-instrument">公開カタログURL（1行1件・最大7件）<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(values.instrument_price_master.source_url)}</select><textarea data-instrument-catalog-urls maxlength="3500" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く">先頭URLを開く</button></div></label><p class="price-proof">${catalogIsCurrent ? `${escapeHtml(values.instrument_price_master.catalog_year || currentCatalogYear)}年版：照会可能` : `${escapeHtml(values.instrument_price_master.catalog_year || '未照会')}年の記録です。${escapeHtml(currentCatalogYear)}年の公開カタログを再照会してください。`}</p><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified ? ' checked' : ''}${catalogIsCurrent ? '' : ' disabled'}> 最高額候補と案件の型番・税込／税別を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
@@ -996,12 +1005,13 @@
     function normalizeTransportValues(values) {
       Object.assign(values, {
         workflow_status: values.workflow_status || 'quote_pending',
-        transport_provider_mode: values.transport_provider_mode || 'external_carrier',
-        vehicle_class: values.vehicle_class || 'undecided',
-        pricing_basis: values.pricing_basis || 'mlit_reference',
-        carrier_name: values.carrier_name || '',
-        carrier_quote_url: values.carrier_quote_url || '',
-        carrier_quote_date: values.carrier_quote_date || ''
+        transport_provider_mode: 'self_light_cargo',
+        vehicle_class: 'light_cargo',
+        pricing_basis: 'light_cargo_reference',
+        partner_2t_requested: values.partner_2t_requested === true,
+        partner_2t_status: values.partner_2t_status || 'not_needed',
+        partner_2t_budget: values.partner_2t_budget || values.external_vehicle_budget || '0',
+        partner_2t_notes: values.partner_2t_notes || ''
       });
       values.instrument_price_master = {
         effective_date: '', source_url: '', source_urls: [], catalog_year: '', verified: false,
@@ -1076,6 +1086,13 @@
         const points = Number(item.volume_points) || 0;
         return total + quantity * points;
       }, 0);
+    }
+
+    function googleMapsRouteUrl(origin, destination) {
+      const normalizedOrigin = String(origin || '').trim();
+      const normalizedDestination = String(destination || '').trim();
+      if (!normalizedOrigin || !normalizedDestination) return '#';
+      return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(normalizedOrigin)}&destination=${encodeURIComponent(normalizedDestination)}&travelmode=driving`;
     }
 
     function formatCargoCapacity(volume) {
@@ -1826,10 +1843,12 @@
       }
       if (event.target.closest('[data-open-route-map]')) {
         const values = contractValues.estimateB;
-        const routeUrl = values.route_origin && values.route_destination
-          ? `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(values.route_origin)}&destination=${encodeURIComponent(values.route_destination)}&travelmode=driving`
-          : 'https://www.google.com/maps/dir/';
-        window.open(routeUrl, '_blank', 'noopener,noreferrer');
+        if (!values.route_origin.trim() || !values.route_destination.trim()) {
+          event.preventDefault();
+          openFreightCalculator();
+          freightCalculatorStatus.textContent = '経路図を作成するには、出発地と目的地を入力して「見積書に反映」を押してください。';
+          freightCalculatorStatus.dataset.state = 'error';
+        }
         return;
       }
       if (event.target.closest('[data-add-cargo-row]')) {

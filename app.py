@@ -183,9 +183,10 @@ CONTRACT_TYPES = {
             "transport_provider_mode",
             "vehicle_class",
             "pricing_basis",
-            "carrier_name",
-            "carrier_quote_url",
-            "carrier_quote_date",
+            "partner_2t_requested",
+            "partner_2t_status",
+            "partner_2t_budget",
+            "partner_2t_notes",
             "permit_number",
             "office_information",
             "operation_manager",
@@ -1004,11 +1005,6 @@ def validate_contract(payload):
         "route_origin",
         "route_destination",
     }
-    transport_optional_fields = {
-        "carrier_name",
-        "carrier_quote_url",
-        "carrier_quote_date",
-    }
     if doc_type == "estimateB" and transport_workflow_status == "ready":
         ready_cargo_items = raw_values.get("cargo_items", [])
         ready_rate_master = raw_values.get("freight_rate_master", {})
@@ -1020,20 +1016,33 @@ def validate_contract(payload):
             and int(str(item.get("unit_value", "0")).strip()) > 0
             for item in ready_cargo_items
         )
+        cargo_volume = sum(
+            float(str(item.get("volume_points", "0")))
+            * int(str(item.get("quantity", "0")))
+            for item in ready_cargo_items
+            if isinstance(item, dict)
+        ) if isinstance(ready_cargo_items, list) else 0
+        needs_partner_2t = cargo_volume >= 100
         if (
-            raw_values.get("transport_provider_mode") != "external_carrier"
-            or raw_values.get("vehicle_class") in {None, "", "undecided"}
-            or raw_values.get("pricing_basis") != "carrier_quote"
-            or not str(raw_values.get("carrier_name", "")).strip()
-            or not str(raw_values.get("carrier_quote_url", "")).strip()
-            or not str(raw_values.get("carrier_quote_date", "")).strip()
+            raw_values.get("transport_provider_mode") != "self_light_cargo"
+            or raw_values.get("vehicle_class") != "light_cargo"
+            or raw_values.get("pricing_basis") != "light_cargo_reference"
             or not isinstance(ready_rate_master, dict)
             or ready_rate_master.get("verified") is not True
             or not isinstance(ready_instrument_master, dict)
             or ready_instrument_master.get("verified") is not True
             or not cargo_values_ready
+            or (
+                needs_partner_2t
+                and (
+                    raw_values.get("partner_2t_requested") is not True
+                    or raw_values.get("partner_2t_status") != "confirmed"
+                    or not str(raw_values.get("partner_2t_budget", "")).strip().isdigit()
+                    or int(str(raw_values.get("partner_2t_budget", "0"))) <= 0
+                )
+            )
         ):
-            raise ValueError("正式見積の発行準備に必要な運送会社・見積根拠・楽器評価額を確認してください。")
+            raise ValueError("正式見積の発行準備に必要な軽貨物料金・楽器評価額・協力会社2t車の代理調整状況を確認してください。")
     values = {}
     for key in configuration["keys"]:
         if key == "workflow_status":
@@ -1043,27 +1052,44 @@ def validate_contract(payload):
             continue
         if key == "transport_provider_mode":
             provider_mode = str(
-                raw_values.get(key, "external_carrier")
+                raw_values.get(key, "self_light_cargo")
             ).strip()
-            if provider_mode not in {
-                "external_carrier",
-                "self_light_cargo",
-                "self_general_freight",
-            }:
-                raise ValueError("運送実施形態を選択してください。")
+            if provider_mode != "self_light_cargo":
+                raise ValueError("B見積の運送実施形態は自社軽貨物に限定されています。")
             values[key] = provider_mode
             continue
         if key == "vehicle_class":
-            vehicle_class = str(raw_values.get(key, "undecided")).strip()
-            if vehicle_class not in {"undecided", "light_cargo", "small", "medium", "large", "trailer"}:
-                raise ValueError("国土交通省標準運賃を参照する車両区分を選択してください。")
+            vehicle_class = str(raw_values.get(key, "light_cargo")).strip()
+            if vehicle_class != "light_cargo":
+                raise ValueError("B見積の車両は軽貨物車に限定されています。")
             values[key] = vehicle_class
             continue
         if key == "pricing_basis":
-            pricing_basis = str(raw_values.get(key, "mlit_reference")).strip()
-            if pricing_basis not in {"mlit_reference", "light_cargo_reference", "carrier_quote"}:
-                raise ValueError("料金根拠を選択してください。")
+            pricing_basis = str(raw_values.get(key, "light_cargo_reference")).strip()
+            if pricing_basis != "light_cargo_reference":
+                raise ValueError("B見積の料金根拠は軽貨物料金に限定されています。")
             values[key] = pricing_basis
+            continue
+        if key == "partner_2t_requested":
+            values[key] = raw_values.get(key) is True
+            continue
+        if key == "partner_2t_status":
+            partner_status = str(raw_values.get(key, "not_needed")).strip()
+            if partner_status not in {"not_needed", "requested", "adjusting", "confirmed"}:
+                raise ValueError("協力会社2t車の代理調整状況を選択してください。")
+            values[key] = partner_status
+            continue
+        if key == "partner_2t_budget":
+            partner_budget = str(raw_values.get(key, "0")).strip()
+            if re.fullmatch(r"\d{1,9}", partner_budget) is None:
+                raise ValueError("協力会社2t車の調整予算を0以上の整数で入力してください。")
+            values[key] = partner_budget
+            continue
+        if key == "partner_2t_notes":
+            partner_notes = str(raw_values.get(key, "")).strip()
+            if len(partner_notes) > 500:
+                raise ValueError("協力会社2t車の調整メモは500文字以内で入力してください。")
+            values[key] = partner_notes
             continue
         if key == "cargo_restrictions_agreed":
             agreed = raw_values.get(key) is True
@@ -1257,9 +1283,6 @@ def validate_contract(payload):
             values[key] = estimate_items
             continue
         value = str(raw_values.get(key, "")).strip()
-        if key in transport_optional_fields and not value:
-            values[key] = ""
-            continue
         if transport_is_pending and key in transport_pending_optional_fields and not value:
             values[key] = ""
             continue
