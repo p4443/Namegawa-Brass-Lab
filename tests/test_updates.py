@@ -173,6 +173,63 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual([candidate["price"] for candidate in result["candidates"]], [423500])
         self.assertIn("YTR-8335 希望小売価格:423,500円", result["candidates"][0]["context"])
 
+    def test_instrument_price_lookup_falls_back_to_partial_model_match(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/ytr-8335gii.html"
+
+            def read(self, size):
+                return "<p>YTR-8335GII 希望小売価格 456,500円（税込）</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/ytr-8335gii.html", "YTR-8335", opener
+        )
+
+        self.assertEqual(result["match_type"], "partial")
+        self.assertEqual(result["candidates"][0]["matched_model"], "YTR-8335GII")
+        self.assertEqual(result["candidates"][0]["price"], 456500)
+
+    def test_instrument_price_lookup_accepts_model_fragment(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/ytr-8335gii.html"
+
+            def read(self, size):
+                return "<p>YTR-8335GII 希望小売価格 456,500円（税込）</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/ytr-8335gii.html", "8335G", opener
+        )
+
+        self.assertEqual(result["match_type"], "partial")
+        self.assertEqual(result["candidates"][0]["price"], 456500)
+
     def test_instrument_price_lookup_rejects_non_official_url_before_request(self):
         opener = MagicMock()
 

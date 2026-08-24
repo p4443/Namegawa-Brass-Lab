@@ -338,27 +338,47 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
     model_pattern = re.compile(
         rf"(?<![a-z0-9]){re.escape(exact_model_folded)}(?![a-z0-9])"
     )
-    positions = [match.start() for match in model_pattern.finditer(search_text)][:20]
-    if not positions:
-        raise ValueError("公式ページ内に完全一致する型番が見つかりませんでした。")
+    model_matches = [
+        (match.start(), exact_model, "exact")
+        for match in model_pattern.finditer(search_text)
+    ][:20]
+    if not model_matches:
+        normalized_model = re.sub(r"[^a-z0-9]", "", exact_model_folded)
+        for match in INSTRUMENT_MODEL_CODE_PATTERN.finditer(page_text):
+            catalog_model = match.group(0)
+            normalized_catalog_model = re.sub(
+                r"[^a-z0-9]", "", catalog_model.casefold()
+            )
+            shorter_model = min(
+                (normalized_model, normalized_catalog_model), key=len
+            )
+            if len(shorter_model) >= 4 and any(character.isdigit() for character in shorter_model) and (
+                normalized_model in normalized_catalog_model
+                or normalized_catalog_model in normalized_model
+            ):
+                model_matches.append((match.start(), catalog_model, "partial"))
+                if len(model_matches) >= 20:
+                    break
+    if not model_matches:
+        raise ValueError("公式ページ内に一致または一部一致する型番が見つかりませんでした。")
 
     price_pattern = re.compile(
         r"(?:[¥￥]\s*([0-9][0-9,]{2,})|([0-9][0-9,]{2,})\s*円)"
     )
     candidates = []
     seen_prices = set()
-    for position in positions:
+    for position, matched_model, match_type in model_matches:
         snippet_start = max(0, position - 180)
-        snippet_end = min(len(page_text), position + len(exact_model) + 260)
+        snippet_end = min(len(page_text), position + len(matched_model) + 260)
         snippet = page_text[snippet_start:snippet_end]
         model_offset = position - snippet_start
         for match in price_pattern.finditer(snippet):
             between_start = min(model_offset, match.start())
-            between_end = max(model_offset + len(exact_model), match.end())
+            between_end = max(model_offset + len(matched_model), match.end())
             intervening_models = INSTRUMENT_MODEL_CODE_PATTERN.findall(
                 snippet[between_start:between_end]
             )
-            if any(model.casefold() != exact_model_folded for model in intervening_models):
+            if any(model.casefold() != matched_model.casefold() for model in intervening_models):
                 continue
             price = int((match.group(1) or match.group(2)).replace(",", ""))
             if not 1000 <= price <= 100000000 or price in seen_prices:
@@ -379,6 +399,8 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
                     "price": price,
                     "context": context,
                     "tax_status": tax_status,
+                    "matched_model": matched_model,
+                    "match_type": match_type,
                 }
             )
             if len(candidates) >= 10:
@@ -393,6 +415,7 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
         "checked_at": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat(),
         "maker_model": maker_model,
         "exact_model": exact_model,
+        "match_type": model_matches[0][2],
         "candidates": candidates,
     }
 
