@@ -605,6 +605,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])]", page)
         self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
         self.assertNotIn('data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly', page)
+        self.assertIn("価格基準日 ${master.effective_date}を記録しました。", page)
+        self.assertIn("dynamicFields.querySelectorAll('[data-instrument-price-results]').forEach", page)
         self.assertIn("function cargoPriceSourceOptions(sourceUrls, selectedUrl)", page)
         self.assertIn("data-cargo-price-source", page)
         self.assertIn("source_urls: [sourceUrl]", page)

@@ -970,7 +970,10 @@
       if (master.catalog_year !== currentCatalogYear) {
         return { ready: false, state: 'error', message: `${master.catalog_year}年の記録です。${currentCatalogYear}年の公開カタログを再照会してください。` };
       }
-      return { ready: true, state: 'ready', message: `${currentCatalogYear}年版：${master.effective_date}に照会済み` };
+      const hasCheckedPrice = contractValues.estimateB.cargo_items.some(item => item.valuation_mode === 'master' && item.price_checked_at);
+      return hasCheckedPrice
+        ? { ready: true, state: 'ready', message: `価格基準日 ${master.effective_date}：公式価格を照会済み` }
+        : { ready: false, state: 'pending', message: `価格基準日 ${master.effective_date}を記録しました。対象物ごとに公式価格サイト、メーカー・型番を選択して照会してください。` };
     }
 
     function instrumentPricesConfirmable(values, catalogStatus) {
@@ -1116,11 +1119,10 @@
 
     function renderCargoItemEditors(values) {
       const total = calculateCargoValuation();
-      const issues = transportValidationIssues(values);
       return `<div class="estimate-edit-guide"><strong>輸送対象物明細・評価額証明</strong>申告総評価額：<span data-cargo-total="editor">${formatEstimateYen(total)}円</span></div>${values.cargo_items.map((item, index) => `
         <section class="estimate-editor instrument-price-item" data-cargo-row="${index}">
           <h2>輸送対象物 ${index + 1}<button class="cargo-row-remove" data-remove-cargo-row="${index}" type="button" aria-label="輸送対象物${index + 1}を削除">削除</button></h2>
-          ${issues.some(issue => issue.rowIndex === index) ? `<div class="save-status" data-state="error" role="alert">${issues.filter(issue => issue.rowIndex === index).map(issue => escapeHtml(issue.message)).join('<br>')}</div>` : ''}
+          ${instrumentLookupErrors.has(index) ? `<div class="save-status" data-state="error" role="alert">${escapeHtml(instrumentLookupErrors.get(index))}</div>` : ''}
           <div class="cargo-editor-grid">
             <label>区分<select data-cargo-item-key="category">${cargoCategories.map(category => `<option${category === item.category ? ' selected' : ''}>${category}</option>`).join('')}</select></label>
             <label class="cargo-instrument">品目テンプレート<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
@@ -2193,7 +2195,23 @@
         });
         instrumentLookupResults.clear();
         clearTransportError();
-        renderDynamicFields();
+        dynamicFields.querySelectorAll('[data-instrument-price-results]').forEach(result => result.remove());
+        dynamicFields.querySelectorAll('.instrument-price-item .price-proof').forEach(proof => proof.remove());
+        dynamicFields.querySelectorAll('.instrument-price-item output').forEach(output => { output.textContent = '手入力'; });
+        const catalogStatus = instrumentCatalogStatus(
+          values.instrument_price_master,
+          values.instrument_price_master.source_urls || [],
+          contractDate.value
+        );
+        const status = dynamicFields.querySelector('[data-instrument-catalog-status]');
+        if (status) {
+          status.textContent = catalogStatus.message;
+          status.classList.toggle('is-pending', catalogStatus.state === 'pending');
+          status.classList.toggle('is-error', catalogStatus.state === 'error');
+        }
+        const verified = dynamicFields.querySelector('[data-instrument-master-verified]');
+        if (verified) { verified.checked = false; verified.disabled = true; }
+        updateTransportWorkflowStatus();
         renderPreview();
         return;
       }
