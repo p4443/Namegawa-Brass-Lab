@@ -12,6 +12,7 @@ from unittest.mock import MagicMock, patch
 from app import (
     LessonReservationDeliveryError,
     compute_google_route,
+    compute_public_route,
     create_app,
     fetch_instrument_catalog_prices,
     fetch_instrument_price_candidates,
@@ -53,9 +54,51 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(route_request.get_header("X-goog-api-key"), api_key)
         self.assertEqual(route_request.get_method(), "POST")
 
-    def test_contract_route_distance_api_requires_editor_and_google_key(self):
+    def test_compute_public_route_resolves_japanese_place_names(self):
+        class FakeResponse:
+            def __init__(self, payload):
+                self.payload = payload
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, size):
+                return json.dumps(self.payload, ensure_ascii=False).encode("utf-8")
+
+        responses = iter([
+            FakeResponse([{"display_name": "埼玉県滑川町役場", "lat": "36.065", "lon": "139.361"}]),
+            FakeResponse([{"display_name": "埼玉県滑川町文化スポーツセンター", "lat": "36.070", "lon": "139.350"}]),
+            FakeResponse({"routes": [{"distance": 4200.0, "duration": 780.0}]}),
+        ])
+        urlopen = MagicMock(side_effect=lambda request, timeout: next(responses))
+
+        result = compute_public_route("滑川町役場", "滑川町文化スポーツセンター", urlopen)
+
+        self.assertEqual(result["resolved_origin"], "埼玉県滑川町役場")
+        self.assertEqual(result["resolved_destination"], "埼玉県滑川町文化スポーツセンター")
+        self.assertEqual(result["distance_km"], 4.2)
+        self.assertEqual(result["duration_minutes"], 13)
+        self.assertEqual(result["provider"], "OpenStreetMap / OSRM")
+        self.assertEqual(urlopen.call_count, 3)
+
+    def test_contract_route_distance_api_requires_editor_and_falls_back_without_google_key(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
-        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
+        fallback_route = {
+            "origin": "東京駅",
+            "destination": "東京タワー",
+            "resolved_origin": "東京都千代田区丸の内一丁目 東京駅",
+            "resolved_destination": "東京都港区芝公園四丁目 東京タワー",
+            "distance_km": 4.2,
+            "duration_minutes": 14,
+            "maps_url": "https://www.google.com/maps/dir/?api=1",
+            "provider": "OpenStreetMap / OSRM",
+        }
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False), patch(
+            "app.compute_public_route", return_value=fallback_route
+        ) as compute_public_route:
             os.environ.pop("GOOGLE_MAPS_ROUTES_API_KEY", None)
             client = create_app(database_url="").test_client()
             self.assertEqual(
@@ -68,8 +111,10 @@ class UpdatesTest(unittest.TestCase):
                 headers={"X-Editor-Password": "editor-secret"},
             )
 
-        self.assertEqual(missing.status_code, 503)
-        self.assertIn("接続設定", missing.json["error"])
+        self.assertEqual(missing.status_code, 200)
+        self.assertEqual(missing.json["resolved_origin"], fallback_route["resolved_origin"])
+        self.assertEqual(missing.json["provider"], "OpenStreetMap / OSRM")
+        compute_public_route.assert_called_once_with("東京駅", "東京タワー")
 
     def test_contract_route_distance_api_returns_google_route(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
@@ -282,6 +327,33 @@ class UpdatesTest(unittest.TestCase):
             "イベント企画・プロデュースのみ",
         )
 
+    def test_contract_route_distance_api_falls_back_when_google_fails(self):
+        payload = {"origin": "東京駅", "destination": "東京タワー"}
+        fallback_route = {
+            **payload,
+            "resolved_origin": "東京都千代田区 東京駅",
+            "resolved_destination": "東京都港区 東京タワー",
+            "distance_km": 4.2,
+            "duration_minutes": 14,
+            "maps_url": "https://www.google.com/maps/dir/?api=1",
+            "provider": "OpenStreetMap / OSRM",
+        }
+        with patch.dict(
+            os.environ,
+            {"EDITOR_PASSWORD": "editor-secret", "GOOGLE_MAPS_ROUTES_API_KEY": "invalid-key"},
+        ), patch("app.compute_google_route", side_effect=ValueError("Google route unavailable")), patch(
+            "app.compute_public_route", return_value=fallback_route
+        ) as compute_public_route:
+            response = create_app(database_url="").test_client().post(
+                "/api/contracts/route-distance",
+                json=payload,
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["provider"], "OpenStreetMap / OSRM")
+        compute_public_route.assert_called_once_with("東京駅", "東京タワー")
+
     def test_apps_script_stores_consultation_attachment_in_drive(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
@@ -431,12 +503,39 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function calculateCargoValuation()", page)
         self.assertIn("function calculateCargoVolume()", page)
         self.assertIn("function calculateOptimalFreight(distance, totalHours, operation = {})", page)
-        self.assertIn("軽貨物の業界参考値を読み込む", page)
+        self.assertIn("2026年度 軽貨物運送事業 自社料金規定", page)
+        self.assertIn("effective_date: '2026-04-01'", page)
+        self.assertIn("distance_base_20: '5000'", page)
+        self.assertIn("distance_per_km_21_50: '200'", page)
+        self.assertIn("distance_per_km_51_100: '150'", page)
+        self.assertIn("distance_per_km_101_150: '120'", page)
+        self.assertIn("charter_4h: '12000'", page)
+        self.assertIn("charter_8h: '22000'", page)
+        self.assertIn("extra_hour: '3000'", page)
+        self.assertIn("waiting_per_30m: '1500'", page)
+        self.assertIn("loading_per_30m: '1500'", page)
+        self.assertIn("前日キャンセル：お見積り運賃の50%", page)
+        self.assertIn("resolved_origin", page)
+        self.assertIn("2026年度 自社料金規定を読み込む", page)
         self.assertIn("標準車両：自社軽貨物車", page)
         self.assertIn('data-rate-key="distance_per_km_151_plus"', page)
-        self.assertIn('data-rate-key="charter_2h"', page)
+        self.assertIn('data-rate-key="loading_per_30m"', page)
         self.assertIn('data-operation-input="holiday"', page)
-        self.assertIn("法定運賃ではありません", page)
+        self.assertIn("助手追加・特殊作業は別途見積", page)
+        self.assertIn("楽器等運搬の上乗せ区分", page)
+        self.assertIn("一般貨物のみ（上乗せなし）", page)
+        self.assertIn("固定・養生・棚設置（市場参考 1,500円）", page)
+        self.assertIn("車内積み置き（市場参考 5,500円～）", page)
+        self.assertIn("追加スタッフ1名（市場参考 15,000円）", page)
+        self.assertIn("instrumentTransportSurchargePresets", page)
+        self.assertIn("https://www.taiho-unyu.co.jp/price10new.html", page)
+        self.assertIn("https://rentora.com/gakki/", page)
+        self.assertIn("https://rental.after-beat.co.jp/guide/transport.html", page)
+        self.assertIn("function updateInstrumentSurchargePreset", page)
+        self.assertIn("当方が積卸し（荷役料を算定）", page)
+        self.assertIn("お客様のお手伝いあり（追加スタッフ不要）", page)
+        self.assertIn("お客様が積卸し（荷役料なし）", page)
+        self.assertIn("loadingSupportMode === 'customer_loads'", page)
         self.assertIn('data-freight-input="route_origin"', page)
         self.assertIn("data-measure-google-route", page)
         self.assertIn("function measureGoogleRouteDistance()", page)
@@ -447,7 +546,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("@media (max-width: 520px)", page)
         self.assertIn(".document-tools { grid-template-columns: 1fr; }", page)
         self.assertIn("/api/contracts/route-distance", page)
-        self.assertIn("Google Mapsの自動車ルート", page)
+        self.assertIn("result.provider || 'ルート検索'", page)
         self.assertIn("楽器再調達価格の確認", page)
         self.assertIn("公開カタログURL（1行1件・最大7件）", page)
         self.assertIn("最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用", page)

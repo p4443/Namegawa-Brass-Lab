@@ -555,16 +555,24 @@
   <dialog class="freight-dialog" id="freightCalculatorDialog" aria-labelledby="freightCalculatorTitle">
     <div class="freight-dialog-body">
       <h2 id="freightCalculatorTitle">適正運賃・料金 自動算出</h2>
-      <p>公表資料と自社料金規定を確認してマスターを入力してください。「確認済み」にしない限り見積書へ反映できません。</p>
-      <button class="secondary-button" data-load-light-cargo-reference type="button">軽貨物の業界参考値を読み込む</button>
-      <p class="estimate-edit-guide">軽貨物参考値は法定運賃ではありません。各事業者の届出運賃・最新の公開料金・案件条件を確認し、2t以上の車両には使用しないでください。</p>
+      <p>2026年度 軽貨物運送事業 自社料金規定（2026年4月1日適用・税抜）に基づき算出します。</p>
+      <button class="secondary-button" data-load-light-cargo-reference type="button">2026年度 自社料金規定を読み込む</button>
+      <p class="estimate-edit-guide">出発地・目的地は住所のほか、駅、学校、役所、文化施設など国内公共機関の固有名詞を入力できます。距離測定時に確定住所へ置き換えます。</p>
       <div class="rate-master-grid">
-        <label>出発地<input data-freight-input="route_origin" type="text"></label>
-        <label>目的地<input data-freight-input="route_destination" type="text"></label>
-        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">Googleで距離測定</button></div>
+        <label>出発地（住所・施設名）<input data-freight-input="route_origin" type="text" placeholder="例：滑川町役場"></label>
+        <label>目的地（住所・施設名）<input data-freight-input="route_destination" type="text" placeholder="例：滑川町文化スポーツセンター"></label>
+        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">施設名・住所から距離測定</button></div>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
         <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
         <label>積卸し作業時間（分）<input data-operation-input="loading_minutes" type="number" min="0" step="1" value="0"></label>
+        <label>積卸し方法<select data-operation-input="loading_support_mode"><option value="carrier">当方が積卸し（荷役料を算定）</option><option value="customer_assisted">お客様のお手伝いあり（追加スタッフ不要）</option><option value="customer_loads">お客様が積卸し（荷役料なし）</option></select></label>
+        <label>キャンセル区分<select data-operation-input="cancellation_type"><option value="none">なし</option><option value="previous_day">前日（50%）</option><option value="same_day_before">当日・出発前（80%）</option><option value="same_day_after">当日・出発後（100%）</option></select></label>
+        <label>高速・有料橋・駐車場等の立替実費（円・税抜）<input data-operation-input="actual_expenses" type="number" min="0" step="1" value="0"></label>
+        <label>楽器等運搬の上乗せ区分<select data-operation-input="instrument_surcharge_mode"><option value="none">一般貨物のみ（上乗せなし）</option><option value="securement">固定・養生・棚設置（市場参考 1,500円）</option><option value="overnight">車内積み置き（市場参考 5,500円～）</option><option value="assistant">追加スタッフ1名（市場参考 15,000円）</option><option value="custom">任意の楽器取扱加算</option></select></label>
+        <label>楽器等運搬上乗せ料金（円・税抜）<input data-operation-input="instrument_surcharge_amount" type="number" min="0" step="1" value="0"></label>
+        <p class="estimate-edit-guide" data-instrument-surcharge-reference>一般貨物のみを選択中。楽器取扱の上乗せはありません。</p>
+        <label>助手・特殊作業費（円・税抜、0は別途見積）<input data-operation-input="special_work_amount" type="number" min="0" step="1" value="0"></label>
+        <p class="estimate-edit-guide">前日キャンセル：お見積り運賃の50% ／ 当日出発前：80% ／ 当日出発後：100%。助手追加・特殊作業は別途見積です。</p>
         <label class="rate-confirm"><input data-operation-input="holiday" type="checkbox"><span>日曜・祝日（参考運賃を20%割増）</span></label>
         <label class="rate-confirm"><input data-operation-input="night" type="checkbox"><span>22:00〜翌5:00（参考運賃を30%割増）</span></label>
         <label>料金マスター基準日<input data-rate-key="effective_date" type="date"></label>
@@ -574,14 +582,13 @@
         <label>51〜100km 1km加算（円）<input data-rate-key="distance_per_km_51_100" type="number" min="0"></label>
         <label>101〜150km 1km加算（円）<input data-rate-key="distance_per_km_101_150" type="number" min="0"></label>
         <label>151km以上 1km加算（円）<input data-rate-key="distance_per_km_151_plus" type="number" min="0"></label>
-        <label>軽貨物2時間・20kmまで（円）<input data-rate-key="charter_2h" type="number" min="0"></label>
         <label>4時間制運賃（円）<input data-rate-key="charter_4h" type="number" min="0"></label>
         <label>8時間制運賃（円）<input data-rate-key="charter_8h" type="number" min="0"></label>
         <label>超過30分（円）<input data-rate-key="extra_30m" type="number" min="0"></label>
         <label>超過1時間（円）<input data-rate-key="extra_hour" type="number" min="0"></label>
         <label>待機30分（円）<input data-rate-key="waiting_per_30m" type="number" min="0"></label>
         <label>荷役基本料金（円）<input data-rate-key="loading_base" type="number" min="0"></label>
-        <label>荷役15分（円）<input data-rate-key="loading_per_15m" type="number" min="0"></label>
+        <label>荷役30分（円）<input data-rate-key="loading_per_30m" type="number" min="0"></label>
         <label>荷役25ptごとの加算（円）<input data-rate-key="loading_per_25_points" type="number" min="0"></label>
         <label>休日割増率（%）<input data-rate-key="holiday_percent" type="number" min="0"></label>
         <label>深夜・早朝割増率（%）<input data-rate-key="night_percent" type="number" min="0"></label>
@@ -652,7 +659,7 @@
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
-        workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'light_cargo_reference',
+        workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'self_light_cargo_rate',
         partner_2t_requested: false, partner_2t_status: 'not_needed', partner_2t_budget: '0', partner_2t_notes: '',
         permit_number: '', office_information: '', operation_manager: '',
         cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
@@ -661,11 +668,11 @@
         route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
         instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', verified: false },
         freight_rate_master: {
-          effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
-          distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
-          distance_per_km_101_150: '0', distance_per_km_151_plus: '0',
-          charter_2h: '0', extra_30m: '0', loading_per_15m: '0', holiday_percent: '0', night_percent: '0',
-          charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0',
+          effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/', verified: true,
+          distance_base_20: '5000', distance_per_km_21_50: '200', distance_per_km_51_100: '150', distance_per_km_101_plus: '120',
+          distance_per_km_101_150: '120', distance_per_km_151_plus: '120',
+          charter_2h: '0', extra_30m: '0', loading_per_15m: '0', loading_per_30m: '1500', holiday_percent: '20', night_percent: '30',
+          charter_4h: '12000', charter_8h: '22000', extra_hour: '3000', waiting_per_30m: '1500',
           loading_base: '0', loading_per_25_points: '0', fuel_reference_price: '0', fuel_current_price: '0',
           fuel_per_km_per_yen: '0', external_2t_charter: '0'
         },
@@ -675,7 +682,11 @@
           { description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
           { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
           { description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
-          { description: '燃料サーチャージ（予定）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '燃油価格に応じた特別付加料金' }
+          { description: '燃料サーチャージ（予定）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '燃油価格に応じた特別付加料金' },
+          { description: 'キャンセル料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '前日50%、当日出発前80%、当日出発後100%' },
+          { description: '高速道路・駐車場等立替実費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '高速道路、有料橋、有料駐車場等は実費精算' },
+          { description: '楽器等運搬上乗せ料金', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '一般貨物のみ（上乗せなし）' },
+          { description: '助手追加・特殊作業費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '作業内容を確認のうえ別途見積' }
         ]
       },
       estimateC: {
@@ -731,7 +742,7 @@
       if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
-      if (values.pricing_basis !== 'light_cargo_reference') missing.push('軽貨物料金の根拠確認');
+      if (!['self_light_cargo_rate', 'light_cargo_reference'].includes(values.pricing_basis)) missing.push('軽貨物料金の根拠確認');
       if (calculateCargoVolume() >= 100 && (!values.partner_2t_requested || values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('協力会社2t車の代理調整確定');
       if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
       if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
@@ -781,23 +792,24 @@
     }
 
     const lightCargoReferenceRateHistory = [{
-      effective_date: '2026-08-23',
-      source_url: '',
-      verified: false,
-      distance_base_20: '5500',
-      distance_per_km_21_50: '242',
-      distance_per_km_51_100: '187',
-      distance_per_km_101_plus: '154',
-      distance_per_km_101_150: '154',
-      distance_per_km_151_plus: '132',
-      charter_2h: '6050',
-      charter_4h: '0',
-      charter_8h: '22550',
-      extra_30m: '1375',
-      extra_hour: '2750',
-      waiting_per_30m: '1100',
+      effective_date: '2026-04-01',
+      source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/',
+      verified: true,
+      distance_base_20: '5000',
+      distance_per_km_21_50: '200',
+      distance_per_km_51_100: '150',
+      distance_per_km_101_plus: '120',
+      distance_per_km_101_150: '120',
+      distance_per_km_151_plus: '120',
+      charter_2h: '0',
+      charter_4h: '12000',
+      charter_8h: '22000',
+      extra_30m: '0',
+      extra_hour: '3000',
+      waiting_per_30m: '1500',
       loading_base: '0',
-      loading_per_15m: '550',
+      loading_per_15m: '0',
+      loading_per_30m: '1500',
       loading_per_25_points: '0',
       holiday_percent: '20',
       night_percent: '30',
@@ -806,6 +818,14 @@
       fuel_per_km_per_yen: '0',
       external_2t_charter: '0'
     }];
+
+    const instrumentTransportSurchargePresets = {
+      none: { amount: 0, label: '一般貨物のみ（上乗せなし）', sourceUrl: '' },
+      securement: { amount: 1500, label: '固定・養生・棚設置', sourceUrl: 'https://www.taiho-unyu.co.jp/price10new.html' },
+      overnight: { amount: 5500, label: '車内積み置き', sourceUrl: 'https://rentora.com/gakki/' },
+      assistant: { amount: 15000, label: '追加スタッフ1名', sourceUrl: 'https://rental.after-beat.co.jp/guide/transport.html' },
+      custom: { amount: 0, label: '任意の楽器取扱加算', sourceUrl: '' }
+    };
 
     function latestRateForEstimateDate(rateHistory, estimateDate) {
       const applicableRates = rateHistory
@@ -1033,7 +1053,7 @@
         workflow_status: values.workflow_status || 'quote_pending',
         transport_provider_mode: 'self_light_cargo',
         vehicle_class: 'light_cargo',
-        pricing_basis: 'light_cargo_reference',
+        pricing_basis: values.pricing_basis || 'self_light_cargo_rate',
         partner_2t_requested: values.partner_2t_requested === true,
         partner_2t_status: values.partner_2t_status || 'not_needed',
         partner_2t_budget: values.partner_2t_budget || values.external_vehicle_budget || '0',
@@ -1044,10 +1064,10 @@
         ...(values.instrument_price_master || {})
       };
       values.freight_rate_master = {
-        effective_date: '2024-03-22', source_url: 'https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html', verified: false,
+        effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/', verified: true,
         distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
         distance_per_km_101_150: '0', distance_per_km_151_plus: '0', charter_2h: '0', extra_30m: '0',
-        loading_per_15m: '0', holiday_percent: '0', night_percent: '0', tax_included: false,
+        loading_per_15m: '0', loading_per_30m: '0', holiday_percent: '0', night_percent: '0', tax_included: false,
         charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0', loading_base: '0', loading_per_25_points: '0',
         fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0', external_2t_charter: '0',
         ...(values.freight_rate_master || {})
@@ -1065,6 +1085,17 @@
         volume_points: item.volume_points || '0',
         notes: item.notes || ''
       }));
+      values.estimate_items = values.estimate_items || [];
+      [
+        { description: 'キャンセル料', details: '前日50%、当日出発前80%、当日出発後100%' },
+        { description: '高速道路・駐車場等立替実費', details: '高速道路、有料橋、有料駐車場等は実費精算' },
+        { description: '楽器等運搬上乗せ料金', details: '一般貨物のみ（上乗せなし）' },
+        { description: '助手追加・特殊作業費', details: '作業内容を確認のうえ別途見積' }
+      ].forEach(item => {
+        if (!values.estimate_items.some(existing => existing.description === item.description)) {
+          values.estimate_items.push({ ...item, quantity: '1', unit: '式', unit_price: '0', amount: '0' });
+        }
+      });
       return values;
     }
 
@@ -1153,64 +1184,66 @@
       }
       const rate = key => estimateNumber(master[key]);
       const isLightCargo = contractValues.estimateB.vehicle_class === 'light_cargo';
-      if (distance <= 0 || totalHours <= 0 || rate('distance_base_20') <= 0 || rate('charter_8h') <= 0 || (isLightCargo ? rate('charter_2h') <= 0 : rate('charter_4h') <= 0)) {
+      if (distance <= 0 || totalHours <= 0 || rate('distance_base_20') <= 0 || rate('charter_4h') <= 0 || rate('charter_8h') <= 0) {
         throw new Error('距離、拘束時間、主要運賃を0より大きい値で入力してください。');
       }
       let distancePrice = rate('distance_base_20');
       let remaining = Math.max(0, distance - 20);
-      const distanceBands = isLightCargo
-        ? [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [50, 'distance_per_km_101_150'], [Infinity, 'distance_per_km_151_plus']]
-        : [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [Infinity, 'distance_per_km_101_plus']];
+      const distanceBands = [[30, 'distance_per_km_21_50'], [50, 'distance_per_km_51_100'], [Infinity, 'distance_per_km_101_plus']];
       distanceBands.forEach(([limit, key]) => {
         const applied = Math.min(remaining, limit);
         distancePrice += applied * rate(key);
         remaining -= applied;
       });
-      let timePrice = isLightCargo && totalHours <= 2 && distance <= 20
-        ? rate('charter_2h')
-        : totalHours <= 4 && distance <= 40 && !isLightCargo ? rate('charter_4h') : rate('charter_8h');
-      timePrice += isLightCargo
-        ? Math.max(0, Math.ceil((totalHours - 8) * 2)) * rate('extra_30m')
-        : Math.max(0, Math.ceil(totalHours - 8)) * rate('extra_hour');
-      if (isLightCargo) {
-        let excessDistance = Math.max(0, Math.ceil(distance - 80));
-        const excessBands = [[20, 'distance_per_km_51_100'], [50, 'distance_per_km_101_150'], [Infinity, 'distance_per_km_151_plus']];
-        excessBands.forEach(([limit, key]) => {
-          const applied = Math.min(excessDistance, limit);
-          timePrice += applied * rate(key);
-          excessDistance -= applied;
-        });
-      } else {
-        timePrice += Math.max(0, Math.ceil(distance - 80)) * rate('distance_per_km_101_plus');
-      }
+      let timePrice = Infinity;
+      if (totalHours <= 4 && distance <= 50) timePrice = rate('charter_4h');
+      else if (distance <= 100) timePrice = rate('charter_8h') + Math.max(0, Math.ceil(totalHours - 8)) * rate('extra_hour');
       const waitingMinutes = Math.max(0, Number(operation.waitingMinutes) || 0);
       const loadingMinutes = Math.max(0, Number(operation.loadingMinutes) || 0);
-      const waitingFee = isLightCargo ? Math.ceil(Math.max(0, waitingMinutes - 30) / 30) * rate('waiting_per_30m') : Math.ceil(waitingMinutes / 30) * rate('waiting_per_30m');
-      const distanceBasedTotal = Math.round(distancePrice + waitingFee);
+      const waitingFee = Math.ceil(Math.max(0, waitingMinutes - 30) / 30) * rate('waiting_per_30m');
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
-      const useTimeCharter = timePrice <= distanceBasedTotal;
+      const useTimeCharter = timePrice <= distancePrice;
       let baseFreightGross = overCapacity
         ? rate('external_2t_charter')
         : Math.round(useTimeCharter ? timePrice : distancePrice);
       if (overCapacity && baseFreightGross <= 0) throw new Error('積載超過のため外部2t車参考チャーター額を入力してください。');
       const premiumPercent = (operation.holiday ? rate('holiday_percent') : 0) + (operation.night ? rate('night_percent') : 0);
       baseFreightGross = Math.round(baseFreightGross * (1 + premiumPercent / 100));
-      const loadingSteps = Math.max(0, Math.ceil(volume / 25) - 1);
-      const loadingFeeGross = isLightCargo
-        ? Math.ceil(Math.max(0, loadingMinutes - 30) / 15) * rate('loading_per_15m')
-        : rate('loading_base') + loadingSteps * rate('loading_per_25_points');
+      const loadingSupportMode = ['carrier', 'customer_assisted', 'customer_loads'].includes(operation.loadingSupportMode)
+        ? operation.loadingSupportMode
+        : 'carrier';
+      const loadingFeeGross = loadingSupportMode === 'customer_loads'
+        ? 0
+        : Math.ceil(loadingMinutes / 30) * rate('loading_per_30m');
       const toPreTax = amount => master.tax_included ? Math.round(amount / 1.1) : amount;
       const baseFreightCost = toPreTax(baseFreightGross);
       const loadingFee = toPreTax(loadingFeeGross);
       const fuelDifference = Math.max(0, rate('fuel_current_price') - rate('fuel_reference_price'));
       const fuelSurcharge = Math.ceil(fuelDifference * distance * rate('fuel_per_km_per_yen'));
+      const cancellationRates = { none: 0, previous_day: 0.5, same_day_before: 0.8, same_day_after: 1 };
+      const cancellationRate = cancellationRates[operation.cancellationType] || 0;
+      const cancellationFee = Math.round(baseFreightCost * cancellationRate);
+      const actualExpenses = Math.max(0, Math.round(Number(operation.actualExpenses) || 0));
+      const surchargePreset = instrumentTransportSurchargePresets[operation.instrumentSurchargeMode] || instrumentTransportSurchargePresets.none;
+      const instrumentSurcharge = operation.instrumentSurchargeMode === 'none'
+        ? 0
+        : Math.max(0, Math.round(Number(operation.instrumentSurchargeAmount) || 0));
+      const specialWorkAmount = Math.max(0, Math.round(Number(operation.specialWorkAmount) || 0));
       return {
-        recommendedType: overCapacity ? '外部2t車チャーター（要正式見積り）' : isLightCargo ? useTimeCharter ? '軽貨物参考運賃（時間制）' : '軽貨物参考運賃（距離制）' : useTimeCharter ? '基本運賃（時間制・貸切）' : '基本運賃（距離制）',
+        recommendedType: overCapacity ? '外部2t車チャーター（要正式見積り）' : useTimeCharter ? '自社軽貨物運賃（時間制）' : '自社軽貨物運賃（距離制）',
         baseFreightCost,
         loadingFee,
+        loadingSupportMode,
         waitingFee: toPreTax(waitingFee),
         fuelSurcharge,
+        cancellationFee,
+        cancellationRate,
+        actualExpenses,
+        instrumentSurcharge,
+        instrumentSurchargeLabel: surchargePreset.label,
+        instrumentSurchargeSourceUrl: surchargePreset.sourceUrl,
+        specialWorkAmount,
         volume,
         referenceGross: baseFreightGross,
         premiumPercent,
@@ -1223,12 +1256,38 @@
       };
     }
 
+    function updateInstrumentSurchargePreset(applyPresetAmount = true) {
+      const modeInput = freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]');
+      const amountInput = freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_amount"]');
+      const reference = freightCalculatorDialog.querySelector('[data-instrument-surcharge-reference]');
+      const preset = instrumentTransportSurchargePresets[modeInput.value] || instrumentTransportSurchargePresets.none;
+      if (applyPresetAmount && modeInput.value !== 'custom') amountInput.value = String(preset.amount);
+      amountInput.readOnly = modeInput.value !== 'custom';
+      const referenceDetails = {
+        none: '一般貨物のみを選択中。楽器取扱の上乗せはありません。',
+        securement: '大宝運輸の公開料金表にある荷台棚設置料金1,620円を参考に、税抜1,500円を設定。',
+        overnight: 'レントラ便の楽器運搬ページにある積み置き料金5,500円～を参考に設定。税区分・保管条件は案件ごとに確認してください。',
+        assistant: 'アフタービートサウンドの公開料金にある追加スタッフ1名15,000円（税抜）を参考に設定。',
+        custom: '案件の楽器価額、梱包、階段、固定方法等に応じた任意の税抜上乗せ額を入力してください。'
+      };
+      reference.textContent = referenceDetails[modeInput.value] || referenceDetails.none;
+    }
+
     function openFreightCalculator() {
       const values = contractValues.estimateB;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { input.value = values[input.dataset.freightInput]; });
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
       freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = values.freight_rate_master.tax_included === true;
       freightCalculatorDialog.querySelector('[data-rate-verified]').checked = values.freight_rate_master.verified;
+      const surchargeItem = values.estimate_items.find(item => item.description === '楽器等運搬上乗せ料金');
+      const surchargeMode = Object.entries(instrumentTransportSurchargePresets).find(([, preset]) => preset.sourceUrl && surchargeItem?.details.includes(preset.sourceUrl))?.[0] || (estimateNumber(surchargeItem?.amount) ? 'custom' : 'none');
+      freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]').value = surchargeMode;
+      freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_amount"]').value = surchargeItem?.amount || '0';
+      updateInstrumentSurchargePreset(false);
+      const loadingItem = values.estimate_items.find(item => item.description === '荷役料（積卸し作業費）');
+      freightCalculatorDialog.querySelector('[data-operation-input="loading_support_mode"]').value = loadingItem?.details.includes('お客様が積卸し')
+        ? 'customer_loads'
+        : loadingItem?.details.includes('お客様のお手伝いあり') ? 'customer_assisted' : 'carrier';
       freightCalculatorStatus.textContent = '';
       freightCalculatorStatus.dataset.state = '';
       freightCalculatorDialog.showModal();
@@ -1244,14 +1303,18 @@
       const response = await fetch('/api/contracts/route-distance', {
         method: 'POST', headers: adminHeaders(), body: JSON.stringify({ origin, destination })
       });
-      if (!response.ok) throw new Error(await readApiError(response, 'Google Mapsから距離を取得できませんでした。'));
+      if (!response.ok) throw new Error(await readApiError(response, '自動車ルートの距離を取得できませんでした。'));
       const result = await response.json();
+      const resolvedOrigin = result.resolved_origin || origin;
+      const resolvedDestination = result.resolved_destination || destination;
+      originInput.value = resolvedOrigin;
+      destinationInput.value = resolvedDestination;
       distanceInput.value = String(result.distance_km);
       const values = contractValues.estimateB;
-      values.route_origin = origin;
-      values.route_destination = destination;
+      values.route_origin = resolvedOrigin;
+      values.route_destination = resolvedDestination;
       values.route_distance_km = String(result.distance_km);
-      freightCalculatorStatus.textContent = `Google Mapsの自動車ルート：${result.distance_km}km、走行時間の目安${result.duration_minutes}分。総拘束時間には荷役・待機時間を含めて入力してください。`;
+      freightCalculatorStatus.textContent = `${result.provider || 'ルート検索'}：${resolvedOrigin} → ${resolvedDestination}、${result.distance_km}km、走行時間の目安${result.duration_minutes}分。`;
       freightCalculatorStatus.dataset.state = 'success';
       freightCalculatorStatus.dataset.mapsUrl = result.maps_url;
     }
@@ -1261,13 +1324,13 @@
       try {
         const latestRates = latestRateForEstimateDate(lightCargoReferenceRateHistory, contractDate.value);
         values.vehicle_class = 'light_cargo';
-        values.pricing_basis = 'light_cargo_reference';
-        values.freight_rate_master = { ...values.freight_rate_master, ...latestRates, tax_included: true };
+        values.pricing_basis = 'self_light_cargo_rate';
+        values.freight_rate_master = { ...values.freight_rate_master, ...latestRates, tax_included: false };
         freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
-        freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = true;
-        freightCalculatorDialog.querySelector('[data-rate-verified]').checked = false;
-        freightCalculatorStatus.textContent = `見積作成日現在の最新軽貨物参考値（税込・${latestRates.effective_date}適用開始）を読み込みました。出典URLと自社の届出運賃を確認後、「確認済み」にしてください。`;
-        freightCalculatorStatus.dataset.state = '';
+        freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = false;
+        freightCalculatorDialog.querySelector('[data-rate-verified]').checked = true;
+        freightCalculatorStatus.textContent = `2026年度自社料金規定（税抜・${latestRates.effective_date}適用開始）を読み込みました。`;
+        freightCalculatorStatus.dataset.state = 'success';
         renderDynamicFields();
         renderPreview();
       } catch (error) {
@@ -1286,14 +1349,34 @@
         const operation = {
           waitingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="waiting_minutes"]').value,
           loadingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="loading_minutes"]').value,
+          loadingSupportMode: freightCalculatorDialog.querySelector('[data-operation-input="loading_support_mode"]').value,
+          cancellationType: freightCalculatorDialog.querySelector('[data-operation-input="cancellation_type"]').value,
+          actualExpenses: freightCalculatorDialog.querySelector('[data-operation-input="actual_expenses"]').value,
+          instrumentSurchargeMode: freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]').value,
+          instrumentSurchargeAmount: freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_amount"]').value,
+          specialWorkAmount: freightCalculatorDialog.querySelector('[data-operation-input="special_work_amount"]').value,
           holiday: freightCalculatorDialog.querySelector('[data-operation-input="holiday"]').checked,
           night: freightCalculatorDialog.querySelector('[data-operation-input="night"]').checked
         };
         const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours), operation);
         const [freight, loading, , insurance, fuel] = values.estimate_items;
-        Object.assign(freight, { description: result.recommendedType, unit_price: String(result.baseFreightCost), amount: String(result.baseFreightCost), details: `${result.reason}。${result.isLightCargo ? `業界参考税込額${formatEstimateYen(result.referenceGross)}円を税抜換算` : '公表資料を参照'}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${values.freight_rate_master.effective_date}）。正式額は届出運賃または運送会社見積で確定` });
-        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: result.isLightCargo ? `運賃と分離。積卸し${operation.loadingMinutes || 0}分、最初の30分を除き15分単位の参考作業料金` : `運賃と分離。容積スコア${result.volume}ptに基づく荷役料金` });
+        const billedFreight = result.cancellationRate ? 0 : result.baseFreightCost + result.waitingFee;
+        Object.assign(freight, { description: result.recommendedType, unit_price: String(billedFreight), amount: String(billedFreight), details: `${result.reason}。2026年度自社料金規定（税抜）${result.waitingFee ? `、待機料${formatEstimateYen(result.waitingFee)}円を含む` : ''}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${values.freight_rate_master.effective_date}）` });
+        const loadingDetails = result.loadingSupportMode === 'customer_loads'
+          ? 'お客様が積卸しを行うため荷役料なし。当方は運送および積載固定を担当'
+          : result.loadingSupportMode === 'customer_assisted'
+            ? `お客様のお手伝いあり。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料（追加スタッフ料金なし）`
+            : `当方が積卸し。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料`;
+        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: loadingDetails });
         Object.assign(fuel, { description: '燃料サーチャージ', unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
+        const cancellation = values.estimate_items.find(item => item.description === 'キャンセル料') || values.estimate_items[5];
+        const actualExpenses = values.estimate_items.find(item => item.description === '高速道路・駐車場等立替実費') || values.estimate_items[6];
+        const instrumentSurcharge = values.estimate_items.find(item => item.description === '楽器等運搬上乗せ料金') || values.estimate_items[7];
+        const specialWork = values.estimate_items.find(item => item.description === '助手追加・特殊作業費') || values.estimate_items[8];
+        if (cancellation) Object.assign(cancellation, { unit_price: String(result.cancellationFee), amount: String(result.cancellationFee), details: result.cancellationRate ? `基本運賃${formatEstimateYen(result.baseFreightCost)}円の${result.cancellationRate * 100}%` : 'キャンセルなし' });
+        if (actualExpenses) Object.assign(actualExpenses, { unit_price: String(result.actualExpenses), amount: String(result.actualExpenses), details: '高速道路、有料橋、有料駐車場等の立替実費' });
+        if (instrumentSurcharge) Object.assign(instrumentSurcharge, { unit_price: String(result.instrumentSurcharge), amount: String(result.instrumentSurcharge), details: `${result.instrumentSurchargeLabel}${result.instrumentSurchargeSourceUrl ? `（市場調査出典：${result.instrumentSurchargeSourceUrl}）` : ''}` });
+        if (specialWork) Object.assign(specialWork, { unit_price: String(result.specialWorkAmount), amount: String(result.specialWorkAmount), details: result.specialWorkAmount ? '助手追加・特殊作業の個別見積額' : '作業内容を確認のうえ別途見積' });
         values.waiting_fee = `最初の30分は無料、以降30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（税抜反映額 ${formatEstimateYen(result.waitingFee)}円）`;
         values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
         syncCargoValuation();
@@ -2027,9 +2110,11 @@
     document.getElementById('printContract').addEventListener('click', () => window.print());
     document.getElementById('cancelFreightCalculator').addEventListener('click', () => freightCalculatorDialog.close());
     freightCalculatorDialog.querySelector('[data-load-light-cargo-reference]').addEventListener('click', loadLightCargoReference);
+    freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]').addEventListener('change', () => updateInstrumentSurchargePreset(true));
     freightCalculatorDialog.querySelector('[data-measure-google-route]').addEventListener('click', async event => {
-      event.currentTarget.disabled = true;
-      freightCalculatorStatus.textContent = 'Google Mapsで距離を測定しています...';
+      const measureButton = event.currentTarget;
+      measureButton.disabled = true;
+      freightCalculatorStatus.textContent = '施設名・住所から自動車ルートを検索しています...';
       freightCalculatorStatus.dataset.state = '';
       try {
         await measureGoogleRouteDistance();
@@ -2037,7 +2122,7 @@
         freightCalculatorStatus.textContent = error.message;
         freightCalculatorStatus.dataset.state = 'error';
       } finally {
-        event.currentTarget.disabled = false;
+        measureButton.disabled = false;
       }
     });
     document.getElementById('applyFreightCalculator').addEventListener('click', applyFreightCalculator);

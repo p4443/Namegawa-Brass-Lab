@@ -253,6 +253,8 @@ INSTRUMENT_MODEL_CODE_PATTERN = re.compile(
     r"[A-Za-z](?=[A-Za-z0-9._/-]*\d)[A-Za-z0-9._/-]{2,}"
 )
 GOOGLE_ROUTES_API_URL = "https://routes.googleapis.com/directions/v2:computeRoutes"
+NOMINATIM_SEARCH_API_URL = "https://nominatim.openstreetmap.org/search"
+OSRM_ROUTE_API_URL = "https://router.project-osrm.org/route/v1/driving"
 
 
 def instrument_price_source(source_url):
@@ -478,6 +480,86 @@ def compute_google_route(origin, destination, api_key, urlopen=None):
         "duration_minutes": max(1, round(duration_seconds / 60)) if duration_seconds else 0,
         "maps_url": "https://www.google.com/maps/dir/?api=1&"
         + urlencode({"origin": origin, "destination": destination, "travelmode": "driving"}),
+        "provider": "Google Maps",
+    }
+
+
+def resolve_japan_location(query, urlopen=None):
+    query = str(query).strip()
+    if not query or len(query) > 300:
+        raise ValueError("出発地と目的地を300文字以内で入力してください。")
+    search_url = NOMINATIM_SEARCH_API_URL + "?" + urlencode(
+        {
+            "q": query,
+            "format": "jsonv2",
+            "countrycodes": "jp",
+            "addressdetails": "1",
+            "limit": "1",
+        }
+    )
+    search_request = urllib_request.Request(
+        search_url,
+        headers={"User-Agent": "namegawa-brass-lab-contract-route/1.0"},
+    )
+    request_opener = urlopen or urllib_request.urlopen
+    with request_opener(search_request, timeout=8) as response:
+        result = json.loads(response.read(128 * 1024).decode("utf-8"))
+    if not isinstance(result, list) or not result or not isinstance(result[0], dict):
+        raise ValueError(f"国内の施設名・住所を特定できませんでした：{query}")
+    candidate = result[0]
+    try:
+        latitude = float(candidate["lat"])
+        longitude = float(candidate["lon"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError(f"国内の施設位置を特定できませんでした：{query}") from exc
+    display_name = str(candidate.get("display_name", "")).strip()
+    if not display_name:
+        raise ValueError(f"国内の施設住所を特定できませんでした：{query}")
+    return {"query": query, "address": display_name, "latitude": latitude, "longitude": longitude}
+
+
+def compute_public_route(origin, destination, urlopen=None):
+    request_opener = urlopen or urllib_request.urlopen
+    resolved_origin = resolve_japan_location(origin, request_opener)
+    resolved_destination = resolve_japan_location(destination, request_opener)
+    coordinates = (
+        f'{resolved_origin["longitude"]},{resolved_origin["latitude"]};'
+        f'{resolved_destination["longitude"]},{resolved_destination["latitude"]}'
+    )
+    route_url = f"{OSRM_ROUTE_API_URL}/{coordinates}?" + urlencode(
+        {"overview": "false", "steps": "false"}
+    )
+    route_request = urllib_request.Request(
+        route_url,
+        headers={"User-Agent": "namegawa-brass-lab-contract-route/1.0"},
+    )
+    with request_opener(route_request, timeout=8) as response:
+        result = json.loads(response.read(256 * 1024).decode("utf-8"))
+    routes = result.get("routes", []) if isinstance(result, dict) else []
+    if not routes or not isinstance(routes[0], dict):
+        raise ValueError("施設間の自動車ルートを確認できませんでした。")
+    distance_meters = routes[0].get("distance")
+    duration_seconds = routes[0].get("duration")
+    if not isinstance(distance_meters, (int, float)) or distance_meters <= 0:
+        raise ValueError("施設間の走行距離を取得できませんでした。")
+    return {
+        "origin": str(origin).strip(),
+        "destination": str(destination).strip(),
+        "resolved_origin": resolved_origin["address"],
+        "resolved_destination": resolved_destination["address"],
+        "distance_km": round(distance_meters / 1000, 1),
+        "duration_minutes": max(1, round(float(duration_seconds) / 60))
+        if isinstance(duration_seconds, (int, float)) and duration_seconds > 0
+        else 0,
+        "maps_url": "https://www.google.com/maps/dir/?api=1&"
+        + urlencode(
+            {
+                "origin": resolved_origin["address"],
+                "destination": resolved_destination["address"],
+                "travelmode": "driving",
+            }
+        ),
+        "provider": "OpenStreetMap / OSRM",
     }
 LESSON_APPS_SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25"
 
@@ -1037,7 +1119,7 @@ def validate_contract(payload):
         if (
             raw_values.get("transport_provider_mode") != "self_light_cargo"
             or raw_values.get("vehicle_class") != "light_cargo"
-            or raw_values.get("pricing_basis") != "light_cargo_reference"
+            or raw_values.get("pricing_basis") not in {"self_light_cargo_rate", "light_cargo_reference"}
             or not isinstance(ready_rate_master, dict)
             or ready_rate_master.get("verified") is not True
             or not isinstance(ready_instrument_master, dict)
@@ -1125,6 +1207,7 @@ def validate_contract(payload):
                 "waiting_per_30m",
                 "loading_base",
                 "loading_per_15m",
+                "loading_per_30m",
                 "loading_per_25_points",
                 "holiday_percent",
                 "night_percent",
@@ -1139,6 +1222,7 @@ def validate_contract(payload):
                 "charter_2h",
                 "extra_30m",
                 "loading_per_15m",
+                "loading_per_30m",
                 "holiday_percent",
                 "night_percent",
             }
@@ -2452,20 +2536,23 @@ def create_app(
         if not isinstance(payload, dict):
             return jsonify({"error": "距離測定内容を確認してください。"}), 400
         api_key = os.environ.get("GOOGLE_MAPS_ROUTES_API_KEY", "").strip()
-        if not api_key:
-            return jsonify({"error": "Google Routes APIの接続設定が不足しています。"}), 503
+        origin = payload.get("origin", "")
+        destination = payload.get("destination", "")
+        if api_key:
+            try:
+                return jsonify(compute_google_route(origin, destination, api_key))
+            except (ValueError, OSError, urllib_error.URLError, json.JSONDecodeError, UnicodeError):
+                app.logger.warning("Google Routes API unavailable; falling back to public routing")
         try:
-            result = compute_google_route(
-                payload.get("origin", ""), payload.get("destination", ""), api_key
-            )
+            result = compute_public_route(origin, destination)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         except urllib_error.HTTPError as exc:
-            app.logger.warning("Google Routes API rejected route request: %s", exc.code)
-            return jsonify({"error": "Google Routes APIが距離測定を受け付けませんでした。設定と住所を確認してください。"}), 502
+            app.logger.warning("Public route services rejected route request: %s", exc.code)
+            return jsonify({"error": "公開経路サービスが距離測定を受け付けませんでした。住所を確認してください。"}), 502
         except (OSError, urllib_error.URLError, json.JSONDecodeError, UnicodeError):
-            app.logger.exception("Google Routes API request failed")
-            return jsonify({"error": "Google Mapsから距離を取得できませんでした。"}), 502
+            app.logger.exception("Public route services request failed")
+            return jsonify({"error": "公開経路サービスから距離を取得できませんでした。"}), 502
         return jsonify(result)
 
     @app.post("/api/contracts/transport-sheet")
