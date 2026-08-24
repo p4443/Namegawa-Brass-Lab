@@ -586,11 +586,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("result.provider || 'ルート検索'", page)
         self.assertIn("楽器再調達価格の確認", page)
         self.assertIn("公開カタログURL（1行1件・最大7件）", page)
-        self.assertIn("最高額 ${formatEstimateYen(result.recommended_price)}円を自動採用", page)
+        self.assertIn("最高額 ${formatEstimateYen(result.recommended_price)}円を反映", page)
+        self.assertIn("公式価格を照会して最高額を反映", page)
+        self.assertIn("価格の税区分", page)
+        self.assertIn("instrumentPricesConfirmable", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
         self.assertIn("source_urls: result.source_urls", page)
-        self.assertIn("</small></div>`).join('')}", page)
-        self.assertNotIn("</small></div>`).join(')}", page)
+        self.assertIn("</small></article>`).join('')}", page)
+        self.assertNotIn("</small></article>`).join(')}", page)
         self.assertIn("function transportReadiness(values)", page)
         self.assertIn("案件受付（下書き）", page)
         self.assertIn("軽貨物運賃・日程を調整中", page)
@@ -791,6 +794,9 @@ class UpdatesTest(unittest.TestCase):
                                 "total_value": "5000000",
                                 "volume_points": "1",
                                 "notes": "ハードケース入り",
+                                "price_source_url": "https://jp.yamaha.com/products/model-100.html",
+                                "price_checked_at": "2026-08-23",
+                                "price_tax_status": "tax_included",
                             }
                         ],
                         "estimate_items": [
@@ -818,6 +824,10 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(
                 response.json["values"]["cargo_items"][0]["total_value"],
                 "5000000",
+            )
+            self.assertEqual(
+                response.json["values"]["cargo_items"][0]["price_tax_status"],
+                "tax_included",
             )
             self.assertTrue(response.json["values"]["cargo_restrictions_agreed"])
             self.assertEqual(

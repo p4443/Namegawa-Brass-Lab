@@ -1303,6 +1303,8 @@ def validate_contract(payload):
             source_urls = list(dict.fromkeys(str(url).strip() for url in source_urls if str(url).strip()))
             if not source_urls and source_url:
                 source_urls = [source_url]
+            if source_urls and not source_url:
+                source_url = source_urls[0]
             for catalog_url in source_urls:
                 instrument_price_source(catalog_url)
             if verified:
@@ -1317,7 +1319,9 @@ def validate_contract(payload):
                 instrument_price_source(source_url)
                 if not source_urls:
                     raise ValueError("楽器価格の公式カタログURLを入力してください。")
-                if catalog_year and catalog_year != contract_date[:4]:
+                if source_url not in source_urls:
+                    raise ValueError("楽器価格マスターの出典URLとカタログ一覧が一致しません。")
+                if catalog_year != contract_date[:4]:
                     raise ValueError("見積作成年の公開カタログで楽器価格を再照会してください。")
             values[key] = {
                 "effective_date": effective_date,
@@ -1349,6 +1353,7 @@ def validate_contract(payload):
                     "notes": str(raw_item.get("notes", "")).strip(),
                     "price_source_url": str(raw_item.get("price_source_url", "")).strip(),
                     "price_checked_at": str(raw_item.get("price_checked_at", "")).strip(),
+                    "price_tax_status": str(raw_item.get("price_tax_status", "")).strip(),
                 }
                 if (
                     not item["category"]
@@ -1368,6 +1373,7 @@ def validate_contract(payload):
                     is None
                     or len(item["notes"]) > 200
                     or len(item["price_source_url"]) > 500
+                    or item["price_tax_status"] not in {"", "tax_included", "tax_excluded"}
                     or int(item["quantity"]) * int(item["unit_value"])
                     != int(item["total_value"])
                 ):
@@ -1380,6 +1386,12 @@ def validate_contract(payload):
                         raise ValueError("楽器価格の照会日を正しく入力してください。") from exc
                     if item["price_checked_at"] > contract_date:
                         raise ValueError("見積作成日以前に照会した楽器価格を使用してください。")
+                if item["valuation_mode"] == "master" and (
+                    not item["price_source_url"]
+                    or not item["price_checked_at"]
+                    or item["price_tax_status"] not in {"tax_included", "tax_excluded"}
+                ):
+                    raise ValueError("公式価格を使う楽器は照会元・照会日・税込／税別を確認してください。")
                 cargo_items.append(item)
             values[key] = cargo_items
             continue
@@ -1446,6 +1458,14 @@ def validate_contract(payload):
         item["valuation_mode"] == "master" for item in values["cargo_items"]
     ) and not values["instrument_price_master"]["verified"]:
         raise ValueError("マスター参考額を使う場合は楽器価格マスターの出典を確認してください。")
+    if doc_type == "estimateB":
+        instrument_master = values["instrument_price_master"]
+        for item in values["cargo_items"]:
+            if item["valuation_mode"] == "master" and (
+                item["price_source_url"] not in instrument_master["source_urls"]
+                or item["price_checked_at"] != instrument_master["effective_date"]
+            ):
+                raise ValueError("楽器ごとの公式価格と価格マスターの照会情報が一致しません。")
     return {
         "doc_type": doc_type,
         "department": configuration["department"],
