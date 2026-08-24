@@ -716,6 +716,7 @@
     let editorToken = '';
     let freightCalculatorReturnTarget = null;
     const instrumentLookupResults = new Map();
+    const instrumentLookupErrors = new Map();
     const invoiceRegistrationNumber = 'T2810320517878';
 
     const contractValues = {
@@ -819,22 +820,69 @@
       return `<div class="field"><label>${label}<select data-contract-key="${key}">${options.map(option => `<option value="${option.value}"${option.value === value ? ' selected' : ''}>${option.label}</option>`).join('')}</select></label></div>`;
     }
 
+    function transportValidationIssues(values) {
+      const issues = [];
+      const addIssue = (message, rowIndex = null, field = '') => issues.push({ message, rowIndex, field });
+      const master = values.instrument_price_master;
+      if (!master.effective_date) addIssue('価格基準日を選択してください。', null, 'effective_date');
+      else if (master.effective_date > contractDate.value) addIssue('価格基準日は見積発行日以前を選択してください。', null, 'effective_date');
+      if (!master.source_urls?.length) addIssue('公式価格サイト候補を1件以上登録してください。', null, 'source_urls');
+      values.cargo_items.forEach((item, rowIndex) => {
+        const rowLabel = `輸送対象物 ${rowIndex + 1}`;
+        if (!item.lookup_source_url) addIssue(`${rowLabel}：公式価格サイトを選択してください。`, rowIndex, 'lookup_source_url');
+        else if (!master.source_urls.includes(item.lookup_source_url)) addIssue(`${rowLabel}：選択サイトを公式価格サイト候補へ登録してください。`, rowIndex, 'lookup_source_url');
+        if (!item.maker_model.trim()) addIssue(`${rowLabel}：メーカー・型番を入力してください。`, rowIndex, 'maker_model');
+        if (estimateNumber(item.unit_value) <= 0) addIssue(`${rowLabel}：単価・評価額を入力または照会してください。`, rowIndex, 'unit_value');
+        if (item.valuation_mode === 'master' && (!item.price_source_url || !item.price_checked_at || !['tax_included', 'tax_excluded'].includes(item.price_tax_status))) {
+          addIssue(`${rowLabel}：公式価格の照会元・照会日・税区分を確認してください。`, rowIndex, 'price_source_url');
+        }
+        if (instrumentLookupErrors.has(rowIndex)) addIssue(`${rowLabel}：${instrumentLookupErrors.get(rowIndex)}`, rowIndex, 'lookup');
+      });
+      return issues;
+    }
+
     function transportReadiness(values) {
-      const missing = [];
+      const missing = transportValidationIssues(values).map(issue => issue.message);
       if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
       if (!['self_light_cargo_rate', 'light_cargo_reference'].includes(values.pricing_basis)) missing.push('軽貨物料金の根拠確認');
       if (calculateCargoVolume() >= 100 && (!values.partner_2t_requested || values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('協力会社2t車の代理調整確定');
-      if (values.cargo_items.some(item => !item.maker_model || estimateNumber(item.unit_value) <= 0)) missing.push('楽器型番・再調達価格');
-      if (values.cargo_items.some(item => item.valuation_mode === 'master' && (!item.price_source_url || !item.price_checked_at || !['tax_included', 'tax_excluded'].includes(item.price_tax_status)))) missing.push('公式価格の照会元・税込／税別');
       if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
       if (!values.permit_number || !values.office_information || !values.operation_manager) missing.push('事業許可・営業所・運行管理情報');
       if (!values.cargo_document_url || !values.route_document_url || !values.compliance_document_url || !values.fee_document_url) missing.push('正式見積の添付書類URL');
       if (!values.cargo_contact_email) missing.push('シート共有先メールアドレス');
-      return missing;
+      return [...new Set(missing)];
+    }
+
+    function reportTransportError(message, rowIndex = null) {
+      if (rowIndex !== null) instrumentLookupErrors.set(rowIndex, message);
+      saveStatus.textContent = message;
+      saveStatus.dataset.state = 'error';
+      updateTransportWorkflowStatus();
+    }
+
+    function clearTransportError(rowIndex = null) {
+      if (rowIndex === null) instrumentLookupErrors.clear();
+      else instrumentLookupErrors.delete(rowIndex);
+      if (saveStatus.dataset.state === 'error') {
+        saveStatus.textContent = '';
+        saveStatus.removeAttribute('data-state');
+      }
+      updateTransportWorkflowStatus();
+    }
+
+    function updateTransportWorkflowStatus() {
+      if (docType.value !== 'estimateB') return;
+      const status = dynamicFields.querySelector('[data-transport-workflow-status]');
+      if (!status) return;
+      const missing = transportReadiness(contractValues.estimateB);
+      status.classList.toggle('is-ready', missing.length === 0);
+      status.innerHTML = missing.length
+        ? `<strong>発行準備中</strong><span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
+        : '<strong>正式見積の発行準備完了</strong><span>入力根拠と添付書類を最終確認してください。</span>';
     }
 
     const estimatePresets = {
@@ -1041,7 +1089,7 @@
       const catalogStatus = instrumentCatalogStatus(values.instrument_price_master, catalogUrls, contractDate.value);
       const pricesConfirmable = instrumentPricesConfirmable(values, catalogStatus);
       return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>通常運行は自社の軽貨物車に限定します。軽貨物で積載できない場合のみ、当方が窓口となって協力会社の小型2t車を代理調整します。</div>`
-        + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}"><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
+        + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}" data-transport-workflow-status><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
         + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
@@ -1068,9 +1116,11 @@
 
     function renderCargoItemEditors(values) {
       const total = calculateCargoValuation();
+      const issues = transportValidationIssues(values);
       return `<div class="estimate-edit-guide"><strong>輸送対象物明細・評価額証明</strong>申告総評価額：<span data-cargo-total="editor">${formatEstimateYen(total)}円</span></div>${values.cargo_items.map((item, index) => `
         <section class="estimate-editor instrument-price-item" data-cargo-row="${index}">
           <h2>輸送対象物 ${index + 1}<button class="cargo-row-remove" data-remove-cargo-row="${index}" type="button" aria-label="輸送対象物${index + 1}を削除">削除</button></h2>
+          ${issues.some(issue => issue.rowIndex === index) ? `<div class="save-status" data-state="error" role="alert">${issues.filter(issue => issue.rowIndex === index).map(issue => escapeHtml(issue.message)).join('<br>')}</div>` : ''}
           <div class="cargo-editor-grid">
             <label>区分<select data-cargo-item-key="category">${cargoCategories.map(category => `<option${category === item.category ? ' selected' : ''}>${category}</option>`).join('')}</select></label>
             <label class="cargo-instrument">品目テンプレート<select data-cargo-instrument>${instrumentOptions(item.instrument_key)}</select></label>
@@ -1115,6 +1165,7 @@
       const result = await response.json();
       if (result.checked_at > contractDate.value) throw new Error('見積作成日以前に照会した公開カタログ価格だけを反映できます。');
       instrumentLookupResults.set(rowIndex, result);
+      clearTransportError(rowIndex);
       applyInstrumentPrice(rowIndex);
       renderDynamicFields();
       renderPreview();
@@ -1915,6 +1966,20 @@
         clientName.focus();
         throw new Error('取引先名を入力してください。');
       }
+      if (docType.value === 'estimateB') {
+        const issues = transportValidationIssues(contractValues.estimateB);
+        const requiresCompleteTransport = contractValues.estimateB.workflow_status === 'ready';
+        if (instrumentLookupErrors.size || (requiresCompleteTransport && issues.length)) {
+          const issue = issues[0] || { message: '価格照会エラーを解消してください。', rowIndex: null, field: '' };
+          reportTransportError(issue.message, issue.rowIndex);
+          const target = issue.rowIndex === null
+            ? dynamicFields.querySelector(`[data-instrument-master-key="${issue.field}"]`)
+            : dynamicFields.querySelector(`[data-cargo-row="${issue.rowIndex}"]`);
+          target?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+          target?.focus?.();
+          throw new Error(issue.message);
+        }
+      }
       saveButton.disabled = true;
       const response = await fetch('/api/contracts', {
         method: 'POST', headers: adminHeaders(), body: JSON.stringify(contractPayload())
@@ -2058,6 +2123,7 @@
     dynamicFields.addEventListener('input', event => {
       if (event.target.matches('[data-cargo-consent]')) {
         contractValues.estimateB.cargo_restrictions_agreed = event.target.checked;
+        updateTransportWorkflowStatus();
         renderPreview();
         return;
       }
@@ -2089,6 +2155,7 @@
           }
         });
         instrumentLookupResults.clear();
+        clearTransportError();
         const status = dynamicFields.querySelector('[data-instrument-catalog-status]');
         const catalogStatus = instrumentCatalogStatus(master, master.source_urls, contractDate.value);
         if (status) {
@@ -2104,6 +2171,11 @@
         if (sourceCount) sourceCount.textContent = `登録 ${master.source_urls.length}/7件`;
         const preset = dynamicFields.querySelector('[data-instrument-source-preset]');
         if (preset) preset.innerHTML = instrumentPriceSourceOptions(master.source_urls);
+        dynamicFields.querySelectorAll('[data-cargo-price-source]').forEach((select, rowIndex) => {
+          const item = contractValues.estimateB.cargo_items[rowIndex];
+          select.innerHTML = cargoPriceSourceOptions(master.source_urls, item?.lookup_source_url || '');
+        });
+        updateTransportWorkflowStatus();
         return;
       }
       const instrumentMasterKey = event.target.dataset.instrumentMasterKey;
@@ -2120,6 +2192,7 @@
           item.price_tax_status = '';
         });
         instrumentLookupResults.clear();
+        clearTransportError();
         renderDynamicFields();
         renderPreview();
         return;
@@ -2136,6 +2209,7 @@
         const rowIndex = Number(row?.dataset.cargoRow);
         const item = contractValues.estimateB.cargo_items[rowIndex];
         if (!item) return;
+        clearTransportError(rowIndex);
         item[cargoKey] = event.target.value;
         if (cargoKey === 'maker_model' || cargoKey === 'unit_value') {
           item.price_source_url = '';
@@ -2168,6 +2242,7 @@
         const editorTotal = dynamicFields.querySelector('[data-cargo-total="editor"]');
         if (editorTotal) editorTotal.textContent = `${formatEstimateYen(calculateCargoValuation())}円`;
         updateCargoCapacityUi();
+        updateTransportWorkflowStatus();
         renderPreview();
         return;
       }
@@ -2193,6 +2268,7 @@
       const key = event.target.dataset.contractKey;
       if (!key) return;
       contractValues[docType.value][key] = event.target.value;
+      updateTransportWorkflowStatus();
       renderPreview();
     });
     dynamicFields.addEventListener('change', event => {
@@ -2200,6 +2276,7 @@
         const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
         const item = contractValues.estimateB.cargo_items[rowIndex];
         if (!item) return;
+        clearTransportError(rowIndex);
         item.lookup_source_url = event.target.value;
         item.valuation_mode = 'manual';
         item.price_source_url = '';
@@ -2259,20 +2336,14 @@
       }
       const lookupButton = event.target.closest('[data-lookup-instrument-price]');
       if (lookupButton) {
+        const rowIndex = Number(lookupButton.dataset.lookupInstrumentPrice);
         lookupButton.disabled = true;
         try {
-          await lookupInstrumentPrice(Number(lookupButton.dataset.lookupInstrumentPrice));
+          await lookupInstrumentPrice(rowIndex);
         } catch (error) {
-          lookupButton.disabled = false;
-          const row = lookupButton.closest('[data-cargo-row]');
-          let result = row?.querySelector('[data-price-lookup-error]');
-          if (!result && row) {
-            result = document.createElement('p');
-            result.dataset.priceLookupError = '';
-            result.className = 'save-status';
-            row.appendChild(result);
-          }
-          if (result) { result.textContent = error.message; result.dataset.state = 'error'; }
+          reportTransportError(error.message || '公式価格を照会できませんでした。', rowIndex);
+          renderDynamicFields();
+          renderPreview();
         }
         return;
       }

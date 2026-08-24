@@ -1382,8 +1382,6 @@ def validate_contract(payload):
                     raise ValueError("輸送対象物明細の入力内容と評価額を確認してください。")
                 if item["lookup_source_url"]:
                     instrument_price_source(item["lookup_source_url"])
-                    if item["lookup_source_url"] not in values["instrument_price_master"]["source_urls"]:
-                        raise ValueError("対象物の公式価格サイトをカタログ候補へ登録してください。")
                 if item["price_source_url"]:
                     instrument_price_source(item["price_source_url"])
                     try:
@@ -1467,6 +1465,8 @@ def validate_contract(payload):
     if doc_type == "estimateB":
         instrument_master = values["instrument_price_master"]
         for item in values["cargo_items"]:
+            if item["lookup_source_url"] and item["lookup_source_url"] not in instrument_master["source_urls"]:
+                raise ValueError("対象物の公式価格サイトをカタログ候補へ登録してください。")
             if item["valuation_mode"] == "master" and (
                 item["price_source_url"] not in instrument_master["source_urls"]
             ):
