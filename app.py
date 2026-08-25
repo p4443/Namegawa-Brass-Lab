@@ -250,6 +250,7 @@ INSTRUMENT_PRICE_SOURCE_DOMAINS = {
     "global-inst.co.jp": "グローバル",
 }
 INSTRUMENT_PRICE_PAGE_MAX_BYTES = 2 * 1024 * 1024
+INSTRUMENT_PRICE_SITEMAP_MAX_BYTES = 8 * 1024 * 1024
 INSTRUMENT_MODEL_CODE_PATTERN = re.compile(
     r"[A-Za-z](?=[A-Za-z0-9._/-]*\d)[A-Za-z0-9._/-]{2,}"
 )
@@ -300,7 +301,56 @@ class InstrumentPricePageParser(HTMLParser):
         return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
 
 
-def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
+def discover_instrument_model_urls(source_url, maker_model, opener):
+    parsed_source = urlparse(source_url)
+    source_name = instrument_price_source(source_url)
+    sitemap_url = f"{parsed_source.scheme}://{parsed_source.netloc}/sitemap.xml"
+    model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(maker_model)
+    exact_model = max(model_codes, key=len) if model_codes else maker_model
+    normalized_model = re.sub(r"[^a-z0-9]", "", exact_model.casefold())
+    if len(normalized_model) < 4 or not any(character.isdigit() for character in normalized_model):
+        return []
+
+    pending = [sitemap_url]
+    visited = set()
+    product_urls = []
+    while pending and len(visited) < 4 and len(product_urls) < 5:
+        current_url = pending.pop(0)
+        if current_url in visited:
+            continue
+        visited.add(current_url)
+        page_request = urllib_request.Request(
+            current_url,
+            headers={"User-Agent": "NamegawaBrassLab-PriceLookup/1.0"},
+        )
+        with opener.open(page_request, timeout=8) as response:
+            final_url = response.geturl()
+            instrument_price_source(final_url)
+            body = response.read(INSTRUMENT_PRICE_SITEMAP_MAX_BYTES + 1)
+            if len(body) > INSTRUMENT_PRICE_SITEMAP_MAX_BYTES:
+                continue
+            charset = response.headers.get_content_charset() or "utf-8"
+        sitemap_text = body.decode(charset, errors="replace")
+        for location in re.findall(r"<loc>\s*([^<]+?)\s*</loc>", sitemap_text, re.IGNORECASE):
+            location = location.replace("&amp;", "&").strip()
+            try:
+                if instrument_price_source(location) != source_name:
+                    continue
+            except ValueError:
+                continue
+            if location.lower().endswith((".xml", ".xml.gz")):
+                if len(visited) + len(pending) < 4:
+                    pending.append(location)
+                continue
+            normalized_location = re.sub(r"[^a-z0-9]", "", location.casefold())
+            if normalized_model in normalized_location:
+                product_urls.append(location)
+                if len(product_urls) >= 5:
+                    break
+    return product_urls
+
+
+def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allow_discovery=True):
     source_url = str(source_url).strip()
     maker_model = unicodedata.normalize("NFKC", str(maker_model).strip())
     source_name = instrument_price_source(source_url)
@@ -360,6 +410,16 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None):
                 if len(model_matches) >= 20:
                     break
     if not model_matches:
+        if allow_discovery:
+            for product_url in discover_instrument_model_urls(
+                final_url, maker_model, page_opener
+            ):
+                try:
+                    return fetch_instrument_price_candidates(
+                        product_url, maker_model, page_opener, False
+                    )
+                except (ValueError, OSError, urllib_error.URLError, UnicodeError):
+                    continue
         raise ValueError("公式ページ内に一致または一部一致する型番が見つかりませんでした。")
 
     price_pattern = re.compile(

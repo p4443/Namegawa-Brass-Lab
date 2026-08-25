@@ -230,6 +230,95 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["match_type"], "partial")
         self.assertEqual(result["candidates"][0]["price"], 456500)
 
+    def test_instrument_price_lookup_discovers_product_from_catalog_url(self):
+        class FakeResponse:
+            def __init__(self, url, body, content_type="text/html"):
+                self.url = url
+                self.body = body.encode()
+                self.headers = Message()
+                self.headers["Content-Type"] = f"{content_type}; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return self.url
+
+            def read(self, size):
+                return self.body
+
+        pages = {
+            "https://jp.yamaha.com/products/musical_instruments/winds/": FakeResponse(
+                "https://jp.yamaha.com/products/musical_instruments/winds/",
+                "<h1>管楽器製品一覧</h1>",
+            ),
+            "https://jp.yamaha.com/sitemap.xml": FakeResponse(
+                "https://jp.yamaha.com/sitemap.xml",
+                "<urlset><url><loc>https://jp.yamaha.com/products/ytr-8335.html</loc></url></urlset>",
+                "application/xml",
+            ),
+            "https://jp.yamaha.com/products/ytr-8335.html": FakeResponse(
+                "https://jp.yamaha.com/products/ytr-8335.html",
+                "<p>YTR-8335 希望小売価格 500,000円（税込）</p>",
+            ),
+        }
+        opener = MagicMock()
+        opener.open.side_effect = lambda request, timeout: pages[request.full_url]
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/musical_instruments/winds/", "YTR-8335", opener
+        )
+
+        self.assertEqual(result["source_url"], "https://jp.yamaha.com/products/ytr-8335.html")
+        self.assertEqual(result["candidates"][0]["price"], 500000)
+
+    def test_instrument_price_lookup_allows_official_subdomain_product_url(self):
+        class FakeResponse:
+            def __init__(self, url, body, content_type="text/html"):
+                self.url = url
+                self.body = body.encode()
+                self.headers = Message()
+                self.headers["Content-Type"] = f"{content_type}; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return self.url
+
+            def read(self, size):
+                return self.body
+
+        pages = {
+            "https://nonaka.com/catalog/": FakeResponse(
+                "https://nonaka.com/catalog/", "<h1>製品一覧</h1>"
+            ),
+            "https://nonaka.com/sitemap.xml": FakeResponse(
+                "https://nonaka.com/sitemap.xml",
+                "<urlset><url><loc>https://www.nonaka.com/products/model-100.html</loc></url></urlset>",
+                "application/xml",
+            ),
+            "https://www.nonaka.com/products/model-100.html": FakeResponse(
+                "https://www.nonaka.com/products/model-100.html",
+                "<p>MODEL-100 希望小売価格 435,000円（税別）</p>",
+            ),
+        }
+        opener = MagicMock()
+        opener.open.side_effect = lambda request, timeout: pages[request.full_url]
+
+        result = fetch_instrument_price_candidates(
+            "https://nonaka.com/catalog/", "MODEL-100", opener
+        )
+
+        self.assertEqual(result["source_name"], "野中貿易")
+        self.assertEqual(result["candidates"][0]["price"], 435000)
+
     def test_instrument_price_lookup_rejects_non_official_url_before_request(self):
         opener = MagicMock()
 
