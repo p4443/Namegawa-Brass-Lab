@@ -301,6 +301,19 @@ class InstrumentPricePageParser(HTMLParser):
         return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
 
 
+def decode_instrument_page(body, charset):
+    normalized_charset = str(charset or "utf-8").strip().lower()
+    normalized_charset = {
+        "windows-31j": "cp932",
+        "ms932": "cp932",
+        "x-sjis": "cp932",
+    }.get(normalized_charset, normalized_charset)
+    try:
+        return body.decode(normalized_charset, errors="replace")
+    except LookupError:
+        return body.decode("utf-8", errors="replace")
+
+
 def discover_instrument_model_urls(source_url, maker_model, opener):
     parsed_source = urlparse(source_url)
     source_name = instrument_price_source(source_url)
@@ -330,7 +343,7 @@ def discover_instrument_model_urls(source_url, maker_model, opener):
             if len(body) > INSTRUMENT_PRICE_SITEMAP_MAX_BYTES:
                 continue
             charset = response.headers.get_content_charset() or "utf-8"
-        sitemap_text = body.decode(charset, errors="replace")
+        sitemap_text = decode_instrument_page(body, charset)
         for location in re.findall(r"<loc>\s*([^<]+?)\s*</loc>", sitemap_text, re.IGNORECASE):
             location = location.replace("&amp;", "&").strip()
             try:
@@ -379,7 +392,7 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
         charset = response.headers.get_content_charset() or "utf-8"
 
     parser = InstrumentPricePageParser()
-    parser.feed(body.decode(charset, errors="replace"))
+    parser.feed(decode_instrument_page(body, charset))
     page_text = unicodedata.normalize("NFKC", parser.text())
     search_text = page_text.casefold()
     model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(maker_model)
@@ -498,7 +511,18 @@ def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
         except (ValueError, OSError, urllib_error.URLError, UnicodeError) as exc:
             failures.append({"source_url": source_url, "error": str(exc)})
     if not results:
-        raise ValueError("指定した公式カタログから型番価格を取得できませんでした。")
+        return {
+            "checked_at": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat(),
+            "catalog_year": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()[:4],
+            "maker_model": str(maker_model).strip(),
+            "source_urls": urls,
+            "candidates": [],
+            "recommended_price": None,
+            "recommended_source_name": "",
+            "recommended_source_url": "",
+            "manual_entry_required": True,
+            "failures": failures,
+        }
 
     candidates = []
     for result in results:

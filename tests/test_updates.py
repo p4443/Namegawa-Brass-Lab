@@ -351,6 +351,22 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["recommended_source_name"], "野中貿易")
         self.assertEqual(result["catalog_year"], "2026")
 
+    def test_instrument_catalog_prices_requests_manual_entry_when_lookup_fails(self):
+        def unavailable_fetcher(source_url, maker_model):
+            raise ValueError("公式ページ内に型番が見つかりませんでした。")
+
+        result = fetch_instrument_catalog_prices(
+            ["https://www.nonaka.com/"], "180ML37", unavailable_fetcher
+        )
+
+        self.assertTrue(result["manual_entry_required"])
+        self.assertIsNone(result["recommended_price"])
+        self.assertEqual(result["source_urls"], ["https://www.nonaka.com/"])
+        self.assertEqual(
+            result["failures"][0]["error"],
+            "公式ページ内に型番が見つかりませんでした。",
+        )
+
     def test_instrument_price_candidates_reports_tax_status(self):
         class FakeResponse:
             headers = Message()
@@ -747,6 +763,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("公式価格を照会して最高額を反映", page)
         self.assertIn("function instrumentLookupReady(rowIndex)", page)
         self.assertIn("async function lookupInstrumentPriceWithFeedback(rowIndex)", page)
+        self.assertIn("result.manual_entry_required", page)
+        self.assertIn("公式サイトから価格を自動取得できない掲載形式です。", page)
         self.assertIn("行評価額 ${formatEstimateYen(estimateNumber(item.total_value))}円を反映しました。", page)
         self.assertIn('dynamicFields.addEventListener(\'change\', async event => {', page)
         self.assertIn("価格の税区分", page)

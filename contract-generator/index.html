@@ -1159,6 +1159,15 @@
       });
       if (!response.ok) throw new Error(await readApiError(response, '公式価格を照会できませんでした。'));
       const result = await response.json();
+      if (result.manual_entry_required || !result.recommended_price) {
+        instrumentLookupResults.set(rowIndex, result);
+        clearTransportError(rowIndex);
+        renderDynamicFields();
+        renderPreview();
+        const catalogInput = dynamicFields.querySelector(`[data-cargo-row="${rowIndex}"] [data-cargo-item-key="catalog_price"]`);
+        catalogInput?.focus();
+        throw new Error('公式サイトから価格を自動取得できない掲載形式です。公式ページを確認し、カタログ価格を入力してください。');
+      }
       if (result.checked_at > contractDate.value) throw new Error('見積作成日以前に照会した公開カタログ価格だけを反映できます。');
       instrumentLookupResults.set(rowIndex, result);
       clearTransportError(rowIndex);
@@ -1184,9 +1193,19 @@
         saveStatus.textContent = `輸送対象物 ${rowIndex + 1}へ単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円、行評価額 ${formatEstimateYen(estimateNumber(item.total_value))}円を反映しました。`;
         saveStatus.dataset.state = 'success';
       } catch (error) {
-        reportTransportError(error.message || '公式価格を照会できませんでした。', rowIndex);
+        const message = error.message || '公式価格を照会できませんでした。';
+        if (message.includes('カタログ価格を入力してください')) {
+          clearTransportError(rowIndex);
+          saveStatus.textContent = message;
+          saveStatus.dataset.state = 'pending';
+        } else {
+          reportTransportError(message, rowIndex);
+        }
         renderDynamicFields();
         renderPreview();
+        if (message.includes('カタログ価格を入力してください')) {
+          dynamicFields.querySelector(`[data-cargo-row="${rowIndex}"] [data-cargo-item-key="catalog_price"]`)?.focus();
+        }
       }
     }
 
