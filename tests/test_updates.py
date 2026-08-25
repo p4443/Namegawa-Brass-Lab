@@ -759,6 +759,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("型番・最高額候補・税込／税別を確認済み", page)
         self.assertNotIn("instrumentPricesConfirmable", page)
         self.assertIn("Boolean(select.value && estimateNumber(item.catalog_price) > 0)", page)
+        self.assertIn("window.location.protocol === 'file:'", page)
+        self.assertIn("https://namegawa-brass-lab.onrender.com/contract-generator/", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
         self.assertIn("master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])]", page)
         self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
