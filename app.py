@@ -283,19 +283,31 @@ class InstrumentPricePageParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.parts = []
+        self.links = []
+        self.current_link = None
+        self.current_link_parts = []
         self.ignored_depth = 0
 
     def handle_starttag(self, tag, attrs):
         if tag in {"script", "style", "noscript"}:
             self.ignored_depth += 1
+        elif tag == "a" and not self.ignored_depth:
+            self.current_link = dict(attrs).get("href", "")
+            self.current_link_parts = []
 
     def handle_endtag(self, tag):
         if tag in {"script", "style", "noscript"} and self.ignored_depth:
             self.ignored_depth -= 1
+        elif tag == "a" and self.current_link is not None:
+            self.links.append((self.current_link, " ".join(self.current_link_parts)))
+            self.current_link = None
+            self.current_link_parts = []
 
     def handle_data(self, data):
         if not self.ignored_depth:
             self.parts.append(data)
+            if self.current_link is not None:
+                self.current_link_parts.append(data)
 
     def text(self):
         return re.sub(r"\s+", " ", " ".join(self.parts)).strip()
@@ -314,53 +326,100 @@ def decode_instrument_page(body, charset):
         return body.decode("utf-8", errors="replace")
 
 
-def discover_instrument_model_urls(source_url, maker_model, opener):
-    parsed_source = urlparse(source_url)
+def instrument_candidate_priority(candidate):
+    return {"exact": 0, "partial": 1}.get(candidate.get("match_type"), 2)
+
+
+def instrument_url_match_priority(url, maker_model):
+    model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(maker_model)
+    exact_model = max(model_codes, key=len) if model_codes else maker_model
+    exact_pattern = re.compile(
+        rf"(?<![a-z0-9]){re.escape(exact_model.casefold())}(?![a-z0-9])"
+    )
+    return 0 if exact_pattern.search(url.casefold()) else 1
+
+
+def has_exact_instrument_url(urls, maker_model):
+    return any(instrument_url_match_priority(url, maker_model) == 0 for url in urls)
+
+
+def discover_instrument_model_urls(source_url, maker_model, links):
     source_name = instrument_price_source(source_url)
-    sitemap_url = f"{parsed_source.scheme}://{parsed_source.netloc}/sitemap.xml"
     model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(maker_model)
     exact_model = max(model_codes, key=len) if model_codes else maker_model
     normalized_model = re.sub(r"[^a-z0-9]", "", exact_model.casefold())
-    if len(normalized_model) < 4 or not any(character.isdigit() for character in normalized_model):
+    if len(normalized_model) < 3 or not any(character.isdigit() for character in normalized_model):
         return []
 
-    pending = [sitemap_url]
-    visited = set()
     product_urls = []
-    while pending and len(visited) < 4 and len(product_urls) < 5:
-        current_url = pending.pop(0)
-        if current_url in visited:
+    for href, label in links:
+        location = urljoin(source_url, str(href).strip())
+        try:
+            if instrument_price_source(location) != source_name:
+                continue
+        except ValueError:
+            continue
+        searchable_link = re.sub(
+            r"[^a-z0-9]", "", f"{location} {label}".casefold()
+        )
+        if normalized_model in searchable_link and location not in product_urls:
+            product_urls.append(location)
+    product_urls.sort(key=lambda url: instrument_url_match_priority(url, maker_model))
+    return product_urls[:20]
+
+
+def discover_instrument_catalog_urls(source_url, maker_model, opener, initial_links):
+    parsed_source = urlparse(source_url)
+    source_name = instrument_price_source(source_url)
+    catalog_path = parsed_source.path.rstrip("/") + "/"
+    pending = [(urljoin(source_url, href), 1) for href, _label in initial_links]
+    visited = {source_url}
+    product_urls = discover_instrument_model_urls(source_url, maker_model, initial_links)
+
+    while pending and len(visited) < 120 and not has_exact_instrument_url(product_urls, maker_model):
+        current_url, depth = pending.pop(0)
+        if current_url in visited or depth > 3:
+            continue
+        parsed_current = urlparse(current_url)
+        try:
+            if instrument_price_source(current_url) != source_name:
+                continue
+        except ValueError:
+            continue
+        if not parsed_current.path.startswith(catalog_path):
+            continue
+        if parsed_current.path.lower().endswith((".pdf", ".jpg", ".jpeg", ".png", ".zip")):
             continue
         visited.add(current_url)
         page_request = urllib_request.Request(
             current_url,
             headers={"User-Agent": "NamegawaBrassLab-PriceLookup/1.0"},
         )
-        with opener.open(page_request, timeout=8) as response:
-            final_url = response.geturl()
-            instrument_price_source(final_url)
-            body = response.read(INSTRUMENT_PRICE_SITEMAP_MAX_BYTES + 1)
-            if len(body) > INSTRUMENT_PRICE_SITEMAP_MAX_BYTES:
-                continue
-            charset = response.headers.get_content_charset() or "utf-8"
-        sitemap_text = decode_instrument_page(body, charset)
-        for location in re.findall(r"<loc>\s*([^<]+?)\s*</loc>", sitemap_text, re.IGNORECASE):
-            location = location.replace("&amp;", "&").strip()
-            try:
-                if instrument_price_source(location) != source_name:
+        try:
+            with opener.open(page_request, timeout=8) as response:
+                final_url = response.geturl()
+                instrument_price_source(final_url)
+                if response.headers.get_content_type() not in {"text/html", "application/xhtml+xml"}:
                     continue
-            except ValueError:
-                continue
-            if location.lower().endswith((".xml", ".xml.gz")):
-                if len(visited) + len(pending) < 4:
-                    pending.append(location)
-                continue
-            normalized_location = re.sub(r"[^a-z0-9]", "", location.casefold())
-            if normalized_model in normalized_location:
-                product_urls.append(location)
-                if len(product_urls) >= 5:
-                    break
-    return product_urls
+                body = response.read(INSTRUMENT_PRICE_PAGE_MAX_BYTES + 1)
+                if len(body) > INSTRUMENT_PRICE_PAGE_MAX_BYTES:
+                    continue
+                charset = response.headers.get_content_charset() or "utf-8"
+        except (ValueError, OSError, urllib_error.URLError, UnicodeError):
+            continue
+        parser = InstrumentPricePageParser()
+        parser.feed(decode_instrument_page(body, charset))
+        discovered = discover_instrument_model_urls(final_url, maker_model, parser.links)
+        for product_url in discovered:
+            if product_url not in product_urls:
+                product_urls.append(product_url)
+        if depth < 3:
+            pending.extend(
+                (urljoin(final_url, href), depth + 1)
+                for href, _label in parser.links
+            )
+    product_urls.sort(key=lambda url: instrument_url_match_priority(url, maker_model))
+    return product_urls[:20]
 
 
 def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allow_discovery=True):
@@ -422,17 +481,7 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
                 model_matches.append((match.start(), catalog_model, "partial"))
                 if len(model_matches) >= 20:
                     break
-    if not model_matches:
-        if allow_discovery:
-            for product_url in discover_instrument_model_urls(
-                final_url, maker_model, page_opener
-            ):
-                try:
-                    return fetch_instrument_price_candidates(
-                        product_url, maker_model, page_opener, False
-                    )
-                except (ValueError, OSError, urllib_error.URLError, UnicodeError):
-                    continue
+    if not model_matches and not allow_discovery:
         raise ValueError("公式ページ内に一致または一部一致する型番が見つかりませんでした。")
 
     price_pattern = re.compile(
@@ -481,6 +530,31 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
         if len(candidates) >= 10:
             break
     if not candidates:
+        if allow_discovery:
+            linked_results = []
+            for product_url in discover_instrument_catalog_urls(
+                final_url, maker_model, page_opener, parser.links
+            ):
+                try:
+                    linked_results.append(fetch_instrument_price_candidates(
+                        product_url, maker_model, page_opener, False
+                    ))
+                except (ValueError, OSError, urllib_error.URLError, UnicodeError):
+                    continue
+            if linked_results:
+                linked_candidates = [
+                    {**candidate, "source_url": result["source_url"]}
+                    for result in linked_results
+                    for candidate in result["candidates"]
+                ]
+                linked_candidates.sort(key=instrument_candidate_priority)
+                adopted_source_url = linked_candidates[0]["source_url"]
+                adopted_result = next(
+                    result for result in linked_results
+                    if result["source_url"] == adopted_source_url
+                )
+                adopted_result["candidates"] = linked_candidates[:10]
+                return adopted_result
         raise ValueError("型番付近に円価格が見つかりませんでした。")
     return {
         "source_name": source_name,
@@ -530,18 +604,19 @@ def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
             {
                 **candidate,
                 "source_name": result["source_name"],
-                "source_url": result["source_url"],
+                "source_url": candidate.get("source_url", result["source_url"]),
             }
             for candidate in result["candidates"]
         )
-    recommended = max(candidates, key=lambda candidate: candidate["price"])
+    candidates.sort(key=instrument_candidate_priority)
+    recommended = candidates[0]
     checked_at = datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()
     return {
         "checked_at": checked_at,
         "catalog_year": checked_at[:4],
         "maker_model": str(maker_model).strip(),
         "source_urls": [result["source_url"] for result in results],
-        "candidates": sorted(candidates, key=lambda candidate: candidate["price"], reverse=True),
+        "candidates": candidates,
         "recommended_price": recommended["price"],
         "recommended_source_name": recommended["source_name"],
         "recommended_source_url": recommended["source_url"],

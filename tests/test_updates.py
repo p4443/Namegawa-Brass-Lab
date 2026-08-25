@@ -253,12 +253,7 @@ class UpdatesTest(unittest.TestCase):
         pages = {
             "https://jp.yamaha.com/products/musical_instruments/winds/": FakeResponse(
                 "https://jp.yamaha.com/products/musical_instruments/winds/",
-                "<h1>管楽器製品一覧</h1>",
-            ),
-            "https://jp.yamaha.com/sitemap.xml": FakeResponse(
-                "https://jp.yamaha.com/sitemap.xml",
-                "<urlset><url><loc>https://jp.yamaha.com/products/ytr-8335.html</loc></url></urlset>",
-                "application/xml",
+                '<h1>管楽器製品一覧</h1><a href="/products/ytr-8335.html">YTR-8335</a>',
             ),
             "https://jp.yamaha.com/products/ytr-8335.html": FakeResponse(
                 "https://jp.yamaha.com/products/ytr-8335.html",
@@ -297,12 +292,8 @@ class UpdatesTest(unittest.TestCase):
 
         pages = {
             "https://nonaka.com/catalog/": FakeResponse(
-                "https://nonaka.com/catalog/", "<h1>製品一覧</h1>"
-            ),
-            "https://nonaka.com/sitemap.xml": FakeResponse(
-                "https://nonaka.com/sitemap.xml",
-                "<urlset><url><loc>https://www.nonaka.com/products/model-100.html</loc></url></urlset>",
-                "application/xml",
+                "https://nonaka.com/catalog/",
+                '<h1>製品一覧</h1><a href="https://www.nonaka.com/products/model-100.html">MODEL-100</a>',
             ),
             "https://www.nonaka.com/products/model-100.html": FakeResponse(
                 "https://www.nonaka.com/products/model-100.html",
@@ -329,7 +320,7 @@ class UpdatesTest(unittest.TestCase):
 
         opener.open.assert_not_called()
 
-    def test_instrument_catalog_prices_adopts_highest_price(self):
+    def test_instrument_catalog_prices_adopts_first_matching_price(self):
         catalog_results = {
             "https://jp.yamaha.com/catalog-a": {
                 "source_name": "ヤマハ",
@@ -347,8 +338,8 @@ class UpdatesTest(unittest.TestCase):
             list(catalog_results), "MODEL-100", lambda source_url, maker_model: catalog_results[source_url]
         )
 
-        self.assertEqual(result["recommended_price"], 435000)
-        self.assertEqual(result["recommended_source_name"], "野中貿易")
+        self.assertEqual(result["recommended_price"], 420000)
+        self.assertEqual(result["recommended_source_name"], "ヤマハ")
         self.assertEqual(result["catalog_year"], "2026")
 
     def test_instrument_catalog_prices_requests_manual_entry_when_lookup_fails(self):
@@ -759,8 +750,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertGreaterEqual(page.count('class="estimate-grand-total"'), 3)
         self.assertIn(".type-b-contract-page { height: auto;", page)
         self.assertIn("公開カタログURL（1行1件・最大7件）", page)
-        self.assertIn("最高額 ${formatEstimateYen(result.recommended_price)}円を反映", page)
-        self.assertIn("公式価格を照会して最高額を反映", page)
+        self.assertIn("掲載順先頭の候補 ${formatEstimateYen(result.recommended_price)}円を反映", page)
+        self.assertIn("指定カタログ内で型番価格を検索・反映", page)
         self.assertIn("function instrumentLookupReady(rowIndex)", page)
         self.assertIn("async function lookupInstrumentPriceWithFeedback(rowIndex)", page)
         self.assertIn("result.manual_entry_required", page)

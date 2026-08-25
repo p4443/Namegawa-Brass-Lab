@@ -1131,7 +1131,7 @@
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
-            <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">公式価格を照会して最高額を反映</button>
+            <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">指定カタログ内で型番価格を検索・反映</button>
             ${item.price_source_url ? `<p class="price-proof"><strong>反映済み：単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円 ／ 行評価額 ${formatEstimateYen(estimateNumber(item.total_value))}円</strong><br>反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</p>` : ''}
             ${renderInstrumentPriceCandidates(index)}
           </div>
@@ -1142,7 +1142,7 @@
       const result = instrumentLookupResults.get(rowIndex);
       if (!result) return '';
       const taxLabel = status => status === 'tax_included' ? '税込' : status === 'tax_excluded' ? '税別' : '税込／税別の表記不明';
-      return `<div class="price-lookup-results" data-instrument-price-results><p>同一型番の候補を高い順に比較し、最高額 ${formatEstimateYen(result.recommended_price)}円を反映しました。</p>${result.candidates.map((candidate, candidateIndex) => `<article class="price-candidate"><strong>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}${candidateIndex === 0 ? '（採用）' : ''}</strong><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`).join('')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
+      return `<div class="price-lookup-results" data-instrument-price-results><p>指定カタログ内で型番一致度を確認し、掲載順先頭の候補 ${formatEstimateYen(result.recommended_price)}円を反映しました。</p>${result.candidates.map((candidate, candidateIndex) => `<article class="price-candidate"><strong>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}${candidateIndex === 0 ? '（採用）' : ''}</strong><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`).join('')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
     }
 
     async function lookupInstrumentPrice(rowIndex) {
