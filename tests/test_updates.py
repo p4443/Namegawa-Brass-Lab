@@ -751,14 +751,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('dynamicFields.addEventListener(\'change\', async event => {', page)
         self.assertIn("価格の税区分", page)
         self.assertIn("function updateCargoTaxStatus(select)", page)
-        self.assertIn("確認チェックが有効になりました。", page)
         self.assertIn("event.target.matches('[data-cargo-item-key=\"price_tax_status\"]')", page)
         self.assertIn("if (cargoKey === 'price_tax_status') return;", page)
         self.assertIn('data-cargo-item-key="catalog_price"', page)
         self.assertIn("if (cargoKey === 'catalog_price')", page)
-        self.assertIn("item.price_source_url || item.lookup_source_url", page)
-        self.assertIn("estimateNumber(item.catalog_price || item.unit_value) > 0", page)
-        self.assertIn("instrumentPricesConfirmable", page)
+        self.assertNotIn("data-instrument-master-verified", page)
+        self.assertNotIn("型番・最高額候補・税込／税別を確認済み", page)
+        self.assertNotIn("instrumentPricesConfirmable", page)
+        self.assertIn("Boolean(select.value && estimateNumber(item.catalog_price) > 0)", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
         self.assertIn("master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])]", page)
         self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
@@ -882,7 +882,7 @@ class UpdatesTest(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.status_code, 201, response.get_json())
             self.assertRegex(
                 response.json["contract_id"],
                 r"^estimateA-20260824-[a-f0-9]{8}$",
@@ -905,7 +905,7 @@ class UpdatesTest(unittest.TestCase):
                     "client_representative": "代表 山田様",
                     "contract_date": "2026-08-23",
                     "values": {
-                        "workflow_status": "draft",
+                        "workflow_status": "ready",
                         "transport_provider_mode": "self_light_cargo",
                         "vehicle_class": "light_cargo",
                         "pricing_basis": "self_light_cargo_rate",
@@ -945,7 +945,7 @@ class UpdatesTest(unittest.TestCase):
                             "source_url": "https://jp.yamaha.com/products/model-100.html",
                             "source_urls": ["https://jp.yamaha.com/products/model-100.html"],
                             "catalog_year": "2026",
-                            "verified": True,
+                            "verified": False,
                         },
                         "freight_rate_master": {
                             "effective_date": "2026-08-23",
@@ -1000,7 +1000,7 @@ class UpdatesTest(unittest.TestCase):
                 },
             )
 
-            self.assertEqual(response.status_code, 201)
+            self.assertEqual(response.status_code, 201, response.get_json())
             self.assertRegex(
                 response.json["contract_id"],
                 r"^estimateB-20260823-[a-f0-9]{8}$",

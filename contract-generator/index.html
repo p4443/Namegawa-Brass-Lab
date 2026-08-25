@@ -848,7 +848,6 @@
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
       if (!['self_light_cargo_rate', 'light_cargo_reference'].includes(values.pricing_basis)) missing.push('軽貨物料金の根拠確認');
       if (calculateCargoVolume() >= 100 && (!values.partner_2t_requested || values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('協力会社2t車の代理調整確定');
-      if (!values.instrument_price_master.verified) missing.push('再調達価格の出典確認');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
       if (!values.permit_number || !values.office_information || !values.operation_manager) missing.push('事業許可・営業所・運行管理情報');
@@ -976,20 +975,6 @@
         : { ready: false, state: 'pending', message: `価格基準日 ${master.effective_date}を記録しました。対象物ごとに公式価格サイト、メーカー・型番を選択して照会してください。` };
     }
 
-    function instrumentPricesConfirmable(values, catalogStatus) {
-      const sourceUrls = values.instrument_price_master.source_urls || [];
-      return catalogStatus.state !== 'error' && values.cargo_items.length > 0
-        && values.cargo_items.every(item => {
-          const sourceUrl = item.price_source_url || item.lookup_source_url;
-          return item.maker_model.trim()
-            && sourceUrls.includes(item.lookup_source_url)
-            && isOfficialInstrumentPriceUrl(sourceUrl)
-            && estimateNumber(item.catalog_price || item.unit_value) > 0
-            && ['tax_included', 'tax_excluded'].includes(item.price_tax_status)
-            && (!item.price_checked_at || item.price_checked_at <= contractDate.value);
-        });
-    }
-
     const lightCargoReferenceRateHistory = [{
       effective_date: '2026-04-01',
       source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/',
@@ -1095,7 +1080,6 @@
         ? values.instrument_price_master.source_urls
         : (values.instrument_price_master.source_url ? [values.instrument_price_master.source_url] : []);
       const catalogStatus = instrumentCatalogStatus(values.instrument_price_master, catalogUrls, contractDate.value);
-      const pricesConfirmable = instrumentPricesConfirmable(values, catalogStatus);
       return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>通常運行は自社の軽貨物車に限定します。軽貨物で積載できない場合のみ、当方が窓口となって協力会社の小型2t車を代理調整します。</div>`
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}" data-transport-workflow-status><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
@@ -1118,7 +1102,7 @@
         + `<section class="transport-creation-section"><h2>輸送書類・経路図の作成</h2><p>入力済みの輸送情報から共有シートを発行し、出発地と目的地をGoogle マップで確認します。</p><div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを発行</button><a class="secondary-button route-map-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">経路図を作成・確認</a></div><p class="save-status" data-document-tool-status role="status"></p></section>`
         + `<section class="partner-2t-panel"><h2>協力会社 小型2t車の代理調整</h2><p>協力会社はお客様との契約・見積窓口にはなりません。当方が依頼、日程確認、費用調整を一括して行います。</p><label class="cargo-consent"><input data-partner-2t-requested type="checkbox"${values.partner_2t_requested ? ' checked' : ''}>小型2t車の代理調整を依頼する</label><div${values.partner_2t_requested || overCapacity ? '' : ' hidden'} data-partner-2t-details>${selectField('代理調整状況', 'partner_2t_status', values.partner_2t_status, [{ value: 'not_needed', label: '不要' }, { value: 'requested', label: '依頼受付' }, { value: 'adjusting', label: '協力会社と調整中' }, { value: 'confirmed', label: '車両・日程・費用を確定' }])}${field('小型2t車 調整予算（円）', 'partner_2t_budget', values.partner_2t_budget)}${field('代理調整メモ', 'partner_2t_notes', values.partner_2t_notes, true)}</div></section>`
         + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
-        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor><div class="estimate-editor instrument-price-panel"><h2>再調達価格・評価根拠の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" max="${escapeHtml(contractDate.value)}" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">公式価格サイト候補<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(catalogUrls)}</select><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く"${catalogUrls.length && isOfficialInstrumentPriceUrl(catalogUrls[0]) ? '' : ' disabled'}>先頭URLを開く</button><textarea data-instrument-catalog-urls maxlength="3500" aria-label="公開カタログURL（1行1件・最大7件）" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><small class="price-source-count">登録 ${catalogUrls.length}/7件</small></div></label><p class="price-proof${catalogStatus.state === 'ready' ? '' : ` is-${catalogStatus.state}`}" data-instrument-catalog-status>${escapeHtml(catalogStatus.message)}</p><label class="cargo-notes"><span><input data-instrument-master-verified type="checkbox"${values.instrument_price_master.verified && pricesConfirmable ? ' checked' : ''}${pricesConfirmable ? '' : ' disabled'}> 型番・最高額候補・税込／税別を確認済み</span></label></div></div>${renderCargoItemEditors(values)}</fieldset>`
+        + `<fieldset class="cargo-editor-fieldset" data-cargo-editor><div class="estimate-editor instrument-price-panel"><h2>再調達価格・評価根拠の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" max="${escapeHtml(contractDate.value)}" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label class="cargo-instrument">公式価格サイト候補<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(catalogUrls)}</select><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く"${catalogUrls.length && isOfficialInstrumentPriceUrl(catalogUrls[0]) ? '' : ' disabled'}>先頭URLを開く</button><textarea data-instrument-catalog-urls maxlength="3500" aria-label="公開カタログURL（1行1件・最大7件）" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><small class="price-source-count">登録 ${catalogUrls.length}/7件</small></div></label><p class="price-proof${catalogStatus.state === 'ready' ? '' : ` is-${catalogStatus.state}`}" data-instrument-catalog-status>${escapeHtml(catalogStatus.message)}</p></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
     }
 
@@ -1241,14 +1225,14 @@
       if (!item) return;
       clearTransportError(rowIndex);
       const taxIncludedPrice = applyCargoTaxStatus(item, select.value);
-      contractValues.estimateB.instrument_price_master.verified = false;
+      contractValues.estimateB.instrument_price_master.verified = Boolean(select.value && estimateNumber(item.catalog_price) > 0);
       syncCargoValuation();
       renderDynamicFields();
       renderPreview();
       saveStatus.textContent = select.value === 'tax_excluded'
-        ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。確認チェックが有効になりました。`
+        ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。`
         : select.value === 'tax_included'
-          ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。確認チェックが有効になりました。`
+          ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。`
           : 'カタログ価格の税区分を選択してください。';
       saveStatus.dataset.state = select.value ? 'success' : 'error';
     }
@@ -2225,8 +2209,6 @@
           status.classList.toggle('is-pending', catalogStatus.state === 'pending');
           status.classList.toggle('is-error', catalogStatus.state === 'error');
         }
-        const verified = dynamicFields.querySelector('[data-instrument-master-verified]');
-        if (verified) { verified.checked = false; verified.disabled = true; }
         const openButton = dynamicFields.querySelector('[data-open-instrument-source]');
         if (openButton) openButton.disabled = !master.source_urls.length || !isOfficialInstrumentPriceUrl(master.source_urls[0]);
         const sourceCount = dynamicFields.querySelector('.price-source-count');
@@ -2269,17 +2251,6 @@
           status.classList.toggle('is-pending', catalogStatus.state === 'pending');
           status.classList.toggle('is-error', catalogStatus.state === 'error');
         }
-        const verified = dynamicFields.querySelector('[data-instrument-master-verified]');
-        if (verified) { verified.checked = false; verified.disabled = true; }
-        updateTransportWorkflowStatus();
-        renderPreview();
-        return;
-      }
-      if (event.target.matches('[data-instrument-master-verified]')) {
-        const values = contractValues.estimateB;
-        const status = instrumentCatalogStatus(values.instrument_price_master, values.instrument_price_master.source_urls || [], contractDate.value);
-        values.instrument_price_master.verified = event.target.checked && instrumentPricesConfirmable(values, status);
-        event.target.checked = values.instrument_price_master.verified;
         updateTransportWorkflowStatus();
         renderPreview();
         return;
@@ -2295,8 +2266,8 @@
         item[cargoKey] = event.target.value;
         if (cargoKey === 'catalog_price') {
           item.valuation_mode = 'manual';
-          contractValues.estimateB.instrument_price_master.verified = false;
           const taxIncludedPrice = applyCargoTaxStatus(item, item.price_tax_status);
+          contractValues.estimateB.instrument_price_master.verified = Boolean(item.price_tax_status && taxIncludedPrice > 0);
           const unitInput = row.querySelector('[data-cargo-item-key="unit_value"]');
           const totalInput = row.querySelector('[data-cargo-item-key="total_value"]');
           if (unitInput) unitInput.value = String(taxIncludedPrice);
@@ -2319,8 +2290,6 @@
           row.querySelector('.price-proof')?.remove();
           const valuationOutput = row.querySelector('output');
           if (valuationOutput) valuationOutput.textContent = '手入力';
-          const verified = dynamicFields.querySelector('[data-instrument-master-verified]');
-          if (verified) { verified.checked = false; verified.disabled = true; }
         }
         if (cargoKey === 'quantity' || cargoKey === 'unit_value') {
           if (cargoKey === 'unit_value' && item.valuation_mode === 'manual') item.catalog_price = item.unit_value;

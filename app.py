@@ -1194,7 +1194,6 @@ def validate_contract(payload):
     if doc_type == "estimateB" and transport_workflow_status == "ready":
         ready_cargo_items = raw_values.get("cargo_items", [])
         ready_rate_master = raw_values.get("freight_rate_master", {})
-        ready_instrument_master = raw_values.get("instrument_price_master", {})
         cargo_values_ready = isinstance(ready_cargo_items, list) and all(
             isinstance(item, dict)
             and str(item.get("maker_model", "")).strip()
@@ -1215,8 +1214,6 @@ def validate_contract(payload):
             or raw_values.get("pricing_basis") not in {"self_light_cargo_rate", "light_cargo_reference"}
             or not isinstance(ready_rate_master, dict)
             or ready_rate_master.get("verified") is not True
-            or not isinstance(ready_instrument_master, dict)
-            or ready_instrument_master.get("verified") is not True
             or not cargo_values_ready
             or (
                 needs_partner_2t
@@ -1543,10 +1540,6 @@ def validate_contract(payload):
         if key in {"external_vehicle_budget", "route_distance_km", "total_hours"} and re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", value) is None:
             raise ValueError("距離・時間・予算は0以上の数値で入力してください。")
         values[key] = value
-    if doc_type == "estimateB" and any(
-        item["valuation_mode"] == "master" for item in values["cargo_items"]
-    ) and not values["instrument_price_master"]["verified"]:
-        raise ValueError("マスター参考額を使う場合は楽器価格マスターの出典を確認してください。")
     if doc_type == "estimateB":
         instrument_master = values["instrument_price_master"]
         for item in values["cargo_items"]:
