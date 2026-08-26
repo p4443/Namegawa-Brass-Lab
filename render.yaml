@@ -1,39 +1,35 @@
 services:
   - type: web
-    name: namegawa-brass-lab
+    name: tennko-kakuninnbo
     runtime: docker
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
-    healthCheckPath: /health
-    autoDeployTrigger: commit
-    disk:
-      name: site-data
-      mountPath: /app/data
-      sizeGB: 1
+    region: singapore
+    plan: starter
+    dockerfilePath: ./src/Dockerfile
+    healthCheckPath: /api/health
+    autoDeployTrigger: off
+    numInstances: 1
     envVars:
-      - key: DATABASE_URL
-        sync: false
-      - key: EDITOR_PASSWORD
-        sync: false
-      - key: GOOGLE_APPS_SCRIPT_URL
-        sync: false
-      - key: GOOGLE_APPS_SCRIPT_SECRET
-        sync: false
-      - key: GOOGLE_MAPS_ROUTES_API_KEY
-        sync: false
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_FILE
+        value: /data/tennko.sqlite
+      - key: LICENSE_ENCRYPTION_KEY
+        generateValue: true
       - key: STRIPE_SECRET_KEY
         sync: false
       - key: STRIPE_WEBHOOK_SECRET
         sync: false
-      - key: STRIPE_METRONOME_PRICE_ID
+      - key: STRIPE_PERSONAL_PRICE_ID
         sync: false
-      - key: STRIPE_FLOW_HARMONY_PRICE_ID
+      - key: STRIPE_COMPANY_PRICE_ID
         sync: false
-      - key: DOWNLOAD_TOKEN_SECRET
-        generateValue: true
-      - key: METRONOME_PRICE_YEN
-        value: "500"
-      - key: FLOW_HARMONY_PRICE_YEN
-        value: "1000"
-      - key: PUBLIC_SITE_URL
+      - key: RESEND_API_KEY
         sync: false
+      - key: LICENSE_EMAIL_FROM
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+    disk:
+      name: tennko-data
+      mountPath: /data
+      sizeGB: 5

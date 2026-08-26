@@ -1,0 +1,78 @@
+const RENDER_API_URL = "https://your-app-name.onrender.com/api/sheet-update";
+
+function handleSpreadsheetEdit(e) {
+  if (!e || !e.range) return;
+
+  const sheet = e.range.getSheet();
+  const sheetName = sheet.getName();
+
+  if (sheetName === "設定_時間リスト") return;
+
+  const row = e.range.getRow();
+  const col = e.range.getColumn();
+
+  if (row < 6) return;
+
+  if (col === 4 || col === 11) {
+    const targetCol = (col === 4) ? 5 : 12;
+    const targetCell = sheet.getRange(row, targetCol);
+    
+    let actionType = "";
+    let timeValue = "";
+
+    if (!e.value || e.value === "選択してください" || e.value === "空白" || e.value === "") {
+      targetCell.clearContent();
+      actionType = "CLEARED";
+    } else {
+      const jstTime = Utilities.formatDate(new Date(), "Asia/Tokyo", "HH:mm");
+      targetCell.setValue(jstTime);
+      timeValue = jstTime;
+      actionType = "UPDATED";
+    }
+
+    // ▼ 追加：Renderのバックエンドサーバーへデータを送信（連動）
+    sendToRenderBackend(sheetName, row, col, e.value, timeValue, actionType);
+  }
+}
+
+function setupEditTrigger() {
+  const spreadsheet = SpreadsheetApp.getActive();
+
+  ScriptApp.getProjectTriggers()
+    .filter((trigger) => trigger.getHandlerFunction() === "handleSpreadsheetEdit")
+    .forEach((trigger) => ScriptApp.deleteTrigger(trigger));
+
+  ScriptApp.newTrigger("handleSpreadsheetEdit")
+    .forSpreadsheet(spreadsheet)
+    .onEdit()
+    .create();
+}
+
+// Render上のAPIへWebhookを送信する関数
+function sendToRenderBackend(sheetName, row, col, selectedValue, timeValue, actionType) {
+  const payload = {
+    sheetName: sheetName,
+    row: row,
+    col: col,
+    selectedValue: selectedValue || "",
+    timeValue: timeValue,
+    actionType: actionType,
+    timestamp: new Date().toISOString()
+  };
+
+  const options = {
+    method: "post",
+    contentType: "application/json",
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true // エラー時もスクリプトを止めない
+  };
+
+  try {
+    const response = UrlFetchApp.fetch(RENDER_API_URL, options);
+    if (response.getResponseCode() >= 400) {
+      console.error("Renderへの送信エラー: HTTP " + response.getResponseCode());
+    }
+  } catch (err) {
+    console.error("Renderへの送信エラー: " + err.message);
+  }
+}
