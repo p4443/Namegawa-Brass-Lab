@@ -194,9 +194,14 @@ class StoreTest(unittest.TestCase):
         response = self.client.get("/legal/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn("特定商取引法に基づく表記", response.get_data(as_text=True))
-        self.assertIn("返金・キャンセル方針", response.get_data(as_text=True))
-        self.assertIn("500円（税込）", response.get_data(as_text=True))
+        html = response.get_data(as_text=True)
+        self.assertIn("特定商取引法に基づく表記", html)
+        self.assertIn("返金・キャンセル方針", html)
+        self.assertIn("500円（税込）", html)
+        self.assertIn("1,000円（税込）", html)
+        self.assertIn("月額料金、自動更新、継続課金はありません", html)
+        self.assertIn("購入時点のバージョンを期間の定めなく利用", html)
+        self.assertIn("新バージョン、OS・ブラウザの仕様変更への対応は購入代金に含まれず", html)
 
     def test_products_hides_download_link_until_purchase_is_verified(self):
         response = self.client.get("/products/")
@@ -206,6 +211,20 @@ class StoreTest(unittest.TestCase):
         self.assertIn('id="app-download-link" href="#" hidden', html)
         self.assertIn(".download-link[hidden]", html)
         self.assertIn("display: none;", html)
+        self.assertEqual(
+            html.count("月額料金・自動更新なし。購入時点版を期限なく利用可能"),
+            2,
+        )
+
+    def test_download_guide_explains_one_time_purchase_terms(self):
+        response = self.client.get("/download-guide/")
+        html = response.get_data(as_text=True)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("お支払いは購入時の1回のみで、月額料金や自動更新はありません", html)
+        self.assertIn("購入時点のバージョンを期限なく利用できます", html)
+        self.assertIn("ZIPファイルはご自身で保管・バックアップ", html)
+        self.assertIn('href="../legal/#license"', html)
 
     def test_trumpet_transpose_lab_free_version_is_available(self):
         response = self.client.get("/trumpet-transpose-lab/?mode=free")

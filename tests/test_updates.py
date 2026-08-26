@@ -2082,6 +2082,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn('href="products/"', page)
+        self.assertIn('href="legal/#tokusho"', page)
         self.assertIn('href="legal/privacy-policy.html"', page)
         self.assertIn(".footer-address span:last-child", page)
         self.assertIn("font-size: 0.84rem", page)

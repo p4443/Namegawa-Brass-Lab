@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: namegawa-brass-lab
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    disk:
+      name: site-data
+      mountPath: /app/data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: EDITOR_PASSWORD
+        sync: false
+      - key: GOOGLE_APPS_SCRIPT_URL
+        sync: false
+      - key: GOOGLE_APPS_SCRIPT_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_ROUTES_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: STRIPE_METRONOME_PRICE_ID
+        sync: false
+      - key: STRIPE_FLOW_HARMONY_PRICE_ID
+        sync: false
+      - key: DOWNLOAD_TOKEN_SECRET
+        generateValue: true
+      - key: METRONOME_PRICE_YEN
+        value: "500"
+      - key: FLOW_HARMONY_PRICE_YEN
+        value: "1000"
+      - key: PUBLIC_SITE_URL
+        sync: false

@@ -2952,6 +2952,7 @@ def create_app(
         return render_template(
             "legal/index.html",
             product_price_yen=store_configuration()["price_yen"],
+            flow_harmony_price_yen=flow_harmony_configuration()["price_yen"],
         )
 
     @app.get("/legal/privacy-policy.html")

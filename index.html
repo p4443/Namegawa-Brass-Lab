@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    const isLiveServer = ['localhost', '127.0.0.1'].includes(location.hostname)
+      && location.port === '5500';
+    if (location.protocol === 'file:' || isLiveServer) {
+      location.replace(`http://localhost:8080/${location.search}${location.hash}`);
+    }
+  </script>
+  <title>なめがわブラス・ラボ | トランペット奏者・佐々木久和</title>
+  <style>
+    /* ----------------------------------
+       CSS RESET & VARIABLES
+    ---------------------------------- */
+    :root {
+      --primary-color: #1a56db;
+      --primary-hover: #1e40af;
+      --accent-color: #f59e0b;
+      --text-main: #1f2937;
+      --text-muted: #4b5563;
+      --bg-light: #f8fafc;
+      --bg-white: #ffffff;
+      --border-color: #e2e8f0;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.1);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-family);
+      color: var(--text-main);
+      background-color: var(--bg-light);
+      line-height: 1.7;
+    }
+
+    section[id],
+    .service-card[id] {
+      scroll-margin-top: 94px;
+    }
+
+    a {
+      text-decoration: none;
+      color: inherit;
+    }
+
+    ul {
+      list-style: none;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      clip-path: inset(50%);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      border-radius: 50px;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      transform: translateY(-2px);
+    }
+
+    .btn-accent {
+      background-color: var(--accent-color);
+      color: #fff;
+    }
+
+    .btn-accent:hover {
+      background-color: #d97706;
+      transform: translateY(-2px);
+    }
+
+    .section-title {
+      text-align: center;
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+    }
+
+    .section-desc {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 3rem;
+    }
+
+    .mobile-break {
+      display: none;
+    }
+
+    .profile-name-reading,
+    .profile-role-secondary {
+      display: block;
+    }
+
+    .profile-name-reading {
+      margin-top: 2px;
+      font-size: 0.8em;
+      font-weight: 600;
+    }
+
+    /* ----------------------------------
+       1. HEADER (Sticky Navigation)
+    ---------------------------------- */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      background-color: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .header-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 70px;
+    }
+
+    .logo {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--primary-color);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .logo-dummy {
+      width: 36px;
+      height: 36px;
+      background-color: var(--primary-color);
+      border-radius: 8px;
+      display: inline-block;
+    }
+
+    .nav-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .nav-menu {
+      display: flex;
+      gap: 14px;
+    }
+
+    .nav-menu a {
+      font-size: 0.95rem;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: color 0.2s;
+    }
+
+    .nav-menu a:hover {
+      color: var(--primary-color);
+    }
+
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      justify-content: space-between;
+      width: 28px;
+      height: 20px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+
+    .hamburger span {
+      width: 100%;
+      height: 3px;
+      background-color: var(--text-main);
+      border-radius: 2px;
+      transition: all 0.3s ease;
+    }
+
+    /* ----------------------------------
+       2. HERO SECTION
+    ---------------------------------- */
+    .hero {
+      padding: 80px 0;
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+    }
+
+    .hero-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+    }
+
+    .hero-content h1 {
+      font-size: 2.4rem;
+      line-height: 1.3;
+      margin-bottom: 20px;
+      color: #0f172a;
+    }
+
+    .hero-content p {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-bottom: 30px;
+    }
+
+    .hero-visual {
+      position: relative;
+      overflow: hidden;
+      background: #0f172a;
+      width: min(100%, 360px);
+      justify-self: center;
+      border-radius: 16px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .hero-video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      object-fit: cover;
+    }
+
+    .hero-visual-label {
+      padding: 12px 16px;
+      border-top: 4px solid var(--accent-color);
+      color: #ffffff;
+      background: #0f172a;
+      font-size: 0.88rem;
+      font-weight: bold;
+    }
+
+    /* ----------------------------------
+       NEWS / ACTIVITY UPDATES
+    ---------------------------------- */
+    .updates-section {
+      padding: 72px 0;
+      background: var(--bg-white);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .updates-heading {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    .updates-heading .section-title,
+    .updates-heading .section-desc {
+      text-align: left;
+    }
+
+    .updates-heading .section-desc {
+      margin-bottom: 0;
+    }
+
+    .updates-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .updates-month,
+    .updates-admin-toggle,
+    .updates-editor input,
+    .updates-editor select,
+    .updates-editor textarea,
+    .updates-editor button {
+      min-height: 42px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text-main);
+      font: inherit;
+    }
+
+    .updates-month {
+      padding: 8px 34px 8px 12px;
+    }
+
+    .updates-admin-toggle,
+    .updates-editor button {
+      padding: 8px 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .updates-admin-toggle:hover,
+    .updates-editor button:hover {
+      border-color: var(--primary-color);
+      color: var(--primary-color);
+    }
+
+    .updates-window {
+      width: 100%;
+      max-width: 980px;
+      height: 520px;
+      margin: 0 auto;
+      overflow-y: auto;
+      padding: 4px 10px 16px 4px;
+      scrollbar-gutter: stable;
+    }
+
+    .updates-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .update-card {
+      display: grid;
+      grid-template-columns: minmax(240px, 36%) minmax(0, 1fr);
+      align-items: stretch;
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .update-media {
+      display: grid;
+      width: 100%;
+      min-height: 140px;
+      place-items: center;
+      overflow: hidden;
+      border-right: 1px solid var(--border-color);
+      color: #ffffff;
+      background: #0f172a;
+    }
+
+    .update-media-link {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      place-items: center;
+      padding: 20px;
+      color: #ffffff;
+      background: var(--primary-color);
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .update-video-link {
+      align-content: center;
+      gap: 8px;
+      background: #0f172a;
+    }
+
+    .update-video-icon {
+      display: grid;
+      width: 48px;
+      height: 48px;
+      margin: 0 auto;
+      place-items: center;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+
+    .update-media-placeholder {
+      color: #bfdbfe;
+      font-size: 0.82rem;
+      font-weight: bold;
+      letter-spacing: 0.08em;
+    }
+
+    .update-card-body {
+      padding: 20px;
+    }
+
+    .update-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      color: var(--text-muted);
+      font-size: 0.78rem;
+    }
+
+    .update-category {
+      padding: 3px 8px;
+      border-radius: 4px;
+      color: var(--primary-hover);
+      background: #dbeafe;
+      font-weight: bold;
+    }
+
+    .update-card p {
+      color: var(--text-main);
+      font-size: 0.94rem;
+    }
+
+    .update-admin-actions {
+      display: flex;
+      grid-column: 2;
+      gap: 8px;
+      padding: 0 20px 20px;
+    }
+
+    .update-admin-actions[hidden],
+    .updates-editor[hidden],
+    .updates-editor-form[hidden],
+    .updates-editor-login[hidden],
+    .updates-empty[hidden] {
+      display: none;
+    }
+
+    .update-admin-actions button {
+      min-height: 36px;
+      padding: 6px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: #ffffff;
+      color: var(--primary-color);
+      font: inherit;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .update-admin-actions .update-delete {
+      color: #b91c1c;
+    }
+
+    .updates-empty {
+      padding: 48px 20px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .updates-editor {
+      margin-top: 24px;
+      padding: 24px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .updates-editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    .updates-editor-header h3 {
+      color: var(--primary-color);
+      font-size: 1rem;
+    }
+
+    .updates-editor-login {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+    }
+
+    .updates-editor-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .updates-editor-field {
+      display: grid;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+    }
+
+    .updates-editor-field-wide,
+    .updates-editor-actions,
+    .updates-editor-status {
+      grid-column: 1 / -1;
+    }
+
+    .updates-editor input,
+    .updates-editor select,
+    .updates-editor textarea {
+      width: 100%;
+      padding: 9px 11px;
+    }
+
+    .updates-editor textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    .updates-editor-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .updates-editor-primary {
+      border-color: var(--primary-color) !important;
+      background: var(--primary-color) !important;
+      color: #ffffff !important;
+    }
+
+    .updates-editor-status {
+      min-height: 1.5em;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+    }
+
+    .updates-editor-status[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    .youtube-channel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin-top: 24px;
+      padding: 20px 22px;
+      border: 1px solid var(--border-color);
+      border-left: 4px solid #e11d48;
+      border-radius: 8px;
+      background: var(--bg-light);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .youtube-channel-copy {
+      display: grid;
+      gap: 4px;
+    }
+
+    .youtube-channel-copy strong {
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+
+    .youtube-channel-copy span {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .youtube-channel-link {
+      display: inline-flex;
+      flex-shrink: 0;
+      align-items: center;
+      gap: 9px;
+      padding: 10px 16px;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #c81e1e;
+      font-weight: 800;
+    }
+
+    .youtube-channel-link:hover,
+    .youtube-channel-link:focus-visible {
+      background: #991b1b;
+    }
+
+    .youtube-channel-play {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border: 2px solid currentColor;
+      border-radius: 50%;
+      font-size: 0.65rem;
+      line-height: 1;
+    }
+
+    /* ----------------------------------
+       PROFILE / GREETING SECTION
+    ---------------------------------- */
+    .profile-section {
+      padding: 80px 0;
+      background-color: var(--bg-white);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .profile-card {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 40px;
+      background: var(--bg-light);
+      padding: 40px;
+      border-radius: 16px;
+      border: 1px solid var(--border-color);
+      align-items: start;
+    }
+
+    .profile-photo {
+      display: block;
+      width: min(100%, 360px);
+      height: auto;
+      aspect-ratio: 2 / 3;
+      justify-self: center;
+      object-fit: cover;
+      object-position: center;
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+    }
+
+    .profile-info h3 {
+      font-size: 1.8rem;
+      color: var(--primary-color);
+      margin-bottom: 5px;
+    }
+
+    .profile-info .subtitle {
+      font-size: 1rem;
+      color: var(--text-muted);
+      font-weight: bold;
+      margin-bottom: 20px;
+    }
+
+    .profile-info p {
+      margin-bottom: 15px;
+      color: var(--text-main);
+      font-size: 0.98rem;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 1 (特徴)
+    ---------------------------------- */
+    .features {
+      padding: 80px 0;
+      overflow: hidden;
+      background: #f8fafc;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 30px;
+    }
+
+    .feature-cards {
+      position: relative;
+      gap: 22px;
+    }
+
+    .card {
+      background-color: var(--bg-white);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 30px;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: var(--shadow-md);
+    }
+
+    .card-icon {
+      width: 50px;
+      height: 50px;
+      background-color: #dbeafe;
+      color: var(--primary-color);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.2rem;
+      margin-bottom: 20px;
+    }
+
+    .card h3 {
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+    }
+
+    .card p {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .feature-card {
+      position: relative;
+      padding-top: 144px;
+      border-top: 4px solid var(--feature-color);
+      text-align: center;
+    }
+
+    .feature-ring {
+      position: absolute;
+      z-index: 1;
+      top: 22px;
+      left: 50%;
+      display: grid;
+      width: 106px;
+      height: 106px;
+      place-items: center;
+      border: 9px solid var(--feature-color);
+      border-radius: 50%;
+      color: var(--feature-color);
+      background: #ffffff;
+      box-shadow: 0 0 0 8px #f8fafc;
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1;
+      transform: translateX(-50%);
+    }
+
+    .feature-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--feature-color);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .feature-card-community {
+      --feature-color: #1a56db;
+    }
+
+    .feature-card-health {
+      --feature-color: #059669;
+    }
+
+    .feature-card-generations {
+      --feature-color: #d97706;
+    }
+
+    .feature-card-link {
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .feature-card-link:focus-visible {
+      outline: 3px solid var(--feature-color);
+      outline-offset: 4px;
+    }
+
+    .feature-video-cta {
+      display: inline-block;
+      margin-top: 18px;
+      color: var(--feature-color);
+      font-weight: 800;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 2 (事業比較)
+    ---------------------------------- */
+    .services {
+      padding: 80px 0;
+      background-color: var(--bg-white);
+    }
+
+    .services-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 25px;
+    }
+
+    .services-heading {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: start;
+      gap: 20px;
+    }
+
+    .services-heading-copy {
+      grid-column: 2;
+    }
+
+    .services-admin-link {
+      display: inline-flex;
+      grid-column: 3;
+      align-items: center;
+      justify-self: end;
+      min-height: 38px;
+      padding: 8px 13px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      color: var(--primary-color);
+      background: #ffffff;
+      font-size: 0.82rem;
+      font-weight: 800;
+    }
+
+    .services-admin-link:hover,
+    .services-admin-link:focus-visible {
+      border-color: var(--primary-color);
+      background: #eff6ff;
+    }
+
+    .service-card {
+      background: var(--bg-light);
+      border-radius: 12px;
+      padding: 30px;
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .service-card-events {
+      grid-column: span 2;
+    }
+
+    .events-service-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(240px, 0.8fr);
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .service-card-events-visual {
+      position: relative;
+      min-height: 220px;
+      margin: 0;
+      overflow: hidden;
+      border-radius: 8px;
+      background: #e2e8f0;
+    }
+
+    .service-card-events-visual img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .service-card-events-visual::after {
+      content: "";
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: 48%;
+      background: linear-gradient(to bottom, rgba(241, 245, 249, 0), rgba(71, 85, 105, 0.42));
+      -webkit-backdrop-filter: blur(7px);
+      backdrop-filter: blur(7px);
+      -webkit-mask-image: linear-gradient(to bottom, transparent, #000 38%);
+      mask-image: linear-gradient(to bottom, transparent, #000 38%);
+      pointer-events: none;
+    }
+
+    .service-card h3 {
+      font-size: 1.3rem;
+      color: var(--primary-color);
+      border-bottom: 2px solid #cbd5e1;
+      padding-bottom: 10px;
+      margin-bottom: 15px;
+    }
+
+    .service-card ul {
+      margin-bottom: 20px;
+    }
+
+    .service-card li {
+      margin-bottom: 8px;
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .service-card li::before {
+      content: "✓";
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .event-consultation {
+      padding: 80px 0;
+      background: #f1f5f9;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .consultation-form-shell {
+      max-width: 880px;
+      margin: 0 auto;
+      padding: 32px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: var(--shadow-md);
+    }
+
+    .consultation-disclosure {
+      max-width: 880px;
+      margin: 0 auto;
+    }
+
+    .consultation-disclosure > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 58px;
+      padding: 14px 18px;
+      border: 1px solid var(--primary-color);
+      border-radius: 8px;
+      color: #ffffff;
+      background: var(--primary-color);
+      font-weight: 800;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    .consultation-disclosure > summary::-webkit-details-marker {
+      display: none;
+    }
+
+    .consultation-disclosure > summary::after {
+      content: "+";
+      flex: 0 0 auto;
+      font-size: 1.5rem;
+      line-height: 1;
+    }
+
+    .consultation-disclosure[open] > summary {
+      border-radius: 8px 8px 0 0;
+    }
+
+    .consultation-disclosure[open] > summary::after {
+      content: "−";
+    }
+
+    .consultation-disclosure .consultation-form-shell {
+      border-top: 0;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .consultation-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+      margin-bottom: 28px;
+    }
+
+    .consultation-tab {
+      min-height: 74px;
+      padding: 12px 10px;
+      border: 2px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--primary-color);
+      background: #f8fafc;
+      font: inherit;
+      font-size: 0.9rem;
+      font-weight: 800;
+      line-height: 1.35;
+      cursor: pointer;
+    }
+
+    .consultation-tab span {
+      display: block;
+      margin-top: 3px;
+      color: var(--text-muted);
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+
+    .consultation-tab[aria-selected="true"] {
+      border-color: var(--primary-color);
+      color: #ffffff;
+      background: var(--primary-color);
+    }
+
+    .consultation-tab[aria-selected="true"] span {
+      color: #dbeafe;
+    }
+
+    .consultation-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .consultation-field {
+      display: grid;
+      gap: 7px;
+    }
+
+    .consultation-field-wide,
+    .consultation-mode-section,
+    .consultation-notice,
+    .consultation-actions {
+      grid-column: 1 / -1;
+    }
+
+    .consultation-field label,
+    .consultation-consent {
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    .consultation-required {
+      margin-left: 4px;
+      color: #b91c1c;
+    }
+
+    .consultation-field input,
+    .consultation-field select,
+    .consultation-field textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      color: var(--text-main);
+      background: #ffffff;
+      font: inherit;
+    }
+
+    .consultation-field textarea {
+      min-height: 110px;
+      resize: vertical;
+    }
+
+    .consultation-field-note {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      line-height: 1.55;
+    }
+
+    .consultation-field-note[hidden] {
+      display: none;
+    }
+
+    .consultation-field input:focus,
+    .consultation-field select:focus,
+    .consultation-field textarea:focus {
+      outline: 3px solid #bfdbfe;
+      border-color: var(--primary-color);
+    }
+
+    .consultation-mode-section {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px;
+    }
+
+    .consultation-mode-section[hidden] {
+      display: none;
+    }
+
+    .consultation-notice {
+      padding: 14px 16px;
+      border-left: 4px solid #0284c7;
+      border-radius: 6px;
+      color: #0c4a6e;
+      background: #e0f2fe;
+      font-size: 0.86rem;
+      line-height: 1.65;
+    }
+
+    .consultation-notice-warning {
+      border-left-color: #d97706;
+      color: #78350f;
+      background: #fef3c7;
+    }
+
+    .insurance-estimate {
+      grid-column: 1 / -1;
+      padding: 14px 16px;
+      border: 1px dashed var(--primary-color);
+      border-radius: 6px;
+      background: #eff6ff;
+      font-size: 0.86rem;
+    }
+
+    .insurance-estimate strong {
+      display: block;
+      margin-bottom: 4px;
+      color: #b91c1c;
+      font-size: 1rem;
+    }
+
+    .consultation-consent {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      cursor: pointer;
+    }
+
+    .consultation-consent input {
+      width: 18px;
+      height: 18px;
+      margin-top: 3px;
+      flex: 0 0 auto;
+    }
+
+    .consultation-consent a {
+      color: var(--primary-color);
+      text-decoration: underline;
+    }
+
+    .consultation-submit {
+      width: 100%;
+      min-height: 50px;
+      border: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #c2410c;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .consultation-submit:hover,
+    .consultation-submit:focus-visible {
+      background: #9a3412;
+    }
+
+    .consultation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .consultation-status {
+      min-height: 1.7em;
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      text-align: center;
+    }
+
+    .consultation-status[data-state="error"] {
+      color: #b91c1c;
+    }
+
+    .consultation-status[data-state="success"] {
+      color: #047857;
+      font-weight: 700;
+    }
+
+    /* ----------------------------------
+       3. BODY - SECTION 3 (店舗・アクセス)
+    ---------------------------------- */
+    .access {
+      padding: 80px 0;
+    }
+
+    .access-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+    }
+
+    .access-info table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .access-info th, .access-info td {
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+    }
+
+    .access-info th {
+      width: 30%;
+      color: var(--text-main);
+      background-color: var(--bg-white);
+    }
+
+    .map-frame {
+      width: 100%;
+      height: 300px;
+      background-color: #e2e8f0;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #64748b;
+      border: 1px solid var(--border-color);
+    }
+
+    /* ----------------------------------
+       PRACTICE APP & LESSON RESERVATION
+    ---------------------------------- */
+    .practice-apps,
+    .lesson-reservation {
+      padding: 80px 0;
+    }
+
+    .practice-apps {
+      background-color: var(--bg-white);
+    }
+
+    .app-panel {
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: #121218;
+      box-shadow: var(--shadow-md);
+    }
+
+    .app-panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 20px 24px;
+      color: #fff;
+      background: #0f172a;
+    }
+
+    .app-panel-header h3 {
+      margin-bottom: 4px;
+      font-size: 1.15rem;
+    }
+
+    .app-panel-header p {
+      color: #cbd5e1;
+      font-size: 0.88rem;
+    }
+
+    .app-open-link {
+      flex-shrink: 0;
+      color: #fff;
+      border: 1px solid #475569;
+      background: transparent;
+    }
+
+    .app-open-link:hover {
+      color: #0f172a;
+      background: #fff;
+    }
+
+    .app-frame {
+      display: block;
+      width: 100%;
+      height: 760px;
+      border: 0;
+      background: #121218;
+    }
+
+    .reservation-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+      gap: 32px;
+      align-items: start;
+    }
+
+    .reservation-guide,
+    .reservation-panel {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--bg-white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .reservation-guide {
+      padding: 28px;
+    }
+
+    .reservation-guide h3 {
+      margin-bottom: 14px;
+      color: var(--primary-color);
+    }
+
+    .reservation-guide p {
+      margin-bottom: 16px;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+    }
+
+    .reservation-hours {
+      margin: 20px 0;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .reservation-hours div {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.86rem;
+    }
+
+    .reservation-hours dt {
+      color: var(--primary-color);
+      font-weight: bold;
+    }
+
+    .reservation-hours dd {
+      margin: 0;
+      color: var(--text-muted);
+    }
+
+    .schedule-link {
+      width: 100%;
+    }
+
+    .reservation-panel {
+      padding: 28px;
+    }
+
+    .reservation-form {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .form-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .form-field-wide,
+    .form-actions {
+      grid-column: 1 / -1;
+    }
+
+    .form-field label {
+      font-size: 0.82rem;
+      font-weight: bold;
+    }
+
+    .required {
+      margin-left: 5px;
+      color: #b45309;
+      font-size: 0.72rem;
+    }
+
+    .form-field input,
+    .form-field select,
+    .form-field textarea {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      color: var(--text-main);
+      background: #fff;
+      font: inherit;
+      font-size: 0.9rem;
+    }
+
+    .form-field textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .form-field input:focus,
+    .form-field select:focus,
+    .form-field textarea:focus {
+      border-color: var(--primary-color);
+      outline: 3px solid rgba(26, 86, 219, 0.15);
+    }
+
+    .form-trap {
+      position: absolute;
+      left: -10000px;
+    }
+
+    .reservation-submit {
+      border: 0;
+      font: inherit;
+    }
+
+    .reservation-submit:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
+    .form-status {
+      min-height: 1.7em;
+      margin-top: 10px;
+      color: var(--text-muted);
+      font-size: 0.86rem;
+    }
+
+    .form-status[data-state="success"] {
+      color: #047857;
+      font-weight: bold;
+    }
+
+    .form-status[data-state="error"] {
+      color: #b91c1c;
+      font-weight: bold;
+    }
+
+    .reservation-cancel {
+      margin-top: 24px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .reservation-cancel summary {
+      color: var(--text-muted);
+      font-size: 0.86rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .reservation-cancel-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .reservation-cancel-form > p,
+    .reservation-cancel-form > button,
+    .reservation-cancel-form > .form-status {
+      grid-column: 1 / -1;
+    }
+
+    .reservation-cancel-form > p {
+      color: var(--text-muted);
+      font-size: 0.84rem;
+    }
+
+    /* ----------------------------------
+       4. CTA SECTION
+    ---------------------------------- */
+    .cta-section {
+      padding: 70px 0;
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-hover));
+      color: #fff;
+      text-align: center;
+    }
+
+    .cta-section h2 {
+      font-size: 2rem;
+      margin-bottom: 15px;
+    }
+
+    .cta-section p {
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+
+    /* ----------------------------------
+       5. FOOTER
+    ---------------------------------- */
+    footer {
+      background-color: #0f172a;
+      color: #94a3b8;
+      padding: 50px 0 20px;
+    }
+
+    .footer-content {
+      display: flex;
+      justify-content: space-between;
+      gap: 40px;
+      margin-bottom: 40px;
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 25px;
+      flex-wrap: wrap;
+    }
+
+    .footer-links a[href="lesson/"] {
+      font-size: 0.84rem;
+      white-space: nowrap;
+    }
+
+    .footer-links a:hover {
+      color: #fff;
+    }
+
+    .footer-address {
+      margin: 0;
+      color: #94a3b8;
+      font-size: 0.84rem;
+      font-style: normal;
+      line-height: 1.7;
+    }
+
+    .footer-address span {
+      display: block;
+    }
+
+    .footer-address span:last-child {
+      white-space: nowrap;
+    }
+
+    .copyright {
+      text-align: center;
+      border-top: 1px solid #1e293b;
+      padding-top: 20px;
+      font-size: 0.85rem;
+    }
+
+    /* ----------------------------------
+       MOBILE RESPONSIVE
+    ---------------------------------- */
+    @media (max-width: 1200px) {
+      .hero-grid, .profile-card, .cards-grid, .services-grid, .access-grid, .reservation-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .app-frame {
+        height: 820px;
+      }
+
+      .hamburger {
+        display: flex;
+      }
+
+      .nav-menu {
+        position: absolute;
+        top: 70px;
+        left: 0;
+        width: 100%;
+        background-color: var(--bg-white);
+        flex-direction: column;
+        padding: 20px;
+        gap: 15px;
+        box-shadow: var(--shadow-md);
+        display: none;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .nav-menu.active {
+        display: flex;
+      }
+
+      .header-cta {
+        display: none;
+      }
+
+      .footer-content {
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .service-card-events {
+        grid-column: auto;
+      }
+
+    }
+
+    @media (max-width: 600px) {
+      .services-heading {
+        grid-template-columns: 1fr;
+      }
+
+      .services-heading-copy,
+      .services-admin-link {
+        grid-column: 1;
+      }
+
+      .services-admin-link {
+        justify-self: center;
+        margin-top: -30px;
+        margin-bottom: 36px;
+      }
+
+      .event-consultation {
+        padding: 56px 0;
+      }
+
+      .consultation-form-shell {
+        padding: 20px 16px;
+      }
+
+      .consultation-tabs,
+      .consultation-grid,
+      .consultation-mode-section {
+        grid-template-columns: 1fr;
+      }
+
+      .consultation-tab {
+        min-height: 62px;
+      }
+
+      .events-service-layout {
+        grid-template-columns: minmax(0, 1.35fr) minmax(108px, 0.65fr);
+        gap: 12px;
+        align-items: stretch;
+      }
+
+      .service-card-events-visual {
+        min-height: 0;
+        aspect-ratio: auto;
+      }
+
+      .service-card-events h3 {
+        font-size: 1rem;
+        line-height: 1.35;
+        margin-bottom: 10px;
+      }
+
+      .service-card-events ul {
+        margin-bottom: 0;
+      }
+
+      .service-card-events li {
+        align-items: flex-start;
+        gap: 5px;
+        margin-bottom: 6px;
+        font-size: 0.76rem;
+        line-height: 1.45;
+      }
+
+      .mobile-break {
+        display: block;
+      }
+
+      .hero-content h1 {
+        font-size: 1.6rem;
+        line-height: 1.4;
+      }
+
+      .hero-content p {
+        font-size: 0.9rem;
+        line-height: 1.65;
+      }
+
+      .section-title {
+        font-size: 1.5rem;
+        line-height: 1.4;
+      }
+
+      .section-desc {
+        margin-bottom: 2rem;
+        font-size: 0.94rem;
+        line-height: 1.7;
+      }
+
+      .profile-section .section-title {
+        font-size: 1.25rem;
+        white-space: nowrap;
+      }
+
+      .profile-info h3 {
+        line-height: 1.45;
+      }
+
+      .profile-name-reading {
+        white-space: nowrap;
+      }
+
+      .profile-role-secondary {
+        margin-top: 4px;
+      }
+
+      .access-info th {
+        width: 4.5em;
+        white-space: nowrap;
+      }
+
+      .feature-card h3 {
+        font-size: 1.05rem;
+        line-height: 1.5;
+      }
+
+      .feature-card p {
+        font-size: 0.92rem;
+        line-height: 1.75;
+      }
+
+      .cta-section h2 {
+        font-size: 1.5rem;
+        line-height: 1.4;
+      }
+
+      .cta-section p {
+        font-size: 0.96rem;
+        line-height: 1.7;
+      }
+
+      .updates-heading {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .updates-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .update-card {
+        display: block;
+      }
+
+      .update-media {
+        min-height: 104px;
+        border-right: 0;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .update-admin-actions {
+        grid-column: 1;
+      }
+
+      .updates-toolbar,
+      .updates-editor-actions {
+        width: 100%;
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .youtube-channel {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .youtube-channel-link {
+        justify-content: center;
+      }
+
+      .updates-month,
+      .updates-admin-toggle,
+      .updates-editor-actions button {
+        width: 100%;
+      }
+
+      .updates-window {
+        height: 620px;
+      }
+
+      .updates-editor {
+        padding: 18px;
+      }
+
+      .updates-editor-login,
+      .updates-editor-form {
+        grid-template-columns: 1fr;
+      }
+
+      .updates-editor-field,
+      .updates-editor-field-wide,
+      .updates-editor-actions,
+      .updates-editor-status {
+        grid-column: 1;
+      }
+
+      .app-panel-header {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .app-frame {
+        height: 880px;
+      }
+
+      .reservation-form,
+      .reservation-cancel-form {
+        grid-template-columns: 1fr;
+      }
+
+      .form-field,
+      .form-field-wide,
+      .form-actions {
+        grid-column: 1;
+      }
+
+      .reservation-guide,
+      .reservation-panel {
+        padding: 22px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Header -->
+  <header>
+    <div class="container header-inner">
+      <div class="logo">
+        <span class="logo-dummy"></span>
+        <span>なめがわブラス・ラボ</span>
+      </div>
+      <div class="nav-wrapper">
+        <nav>
+          <ul class="nav-menu" id="navMenu">
+            <li><a href="#profile">ごあいさつ</a></li>
+            <li class="updates-nav-item"><a href="#updates">お知らせ</a></li>
+            <li><a href="#features">特徴</a></li>
+            <li><a href="lesson/">kazooささきトランペット教室</a></li>
+            <li><a href="#trumpet">事業・サービス内容</a></li>
+            <li><a href="#access">アクセス</a></li>
+          </ul>
+        </nav>
+        <a href="#contact" class="btn btn-primary header-cta">お問い合わせ</a>
+        <button class="hamburger" id="hamburgerBtn" aria-label="メニューを開く">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 2. Hero Section (FV) -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-content">
+        <h1>音楽とITで、滑川町から<span class="mobile-break"></span>未来の可能性を広げる。</h1>
+        <p>「kazooささきトランペット教室」をはじめ、<span class="mobile-break"></span>部活動の地域連携、子どもの居場所づくり、<span class="mobile-break"></span>イベント企画・輸送、自社アプリ開発まで。<span class="mobile-break"></span>「なめがわブラス・ラボ」は地域に寄り添い、新しい挑戦を応援します。</p>
+        <a href="#contact" class="btn btn-accent" style="font-size: 1.1rem; padding: 14px 36px;">無料体験・ご相談はこちら</a>
+      </div>
+      <div class="hero-visual">
+        <video class="hero-video" autoplay muted loop playsinline preload="metadata">
+          <source src="video/intro.mp4" type="video/mp4">
+        </video>
+        <div class="hero-visual-label">演奏・指導・デジタル技術を、地域の力へ。</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="updates-section" id="updates" aria-labelledby="updates-title">
+    <div class="container">
+      <div class="updates-heading">
+        <div>
+          <h2 class="section-title" id="updates-title">お知らせ・活動情報</h2>
+          <p class="section-desc">レッスン、演奏活動、地域での取り組みをお届けします</p>
+        </div>
+        <div class="updates-toolbar">
+          <label>
+            <span class="sr-only">表示する月</span>
+            <select class="updates-month" id="updates-month" aria-label="表示する月"></select>
+          </label>
+          <button class="updates-admin-toggle" id="updates-admin-toggle" type="button" aria-expanded="false" aria-controls="updates-editor">管理者編集</button>
+        </div>
+      </div>
+      <div class="updates-window" id="updates-window" tabindex="0" aria-label="月別のお知らせ一覧">
+        <div class="updates-grid" id="updates-grid"></div>
+        <p class="updates-empty" id="updates-empty">お知らせを読み込んでいます。</p>
+      </div>
+
+      <section class="updates-editor" id="updates-editor" aria-labelledby="updates-editor-title" hidden>
+        <div class="updates-editor-header">
+          <h3 id="updates-editor-title">お知らせ管理</h3>
+          <button id="updates-editor-logout" type="button" data-history-back data-fallback="#updates" hidden>戻る（ログアウト）</button>
+        </div>
+        <form class="updates-editor-login" id="updates-editor-login">
+          <input id="updates-editor-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+          <button class="updates-editor-primary" type="submit">ログイン</button>
+        </form>
+        <form class="updates-editor-form" id="updates-editor-form" hidden>
+          <input id="updates-editor-index" type="hidden">
+          <label class="updates-editor-field">日付
+            <input id="updates-editor-date" type="date" required>
+          </label>
+          <label class="updates-editor-field">種類
+            <input id="updates-editor-category" type="text" maxlength="40" required>
+          </label>
+          <label class="updates-editor-field updates-editor-field-wide">本文
+            <textarea id="updates-editor-content" maxlength="500" required></textarea>
+          </label>
+          <label class="updates-editor-field">メディア
+            <select id="updates-editor-media-type">
+              <option value="">なし</option>
+              <option value="image">画像</option>
+              <option value="video">動画</option>
+              <option value="pdf">PDF</option>
+            </select>
+          </label>
+          <label class="updates-editor-field">メディアURL
+            <input id="updates-editor-media-url" type="text" inputmode="url">
+          </label>
+          <div class="updates-editor-actions">
+            <button class="updates-editor-primary" id="updates-editor-save" type="submit">追加する</button>
+            <button id="updates-editor-cancel" type="button" hidden>変更をやめる</button>
+          </div>
+        </form>
+        <p class="updates-editor-status" id="updates-editor-status" role="status" aria-live="polite"></p>
+      </section>
+      <aside class="youtube-channel" aria-labelledby="youtube-channel-title">
+        <div class="youtube-channel-copy">
+          <strong id="youtube-channel-title">公式YouTubeチャンネル</strong>
+          <span>演奏動画やトランペットに役立つコンテンツを公開しています</span>
+        </div>
+        <a class="youtube-channel-link" href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr" target="_blank" rel="noopener noreferrer">
+          <span class="youtube-channel-play" aria-hidden="true">▶</span>
+          YouTubeで見る
+        </a>
+      </aside>
+    </div>
+  </section>
+
+  <!-- Profile & Greeting Section -->
+  <section class="profile-section" id="profile">
+    <div class="container">
+      <h2 class="section-title">ごあいさつ・代表プロフィール</h2>
+      <p class="section-desc">「なめがわブラス・ラボ」代表の佐々木久和より</p>
+      <div class="profile-card">
+        <img class="profile-photo" src="data/media/profile-photo.jpg" alt="トランペットを持つ佐々木久和" width="1200" height="1800" loading="lazy" decoding="async">
+        <div class="profile-info">
+          <h3>佐々木 久和<span class="profile-name-reading">（ささき ひさかず）</span></h3>
+          <p class="subtitle">トランペット奏者 / kazooささきトランペット教室 主宰<span class="profile-role-secondary">Webエンジニア・軽貨物事業主</span></p>
+          <p>
+            はじめまして。「なめがわブラス・ラボ」代表の佐々木久和です。埼玉県比企郡滑川町を拠点に、音楽指導・独自アプリ開発・地域物流と多角的なアプローチで活動しております。
+          </p>
+          <p>
+            お子様の「音が鳴った！」という達成感や、趣味で音楽を楽しむ大人の充実感を大切にしています。独自アプリなどを活用したわかりやすいレッスンで、初めてのお子様から憧れの曲に挑戦したい大人の方、本格的な音大受験対策まで、目標に合わせて楽しく上達できるようサポートします。
+          </p>
+          <p>
+            また、部活動の地域連携や子どもの居場所づくり、イベント企画・輸送、WEB制作や自社開発アプリの提供を通じて、地域の皆さまの活動を支える「身近なラボ（研究室）」を目指しています。
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 1: 特徴 -->
+  <section class="features" id="features">
+    <div class="container">
+      <h2 class="section-title">音楽と文化で育む、<span class="mobile-break"></span>広がる3つの輪</h2>
+      <p class="section-desc">人が集い、健やかに笑い、世代を超えてつながる地域の場を育てます</p>
+      <div class="cards-grid feature-cards">
+        <article class="card feature-card feature-card-community">
+          <div class="feature-ring" aria-hidden="true">1</div>
+          <span class="feature-label">集う輪</span>
+          <h3>みんなの居場所づくりサポート</h3>
+          <p>子どもからシニアまで、音楽を通して気軽に集まり、一緒に楽しめる時間と居場所をご提案します。</p>
+        </article>
+        <article class="card feature-card feature-card-health">
+          <div class="feature-ring" aria-hidden="true">2</div>
+          <span class="feature-label">健やかな輪</span>
+          <h3>健康と笑顔の支援</h3>
+          <p>楽器演奏や歌、音楽に合わせた身体運動を通して、心と体の健康を支えます。</p>
+        </article>
+        <a class="card feature-card feature-card-generations feature-card-link" href="video/?v=20260817-3" aria-label="世代を超えた交流の動画を見る">
+          <div class="feature-ring" aria-hidden="true">3</div>
+          <span class="feature-label">つながる輪</span>
+          <h3>世代を超えた交流</h3>
+          <p>子どもたちの弾ける演奏と、大人の温かな視線が交わる場をご提案します。</p>
+          <span class="feature-video-cta">交流動画を見る ▶</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 2: 事業内容（カード比較形式） -->
+  <section class="services" id="trumpet">
+    <div class="container">
+      <div class="services-heading">
+        <div class="services-heading-copy">
+          <h2 class="section-title">事業・サービス案内</h2>
+          <p class="section-desc">音楽・地域連携・イベント・デジタルをつなぐ5つの事業</p>
+        </div>
+        <a class="services-admin-link" href="contract-generator/">管理者用 契約書作成</a>
+      </div>
+      <div class="services-grid">
+        <div class="service-card">
+          <div>
+            <h3>kazooささき<span class="mobile-break"></span>トランペット教室</h3>
+            <ul>
+              <li>初めての音出しから音大受験まで幅広く対応</li>
+              <li>長年の演奏・指導経験を生かした個別レッスン</li>
+              <li>独自アプリで楽しく身につく新しいレッスン</li>
+            </ul>
+          </div>
+          <a href="lesson/" class="btn btn-primary" style="margin-top:15px;">教室の詳細・体験申込</a>
+        </div>
+
+        <div class="service-card" id="club-support">
+          <div>
+            <h3>部活動の地域連携・地域<span class="mobile-break"></span>クラブ移行支援サポート</h3>
+            <ul>
+              <li>学校・地域・指導者をつなぐ活動体制づくりサポート</li>
+              <li>吹奏楽活動の地域クラブ移行に向けた相談・企画支援</li>
+              <li>地域の実情に合わせた継続可能な音楽活動をサポート</li>
+            </ul>
+          </div>
+          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">地域連携のご相談</a>
+        </div>
+
+        <div class="service-card" id="child-network">
+          <div>
+            <h3>滑川町こどもの居場所<span class="mobile-break"></span>ネットワークへの参加</h3>
+            <ul>
+              <li>地域の団体と連携した子どもの居場所づくりのお手伝い</li>
+              <li>音楽体験を通じて安心して交流できる時間のご提案</li>
+              <li>子どもと地域をつなぐ活動・情報発信に協力</li>
+            </ul>
+          </div>
+          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">居場所づくりのご相談</a>
+        </div>
+
+        <div class="service-card service-card-events" id="events">
+          <div class="events-service-layout">
+            <div>
+              <h3>イベント企画・プロデュース／輸送業務</h3>
+              <ul>
+                <li>トランペット音楽の魅力の公演企画・地域音楽イベントの企画</li>
+                <li>体験型音楽ワークショップの開催</li>
+                <li>Web集客と連動したイベントデザイン・運営支援</li>
+                <li>イベント機材・荷物の搬入出と大切な楽器の安全な輸送</li>
+                <li>行事単位・定期契約など輸送業務の委託に柔軟対応</li>
+              </ul>
+            </div>
+            <figure class="service-card-events-visual">
+              <img src="data/media/event-preschool-performance.png" alt="保育園で子どもたちが演奏を鑑賞している様子" loading="lazy">
+            </figure>
+          </div>
+          <a href="pdf/" class="btn btn-primary" style="margin-top:15px;">イベント企画PDFを見る</a>
+          <a href="#event-consultation" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
+        </div>
+
+        <div class="service-card" id="web">
+          <div>
+            <h3>WEB制作・アプリ開発販売</h3>
+            <ul>
+              <li>店舗認知を高めるWebサイト制作サポート</li>
+              <li>音楽・教育・軽貨物向け独自アプリの開発および販売</li>
+              <li>Webマーケティングなど</li>
+            </ul>
+          </div>
+          <a href="products/" class="btn btn-primary" style="margin-top:15px;">アプリ・商品を見る</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="event-consultation" id="event-consultation" aria-labelledby="consultation-title">
+    <div class="container">
+      <h2 class="section-title" id="consultation-title">イベント企画・輸送のご相談</h2>
+      <p class="section-desc">内容を確認後、担当よりお見積りと進め方をご連絡します。</p>
+      <details class="consultation-disclosure">
+        <summary>イベント企画・輸送業務 お問い合わせフォームを開く</summary>
+        <div class="consultation-form-shell">
+        <div class="consultation-tabs" role="tablist" aria-label="ご希望のサービス">
+          <button type="button" class="consultation-tab" role="tab" aria-selected="true" aria-controls="consultation-allinone" data-mode="allinone">
+            オールインワン依頼<span>指導・セッティング・運搬一式</span>
+          </button>
+          <button type="button" class="consultation-tab" role="tab" aria-selected="false" aria-controls="consultation-planning" data-mode="planning">
+            イベント企画のみ<span>プロデュース・講師手配</span>
+          </button>
+          <button type="button" class="consultation-tab" role="tab" aria-selected="false" aria-controls="consultation-cargo" data-mode="cargo">
+            一般輸送・単体搬送<span>機材・資材等の移動</span>
+          </button>
+        </div>
+
+        <form id="nblConsultationForm" class="consultation-grid" action="/api/consultation" method="post">
+          <input type="hidden" id="selectedServiceMode" name="service_mode" value="allinone">
+          <div class="sr-only" aria-hidden="true">
+            <label for="consultationWebsite">ウェブサイト</label>
+            <input type="text" id="consultationWebsite" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="consultation-field">
+            <label for="consultationOrgName">団体名・お申込者名<span class="consultation-required">*</span></label>
+            <input type="text" id="consultationOrgName" name="org_name" maxlength="100" autocomplete="organization" placeholder="例：〇〇高等学校吹奏楽部 / 山田 太郎" required>
+          </div>
+          <div class="consultation-field">
+            <label for="consultationEmail">メールアドレス<span class="consultation-required">*</span></label>
+            <input type="email" id="consultationEmail" name="email" autocomplete="email" placeholder="example@domain.com" required>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-allinone" role="tabpanel" data-section="allinone">
+            <div class="consultation-notice">
+              <strong>サービスの性質について</strong><br>
+              吹奏楽指導・調整・現場セッティングと機材搬送を組み合わせた包括型サポートです。高額な楽器を含む場合は、申告内容をもとに受託物動産保険等の手配可否と費用を個別に確認します。
+            </div>
+            <div class="consultation-field">
+              <label for="consultationEventDate">実施予定日<span class="consultation-required">*</span></label>
+              <input type="date" id="consultationEventDate" name="event_date" required>
+            </div>
+            <div class="consultation-field">
+              <label for="consultationSupportContent">ご希望のサポート内容<span class="consultation-required">*</span></label>
+              <select id="consultationSupportContent" name="support_content" required>
+                <option value="">選択してください</option>
+                <option value="コンクール・演奏会当日フルサポート（指導＋搬送＋セッティング）">コンクール・演奏会当日フルサポート</option>
+                <option value="合宿・出張レッスン統合サポート">合宿・出張レッスン統合サポート</option>
+                <option value="定期レッスン＋楽器点検・セッティング">定期レッスン＋楽器点検・セッティング</option>
+              </select>
+            </div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationInstrumentValue">移動・お預かり対象の楽器総評価額（概算）<span class="consultation-required">*</span></label>
+              <select id="consultationInstrumentValue" name="instrument_value" required>
+                <option value="300">〜300万円まで</option>
+                <option value="1000">300万円〜1,000万円</option>
+                <option value="3000">1,000万円〜3,000万円</option>
+                <option value="over3000">3,000万円超</option>
+              </select>
+            </div>
+            <div class="insurance-estimate" aria-live="polite">
+              概算スポット補償費用
+              <strong id="insuranceEstimate">基本料金に含む（追加費用なし）</strong>
+              正式な補償内容・保険料・引受可否は、対象物と輸送条件の確認後にご案内します。
+            </div>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-planning" role="tabpanel" data-section="planning" hidden>
+            <div class="consultation-notice">吹奏楽イベント、演奏会、講師派遣など、搬送を伴わない企画のご相談を承ります。</div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationPlanningType">企画・プロデュースのご相談種別<span class="consultation-required">*</span></label>
+              <select id="consultationPlanningType" name="planning_type" aria-describedby="consultationPlanningOtherHint" disabled required>
+                <option value="演奏会・ライブ等のプロデュース">演奏会・ライブ等のプロデュース</option>
+                <option value="外部講師・指導者派遣の調整">外部講師・指導者派遣の調整</option>
+                <option value="ワークショップ・講習会の企画">ワークショップ・講習会の企画</option>
+                <option value="その他">その他</option>
+              </select>
+              <p class="consultation-field-note" id="consultationPlanningOtherHint" hidden>「その他」を選択した場合は、ご相談詳細・特記事項に概略とご要望事項をご記入ください。</p>
+            </div>
+          </div>
+
+          <div class="consultation-mode-section" id="consultation-cargo" role="tabpanel" data-section="cargo" hidden>
+            <div class="consultation-notice consultation-notice-warning">
+              <strong>一般輸送をご希望の方へ</strong><br>
+              指導・セッティングを伴わない貨物運送は、内容に応じて提携する一般貨物自動車運送事業者による対応等をご案内します。高額な精密楽器はオールインワン依頼もご検討ください。
+            </div>
+            <div class="consultation-field consultation-field-wide">
+              <label for="consultationCargoDetail">搬送希望のお荷物・機材概要<span class="consultation-required">*</span></label>
+              <textarea id="consultationCargoDetail" name="cargo_detail" maxlength="1000" placeholder="荷物の種類、数量、搬出入地の条件等をご記入ください。" disabled required></textarea>
+            </div>
+          </div>
+
+          <div class="consultation-field consultation-field-wide">
+            <label for="consultationMessage">ご相談詳細・特記事項</label>
+            <textarea id="consultationMessage" name="message" maxlength="1000" placeholder="具体的なご要望やスケジュール、ご質問等をご記入ください。"></textarea>
+          </div>
+          <div class="consultation-field consultation-field-wide">
+            <label for="consultationAttachment">参考データの添付</label>
+            <input type="file" id="consultationAttachment" name="attachment" accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip">
+            <p class="consultation-field-note">PDF、画像、Word、Excel、PowerPoint、テキスト、CSV、ZIPを1ファイル、5MBまで添付できます。</p>
+          </div>
+
+          <div class="consultation-actions">
+            <label class="consultation-consent" for="consultationTermsAgree">
+              <input type="checkbox" id="consultationTermsAgree" name="terms_agree" required>
+              <span><a href="legal/privacy-policy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します。<span class="consultation-required">*</span></span>
+            </label>
+            <button type="submit" class="consultation-submit" id="consultationSubmit">相談・お見積り依頼を送信</button>
+            <p class="consultation-status" id="consultationStatus" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <!-- 3. Body Section 3: 店舗・アクセス -->
+  <section class="access" id="access">
+    <div class="container">
+      <h2 class="section-title">店舗・アクセス情報</h2>
+      <p class="section-desc">お気軽にお越し・お問い合わせください</p>
+      <div class="access-grid">
+        <div class="access-info">
+          <table>
+            <tr>
+              <th>屋　号</th>
+              <td>なめがわブラス・ラボ</td>
+            </tr>
+            <tr>
+              <th>代表・<span class="mobile-break"></span>講師</th>
+              <td>佐々木 久和</td>
+            </tr>
+            <tr>
+              <th>拠　点</th>
+              <td>埼玉県比企郡滑川町（レッスン会場等の詳細はご予約時にお伝えします）</td>
+            </tr>
+            <tr>
+              <th>営業時間</th>
+              <td>09:00 - 18:00（不定休）</td>
+            </tr>
+          </table>
+        </div>
+        <iframe class="map-frame" src="https://www.google.com/maps?q=埼玉県比企郡滑川町月の輪5丁目1-3&amp;output=embed" title="なめがわブラス・ラボ周辺地図" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. CTA Section -->
+  <section class="cta-section" id="contact">
+    <div class="container">
+      <h2>まずはお気軽にお問い合わせください</h2>
+      <p>トランペット体験レッスン、地域連携、イベント企画・輸送、Web制作・アプリ開発のご相談を受け付けています。</p>
+      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener" class="btn btn-accent" style="font-size: 1.1rem; padding: 15px 40px;">お問い合わせフォームへ</a>
+      <p style="margin: 20px 0 0; font-size: 0.9rem;">メール：<a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a> ／ 電話：<a href="tel:+819057690830">090-5769-0830</a>（10:00〜18:00）</p>
+    </div>
+  </section>
+
+  <!-- 5. Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-content">
+        <div>
+          <h3 style="color:#fff; margin-bottom: 10px;">なめがわブラス・ラボ</h3>
+          <p style="font-size: 0.9rem;">代表：佐々木久和</p>
+          <address class="footer-address">
+            <span>〒355-0815</span>
+            <span>埼玉県比企郡滑川町月の輪5丁目1-3</span>
+          </address>
+        </div>
+        <div class="footer-links">
+          <a href="#profile">ごあいさつ</a>
+          <a href="#updates">お知らせ</a>
+          <a href="#features">特徴</a>
+          <a href="lesson/">kazooささきトランペット教室</a>
+          <a href="#trumpet">事業・サービス内容</a>
+          <a href="#access">アクセス</a>
+          <a href="legal/#tokusho">特定商取引法に基づく表記</a>
+          <a href="legal/privacy-policy.html">プライバシーポリシー</a>
+        </div>
+      </div>
+      <div class="copyright">
+        © 2026 なめがわブラス・ラボ. All rights reserved.
+      </div>
+    </div>
+  </footer>
+
+  <script src="back-navigation.js"></script>
+  <!-- JavaScript for Hamburger Menu -->
+  <script>
+    const hamburgerBtn = document.getElementById('hamburgerBtn');
+    const navMenu = document.getElementById('navMenu');
+
+    hamburgerBtn.addEventListener('click', () => {
+      navMenu.classList.toggle('active');
+    });
+
+    document.querySelectorAll('.nav-menu a').forEach(link => {
+      link.addEventListener('click', () => {
+        navMenu.classList.remove('active');
+      });
+    });
+
+    const updatesMonth = document.getElementById('updates-month');
+    const updatesGrid = document.getElementById('updates-grid');
+    let updateCards = [];
+    const updatesEmpty = document.getElementById('updates-empty');
+    const updatesAdminToggle = document.getElementById('updates-admin-toggle');
+    const updatesEditor = document.getElementById('updates-editor');
+    const updatesEditorLogin = document.getElementById('updates-editor-login');
+    const updatesEditorForm = document.getElementById('updates-editor-form');
+    const updatesEditorPassword = document.getElementById('updates-editor-password');
+    const updatesEditorLogout = document.getElementById('updates-editor-logout');
+    const updatesEditorStatus = document.getElementById('updates-editor-status');
+    const updatesEditorIndex = document.getElementById('updates-editor-index');
+    const updatesEditorDate = document.getElementById('updates-editor-date');
+    const updatesEditorCategory = document.getElementById('updates-editor-category');
+    const updatesEditorContent = document.getElementById('updates-editor-content');
+    const updatesEditorMediaType = document.getElementById('updates-editor-media-type');
+    const updatesEditorMediaUrl = document.getElementById('updates-editor-media-url');
+    const updatesEditorSave = document.getElementById('updates-editor-save');
+    const updatesEditorCancel = document.getElementById('updates-editor-cancel');
+    let updatesEditorKey = '';
+    const renderUpdatesApi = 'https://namegawa-brass-lab.onrender.com/api/updates';
+    const updatesApiCandidates = location.hostname.endsWith('github.io') || location.protocol === 'file:'
+      ? [renderUpdatesApi]
+      : ['/api/updates', renderUpdatesApi];
+
+    function updateMedia(update) {
+      const media = document.createElement('div');
+      media.className = 'update-media';
+      if (!update.media_type || !update.media_url) {
+        const placeholder = document.createElement('span');
+        placeholder.className = 'update-media-placeholder';
+        placeholder.textContent = 'NAMEGAWA BRASS LAB';
+        media.appendChild(placeholder);
+        return media;
+      }
+
+      const link = document.createElement('a');
+      link.className = `update-media-link${update.media_type === 'image' ? ' update-image-link' : ''}${update.media_type === 'video' ? ' update-video-link' : ''}`;
+      link.href = update.media_url;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      if (update.media_type === 'video') {
+        const icon = document.createElement('span');
+        icon.className = 'update-video-icon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.textContent = '▶';
+        link.append(icon, document.createTextNode('YouTubeで見る'));
+        link.setAttribute('aria-label', `${update.content}をYouTubeで見る`);
+      } else {
+        link.textContent = update.media_type === 'image' ? '写真を見る' : '資料を見る';
+        link.setAttribute('aria-label', `${update.content}の${update.media_type === 'image' ? '写真' : '資料'}を見る`);
+      }
+      media.appendChild(link);
+      return media;
+    }
+
+    function createUpdateCard(update) {
+      const card = document.createElement('article');
+      card.className = 'update-card';
+      card.dataset.updateIndex = String(update.index ?? '');
+      card.dataset.updateDate = String(update.date || '');
+      card.dataset.updateCategory = String(update.category || '');
+      card.dataset.updateContent = String(update.content || '');
+      card.dataset.updateMediaType = String(update.media_type || '');
+      card.dataset.updateMediaUrl = String(update.media_url || '');
+      card.appendChild(updateMedia(update));
+
+      const body = document.createElement('div');
+      body.className = 'update-card-body';
+      const meta = document.createElement('div');
+      meta.className = 'update-meta';
+      const date = document.createElement('time');
+      date.dateTime = card.dataset.updateDate;
+      date.textContent = card.dataset.updateDate;
+      const category = document.createElement('span');
+      category.className = 'update-category';
+      category.textContent = card.dataset.updateCategory;
+      const content = document.createElement('p');
+      content.textContent = card.dataset.updateContent;
+      meta.append(date, category);
+      body.append(meta, content);
+      card.appendChild(body);
+
+      const actions = document.createElement('div');
+      actions.className = 'update-admin-actions';
+      actions.hidden = true;
+      const editButton = document.createElement('button');
+      editButton.className = 'update-edit';
+      editButton.type = 'button';
+      editButton.textContent = '変更';
+      editButton.setAttribute('aria-label', `${card.dataset.updateDate} ${card.dataset.updateCategory}のお知らせを変更`);
+      editButton.addEventListener('click', () => beginUpdateEdit(card));
+      const deleteButton = document.createElement('button');
+      deleteButton.className = 'update-delete';
+      deleteButton.type = 'button';
+      deleteButton.textContent = '削除';
+      deleteButton.setAttribute('aria-label', `${card.dataset.updateDate} ${card.dataset.updateCategory}のお知らせを削除`);
+      deleteButton.addEventListener('click', () => deleteUpdate(card));
+      actions.append(editButton, deleteButton);
+      card.appendChild(actions);
+      return card;
+    }
+
+    async function loadPublicUpdates() {
+      let lastError;
+      for (const endpoint of updatesApiCandidates) {
+        try {
+          const response = await fetch(endpoint);
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          const updates = await response.json();
+          if (!Array.isArray(updates)) throw new Error('Invalid updates response');
+          updatesGrid.replaceChildren(...updates.map(createUpdateCard));
+          updateCards = [...updatesGrid.querySelectorAll('.update-card')];
+          initializeUpdateMonths();
+          return;
+        } catch (error) {
+          lastError = error;
+        }
+      }
+      console.error(lastError);
+      updatesEmpty.hidden = false;
+      updatesEmpty.textContent = 'お知らせを読み込めませんでした。時間をおいて再度お試しください。';
+    }
+
+    function monthLabel(month) {
+      const [year, monthNumber] = month.split('-');
+      return `${year}年${Number(monthNumber)}月`;
+    }
+
+    function initializeUpdateMonths() {
+      updatesMonth.replaceChildren();
+      if (!updateCards.length) {
+        updatesEmpty.hidden = false;
+        updatesEmpty.textContent = '現在、新しいお知らせはありません。';
+        return;
+      }
+      const months = [...new Set(updateCards.map(card => card.dataset.updateDate.slice(0, 7)))].sort().reverse();
+      const savedMonth = sessionStorage.getItem('updatesSelectedMonth');
+      months.forEach(month => {
+        const option = document.createElement('option');
+        option.value = month;
+        option.textContent = monthLabel(month);
+        updatesMonth.appendChild(option);
+      });
+      updatesMonth.value = months.includes(savedMonth) ? savedMonth : months[0];
+      filterUpdatesByMonth();
+    }
+
+    function filterUpdatesByMonth() {
+      if (!updatesMonth) return;
+      let visibleCount = 0;
+      updateCards.forEach(card => {
+        const visible = card.dataset.updateDate.startsWith(updatesMonth.value);
+        card.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+      if (updatesEmpty) updatesEmpty.hidden = visibleCount > 0;
+      sessionStorage.setItem('updatesSelectedMonth', updatesMonth.value);
+    }
+
+    function setUpdatesEditorStatus(message, state = '') {
+      updatesEditorStatus.textContent = message;
+      updatesEditorStatus.dataset.state = state;
+    }
+
+    async function readUpdatesError(response, fallback) {
+      try {
+        const result = await response.json();
+        return result.error || fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function editorHeaders() {
+      return {
+        'Content-Type': 'application/json',
+        'X-Editor-Password': updatesEditorKey
+      };
+    }
+
+    function todayInJapan() {
+      const parts = new Intl.DateTimeFormat('ja-JP', {
+        timeZone: 'Asia/Tokyo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).formatToParts(new Date());
+      const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+      return `${values.year}-${values.month}-${values.day}`;
+    }
+
+    function showAuthenticatedEditor() {
+      updatesEditorLogin.hidden = true;
+      updatesEditorLogin.reset();
+      updatesEditorForm.hidden = false;
+      updatesEditorLogout.hidden = false;
+      document.querySelectorAll('.update-admin-actions').forEach(actions => {
+        actions.hidden = false;
+      });
+      resetUpdatesEditorForm();
+    }
+
+    function resetUpdatesEditorForm() {
+      updatesEditorForm.reset();
+      updatesEditorIndex.value = '';
+      updatesEditorDate.value = todayInJapan();
+      updatesEditorSave.textContent = '追加する';
+      updatesEditorCancel.hidden = true;
+      updatesEditorMediaUrl.required = false;
+    }
+
+    function beginUpdateEdit(card) {
+      updatesEditorIndex.value = card.dataset.updateIndex;
+      updatesEditorDate.value = card.dataset.updateDate;
+      updatesEditorCategory.value = card.dataset.updateCategory;
+      updatesEditorContent.value = card.dataset.updateContent;
+      updatesEditorMediaType.value = card.dataset.updateMediaType;
+      updatesEditorMediaUrl.value = card.dataset.updateMediaUrl;
+      updatesEditorMediaUrl.required = Boolean(card.dataset.updateMediaType);
+      updatesEditorSave.textContent = '変更を保存';
+      updatesEditorCancel.hidden = false;
+      updatesEditor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    async function deleteUpdate(card) {
+      if (!confirm(`${card.dataset.updateDate} のお知らせを削除しますか？`)) return;
+      try {
+        const response = await fetch(`/api/updates/${card.dataset.updateIndex}`, {
+          method: 'DELETE',
+          headers: editorHeaders()
+        });
+        if (!response.ok) {
+          setUpdatesEditorStatus(await readUpdatesError(response, '削除できませんでした。'), 'error');
+          return;
+        }
+        location.reload();
+      } catch {
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+      }
+    }
+
+    updatesMonth?.addEventListener('change', filterUpdatesByMonth);
+    loadPublicUpdates();
+
+    updatesAdminToggle?.addEventListener('click', async () => {
+      updatesEditor.hidden = !updatesEditor.hidden;
+      updatesAdminToggle.setAttribute('aria-expanded', String(!updatesEditor.hidden));
+      if (updatesEditor.hidden) {
+        updatesEditorKey = '';
+        updatesEditorLogin.hidden = false;
+        updatesEditorForm.hidden = true;
+        updatesEditorLogout.hidden = true;
+        updatesEditorLogin.reset();
+        document.querySelectorAll('.update-admin-actions').forEach(actions => {
+          actions.hidden = true;
+        });
+        return;
+      }
+      updatesEditorLogin.hidden = false;
+      updatesEditorForm.hidden = true;
+      updatesEditorLogout.hidden = true;
+      updatesEditorPassword.focus();
+    });
+
+    updatesEditorLogin?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const password = updatesEditorPassword.value;
+      try {
+        const response = await fetch('/api/editor', {
+          headers: { 'X-Editor-Password': password }
+        });
+        if (!response.ok) {
+          setUpdatesEditorStatus(await readUpdatesError(response, 'ログインできませんでした。'), 'error');
+          updatesEditorPassword.select();
+          return;
+        }
+        updatesEditorKey = password;
+        setUpdatesEditorStatus('編集できます。');
+        showAuthenticatedEditor();
+      } catch {
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+      }
+    });
+
+    updatesEditorForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!updatesEditorForm.reportValidity()) return;
+      updatesEditorSave.disabled = true;
+      const updateIndex = updatesEditorIndex.value;
+      const payload = {
+        date: updatesEditorDate.value,
+        category: updatesEditorCategory.value,
+        content: updatesEditorContent.value,
+        media_type: updatesEditorMediaType.value,
+        media_url: updatesEditorMediaUrl.value
+      };
+      try {
+        const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
+          method: updateIndex ? 'PUT' : 'POST',
+          headers: editorHeaders(),
+          body: JSON.stringify(payload)
+        });
+        if (!response.ok) {
+          setUpdatesEditorStatus(await readUpdatesError(response, '保存できませんでした。'), 'error');
+          return;
+        }
+        sessionStorage.setItem('updatesSelectedMonth', payload.date.slice(0, 7));
+        location.reload();
+      } catch {
+        setUpdatesEditorStatus('通信できませんでした。時間をおいて再度お試しください。', 'error');
+      } finally {
+        updatesEditorSave.disabled = false;
+      }
+    });
+
+    updatesEditorMediaType?.addEventListener('change', () => {
+      updatesEditorMediaUrl.required = Boolean(updatesEditorMediaType.value);
+      if (!updatesEditorMediaType.value) updatesEditorMediaUrl.value = '';
+    });
+
+    updatesEditorCancel?.addEventListener('click', resetUpdatesEditorForm);
+
+    updatesEditorLogout?.addEventListener('click', () => {
+      updatesEditorKey = '';
+      updatesEditorLogin.hidden = false;
+      updatesEditorLogin.reset();
+      updatesEditorForm.hidden = true;
+      updatesEditorLogout.hidden = true;
+      document.querySelectorAll('.update-admin-actions').forEach(actions => {
+        actions.hidden = true;
+      });
+      setUpdatesEditorStatus('');
+      updatesEditor.hidden = true;
+      updatesAdminToggle.setAttribute('aria-expanded', 'false');
+      updatesAdminToggle.focus();
+    });
+
+    const consultationForm = document.getElementById('nblConsultationForm');
+    const consultationTabs = [...document.querySelectorAll('.consultation-tab')];
+    const consultationSections = [...document.querySelectorAll('.consultation-mode-section')];
+    const consultationMode = document.getElementById('selectedServiceMode');
+    const consultationOrgName = document.getElementById('consultationOrgName');
+    const consultationDate = document.getElementById('consultationEventDate');
+    const consultationPlanningType = document.getElementById('consultationPlanningType');
+    const consultationPlanningOtherHint = document.getElementById('consultationPlanningOtherHint');
+    const consultationMessage = document.getElementById('consultationMessage');
+    const consultationAttachment = document.getElementById('consultationAttachment');
+    const instrumentValue = document.getElementById('consultationInstrumentValue');
+    const insuranceEstimate = document.getElementById('insuranceEstimate');
+    const consultationSubmit = document.getElementById('consultationSubmit');
+    const consultationStatus = document.getElementById('consultationStatus');
+
+    if (consultationDate) consultationDate.min = todayInJapan();
+
+    const orgNameExamples = {
+      allinone: '例：〇〇高等学校吹奏楽部 / 〇〇楽団 / 山田 太郎',
+      planning: '例：〇〇イベント実行委員会 / 株式会社〇〇 / 山田 太郎',
+      cargo: '例：株式会社〇〇 / 〇〇楽団 / 山田 太郎'
+    };
+
+    consultationTabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        const mode = tab.dataset.mode;
+        consultationMode.value = mode;
+        consultationOrgName.placeholder = orgNameExamples[mode];
+        consultationTabs.forEach(button => {
+          button.setAttribute('aria-selected', String(button === tab));
+        });
+        consultationSections.forEach(section => {
+          const active = section.dataset.section === mode;
+          section.hidden = !active;
+          section.querySelectorAll('input, select, textarea').forEach(field => {
+            field.disabled = !active;
+          });
+        });
+        consultationStatus.textContent = '';
+        consultationStatus.dataset.state = '';
+      });
+    });
+
+    consultationPlanningType?.addEventListener('change', () => {
+      const isOther = consultationPlanningType.value === 'その他';
+      consultationPlanningOtherHint.hidden = !isOther;
+      consultationMessage.placeholder = isOther
+        ? 'ご相談の概略と具体的なご要望事項をご記入ください。'
+        : '具体的なご要望やスケジュール、ご質問等をご記入ください。';
+      consultationMessage.required = isOther;
+    });
+
+    instrumentValue?.addEventListener('change', () => {
+      const estimates = {
+        300: '基本料金に含む（追加費用なし）',
+        1000: '約5,000円〜10,000円',
+        3000: '約15,000円〜30,000円',
+        over3000: '要個別手配'
+      };
+      insuranceEstimate.textContent = estimates[instrumentValue.value];
+    });
+
+    consultationForm?.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!consultationForm.reportValidity()) return;
+      consultationSubmit.disabled = true;
+      consultationSubmit.textContent = '送信中...';
+      consultationStatus.textContent = '';
+      consultationStatus.dataset.state = '';
+      const payload = Object.fromEntries(new FormData(consultationForm));
+      delete payload.attachment;
+      payload.terms_agree = document.getElementById('consultationTermsAgree').checked;
+      try {
+        const attachment = consultationAttachment.files[0];
+        if (attachment) {
+          if (attachment.size > 5 * 1024 * 1024) {
+            throw new Error('添付データは5MB以内にしてください。');
+          }
+          const dataUrl = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.addEventListener('load', () => resolve(reader.result));
+            reader.addEventListener('error', () => reject(new Error('添付データを読み取れませんでした。')));
+            reader.readAsDataURL(attachment);
+          });
+          payload.attachment = {
+            name: attachment.name,
+            type: attachment.type || 'application/octet-stream',
+            data: String(dataUrl).split(',', 2)[1]
+          };
+        }
+        const response = await fetch('/api/consultation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || '送信できませんでした。');
+        consultationStatus.textContent = `送信しました。受付番号：${result.consultation_id}`;
+        consultationStatus.dataset.state = 'success';
+        consultationForm.reset();
+        consultationTabs.find(tab => tab.dataset.mode === consultationMode.value)?.click();
+        instrumentValue.dispatchEvent(new Event('change'));
+      } catch (error) {
+        consultationStatus.textContent = error.message || '通信できませんでした。時間をおいて再度お試しください。';
+        consultationStatus.dataset.state = 'error';
+      } finally {
+        consultationSubmit.disabled = false;
+        consultationSubmit.textContent = '相談・お見積り依頼を送信';
+      }
+    });
+
+  </script>
+</body>
+</html>
