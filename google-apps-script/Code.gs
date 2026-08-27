@@ -34,13 +34,14 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25";
+var SCRIPT_VERSION = "2026-08-27-lesson-types-v26";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
   "小学生": 30,
   "中学生": 45,
   "高校生以上": 60,
+  "高校生以上・大人": 60,
   "グループ・部活動指導": 0
 };
 

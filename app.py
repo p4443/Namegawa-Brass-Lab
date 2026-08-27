@@ -78,6 +78,7 @@ LESSON_TYPES = {
     "小学生",
     "中学生",
     "高校生以上",
+    "高校生以上・大人",
     "グループ・部活動指導",
 }
 LESSON_DURATION_MINUTES = {
@@ -86,10 +87,11 @@ LESSON_DURATION_MINUTES = {
     "小学生": 30,
     "中学生": 45,
     "高校生以上": 60,
+    "高校生以上・大人": 60,
     "グループ・部活動指導": None,
 }
 CONSULTATION_TIME = "要相談"
-RESERVATION_STATUS_VALUES = {"受付", "調整中", "確認中", "確定", "キャンセル"}
+RESERVATION_STATUS_VALUES = {"確認中", "確定", "キャンセル"}
 LESSON_RESERVATION_TIMEOUT_SECONDS = 40
 SLOT_STATUS_VALUES = {"空き", "調整中", "予約済", "お休み"}
 CONSULTATION_MODES = {
@@ -753,7 +755,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-27-lesson-types-v26"
 
 
 def current_japan_date():
@@ -978,25 +980,40 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
             )
 
 
-def load_store_settings(path=STORE_FILE):
+def load_store_settings(path=STORE_FILE, product_id=PRODUCT_ID, default_enabled=False):
     try:
         payload = json.loads(Path(path).read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError, OSError):
-        return {"enabled": False}
-    return {"enabled": payload.get("enabled") is True}
+        return {"enabled": bool(default_enabled)}
+    products = payload.get("products", {})
+    if isinstance(products, dict) and isinstance(products.get(product_id), dict):
+        return {"enabled": products[product_id].get("enabled") is True}
+    if product_id == PRODUCT_ID:
+        return {"enabled": payload.get("enabled") is True}
+    return {"enabled": bool(default_enabled)}
 
 
-def save_store_settings(enabled, path=STORE_FILE):
+def save_store_settings(enabled, path=STORE_FILE, product_id=PRODUCT_ID):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     lock_path = path.with_name(f".{path.name}.lock")
     with lock_path.open("a", encoding="utf-8") as lock_file:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX)
         try:
+            try:
+                payload = json.loads(path.read_text(encoding="utf-8"))
+            except (FileNotFoundError, json.JSONDecodeError, OSError):
+                payload = {}
+            products = payload.get("products")
+            if not isinstance(products, dict):
+                products = {}
+            if "enabled" in payload and PRODUCT_ID not in products:
+                products[PRODUCT_ID] = {"enabled": payload.get("enabled") is True}
+            products[product_id] = {"enabled": bool(enabled)}
             with tempfile.NamedTemporaryFile(
                 "w", encoding="utf-8", dir=path.parent, delete=False
             ) as temporary_file:
-                json.dump({"enabled": bool(enabled)}, temporary_file, ensure_ascii=False)
+                json.dump({"products": products}, temporary_file, ensure_ascii=False)
                 temporary_file.write("\n")
                 temporary_path = Path(temporary_file.name)
             os.replace(temporary_path, path)
@@ -1004,18 +1021,18 @@ def save_store_settings(enabled, path=STORE_FILE):
             fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
 
 
-def load_database_store_settings(database_url):
+def load_database_store_settings(database_url, product_id=PRODUCT_ID, default_enabled=False):
     with database_connection(database_url) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
                 "SELECT enabled FROM store_settings WHERE product_id = %s",
-                (PRODUCT_ID,),
+                (product_id,),
             )
             row = cursor.fetchone()
-    return {"enabled": bool(row[0]) if row else False}
+    return {"enabled": bool(row[0]) if row else bool(default_enabled)}
 
 
-def save_database_store_settings(database_url, enabled):
+def save_database_store_settings(database_url, enabled, product_id=PRODUCT_ID):
     with database_connection(database_url) as connection:
         with connection.cursor() as cursor:
             cursor.execute(
@@ -1025,7 +1042,7 @@ def save_database_store_settings(database_url, enabled):
                 ON CONFLICT (product_id) DO UPDATE
                 SET enabled = EXCLUDED.enabled, updated_at = CURRENT_TIMESTAMP
                 """,
-                (PRODUCT_ID, bool(enabled)),
+                (product_id, bool(enabled)),
             )
 
 
@@ -1912,7 +1929,7 @@ def validate_lesson_reservation_update(payload):
     if "status" in payload:
         status = str(payload.get("status", "")).strip()
         if status not in RESERVATION_STATUS_VALUES:
-            raise ValueError("状態は 受付・調整中・確認中・確定・キャンセル から選択してください。")
+            raise ValueError("状態は 確認中・確定・キャンセル から選択してください。")
         values["status"] = status
     if "name" in payload:
         name = str(payload.get("name", "")).strip()
@@ -2189,16 +2206,19 @@ def create_app(
             return load_database_updates(configured_database_url)
         return load_updates(updates_file)
 
-    def get_store_settings():
+    def get_store_settings(product_id=PRODUCT_ID):
+        default_enabled = product_id == FLOW_HARMONY_PRODUCT_ID and FLOW_HARMONY_SALES_ENABLED
         if configured_database_url:
-            return load_database_store_settings(configured_database_url)
-        return load_store_settings(store_file)
+            return load_database_store_settings(
+                configured_database_url, product_id, default_enabled
+            )
+        return load_store_settings(store_file, product_id, default_enabled)
 
-    def set_store_enabled(enabled):
+    def set_store_enabled(enabled, product_id=PRODUCT_ID):
         if configured_database_url:
-            save_database_store_settings(configured_database_url, enabled)
+            save_database_store_settings(configured_database_url, enabled, product_id)
         else:
-            save_store_settings(enabled, store_file)
+            save_store_settings(enabled, store_file, product_id)
 
     def stripe_module():
         import stripe
@@ -3119,17 +3139,35 @@ def create_app(
             )
         return store_json({"checkout_url": stripe_value(checkout, "url")}, 201)
 
-    @app.get("/api/store/trumpet-transpose-lab/product")
-    @app.get("/api/store/flow-harmony/product")
+    @app.route(
+        "/api/store/trumpet-transpose-lab/product", methods=["GET", "PUT", "OPTIONS"]
+    )
+    @app.route("/api/store/flow-harmony/product", methods=["GET", "PUT", "OPTIONS"])
     def flow_harmony_store_product():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if request.method == "PUT":
+            error = require_editor()
+            if error:
+                response, status_code = error
+                response.status_code = status_code
+                return with_store_cors(response)
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("enabled"), bool
+            ):
+                return store_json({"error": "販売状態を指定してください。"}, 400)
+            set_store_enabled(payload["enabled"], FLOW_HARMONY_PRODUCT_ID)
+
+        settings = get_store_settings(FLOW_HARMONY_PRODUCT_ID)
         configuration = flow_harmony_configuration()
         return store_json(
             {
                 "product_id": FLOW_HARMONY_PRODUCT_ID,
                 "name": FLOW_HARMONY_PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": FLOW_HARMONY_SALES_ENABLED,
-                "checkout_available": FLOW_HARMONY_SALES_ENABLED
+                "enabled": settings["enabled"],
+                "checkout_available": settings["enabled"]
                 and configuration["ready"]
                 and flow_harmony_price_is_ready(configuration),
             }
@@ -3142,7 +3180,7 @@ def create_app(
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
-        if not FLOW_HARMONY_SALES_ENABLED:
+        if not get_store_settings(FLOW_HARMONY_PRODUCT_ID)["enabled"]:
             return store_json({"error": "現在公開を停止しています。"}, 503)
         configuration = flow_harmony_configuration()
         if not configuration["ready"] or not flow_harmony_price_is_ready(configuration):

@@ -256,6 +256,14 @@
               <button class="store-button" id="flow-purchase-button" type="button" disabled>販売状況を確認中</button>
               <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
               <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="flow-sales-form" novalidate>
+                  <input id="flow-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="flow-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="flow-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
             </div>
           </div>
           </article>
@@ -409,6 +417,10 @@
     const flowPurchaseButton = document.getElementById("flow-purchase-button");
     const flowDownloadLink = document.getElementById("flow-download-link");
     const flowStoreStatus = document.getElementById("flow-store-status");
+    const flowSalesForm = document.getElementById("flow-sales-form");
+    const flowSalesPassword = document.getElementById("flow-sales-password");
+    const flowSalesEnabled = document.getElementById("flow-sales-enabled");
+    const flowSalesSave = document.getElementById("flow-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -656,11 +668,14 @@
     }
 
     function renderFlowProduct(product) {
+      flowSalesEnabled.checked = product.enabled;
       flowPurchaseButton.disabled = !product.checkout_available;
-      flowPurchaseButton.textContent = product.checkout_available
-        ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
-        : "オフライン版 販売準備中";
-      flowStoreStatus.textContent = product.checkout_available
+      flowPurchaseButton.textContent = product.enabled
+        ? (product.checkout_available
+          ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
+          : "オフライン版 販売準備中")
+        : "オフライン版 販売停止中";
+      flowStoreStatus.textContent = product.enabled && product.checkout_available
         ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
         : "Web版は無料で全機能を利用できます。";
     }
@@ -687,6 +702,36 @@
       } catch (error) {
         flowStoreStatus.textContent = error.message;
         await loadFlowProduct();
+      }
+    });
+
+    flowSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = flowSalesPassword.value;
+      if (!password) {
+        flowStoreStatus.textContent = "編集用パスワードを入力してください。";
+        flowSalesPassword.focus();
+        return;
+      }
+      const requestedState = flowSalesEnabled.checked;
+      flowSalesEnabled.disabled = true;
+      flowSalesSave.disabled = true;
+      flowStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestStore("trumpet-transpose-lab/product", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-Editor-Password": password },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderFlowProduct(product);
+        flowSalesPassword.value = "";
+        flowStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        flowSalesEnabled.checked = !requestedState;
+        flowStoreStatus.textContent = error.message;
+      } finally {
+        flowSalesEnabled.disabled = false;
+        flowSalesSave.disabled = false;
       }
     });
 

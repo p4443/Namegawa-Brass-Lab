@@ -106,6 +106,9 @@
     .admin-slot-row strong { color: var(--navy); }
     .admin-slot-note { color: var(--muted); overflow-wrap: anywhere; }
     .reservation-list { display: grid; gap: 10px; }
+    .reservation-archive { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
+    .reservation-archive summary { cursor: pointer; color: var(--navy); font-weight: 800; }
+    .reservation-archive-list { display: grid; gap: 10px; margin-top: 10px; }
     .reservation-item { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(220px, 1.4fr) auto; gap: 14px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 6px; }
     .reservation-date { color: var(--navy); font-weight: 800; }
     .reservation-meta, .reservation-contact { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
@@ -159,7 +162,7 @@
         <option value="体験レッスン">体験レッスン（30分）</option>
         <option value="小学生">小学生（30分）</option>
         <option value="中学生">中学生（45分）</option>
-        <option value="高校生以上">高校生以上（60分）</option>
+        <option value="高校生以上・大人">高校生以上・大人（60分）</option>
         <option value="グループ・部活動指導">グループ・部活動指導（要相談）</option>
       </select>
     </div>
@@ -178,7 +181,7 @@
       </section>
       <section class="panel detail-panel" aria-labelledby="selected-date-title">
         <h2 id="selected-date-title" tabindex="-1">先にレッスン種別を選択してください</h2>
-        <p class="detail-note">体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
+        <p class="detail-note">空き状況は15分を1枠として管理しています。予約にはレッスン時間分の連続した空き枠が必要です。体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上・大人は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
         <ul class="slot-list" id="slot-list"></ul>
       </section>
     </div>
@@ -255,7 +258,7 @@
     const blocksReservationTime = (time, status) => time === "要相談"
       ? status === "お休み"
       : blockedStatuses.has(status);
-    const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "グループ・部活動指導": null };
+    const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "高校生以上・大人": 60, "グループ・部活動指導": null };
     const statusMap = new Map();
     const confirmedCounts = new Map();
     let scheduleSlots = [];
@@ -547,11 +550,16 @@
     });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
+      const confirmedReservations = activeReservations.filter((reservation) => reservation.status === "確定");
       reservationList.replaceChildren();
       reservationEditors.clear();
       changedReservationIds.clear();
       reservationSaveAll.disabled = true;
       if (!activeReservations.length) { reservationList.textContent = "予約はありません。"; return; }
+      const confirmedArchive = document.createElement("details"); confirmedArchive.className = "reservation-archive";
+      const confirmedSummary = document.createElement("summary"); confirmedSummary.textContent = `確定した予約者一覧（${confirmedReservations.length}件）`;
+      const confirmedList = document.createElement("div"); confirmedList.className = "reservation-archive-list";
+      confirmedArchive.append(confirmedSummary, confirmedList);
       activeReservations.forEach((reservation) => {
         const item = document.createElement("article"); item.className = "reservation-item";
         const when = document.createElement("div"); when.innerHTML = `<div class="reservation-date"></div><div class="reservation-meta"></div>`;
@@ -563,7 +571,7 @@
         person.querySelector(".reservation-name").textContent = reservation.name;
         person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
         const actions = document.createElement("div"); actions.className = "reservation-actions";
-        const status = document.createElement("select"); ["受付","調整中","確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
+        const status = document.createElement("select"); ["確認中","確定","キャンセル"].forEach((value) => status.add(new Option(value, value, false, value === reservation.status)));
         const timeInput = document.createElement("input"); timeInput.type = "time"; timeInput.step = "900"; timeInput.setAttribute("aria-label", "確定時間");
         if (/^\d{2}:\d{2}$/.test(reservation.preferred_time)) timeInput.value = reservation.preferred_time;
         const durationInput = document.createElement("input"); durationInput.type = "number"; durationInput.min = "15"; durationInput.max = "480"; durationInput.step = "15"; durationInput.setAttribute("aria-label", "所要時間（分）");
@@ -582,8 +590,10 @@
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
         reservationEditors.set(reservation.reservation_id, { reservation, status, timeInput, durationInput });
-        actions.append(status, timeInput, durationInput, save, remove); item.append(when, person, actions); reservationList.append(item);
+        actions.append(status, timeInput, durationInput, save, remove); item.append(when, person, actions);
+        (reservation.status === "確定" ? confirmedList : reservationList).append(item);
       });
+      if (confirmedReservations.length) reservationList.append(confirmedArchive);
     }
     async function loadReservations() {
       const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 });

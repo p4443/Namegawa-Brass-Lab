@@ -178,6 +178,32 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(enabled.get_json()["enabled"])
         self.assertTrue(enabled.get_json()["checkout_available"])
 
+    def test_each_app_sale_setting_can_be_updated_independently(self):
+        stripe = self.stripe_module(amount_total=1000)
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            transpose = self.client.put(
+                "/api/store/trumpet-transpose-lab/product",
+                json={"enabled": False},
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(transpose.status_code, 200)
+        self.assertFalse(transpose.get_json()["enabled"])
+        self.assertFalse(self.client.get("/api/store/product").get_json()["enabled"])
+
+        stripe = self.stripe_module()
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            metronome = self.client.put(
+                "/api/store/product",
+                json={"enabled": True},
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertTrue(metronome.get_json()["enabled"])
+        self.assertFalse(
+            self.client.get("/api/store/trumpet-transpose-lab/product").get_json()["enabled"]
+        )
+
     def test_enabled_store_hides_checkout_when_stripe_is_unavailable(self):
         self.enable_store()
         stripe = self.stripe_module()

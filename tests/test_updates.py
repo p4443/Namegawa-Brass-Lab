@@ -1676,7 +1676,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-23-light-cargo-sheet-format-v25";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-27-lesson-types-v26";', script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
         self.assertIn('source.indexOf("admin:") !== 0 && source !== "admin"', script)
         self.assertIn('return "admin:" + Utilities.getUuid();', script)
@@ -1729,6 +1729,31 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("レッスン予約確定のお知らせ", confirmation_function)
         self.assertIn("確定日:", confirmation_function)
         self.assertIn("確定時間:", confirmation_function)
+
+    def test_lesson_admin_uses_current_statuses_and_collapses_confirmed_reservations(self):
+        page = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('["確認中","確定","キャンセル"]', page)
+        self.assertNotIn('["受付","調整中","確認中","確定","キャンセル"]', page)
+        self.assertIn("確定した予約者一覧", page)
+        self.assertIn("空き状況は15分を1枠として管理", page)
+
+        for removed_status in ("受付", "調整中"):
+            with self.assertRaisesRegex(ValueError, "確認中・確定・キャンセル"):
+                validate_lesson_reservation_update({"status": removed_status})
+
+    def test_lesson_type_names_high_school_students_and_adults(self):
+        lesson_page = (Path(__file__).parents[1] / "lesson" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        schedule_page = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("高校生以上・大人", lesson_page)
+        self.assertIn("高校生以上・大人", schedule_page)
 
     def test_apps_script_reservation_ids_do_not_reuse_deleted_rows(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -2144,7 +2169,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('result?.error || "原因不明"', page)
         self.assertIn("if (changedReservationIds.size === 0) await loadReservations()", page)
         self.assertIn("changedReservationIds.size === 0", page)
-        self.assertIn('["受付","調整中","確認中","確定","キャンセル"]', page)
+        self.assertIn('["確認中","確定","キャンセル"]', page)
         self.assertIn("statusSelect.value = result.status || statusSelect.value", page)
         self.assertIn("予約状態を「${statusSelect.value}」へ更新しました。", page)
         self.assertIn("予約は削除済みです。一覧の再読み込みに失敗しました", page)
@@ -2218,7 +2243,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-23-light-cargo-sheet-format-v25",
+                "version": "2026-08-27-lesson-types-v26",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
