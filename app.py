@@ -325,7 +325,7 @@ def decode_instrument_page(body, charset):
 
 
 def instrument_candidate_priority(candidate):
-    return {"exact": 0, "partial": 1}.get(candidate.get("match_type"), 2)
+    return {"exact": 0, "normalized": 1, "partial": 2}.get(candidate.get("match_type"), 3)
 
 
 def instrument_url_match_priority(url, maker_model):
@@ -360,7 +360,19 @@ def discover_instrument_model_urls(source_url, maker_model, links):
         searchable_link = re.sub(
             r"[^a-z0-9]", "", f"{location} {label}".casefold()
         )
-        if normalized_model in searchable_link and location not in product_urls:
+        link_model_codes = INSTRUMENT_MODEL_CODE_PATTERN.findall(
+            unicodedata.normalize("NFKC", f"{location} {label}")
+        )
+        normalized_link_models = [
+            re.sub(r"[^a-z0-9]", "", model.casefold())
+            for model in link_model_codes
+        ]
+        partial_model_match = any(
+            len(min((normalized_model, link_model), key=len)) >= 4
+            and (normalized_model in link_model or link_model in normalized_model)
+            for link_model in normalized_link_models
+        )
+        if (normalized_model in searchable_link or partial_model_match) and location not in product_urls:
             product_urls.append(location)
     product_urls.sort(key=lambda url: instrument_url_match_priority(url, maker_model))
     return product_urls[:20]
@@ -374,7 +386,7 @@ def discover_instrument_catalog_urls(source_url, maker_model, opener, initial_li
     visited = {source_url}
     product_urls = discover_instrument_model_urls(source_url, maker_model, initial_links)
 
-    while pending and len(visited) < 120 and not has_exact_instrument_url(product_urls, maker_model):
+    while pending and len(visited) < 120 and not product_urls:
         current_url, depth = pending.pop(0)
         if current_url in visited or depth > 3:
             continue
@@ -478,7 +490,12 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
             normalized_model in normalized_catalog_model
             or normalized_catalog_model in normalized_model
         ):
-            model_matches.append((match.start(), catalog_model, "partial"))
+            match_type = (
+                "normalized"
+                if normalized_model == normalized_catalog_model
+                else "partial"
+            )
+            model_matches.append((match.start(), catalog_model, match_type))
             matched_positions.add(match.start())
             if len(model_matches) >= 20:
                 break
@@ -490,7 +507,7 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
     )
     candidates = []
     seen_prices = set()
-    for candidate_match_type in ("exact", "partial"):
+    for candidate_match_type in ("exact", "normalized", "partial"):
         for position, matched_model, match_type in model_matches:
             if match_type != candidate_match_type:
                 continue
@@ -534,8 +551,6 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
                     break
             if len(candidates) >= 10:
                 break
-        if candidates:
-            break
     if not candidates:
         if allow_discovery:
             linked_results = []
@@ -564,7 +579,7 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
                 return adopted_result
         raise ValueError("型番付近に円価格が見つかりませんでした。")
     candidates.sort(key=lambda candidate: (
-        0 if candidate["match_type"] == "exact" else 1,
+        instrument_candidate_priority(candidate),
         0 if candidate["tax_status"] == "tax_included" else 1,
     ))
     return {

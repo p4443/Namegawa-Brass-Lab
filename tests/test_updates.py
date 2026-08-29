@@ -8,12 +8,14 @@ from base64 import b64encode
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
+from urllib.parse import urljoin
 
 from app import (
     LessonReservationDeliveryError,
     compute_google_route,
     compute_public_route,
     create_app,
+    discover_instrument_model_urls,
     fetch_instrument_catalog_prices,
     fetch_instrument_price_candidates,
     load_updates,
@@ -170,7 +172,7 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(result["source_name"], "ヤマハ")
         self.assertEqual(result["exact_model"], "YTR-8335")
-        self.assertEqual([candidate["price"] for candidate in result["candidates"]], [423500])
+        self.assertEqual([candidate["price"] for candidate in result["candidates"]], [423500, 900000])
         self.assertIn("YTR-8335 希望小売価格:423,500円", result["candidates"][0]["context"])
 
     def test_instrument_price_lookup_falls_back_to_partial_model_match(self):
@@ -229,6 +231,35 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(result["match_type"], "partial")
         self.assertEqual(result["candidates"][0]["price"], 456500)
+
+    def test_instrument_price_lookup_prioritizes_normalized_model_match(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/ytr-8335.html"
+
+            def read(self, size):
+                return "<p>YTR-8335 467,500円（税込）</p><p>YTR-8335S 495,000円（税込）</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/ytr-8335.html", "YTR8335S", opener
+        )
+
+        self.assertEqual(result["candidates"][0]["matched_model"], "YTR-8335S")
+        self.assertEqual(result["candidates"][0]["match_type"], "normalized")
+        self.assertEqual(result["candidates"][0]["price"], 495000)
 
     def test_instrument_price_lookup_finds_distant_tax_included_price(self):
         class FakeResponse:
@@ -326,6 +357,27 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(result["source_url"], "https://jp.yamaha.com/products/ytr-8335.html")
         self.assertEqual(result["candidates"][0]["price"], 500000)
+
+    def test_instrument_price_lookup_discovers_partial_model_urls_for_all_catalogs(self):
+        cases = [
+            ("https://jp.yamaha.com/catalog/", "YTR8335S", "/products/ytr-8335.html", "YTR-8335"),
+            ("https://www.buffetcrampon.com/collections/clarinets", "BC1139L2", "/products/bc1139l", "BC1139L"),
+            ("https://pearldrum.com/ja/catalog/", "PFP105ES", "/ja/products/pfp-105e", "PFP-105E"),
+            ("https://www.korogi.co.jp/product/", "SE660R", "/product/se-660", "SE-660"),
+            ("https://www.suzuki-music.co.jp/products/", "MXN32S", "/products/mxn-32", "MXN-32"),
+            ("https://www.nonaka.com/instrument/", "MODEL100S", "/instrument/model-100", "MODEL-100"),
+            ("https://global-inst.co.jp/brass_Instruments/", "TR300S", "/brass_Instruments/tr-300", "TR-300"),
+        ]
+
+        for source_url, entered_model, product_path, catalog_model in cases:
+            with self.subTest(source_url=source_url):
+                result = discover_instrument_model_urls(
+                    source_url,
+                    entered_model,
+                    [(product_path, catalog_model)],
+                )
+
+                self.assertEqual(result, [urljoin(source_url, product_path)])
 
     def test_instrument_price_lookup_allows_official_subdomain_product_url(self):
         class FakeResponse:
@@ -838,13 +890,13 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("https://www.korogi.co.jp/product/", page)
         self.assertIn("https://www.suzuki-music.co.jp/products/", page)
         self.assertIn("https://www.nonaka.com/instrument/", page)
-        self.assertIn("完全一致しない場合も一部一致候補を表示します。", page)
+        self.assertIn("ハイフン・末尾記号・世代表記の違いを含めて近似候補を表示します。", page)
         self.assertIn("価格の更新間隔（日）", page)
         self.assertIn('data-refresh-stale-instrument-prices', page)
         self.assertIn("function instrumentPriceIsStale(item, estimateDate, refreshIntervalDays = '30')", page)
         self.assertIn("async function refreshStaleInstrumentPrices()", page)
         self.assertIn("更新期限を過ぎています。一括再照会してください。", page)
-        self.assertIn("candidate.match_type === 'exact' ? '完全一致' : '一部一致'", page)
+        self.assertIn("candidate.match_type === 'normalized' ? '正規化一致' : '近似候補'", page)
         self.assertIn('data-apply-price-candidate="${candidateIndex}"', page)
         self.assertIn("function applyInstrumentPrice(rowIndex, candidateIndex = 0)", page)
         self.assertIn("指定カタログ内で型番価格を検索・反映", page)

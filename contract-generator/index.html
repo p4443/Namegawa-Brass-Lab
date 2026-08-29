@@ -1215,9 +1215,11 @@
       }
       const taxLabel = status => status === 'tax_included' ? '税込' : status === 'tax_excluded' ? '税別' : '税込／税別の表記不明';
       const item = contractValues.estimateB.cargo_items[rowIndex];
-      return `<div class="price-lookup-results" data-instrument-price-results><p>完全一致しない場合も一部一致候補を表示します。カタログ記載型番と価格を確認して採用してください。</p>${result.candidates.map((candidate, candidateIndex) => {
+      return `<div class="price-lookup-results" data-instrument-price-results><p>カタログごとのハイフン・末尾記号・世代表記の違いを含めて近似候補を表示します。掲載型番と価格を確認して採用してください。</p>${result.candidates.map((candidate, candidateIndex) => {
         const isApplied = item.price_source_url === candidate.source_url && estimateNumber(item.catalog_price) === candidate.price;
-        const matchLabel = candidate.match_type === 'exact' ? '完全一致' : '一部一致';
+        const matchLabel = candidate.match_type === 'exact'
+          ? '表記一致'
+          : candidate.match_type === 'normalized' ? '正規化一致' : '近似候補';
         const matchedModel = candidate.matched_model || result.maker_model;
         return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '反映済み' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
       }).join('')}</div>`;
