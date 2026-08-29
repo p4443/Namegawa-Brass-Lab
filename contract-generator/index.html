@@ -173,6 +173,17 @@
       margin-top: 6px;
     }
 
+    .save-actions select {
+      min-width: 0;
+      min-height: 44px;
+      padding: 8px 10px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--ink);
+      background: #ffffff;
+      font: inherit;
+    }
+
     .secondary-button {
       box-sizing: border-box;
       min-height: 44px;
@@ -504,6 +515,8 @@
         break-after: page;
       }
       .contract-page:last-child { break-after: auto; }
+      .document[data-print-pages="front"] .contract-page:not([data-page-number="1"]),
+      .document[data-print-pages="back"] .contract-page[data-page-number="1"] { display: none !important; }
       .document h1, .document h2 { break-after: avoid; }
       .document p { orphans: 3; widows: 3; }
       .document table { break-inside: auto; }
@@ -572,6 +585,13 @@
       <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
       <div class="save-actions">
         <button class="primary-button" id="saveContract" type="button">部門別に保存</button>
+        <button class="secondary-button" id="exportContractCsv" type="button">CSV出力</button>
+        <button class="secondary-button" id="exportContractExcel" type="button">Excel出力</button>
+        <select id="printPageSelection" aria-label="印刷するページ">
+          <option value="all">全ページ</option>
+          <option value="front">表面（1ページ目）</option>
+          <option value="back">裏面以降（2ページ目〜）</option>
+        </select>
         <button class="secondary-button" id="printContract" type="button">A4縦 PDF出力 / 印刷</button>
       </div>
       <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
@@ -2008,6 +2028,60 @@
       };
     }
 
+    function flattenContractData(value, prefix = '', rows = []) {
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => flattenContractData(item, `${prefix}[${index + 1}]`, rows));
+      } else if (value && typeof value === 'object') {
+        Object.entries(value).forEach(([key, item]) => {
+          flattenContractData(item, prefix ? `${prefix}.${key}` : key, rows);
+        });
+      } else {
+        rows.push([prefix, value ?? '']);
+      }
+      return rows;
+    }
+
+    function exportFilename(extension) {
+      const client = clientName.value.trim().replace(/[\\/:*?"<>|]/g, '_') || 'contract';
+      const date = contractDate.value || new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+      return `${date}-${client}-${docType.value}.${extension}`;
+    }
+
+    function downloadContractFile(content, type, extension) {
+      const url = URL.createObjectURL(new Blob([content], { type }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = exportFilename(extension);
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function exportContractCsv() {
+      const escapeCsv = value => `"${String(value).replace(/"/g, '""')}"`;
+      const rows = [['項目', '値'], ...flattenContractData(contractPayload())];
+      const csv = `\uFEFF${rows.map(row => row.map(escapeCsv).join(',')).join('\r\n')}`;
+      downloadContractFile(csv, 'text/csv;charset=utf-8', 'csv');
+    }
+
+    function exportContractExcel() {
+      const rows = flattenContractData(contractPayload());
+      const cells = rows.map(([key, value]) => `<Row><Cell><Data ss:Type="String">${escapeHtml(key)}</Data></Cell><Cell><Data ss:Type="String">${escapeHtml(value)}</Data></Cell></Row>`).join('');
+      const workbook = `<?xml version="1.0"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="契約書データ"><Table><Row><Cell><Data ss:Type="String">項目</Data></Cell><Cell><Data ss:Type="String">値</Data></Cell></Row>${cells}</Table></Worksheet></Workbook>`;
+      downloadContractFile(workbook, 'application/vnd.ms-excel;charset=utf-8', 'xls');
+    }
+
+    function printContractPages() {
+      const selection = document.getElementById('printPageSelection').value;
+      if (selection === 'back' && !preview.querySelector('.contract-page[data-page-number="2"]')) {
+        saveStatus.textContent = 'この書類に裏面はありません。';
+        saveStatus.dataset.state = 'error';
+        return;
+      }
+      preview.dataset.printPages = selection;
+      window.print();
+      delete preview.dataset.printPages;
+    }
+
     function adminHeaders() {
       return { 'Content-Type': 'application/json', 'X-Editor-Token': editorToken };
     }
@@ -2565,7 +2639,9 @@
       if (printValue?.classList.contains('estimate-print-value')) printValue.textContent = event.target.value;
       updateEstimatePreviewTotals();
     });
-    document.getElementById('printContract').addEventListener('click', () => window.print());
+    document.getElementById('exportContractCsv').addEventListener('click', exportContractCsv);
+    document.getElementById('exportContractExcel').addEventListener('click', exportContractExcel);
+    document.getElementById('printContract').addEventListener('click', printContractPages);
     document.getElementById('cancelFreightCalculator').addEventListener('click', closeFreightCalculator);
     freightCalculatorDialog.querySelector('[data-load-light-cargo-reference]').addEventListener('click', loadLightCargoReference);
     freightCalculatorDialog.querySelector('[data-operation-input="instrument_surcharge_mode"]').addEventListener('change', () => updateInstrumentSurchargePreset(true));

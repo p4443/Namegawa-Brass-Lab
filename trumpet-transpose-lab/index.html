@@ -667,6 +667,35 @@
       font-size: 0.75rem;
     }
 
+    .recording-key-settings {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(120px, 1fr);
+      gap: 8px;
+      padding: 12px;
+      border: 1px solid var(--line-color);
+      border-left: 3px solid var(--accent-color);
+      background: #0d1011;
+    }
+
+    .recording-key-settings label {
+      min-width: 0;
+      color: var(--text-muted);
+      font-size: 0.68rem;
+    }
+
+    .recording-key-settings select {
+      width: 100%;
+      height: 38px;
+      margin-top: 5px;
+      padding: 6px 8px;
+      border: 1px solid var(--line-color);
+      border-radius: 3px;
+      background: #090c0d;
+      color: var(--text-color);
+      font: inherit;
+      font-size: 0.78rem;
+    }
+
     .transpose-control {
       display: flex;
       align-items: center;
@@ -714,6 +743,21 @@
     .score-edit-tools span {
       color: var(--text-muted);
       font-size: 0.7rem;
+    }
+
+    .barline-adjustment {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding-left: 8px;
+      border-left: 1px solid var(--line-color);
+    }
+
+    .barline-adjustment output {
+      min-width: 58px;
+      color: var(--accent-color);
+      font-size: 0.7rem;
+      text-align: center;
     }
 
     #scoreSvg .score-note {
@@ -1199,6 +1243,34 @@
 
   <!-- メイン操作 -->
   <div class="controls">
+    <div class="recording-key-settings" aria-label="録音前の調号設定">
+      <label>採譜する調号
+        <select id="keySignature" onchange="handleKeySignatureChange()">
+          <option value="auto">自動判定</option>
+          <option value="-7">♭7（C♭ / A♭m）</option>
+          <option value="-6">♭6（G♭ / E♭m）</option>
+          <option value="-5">♭5（D♭ / B♭m）</option>
+          <option value="-4">♭4（A♭ / Fm）</option>
+          <option value="-3">♭3（E♭ / Cm）</option>
+          <option value="-2">♭2（B♭ / Gm）</option>
+          <option value="-1">♭1（F / Dm）</option>
+          <option value="0" selected>♮0（C / Am）</option>
+          <option value="1">♯1（G / Em）</option>
+          <option value="2">♯2（D / Bm）</option>
+          <option value="3">♯3（A / F♯m）</option>
+          <option value="4">♯4（E / C♯m）</option>
+          <option value="5">♯5（B / G♯m）</option>
+          <option value="6">♯6（F♯ / D♯m）</option>
+          <option value="7">♯7（C♯ / A♯m）</option>
+        </select>
+      </label>
+      <label>長調・短調
+        <select id="keyMode" onchange="handleKeySignatureChange()">
+          <option value="major" selected>Major（長調）</option>
+          <option value="minor">Minor（短調）</option>
+        </select>
+      </label>
+    </div>
     <details class="advanced-settings rhythm-settings">
       <summary>テンポ・拍子・採譜設定</summary>
     <div class="score-settings" id="recordingSettings">
@@ -1223,26 +1295,6 @@
         <select id="autoTempoDetection" onchange="handleScoreSettingsChange()">
           <option value="on" selected>自動</option>
           <option value="off">手動BPMを維持</option>
-        </select>
-      </label>
-      <label>楽譜の調号
-        <select id="keySignature" onchange="handleKeySignatureChange()">
-          <option value="auto" selected>自動判定</option>
-          <option value="-7">C♭ Major / A♭ Minor</option>
-          <option value="-6">G♭ Major / E♭ Minor</option>
-          <option value="-5">D♭ Major / B♭ Minor</option>
-          <option value="-4">A♭ Major / F Minor</option>
-          <option value="-3">E♭ Major / C Minor</option>
-          <option value="-2">B♭ Major / G Minor</option>
-          <option value="-1">F Major / D Minor</option>
-          <option value="0">C Major / A Minor</option>
-          <option value="1">G Major / E Minor</option>
-          <option value="2">D Major / B Minor</option>
-          <option value="3">A Major / F♯ Minor</option>
-          <option value="4">E Major / C♯ Minor</option>
-          <option value="5">B Major / G♯ Minor</option>
-          <option value="6">F♯ Major / D♯ Minor</option>
-          <option value="7">C♯ Major / A♯ Minor</option>
         </select>
       </label>
       <label>予備カウント小節
@@ -1348,6 +1400,13 @@
       <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(-1, 0)" aria-label="音符を半音下へ移動">↓</button>
       <button class="btn-tone" type="button" onclick="moveSelectedScoreNote(0, 1)" aria-label="音符を右へ移動">→</button>
       <button class="btn-tone" type="button" onclick="deleteSelectedScoreNote()">削除</button>
+      <div class="barline-adjustment" aria-label="小節線の位置補正">
+        <span>小節線補正</span>
+        <button class="btn-tone" type="button" onclick="adjustBarlineOffset(-1)" aria-label="小節線を左へ移動">←</button>
+        <output id="barlineOffsetValue">基準位置</output>
+        <button class="btn-tone" type="button" onclick="adjustBarlineOffset(1)" aria-label="小節線を右へ移動">→</button>
+        <button class="btn-tone" type="button" onclick="resetBarlineOffset()">リセット</button>
+      </div>
     </div>
     <div class="score-viewport" id="scoreViewport">
       <svg id="scoreSvg" role="img" aria-label="解析された楽譜"></svg>
@@ -1391,6 +1450,7 @@
   let selectedScoreNoteId = null;
   let selectedScoreVoice = 'original';
   let scoreEditHistory = [];
+  let barlineOffsetQuarter = 0;
   let transposeSemitones = 0;
   const instrumentTransposeSemitones = 2;
   let countInProgress = false;
@@ -1647,7 +1707,7 @@
         .sort((left, right) => left.midiFloat - right.midiFloat);
       if (!neighbors.length) return null;
       const median = neighbors[Math.floor(neighbors.length / 2)].midiFloat;
-      return Math.round(median);
+      return keyAwareMidiNote(median);
     });
     for (let index = 1; index < smoothed.length - 1; index++) {
       if (smoothed[index] === null && smoothed[index - 1] === smoothed[index + 1]) {
@@ -1745,6 +1805,8 @@
           analyzedFromRecording: true
         };
       });
+      barlineOffsetQuarter = 0;
+      scoreEditHistory = [];
       updateDetectedKeyFromNotes(scoreNotes);
       firstPartNotes = scoreNotes.map(note => ({ ...note }));
       duetNotes = [];
@@ -1779,6 +1841,7 @@
     const previousScoreNotes = scoreNotes.map(note => ({ ...note }));
     const previousFirstPartNotes = firstPartNotes.map(note => ({ ...note }));
     const previousDuetNotes = duetNotes.map(note => ({ ...note }));
+    const previousBarlineOffsetQuarter = barlineOffsetQuarter;
     try {
       scoreNotes = [];
       firstPartNotes = [];
@@ -1803,6 +1866,7 @@
       scoreNotes = previousScoreNotes;
       firstPartNotes = previousFirstPartNotes;
       duetNotes = previousDuetNotes;
+      barlineOffsetQuarter = previousBarlineOffsetQuarter;
       renderScore();
       status.innerText = error.message === 'AUDIO_DECODE_FAILED'
         ? 'この録音形式を読み込めませんでした。WAV、MP3、M4Aのいずれかで保存して再度お試しください。'
@@ -1886,6 +1950,7 @@
       notes: scoreNotes.map(note => ({ ...note })),
       firstPartNotes: firstPartNotes.map(note => ({ ...note })),
       duetNotes: duetNotes.map(note => ({ ...note })),
+      barlineOffsetQuarter,
       selectedNoteId: selectedScoreNoteId,
       selectedVoice: selectedScoreVoice
     });
@@ -1899,6 +1964,7 @@
     scoreNotes = previous.notes.map(note => ({ ...note }));
     firstPartNotes = (previous.firstPartNotes || previous.notes).map(note => ({ ...note }));
     duetNotes = (previous.duetNotes || []).map(note => ({ ...note }));
+    barlineOffsetQuarter = previous.barlineOffsetQuarter || 0;
     selectedScoreNoteId = previous.selectedNoteId;
     selectedScoreVoice = previous.selectedVoice;
     document.getElementById('undoScoreEditButton').disabled = scoreEditHistory.length === 0;
@@ -1945,6 +2011,40 @@
     if (selectedScoreVoice === 'harmony') duetNotes = duetNotes.filter(item => item.id !== selectedScoreNoteId);
     else firstPartNotes = firstPartNotes.filter(item => item.id !== selectedScoreNoteId);
     selectedScoreNoteId = null;
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  function updateBarlineOffsetValue(settings = scoreRhythmSettings()) {
+    const output = document.getElementById('barlineOffsetValue');
+    if (!output) return;
+    if (Math.abs(settings.barlineOffsetQuarter) < 0.001) {
+      output.value = '基準位置';
+      return;
+    }
+    const beatOffset = settings.barlineOffsetQuarter * settings.denominator / 4;
+    output.value = `${beatOffset > 0 ? '+' : ''}${Number(beatOffset.toFixed(2))}拍`;
+  }
+
+  async function adjustBarlineOffset(direction) {
+    if (!scoreNotes.length || !direction) return;
+    const settings = scoreRhythmSettings();
+    const baseFirstMeasure = settings.pickupQuarter || settings.measureQuarter;
+    const minimumOffset = settings.gridQuarter - baseFirstMeasure;
+    const maximumOffset = settings.measureQuarter - settings.gridQuarter;
+    const nextOffset = Math.max(minimumOffset, Math.min(maximumOffset,
+      barlineOffsetQuarter + Math.sign(direction) * settings.gridQuarter));
+    if (Math.abs(nextOffset - barlineOffsetQuarter) < 0.001) return;
+    rememberScoreEdit();
+    barlineOffsetQuarter = nextOffset;
+    renderScore();
+    await persistScoreEdits();
+  }
+
+  async function resetBarlineOffset() {
+    if (Math.abs(barlineOffsetQuarter) < 0.001) return;
+    rememberScoreEdit();
+    barlineOffsetQuarter = 0;
     renderScore();
     await persistScoreEdits();
   }
@@ -2132,11 +2232,14 @@
     const ticksPerQuarter = 480;
     const microseconds = Math.round(60000000 / settings.tempo);
     const denominatorPower = Math.round(Math.log2(settings.denominator));
-    const fifths = keySignatureCountFor(detectedKeyRoot + transposeSemitones, detectedKeyMode);
+    const selectedKey = selectedKeyContext();
+    const midiKeyRoot = selectedKey?.concertRoot ?? detectedKeyRoot;
+    const midiKeyMode = selectedKey?.mode ?? detectedKeyMode;
+    const fifths = keySignatureCountFor(midiKeyRoot + transposeSemitones, midiKeyMode);
     const conductor = midiChunk('MTrk', [
       0, 0xff, 0x51, 3, (microseconds >>> 16) & 0xff, (microseconds >>> 8) & 0xff, microseconds & 0xff,
       0, 0xff, 0x58, 4, settings.numerator, denominatorPower, 24, 8,
-      0, 0xff, 0x59, 2, fifths & 0xff, detectedKeyMode === 'minor' ? 1 : 0,
+      0, 0xff, 0x59, 2, fifths & 0xff, midiKeyMode === 'minor' ? 1 : 0,
       0, 0xff, 0x2f, 0
     ]);
     const header = midiChunk('MThd', [0, 1, 0, 2, (ticksPerQuarter >>> 8) & 0xff, ticksPerQuarter & 0xff]);
@@ -2188,8 +2291,8 @@
 
   function musicXmlPart(partId, notes, settings, totalQuarter, divisions, fifths) {
     const events = buildScoreModel(notes, settings).events;
-    const boundaries = [0];
-    if (settings.pickupQuarter) boundaries.push(settings.pickupQuarter);
+    const firstBoundary = firstScoreMeasureQuarter(settings);
+    const boundaries = [0, firstBoundary];
     while (boundaries[boundaries.length - 1] < totalQuarter - 0.001) {
       boundaries.push(boundaries[boundaries.length - 1] + settings.measureQuarter);
     }
@@ -2208,7 +2311,7 @@
       const attributes = index === 0
         ? `<attributes><divisions>${divisions}</divisions><key><fifths>${fifths}</fifths></key><time><beats>${settings.numerator}</beats><beat-type>${settings.denominator}</beat-type></time><clef><sign>G</sign><line>2</line></clef><transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes><sound tempo="${settings.tempo}"/>`
         : '';
-      const implicit = index === 0 && settings.pickupQuarter ? ' implicit="yes"' : '';
+      const implicit = index === 0 && Math.abs(firstBoundary - settings.measureQuarter) > 0.001 ? ' implicit="yes"' : '';
       return `<measure number="${index + 1}"${implicit}>${attributes}${contents.join('')}</measure>`;
     }).join('');
   }
@@ -2222,10 +2325,10 @@
     }
     const settings = scoreRhythmSettings();
     const melodyModel = buildScoreModel(melody, settings);
-    const lastQuarter = Math.max(melodyModel.lastQuarter, settings.pickupQuarter || settings.measureQuarter);
-    const scoreOriginQuarter = settings.pickupQuarter || 0;
-    const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
-    const totalQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
+    const firstBoundary = firstScoreMeasureQuarter(settings);
+    const lastQuarter = Math.max(melodyModel.lastQuarter, firstBoundary);
+    const completedMeasures = Math.ceil(Math.max(0, lastQuarter - firstBoundary) / settings.measureQuarter);
+    const totalQuarter = firstBoundary + completedMeasures * settings.measureQuarter;
     const fifths = scoreKeySignature();
     const divisions = 480;
     const xml = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>\n<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">\n<score-partwise version="4.0"><work><work-title>Trumpet Transpose Lab Score</work-title></work><identification><encoding><software>Trumpet Transpose Lab</software><encoding-date>${new Date().toISOString().slice(0, 10)}</encoding-date></encoding></identification><part-list><score-part id="P1"><part-name>B-flat Trumpet</part-name><score-instrument id="P1-I1"><instrument-name>Trumpet</instrument-name></score-instrument><midi-instrument id="P1-I1"><midi-channel>1</midi-channel><midi-program>57</midi-program></midi-instrument></score-part></part-list><part id="P1">${musicXmlPart('P1', melody, settings, totalQuarter, divisions, fifths)}</part></score-partwise>`;
@@ -2254,6 +2357,7 @@
       selectedScoreNoteId = null;
       selectedScoreVoice = 'original';
       scoreEditHistory = [];
+      barlineOffsetQuarter = 0;
       document.getElementById('undoScoreEditButton').disabled = true;
       document.getElementById('playbackOptions').hidden = true;
       document.getElementById('playbackMeter').hidden = true;
@@ -2360,8 +2464,14 @@
       quarterMs: 60000 / tempo,
       gridQuarter: 4 / division,
       measureQuarter: numerator * 4 / denominator,
-      pickupQuarter: pickupBeats * 4 / denominator
+      pickupQuarter: pickupBeats * 4 / denominator,
+      barlineOffsetQuarter
     };
+  }
+
+  function firstScoreMeasureQuarter(settings) {
+    const baseFirstMeasure = settings.pickupQuarter || settings.measureQuarter;
+    return Math.max(settings.gridQuarter, baseFirstMeasure + settings.barlineOffsetQuarter);
   }
 
   function tapTempo() {
@@ -2408,12 +2518,10 @@
   }
 
   function nextScoreBoundary(position, settings) {
-    if (settings.pickupQuarter && position < settings.pickupQuarter - 0.001) {
-      return settings.pickupQuarter;
-    }
-    const measureOrigin = settings.pickupQuarter || 0;
-    const measureIndex = Math.floor((position - measureOrigin) / settings.measureQuarter + 0.001) + 1;
-    return measureOrigin + Math.max(1, measureIndex) * settings.measureQuarter;
+    const firstBoundary = firstScoreMeasureQuarter(settings);
+    if (position < firstBoundary - 0.001) return firstBoundary;
+    const measureIndex = Math.floor((position - firstBoundary) / settings.measureQuarter + 0.001) + 1;
+    return firstBoundary + measureIndex * settings.measureQuarter;
   }
 
   function buildScoreModel(notes, settings) {
@@ -2531,10 +2639,11 @@
       let alteration = pitchClass - naturalPitchClasses[step];
       if (alteration > 6) alteration -= 12;
       if (alteration < -6) alteration += 12;
-      const afterPickup = Math.max(0, startQuarter - settings.pickupQuarter);
-      const measureIndex = settings.pickupQuarter && startQuarter < settings.pickupQuarter - 0.001
+      const firstBoundary = firstScoreMeasureQuarter(settings);
+      const afterFirstMeasure = Math.max(0, startQuarter - firstBoundary);
+      const measureIndex = startQuarter < firstBoundary - 0.001
         ? 0
-        : Math.floor(afterPickup / settings.measureQuarter + 0.001) + (settings.pickupQuarter ? 1 : 0);
+        : Math.floor(afterFirstMeasure / settings.measureQuarter + 0.001) + 1;
       const stateKey = `${measureIndex}:${step}`;
       const currentAlteration = measureState.has(stateKey) ? measureState.get(stateKey) : keyAlterations[step];
       measureState.set(stateKey, alteration);
@@ -2564,6 +2673,12 @@
   }
 
   function handleScoreSettingsChange() {
+    const settings = scoreRhythmSettings();
+    const baseFirstMeasure = settings.pickupQuarter || settings.measureQuarter;
+    barlineOffsetQuarter = Math.max(
+      settings.gridQuarter - baseFirstMeasure,
+      Math.min(settings.measureQuarter - settings.gridQuarter, barlineOffsetQuarter)
+    );
     if (scoreNotes.length) renderScore();
     if (!isRecording && !countInProgress) resetBeatGuide();
   }
@@ -2574,8 +2689,41 @@
     return (mode === 'minor' ? minorSignatures : majorSignatures)[positiveModulo(root, 12)];
   }
 
+  function selectedKeyContext() {
+    const selected = document.getElementById('keySignature').value;
+    if (selected === 'auto') return null;
+    const fifths = Number(selected);
+    const mode = document.getElementById('keyMode').value;
+    const writtenRoot = positiveModulo(fifths * 7 + (mode === 'minor' ? 9 : 0), 12);
+    const concertRoot = positiveModulo(writtenRoot - instrumentTransposeSemitones, 12);
+    return {
+      fifths,
+      mode,
+      writtenRoot,
+      concertRoot,
+      scale: mode === 'minor' ? minorScale : majorScale
+    };
+  }
+
+  function keyAwareMidiNote(midiFloat) {
+    const key = selectedKeyContext();
+    if (!key) return Math.round(midiFloat);
+    const candidates = [Math.floor(midiFloat), Math.round(midiFloat), Math.ceil(midiFloat)];
+    return candidates.reduce((best, candidate) => {
+      const inKey = key.scale.includes(positiveModulo(candidate - key.concertRoot, 12));
+      const cost = Math.abs(candidate - midiFloat) + (inKey ? 0 : 0.3);
+      return !best || cost < best.cost ? { note: candidate, cost } : best;
+    }, null).note;
+  }
+
   function updateDetectedKeyFromNotes(notes) {
     if (!notes.length) return;
+    const selectedKey = selectedKeyContext();
+    if (selectedKey) {
+      detectedKeyRoot = selectedKey.concertRoot;
+      detectedKeyMode = selectedKey.mode;
+      return;
+    }
     const pitchWeights = Array(12).fill(0);
     notes.forEach((note) => {
       const durationWeight = Math.max(100, note.end - note.start);
@@ -2626,12 +2774,23 @@
   }
 
   function handleKeySignatureChange() {
+    const selectedKey = selectedKeyContext();
+    document.getElementById('keyMode').disabled = !selectedKey;
+    if (selectedKey) {
+      detectedKeyRoot = selectedKey.concertRoot;
+      detectedKeyMode = selectedKey.mode;
+    } else if (scoreNotes.length) {
+      updateDetectedKeyFromNotes(finalizedFirstPartNotes());
+    }
     if (scoreNotes.length) renderScore();
   }
 
   function lockRecordingSettings(locked) {
-    document.querySelectorAll('#recordingSettings input, #recordingSettings select')
+    document.querySelectorAll('#recordingSettings input, #recordingSettings select, .recording-key-settings select')
       .forEach(control => { control.disabled = locked; });
+    if (!locked) {
+      document.getElementById('keyMode').disabled = document.getElementById('keySignature').value === 'auto';
+    }
   }
 
   async function runVisualCountIn(settings) {
@@ -2681,9 +2840,9 @@
     const rhythmicNotes = scoreModel.events;
     const rhythmicDuetNotes = [];
     const lastQuarter = scoreModel.lastQuarter;
-    const scoreOriginQuarter = settings.pickupQuarter || 0;
-    const completedMeasures = Math.max(1, Math.ceil(Math.max(0, lastQuarter - scoreOriginQuarter) / settings.measureQuarter));
-    const scoreEndQuarter = scoreOriginQuarter + completedMeasures * settings.measureQuarter;
+    const firstBoundary = firstScoreMeasureQuarter(settings);
+    const completedMeasures = Math.ceil(Math.max(0, lastQuarter - firstBoundary) / settings.measureQuarter);
+    const scoreEndQuarter = firstBoundary + completedMeasures * settings.measureQuarter;
     const keySignatureCount = scoreKeySignature();
     const signatureSize = Math.abs(keySignatureCount);
     const timeSignatureX = 96 + signatureSize * 13;
@@ -2700,6 +2859,7 @@
       return;
     }
     document.getElementById('scoreEditTools').hidden = false;
+    updateBarlineOffsetValue(settings);
     const selectedNote = notes.find(note => note.id === selectedScoreNoteId);
     const scoreTranspose = scoreTransposeSemitones();
     const durationControl = document.getElementById('selectedNoteDuration');
@@ -2729,9 +2889,8 @@
     const keySignatureElements = Array.from({ length: signatureSize }, (_, index) => (
       `<text x="${84 + index * 13}" y="${signaturePositions[index]}" font-size="19" fill="#151719">${signatureSymbol}</text>`
     )).join('');
-    const firstBoundary = settings.pickupQuarter || settings.measureQuarter;
     const barlines = [];
-    let measureNumber = settings.pickupQuarter ? 0 : 1;
+    let measureNumber = 1;
     for (let boundary = firstBoundary; boundary < scoreEndQuarter - 0.001; boundary += settings.measureQuarter) {
       const x = scoreStartX + boundary * quarterWidth;
       measureNumber += 1;
@@ -2745,11 +2904,7 @@
     const appendRestGap = (start, end) => {
       let position = start;
       while (end - position >= 0.124) {
-        const beforePickup = settings.pickupQuarter && position < settings.pickupQuarter - 0.001;
-        const measureOrigin = settings.pickupQuarter || 0;
-        const nextBoundary = beforePickup
-          ? settings.pickupQuarter
-          : measureOrigin + (Math.floor((position - measureOrigin) / settings.measureQuarter + 0.001) + 1) * settings.measureQuarter;
+        const nextBoundary = nextScoreBoundary(position, settings);
         const available = Math.min(end - position, nextBoundary - position);
         const duration = [4, 2, 1, 0.5, 0.25, 0.125].find(value => value <= available + 0.001) || 0.125;
         restEvents.push({ startQuarter: position, duration });
@@ -2847,10 +3002,16 @@
     const pickupLabel = settings.pickupBeats
       ? ` / PICKUP ${settings.pickupBeats} BEAT${settings.pickupBeats === 1 ? '' : 'S'}`
       : '';
+    const barlineLabel = Math.abs(settings.barlineOffsetQuarter) > 0.001
+      ? ` / BAR ${settings.barlineOffsetQuarter > 0 ? '+' : ''}${Number((settings.barlineOffsetQuarter * settings.denominator / 4).toFixed(2))} BEAT`
+      : '';
     const keySource = document.getElementById('keySignature').value === 'auto' ? 'AUTO' : 'MANUAL';
-    svg.innerHTML = `<rect width="${width}" height="260" fill="#f8f7f2"/><text x="38" y="31" font-size="12" font-weight="600" fill="#555b5e">B♭ TRUMPET · ト音記号 · ${settings.numerator}/${settings.denominator} · ♩=${settings.tempo} · ${keySignatureLabel(keySignatureCount)} (${keySource})${pickupLabel}</text>${staffLines}${initialBarline}${barlines.join('')}${finalBarline}<text x="43" y="136" font-size="58" font-family="Apple Symbols, Noto Music, serif" fill="#151719" aria-label="ト音記号">𝄞</text>${keySignatureElements}<text x="${timeSignatureX}" y="109" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.numerator}</text><text x="${timeSignatureX}" y="132" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.denominator}</text>${restElements}${noteElements}`;
+    svg.innerHTML = `<rect width="${width}" height="260" fill="#f8f7f2"/><text x="38" y="31" font-size="12" font-weight="600" fill="#555b5e">B♭ TRUMPET · ト音記号 · ${settings.numerator}/${settings.denominator} · ♩=${settings.tempo} · ${keySignatureLabel(keySignatureCount)} (${keySource})${pickupLabel}${barlineLabel}</text>${staffLines}${initialBarline}${barlines.join('')}${finalBarline}<text x="43" y="138" font-size="72" font-family="Apple Symbols, Noto Music, serif" fill="#151719" aria-label="ト音記号">𝄞</text>${keySignatureElements}<text x="${timeSignatureX}" y="109" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.numerator}</text><text x="${timeSignatureX}" y="132" text-anchor="middle" font-size="21" font-family="serif" font-weight="700" fill="#151719">${settings.denominator}</text>${restElements}${noteElements}`;
     const pickupStatus = settings.pickupBeats ? `、アウフタクト${settings.pickupBeats}拍` : '';
-    status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}で${notes.length}音を記譜しました。`;
+    const barlineStatus = Math.abs(settings.barlineOffsetQuarter) > 0.001
+      ? `、小節線${settings.barlineOffsetQuarter > 0 ? '右' : '左'}へ${Math.abs(Number((settings.barlineOffsetQuarter * settings.denominator / 4).toFixed(2)))}拍補正`
+      : '';
+    status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}${barlineStatus}で${notes.length}音を記譜しました。`;
   }
 
   function changeTranspose(amount) {
@@ -3225,12 +3386,17 @@
     const pitchClasses = recentNotes.map(item => positiveModulo(item.note, 12));
     if (!pitchClasses.length) pitchClasses.push(positiveModulo(noteNumber, 12));
 
-    let bestKey = { root: 0, mode: 'major', score: -Infinity };
-    for (let root = 0; root < 12; root++) {
-      [['major', majorScale], ['minor', minorScale]].forEach(([mode, scale]) => {
-        const score = scorePitchSet(pitchClasses, root, scale);
-        if (score > bestKey.score) bestKey = { root, mode, score };
-      });
+    const selectedKey = selectedKeyContext();
+    let bestKey = selectedKey
+      ? { root: selectedKey.concertRoot, mode: selectedKey.mode, score: Infinity }
+      : { root: 0, mode: 'major', score: -Infinity };
+    if (!selectedKey) {
+      for (let root = 0; root < 12; root++) {
+        [['major', majorScale], ['minor', minorScale]].forEach(([mode, scale]) => {
+          const score = scorePitchSet(pitchClasses, root, scale);
+          if (score > bestKey.score) bestKey = { root, mode, score };
+        });
+      }
     }
 
     const keyScale = bestKey.mode === 'major' ? majorScale : minorScale;
@@ -3316,6 +3482,7 @@
   }
 
   window.addEventListener('DOMContentLoaded', () => {
+    handleKeySignatureChange();
     if (isFreeWebVersion) {
       document.querySelectorAll('.save-output').forEach(button => {
         button.disabled = true;
@@ -3640,7 +3807,7 @@
   // 周波数をノートナンバーに変換（基準：442Hz）
   function noteFromFrequency(frequency) {
     const noteNum = 12 * (Math.log(frequency / A4_FREQ) / Math.log(2));
-    return Math.round(noteNum) + 69;
+    return keyAwareMidiNote(noteNum + 69);
   }
 
   function stopLongHarmony(releaseSeconds = 0.12) {

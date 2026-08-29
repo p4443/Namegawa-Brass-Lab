@@ -673,11 +673,11 @@
       flowPurchaseButton.textContent = product.enabled
         ? (product.checkout_available
           ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
-          : "オフライン版 販売準備中")
+          : `${Number(product.price_yen).toLocaleString("ja-JP")}円 オフライン版 販売準備中`)
         : "オフライン版 販売停止中";
       flowStoreStatus.textContent = product.enabled && product.checkout_available
         ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
-        : "Web版は無料で全機能を利用できます。";
+        : "無料Web版では録音・採譜・編集を利用できます。データ保存は買い切り版に対応しています。";
     }
 
     async function loadFlowProduct() {
