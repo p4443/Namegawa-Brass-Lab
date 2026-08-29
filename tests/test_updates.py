@@ -875,6 +875,26 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("result.provider || 'ルート検索'", page)
         self.assertIn("再調達価格・評価根拠の確認", page)
         self.assertIn("輸送品目を追加", page)
+        for instrument_name in (
+            "ピッコロ",
+            "イングリッシュホルン（コールアングレ）",
+            "E♭クラリネット",
+            "コントラバスクラリネット",
+            "バスサックス",
+            "B♭トランペット",
+            "テナーバストロンボーン",
+            "コントラバス（弦バス）",
+            "チェレスタ",
+            "バスドラム（大太鼓）",
+            "チューブラーベル（チャイム）",
+            "クロテイル（アンティークシンバル）",
+            "スラップスティック（むち）",
+            "サンダーシート",
+        ):
+            self.assertIn(instrument_name, page)
+        self.assertIn("打楽器（基本・大型）", page)
+        self.assertIn("打楽器（小物・民族・特殊）", page)
+        self.assertEqual(page.count("volumePoints:"), 64)
         self.assertIn('<fieldset class="cargo-editor-fieldset" data-cargo-editor>', page)
         self.assertNotIn("data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}", page)
         self.assertIn("輸送書類・経路図の作成", page)
