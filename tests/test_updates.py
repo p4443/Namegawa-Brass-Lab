@@ -649,6 +649,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('value="front"', page)
         self.assertIn('value="back"', page)
         self.assertIn("function printContractPages()", page)
+        self.assertIn('class="export-actions"', page)
+        self.assertIn('class="print-actions"', page)
         self.assertIn("preview.dataset.printPages = selection", page)
         self.assertIn('.document[data-print-pages="front"] .contract-page:not([data-page-number="1"])', page)
         self.assertIn('.document[data-print-pages="back"] .contract-page[data-page-number="1"]', page)
@@ -1270,6 +1272,18 @@ class UpdatesTest(unittest.TestCase):
                 page = client.get(page_path).get_data(as_text=True)
                 self.assertIn("data-history-back", page)
                 self.assertIn('src="../back-navigation.js"', page)
+
+    def test_transpose_score_supports_fit_and_original_views(self):
+        page = (
+            Path(__file__).resolve().parents[1]
+            / "trumpet-transpose-lab"
+            / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="scoreFitToggle"', page)
+        self.assertIn("function toggleScoreFitMode()", page)
+        self.assertIn(".score-viewport.score-fit svg", page)
+        self.assertIn("scoreFitMode = window.matchMedia", page)
 
     def test_docker_image_includes_contract_generator(self):
         dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(

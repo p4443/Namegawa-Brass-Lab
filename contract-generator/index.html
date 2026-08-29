@@ -173,7 +173,35 @@
       margin-top: 6px;
     }
 
-    .save-actions select {
+    .save-actions > .primary-button,
+    .export-actions,
+    .print-actions {
+      grid-column: 1 / -1;
+    }
+
+    .export-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .print-actions {
+      display: grid;
+      gap: 8px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .print-actions label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+    }
+
+    .print-actions select {
+      width: 100%;
       min-width: 0;
       min-height: 44px;
       padding: 8px 10px;
@@ -585,14 +613,20 @@
       <div class="sidebar-note">本機能は契約書案の作成補助です。実際の契約締結前に、案件内容・許認可・保険条件を確認し、必要に応じて専門家の確認を受けてください。</div>
       <div class="save-actions">
         <button class="primary-button" id="saveContract" type="button">部門別に保存</button>
-        <button class="secondary-button" id="exportContractCsv" type="button">CSV出力</button>
-        <button class="secondary-button" id="exportContractExcel" type="button">Excel出力</button>
-        <select id="printPageSelection" aria-label="印刷するページ">
-          <option value="all">全ページ</option>
-          <option value="front">表面（1ページ目）</option>
-          <option value="back">裏面以降（2ページ目〜）</option>
-        </select>
-        <button class="secondary-button" id="printContract" type="button">A4縦 PDF出力 / 印刷</button>
+        <div class="export-actions" aria-label="契約書データの出力">
+          <button class="secondary-button" id="exportContractCsv" type="button">CSV出力</button>
+          <button class="secondary-button" id="exportContractExcel" type="button">Excel出力</button>
+        </div>
+        <div class="print-actions">
+          <label for="printPageSelection">印刷範囲
+            <select id="printPageSelection">
+              <option value="all">全ページ</option>
+              <option value="front">表面（1ページ目）</option>
+              <option value="back">裏面以降（2ページ目〜）</option>
+            </select>
+          </label>
+          <button class="secondary-button" id="printContract" type="button">A4縦 PDF出力 / 印刷</button>
+        </div>
       </div>
       <p class="save-status" id="saveStatus" role="status" aria-live="polite"></p>
 

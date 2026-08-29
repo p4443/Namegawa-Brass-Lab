@@ -785,6 +785,12 @@
       height: 260px;
     }
 
+    .score-viewport.score-fit svg {
+      width: 100%;
+      min-width: 0;
+      height: auto;
+    }
+
     .score-empty {
       margin: 10px 0 0;
       color: var(--text-muted);
@@ -1006,6 +1012,21 @@
 
       .score-toolbar-actions {
         width: 100%;
+      }
+
+      .score-edit-tools {
+        align-items: stretch;
+      }
+
+      .barline-adjustment {
+        flex-basis: 100%;
+        padding: 8px 0 0;
+        border-top: 1px solid var(--line-color);
+        border-left: 0;
+      }
+
+      .barline-adjustment output {
+        flex: 1;
       }
 
       .score-settings {
@@ -1370,6 +1391,7 @@
           <button class="btn-tone save-output" type="button" onclick="downloadMidi()">MIDI</button>
           <button class="btn-tone save-output" type="button" onclick="downloadMusicXml()">MusicXML</button>
           <button class="btn-tone" type="button" onclick="optimizeTrumpetKey()">演奏しやすい調へ</button>
+          <button class="btn-tone" id="scoreFitToggle" type="button" onclick="toggleScoreFitMode()" aria-pressed="false">全体表示</button>
         </div>
         <div class="transpose-control" aria-label="楽譜の移調">
           <button class="btn-tone" type="button" onclick="changeTranspose(-1)" aria-label="半音下げる">−</button>
@@ -1451,6 +1473,7 @@
   let selectedScoreVoice = 'original';
   let scoreEditHistory = [];
   let barlineOffsetQuarter = 0;
+  let scoreFitMode = window.matchMedia('(max-width: 560px)').matches;
   let transposeSemitones = 0;
   const instrumentTransposeSemitones = 2;
   let countInProgress = false;
@@ -2851,6 +2874,7 @@
     const width = Math.max(760, scoreStartX + scoreEndQuarter * quarterWidth + 70);
     svg.setAttribute('viewBox', `0 0 ${width} 260`);
     svg.setAttribute('width', width);
+    svg.setAttribute('height', 260);
 
     if (!notes.length) {
       svg.innerHTML = '';
@@ -3012,6 +3036,20 @@
       ? `、小節線${settings.barlineOffsetQuarter > 0 ? '右' : '左'}へ${Math.abs(Number((settings.barlineOffsetQuarter * settings.denominator / 4).toFixed(2)))}拍補正`
       : '';
     status.innerText = `${settings.numerator}/${settings.denominator}拍子${pickupStatus}${barlineStatus}で${notes.length}音を記譜しました。`;
+  }
+
+  function applyScoreFitMode() {
+    const viewport = document.getElementById('scoreViewport');
+    const button = document.getElementById('scoreFitToggle');
+    viewport.classList.toggle('score-fit', scoreFitMode);
+    button.setAttribute('aria-pressed', String(scoreFitMode));
+    button.textContent = scoreFitMode ? '原寸表示' : '全体表示';
+    button.setAttribute('aria-label', scoreFitMode ? '譜面を原寸表示に切り替える' : '譜面全体を表示する');
+  }
+
+  function toggleScoreFitMode() {
+    scoreFitMode = !scoreFitMode;
+    applyScoreFitMode();
   }
 
   function changeTranspose(amount) {
@@ -4197,6 +4235,8 @@
       stopRecording();
     }
   }
+
+  applyScoreFitMode();
 </script>
 
 </body>
