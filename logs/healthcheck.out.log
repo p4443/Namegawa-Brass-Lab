@@ -2,3 +2,9 @@ Healthcheck target: https://namegawa-brass-lab.onrender.com
 Check date: 2026-08-29
 Healthcheck target: https://namegawa-brass-lab.onrender.com
 Check date: 2026-08-29
+Healthcheck target: https://namegawa-brass-lab.onrender.com
+Check date: 2026-08-30
+[PASS] GET /health
+[PASS] GET /api/lesson-slot-statuses
+[PASS] POST /api/lesson-reservations (non-destructive probe)
+[PASS] GET /api/store/product

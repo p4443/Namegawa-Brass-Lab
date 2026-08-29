@@ -1211,7 +1211,7 @@
       const result = instrumentLookupResults.get(rowIndex);
       if (!result) return '';
       if (result.manual_entry_required || !result.recommended_price) {
-        return `<div class="price-lookup-results" data-instrument-price-results><p>指定カタログから価格を自動取得できませんでした。公式ページを確認し、カタログ価格を入力してください。</p>${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
+        return `<div class="price-lookup-results" data-instrument-price-results><p>選択したカタログは現在のページ構成では価格を自動取得できません。公式ページで価格と税区分を確認し、カタログ価格を入力してください。</p></div>`;
       }
       const taxLabel = status => status === 'tax_included' ? '税込' : status === 'tax_excluded' ? '税別' : '税込／税別の表記不明';
       const item = contractValues.estimateB.cargo_items[rowIndex];
@@ -1220,7 +1220,7 @@
         const matchLabel = candidate.match_type === 'exact' ? '完全一致' : '一部一致';
         const matchedModel = candidate.matched_model || result.maker_model;
         return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '反映済み' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
-      }).join('')}${result.failures.length ? `<p>${result.failures.length}件のURLは取得できませんでした。掲載形式とURLを確認してください。</p>` : ''}</div>`;
+      }).join('')}</div>`;
     }
 
     async function lookupInstrumentPrice(rowIndex) {
