@@ -702,7 +702,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("事故、滅失、毀損または遅延", page)
         self.assertIn("待機料・付帯作業料", page)
         self.assertIn("燃油特別付加運賃", page)
-        self.assertIn("事業許可証、管轄営業所情報、運行管理者情報", page)
+        self.assertNotIn("field('事業許可番号', 'permit_number'", page)
+        self.assertNotIn("field('管轄営業所情報', 'office_information'", page)
+        self.assertNotIn("field('運行管理者情報', 'operation_manager'", page)
+        self.assertNotIn("事業許可・営業所・運行管理情報 URL", page)
         self.assertIn("function renderTransportEstimate(date, safeClient)", page)
         self.assertIn("輸送対象物明細・評価額証明（付属書）", page)
         self.assertIn("function calculateCargoValuation()", page)
@@ -806,7 +809,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("window.location.protocol === 'file:'", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/contract-generator/", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
-        self.assertIn("master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])]", page)
+        self.assertIn("const candidateSourceUrl = candidate.source_url || result.recommended_source_url || item.lookup_source_url;", page)
+        self.assertIn("...(result.source_urls || []), candidateSourceUrl", page)
         self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
         self.assertNotIn('data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly', page)
         self.assertIn("価格基準日 ${master.effective_date}を記録しました。", page)
@@ -1082,6 +1086,10 @@ class UpdatesTest(unittest.TestCase):
                 response.json["values"]["freight_rate_master"]["external_2t_charter"],
                 "120000",
             )
+            self.assertNotIn("permit_number", response.json["values"])
+            self.assertNotIn("office_information", response.json["values"])
+            self.assertNotIn("operation_manager", response.json["values"])
+            self.assertNotIn("compliance_document_url", response.json["values"])
 
             over_capacity_payload = response.get_json()
             over_capacity_payload["values"]["cargo_items"][0]["volume_points"] = "10"

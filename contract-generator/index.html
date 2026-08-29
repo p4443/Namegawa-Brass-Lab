@@ -796,14 +796,13 @@
       },
       typeB: {
         cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
-        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機料・付帯作業料）甲または施設側の都合により、事前の運行計画で定めた積卸し時間を超える待機が発生した場合、または申告のない付帯作業（過度な梱包作業、階段荷揚げ等）が発生した場合、乙は事前に提示した運賃・料金規定に基づき甲へ追加料金を請求できる。\n6. （運賃等の見直し）契約締結後、著しい経済情勢の変動、燃油価格の急激な高騰または関連法令の改定が生じた場合、乙は根拠資料を提示し、運賃および料金の改定（燃油特別付加運賃の導入を含む）を甲乙協議の上で請求できる。\n7. （情報の開示と共有）乙は適法な運送体制を確認できるよう、事業許可証、管轄営業所情報、運行管理者情報を、法令上および個人情報保護上開示可能な範囲で、書面または電子データ（見積書添付URL等）により甲へ提示する。'
+        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機料・付帯作業料）甲または施設側の都合により、事前の運行計画で定めた積卸し時間を超える待機が発生した場合、または申告のない付帯作業（過度な梱包作業、階段荷揚げ等）が発生した場合、乙は事前に提示した運賃・料金規定に基づき甲へ追加料金を請求できる。\n6. （運賃等の見直し）契約締結後、著しい経済情勢の変動、燃油価格の急激な高騰または関連法令の改定が生じた場合、乙は根拠資料を提示し、運賃および料金の改定（燃油特別付加運賃の導入を含む）を甲乙協議の上で請求できる。'
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
         workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'self_light_cargo_rate',
         partner_2t_requested: false, partner_2t_status: 'not_needed', partner_2t_budget: '0', partner_2t_notes: '',
-        permit_number: '', office_information: '', operation_manager: '',
-        cargo_document_url: '', route_document_url: '', compliance_document_url: '', fee_document_url: '',
+        cargo_document_url: '', route_document_url: '', fee_document_url: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
         cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
         route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
@@ -910,8 +909,7 @@
       if (values.partner_2t_requested && (values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('依頼された協力会社2t車の代理調整確定');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
-      if (!values.permit_number || !values.office_information || !values.operation_manager) missing.push('事業許可・営業所・運行管理情報');
-      if (!values.cargo_document_url || !values.route_document_url || !values.compliance_document_url || !values.fee_document_url) missing.push('正式見積の添付書類URL');
+      if (!values.cargo_document_url || !values.route_document_url || !values.fee_document_url) missing.push('正式見積の添付書類URL');
       if (!values.cargo_contact_email) missing.push('シート共有先メールアドレス');
       return [...new Set(missing)];
     }
@@ -1148,12 +1146,8 @@
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + field('輸送案件名', 'transport_name', values.transport_name)
         + field('見積有効期限', 'validity', values.validity)
-        + field('事業許可番号', 'permit_number', values.permit_number)
-        + field('管轄営業所情報', 'office_information', values.office_information, true)
-        + field('運行管理者情報', 'operation_manager', values.operation_manager)
         + field('A4付属書PDFの共有URL', 'cargo_document_url', values.cargo_document_url)
         + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
-        + field('事業許可・営業所・運行管理情報 URL', 'compliance_document_url', values.compliance_document_url)
         + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
         + field('待機料', 'waiting_fee', values.waiting_fee)
         + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
@@ -1293,17 +1287,19 @@
       if (!item || !result) return;
       const candidate = result.candidates[candidateIndex];
       if (!candidate) return;
+      const candidateSourceUrl = candidate.source_url || result.recommended_source_url || item.lookup_source_url;
+      if (!candidateSourceUrl) return;
       item.catalog_price = String(candidate.price);
       item.valuation_mode = 'master';
-      item.price_source_url = candidate.source_url;
+      item.price_source_url = candidateSourceUrl;
       item.price_checked_at = result.checked_at;
       item.price_tax_status = candidate.tax_status === 'tax_included' || candidate.tax_status === 'tax_excluded'
         ? candidate.tax_status
         : '';
       applyCargoTaxStatus(item, item.price_tax_status);
       const master = contractValues.estimateB.instrument_price_master;
-      master.source_url = master.source_url || result.recommended_source_url;
-      master.source_urls = [...new Set([...(master.source_urls || []), ...result.source_urls])];
+      master.source_url = master.source_url || candidateSourceUrl;
+      master.source_urls = [...new Set([...(master.source_urls || []), ...(result.source_urls || []), candidateSourceUrl])];
       master.catalog_year = contractDate.value.slice(0, 4);
       master.verified = false;
       syncCargoValuation();
@@ -1945,14 +1941,10 @@
           <h2>1. 法定開示・クラウド添付書類</h2>
           <p>以下は入力された情報と添付先です。本見積書の表示だけで許認可の有効性を自動証明するものではないため、甲は原本・発行主体・有効期限を確認してください。</p>
           <table class="individual-contract-table"><tbody>
-            <tr><th scope="row">事業許可番号</th><td>${escapeHtml(values.permit_number || '未設定')}</td></tr>
-            <tr><th scope="row">管轄営業所情報</th><td>${escapeHtml(values.office_information || '未設定')}</td></tr>
-            <tr><th scope="row">運行管理者情報</th><td>${escapeHtml(values.operation_manager || '未設定')}</td></tr>
           </tbody></table>
           <ul class="estimate-conditions document-links">
             ${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}
             ${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}
-            ${transportDocumentLink('事業許可・管轄営業所・運行管理者情報', values.compliance_document_url)}
             ${transportDocumentLink('追加料金規定表', values.fee_document_url)}
           </ul>
         </section>

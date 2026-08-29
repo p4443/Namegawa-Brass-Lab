@@ -200,12 +200,8 @@ CONTRACT_TYPES = {
             "partner_2t_status",
             "partner_2t_budget",
             "partner_2t_notes",
-            "permit_number",
-            "office_information",
-            "operation_manager",
             "cargo_document_url",
             "route_document_url",
-            "compliance_document_url",
             "fee_document_url",
             "waiting_fee",
             "ancillary_fee",
@@ -1296,12 +1292,8 @@ def validate_contract(payload):
         doc_type == "estimateB" and transport_workflow_status != "ready"
     )
     transport_pending_optional_fields = {
-        "permit_number",
-        "office_information",
-        "operation_manager",
         "cargo_document_url",
         "route_document_url",
-        "compliance_document_url",
         "fee_document_url",
         "cargo_contact_email",
         "route_origin",
