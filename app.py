@@ -462,23 +462,26 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
         (match.start(), exact_model, "exact")
         for match in model_pattern.finditer(search_text)
     ][:20]
-    if not model_matches:
-        normalized_model = re.sub(r"[^a-z0-9]", "", exact_model_folded)
-        for match in INSTRUMENT_MODEL_CODE_PATTERN.finditer(page_text):
-            catalog_model = match.group(0)
-            normalized_catalog_model = re.sub(
-                r"[^a-z0-9]", "", catalog_model.casefold()
-            )
-            shorter_model = min(
-                (normalized_model, normalized_catalog_model), key=len
-            )
-            if len(shorter_model) >= 4 and any(character.isdigit() for character in shorter_model) and (
-                normalized_model in normalized_catalog_model
-                or normalized_catalog_model in normalized_model
-            ):
-                model_matches.append((match.start(), catalog_model, "partial"))
-                if len(model_matches) >= 20:
-                    break
+    normalized_model = re.sub(r"[^a-z0-9]", "", exact_model_folded)
+    matched_positions = {position for position, _model, _match_type in model_matches}
+    for match in INSTRUMENT_MODEL_CODE_PATTERN.finditer(page_text):
+        if match.start() in matched_positions:
+            continue
+        catalog_model = match.group(0)
+        normalized_catalog_model = re.sub(
+            r"[^a-z0-9]", "", catalog_model.casefold()
+        )
+        shorter_model = min(
+            (normalized_model, normalized_catalog_model), key=len
+        )
+        if len(shorter_model) >= 4 and any(character.isdigit() for character in shorter_model) and (
+            normalized_model in normalized_catalog_model
+            or normalized_catalog_model in normalized_model
+        ):
+            model_matches.append((match.start(), catalog_model, "partial"))
+            matched_positions.add(match.start())
+            if len(model_matches) >= 20:
+                break
     if not model_matches and not allow_discovery:
         raise ValueError("公式ページ内に一致または一部一致する型番が見つかりませんでした。")
 
@@ -487,45 +490,51 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
     )
     candidates = []
     seen_prices = set()
-    for position, matched_model, match_type in model_matches:
-        snippet_start = max(0, position - 180)
-        snippet_end = min(len(page_text), position + len(matched_model) + 260)
-        snippet = page_text[snippet_start:snippet_end]
-        model_offset = position - snippet_start
-        for match in price_pattern.finditer(snippet):
-            between_start = min(model_offset, match.start())
-            between_end = max(model_offset + len(matched_model), match.end())
-            intervening_models = INSTRUMENT_MODEL_CODE_PATTERN.findall(
-                snippet[between_start:between_end]
-            )
-            if any(model.casefold() != matched_model.casefold() for model in intervening_models):
+    for candidate_match_type in ("exact", "partial"):
+        for position, matched_model, match_type in model_matches:
+            if match_type != candidate_match_type:
                 continue
-            price = int((match.group(1) or match.group(2)).replace(",", ""))
-            if not 1000 <= price <= 100000000 or price in seen_prices:
-                continue
-            seen_prices.add(price)
-            context_start = max(0, match.start() - 70)
-            context_end = min(len(snippet), match.end() + 70)
-            context = snippet[context_start:context_end].strip()
-            normalized_context = context.casefold()
-            if "税込" in normalized_context or "消費税込" in normalized_context:
-                tax_status = "tax_included"
-            elif "税別" in normalized_context or "税抜" in normalized_context or "本体価格" in normalized_context:
-                tax_status = "tax_excluded"
-            else:
-                tax_status = "unknown"
-            candidates.append(
-                {
-                    "price": price,
-                    "context": context,
-                    "tax_status": tax_status,
-                    "matched_model": matched_model,
-                    "match_type": match_type,
-                }
-            )
+            snippet_start = max(0, position - 500)
+            snippet_end = min(len(page_text), position + len(matched_model) + 1200)
+            snippet = page_text[snippet_start:snippet_end]
+            model_offset = position - snippet_start
+            for match in price_pattern.finditer(snippet):
+                if match.start() < model_offset:
+                    continue
+                between_end = max(model_offset + len(matched_model), match.end())
+                intervening_models = INSTRUMENT_MODEL_CODE_PATTERN.findall(
+                    snippet[model_offset:between_end]
+                )
+                if any(model.casefold() != matched_model.casefold() for model in intervening_models):
+                    continue
+                price = int((match.group(1) or match.group(2)).replace(",", ""))
+                if not 1000 <= price <= 100000000 or price in seen_prices:
+                    continue
+                seen_prices.add(price)
+                context_start = max(0, match.start() - 70)
+                context_end = min(len(snippet), match.end() + 70)
+                context = snippet[context_start:context_end].strip()
+                normalized_context = context.casefold()
+                if "税込" in normalized_context or "消費税込" in normalized_context:
+                    tax_status = "tax_included"
+                elif "税別" in normalized_context or "税抜" in normalized_context or "本体価格" in normalized_context:
+                    tax_status = "tax_excluded"
+                else:
+                    tax_status = "unknown"
+                candidates.append(
+                    {
+                        "price": price,
+                        "context": context,
+                        "tax_status": tax_status,
+                        "matched_model": matched_model,
+                        "match_type": match_type,
+                    }
+                )
+                if len(candidates) >= 10:
+                    break
             if len(candidates) >= 10:
                 break
-        if len(candidates) >= 10:
+        if candidates:
             break
     if not candidates:
         if allow_discovery:
@@ -554,6 +563,10 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
                 adopted_result["candidates"] = linked_candidates[:10]
                 return adopted_result
         raise ValueError("型番付近に円価格が見つかりませんでした。")
+    candidates.sort(key=lambda candidate: (
+        0 if candidate["match_type"] == "exact" else 1,
+        0 if candidate["tax_status"] == "tax_included" else 1,
+    ))
     return {
         "source_name": source_name,
         "source_url": final_url,
@@ -1302,6 +1315,30 @@ def validate_contract(payload):
     if doc_type == "estimateB" and transport_workflow_status == "ready":
         ready_cargo_items = raw_values.get("cargo_items", [])
         ready_rate_master = raw_values.get("freight_rate_master", {})
+        ready_instrument_master = raw_values.get("instrument_price_master", {})
+        refresh_interval_days = str(
+            ready_instrument_master.get("refresh_interval_days", "30")
+        ).strip() if isinstance(ready_instrument_master, dict) else ""
+        price_refresh_valid = (
+            refresh_interval_days.isdigit()
+            and 1 <= int(refresh_interval_days) <= 365
+        )
+        stale_catalog_price = False
+        if price_refresh_valid and isinstance(ready_cargo_items, list):
+            estimate_day = datetime.strptime(contract_date, "%Y-%m-%d").date()
+            for item in ready_cargo_items:
+                if not isinstance(item, dict) or item.get("valuation_mode") != "master":
+                    continue
+                try:
+                    checked_day = datetime.strptime(
+                        str(item.get("price_checked_at", "")).strip(), "%Y-%m-%d"
+                    ).date()
+                except ValueError:
+                    stale_catalog_price = True
+                    break
+                if (estimate_day - checked_day).days > int(refresh_interval_days):
+                    stale_catalog_price = True
+                    break
         cargo_values_ready = isinstance(ready_cargo_items, list) and all(
             isinstance(item, dict)
             and str(item.get("maker_model", "")).strip()
@@ -1329,6 +1366,8 @@ def validate_contract(payload):
             or not isinstance(ready_rate_master, dict)
             or ready_rate_master.get("verified") is not True
             or not cargo_values_ready
+            or not price_refresh_valid
+            or stale_catalog_price
             or light_cargo_over_capacity
             or partner_2t_not_ready
         ):
@@ -1485,6 +1524,12 @@ def validate_contract(payload):
             source_url = str(raw_master.get("source_url", "")).strip()
             source_urls = raw_master.get("source_urls", [])
             catalog_year = str(raw_master.get("catalog_year", "")).strip()
+            refresh_interval_days = str(raw_master.get("refresh_interval_days", "30")).strip()
+            if (
+                re.fullmatch(r"\d{1,3}", refresh_interval_days) is None
+                or not 1 <= int(refresh_interval_days) <= 365
+            ):
+                raise ValueError("楽器価格の更新間隔は1日以上365日以内で入力してください。")
             if not isinstance(source_urls, list) or len(source_urls) > 7:
                 raise ValueError("楽器価格の公式カタログURLを確認してください。")
             source_urls = list(dict.fromkeys(str(url).strip() for url in source_urls if str(url).strip()))
@@ -1515,6 +1560,7 @@ def validate_contract(payload):
                 "source_url": source_url,
                 "source_urls": source_urls,
                 "catalog_year": catalog_year,
+                "refresh_interval_days": refresh_interval_days,
                 "verified": verified,
             }
             continue
@@ -1653,9 +1699,10 @@ def validate_contract(payload):
             if item["lookup_source_url"] and item["lookup_source_url"] not in instrument_master["source_urls"]:
                 raise ValueError("対象物の公式価格サイトをカタログ候補へ登録してください。")
             if item["valuation_mode"] == "master" and (
-                item["price_source_url"] not in instrument_master["source_urls"]
+                instrument_price_source(item["price_source_url"])
+                != instrument_price_source(item["lookup_source_url"])
             ):
-                raise ValueError("楽器ごとの公式価格サイトが価格マスターと一致しません。")
+                raise ValueError("価格掲載ページは選択した公式カタログと同じメーカーにしてください。")
     return {
         "doc_type": doc_type,
         "department": configuration["department"],

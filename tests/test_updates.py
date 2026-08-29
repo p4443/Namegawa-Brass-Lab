@@ -230,6 +230,63 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["match_type"], "partial")
         self.assertEqual(result["candidates"][0]["price"], 456500)
 
+    def test_instrument_price_lookup_finds_distant_tax_included_price(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://www.suzuki-music.co.jp/products/10191/"
+
+            def read(self, size):
+                spacer = "製品説明" * 100
+                return f"<h1>MXN-32</h1><p>{spacer}</p><div>税込価格 ￥7,150（本体 ￥6,500）</div>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://www.suzuki-music.co.jp/products/10191/", "MXN-32", opener
+        )
+
+        self.assertEqual(result["candidates"][0]["price"], 7150)
+        self.assertEqual(result["candidates"][0]["tax_status"], "tax_included")
+
+    def test_instrument_price_lookup_uses_priced_variant_before_generic_model(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://www.suzuki-music.co.jp/products/10191/"
+
+            def read(self, size):
+                return "<h1>MXN-32G 税込価格 ￥7,150</h1><p>シリーズ MXN-32 の説明</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://www.suzuki-music.co.jp/products/10191/", "MXN-32", opener
+        )
+
+        self.assertEqual(result["candidates"][0]["matched_model"], "MXN-32G")
+        self.assertEqual(result["candidates"][0]["price"], 7150)
+
     def test_instrument_price_lookup_discovers_product_from_catalog_url(self):
         class FakeResponse:
             def __init__(self, url, body, content_type="text/html"):
@@ -782,6 +839,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("https://www.suzuki-music.co.jp/products/", page)
         self.assertIn("https://www.nonaka.com/instrument/", page)
         self.assertIn("完全一致しない場合も一部一致候補を表示します。", page)
+        self.assertIn("価格の更新間隔（日）", page)
+        self.assertIn('data-refresh-stale-instrument-prices', page)
+        self.assertIn("function instrumentPriceIsStale(item, estimateDate, refreshIntervalDays = '30')", page)
+        self.assertIn("async function refreshStaleInstrumentPrices()", page)
+        self.assertIn("更新期限を過ぎています。一括再照会してください。", page)
         self.assertIn("candidate.match_type === 'exact' ? '完全一致' : '一部一致'", page)
         self.assertIn('data-apply-price-candidate="${candidateIndex}"', page)
         self.assertIn("function applyInstrumentPrice(rowIndex, candidateIndex = 0)", page)
@@ -810,7 +872,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("https://namegawa-brass-lab.onrender.com/contract-generator/", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
         self.assertIn("const candidateSourceUrl = candidate.source_url || result.recommended_source_url || item.lookup_source_url;", page)
-        self.assertIn("...(result.source_urls || []), candidateSourceUrl", page)
+        self.assertIn("master.source_url = master.source_url || item.lookup_source_url;", page)
+        self.assertNotIn("...(result.source_urls || []), candidateSourceUrl", page)
         self.assertIn('data-instrument-master-key="effective_date" type="date" max=', page)
         self.assertNotIn('data-instrument-master-key="effective_date" type="date" value="${escapeHtml(values.instrument_price_master.effective_date)}" readonly', page)
         self.assertIn("価格基準日 ${master.effective_date}を記録しました。", page)
@@ -1002,6 +1065,7 @@ class UpdatesTest(unittest.TestCase):
                             "source_url": "https://jp.yamaha.com/products/model-100.html",
                             "source_urls": ["https://jp.yamaha.com/products/model-100.html"],
                             "catalog_year": "2026",
+                            "refresh_interval_days": "30",
                             "verified": False,
                         },
                         "freight_rate_master": {
@@ -1090,6 +1154,32 @@ class UpdatesTest(unittest.TestCase):
             self.assertNotIn("office_information", response.json["values"])
             self.assertNotIn("operation_manager", response.json["values"])
             self.assertNotIn("compliance_document_url", response.json["values"])
+            self.assertEqual(
+                response.json["values"]["instrument_price_master"]["refresh_interval_days"],
+                "30",
+            )
+
+            stale_price_payload = response.get_json()
+            stale_price_payload["values"]["cargo_items"][0]["price_checked_at"] = "2026-07-01"
+            stale_price = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=stale_price_payload,
+            )
+            self.assertEqual(stale_price.status_code, 400)
+            self.assertIn("正式見積の発行準備", stale_price.json["error"])
+
+            mismatched_catalog_payload = response.get_json()
+            mismatched_catalog_payload["values"]["cargo_items"][0]["price_source_url"] = (
+                "https://www.suzuki-music.co.jp/products/10191/"
+            )
+            mismatched_catalog = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=mismatched_catalog_payload,
+            )
+            self.assertEqual(mismatched_catalog.status_code, 400)
+            self.assertIn("選択した公式カタログと同じメーカー", mismatched_catalog.json["error"])
 
             over_capacity_payload = response.get_json()
             over_capacity_payload["values"]["cargo_items"][0]["volume_points"] = "10"
