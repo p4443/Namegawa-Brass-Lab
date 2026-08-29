@@ -566,6 +566,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="consultationPlanningOtherHint"', page)
         self.assertIn("orgNameExamples", page)
 
+    def test_privacy_policy_limits_transport_partner_and_catalog_data_sharing(self):
+        page = create_app(database_url="").test_client().get(
+            "/legal/privacy-policy.html"
+        ).get_data(as_text=True)
+
+        self.assertIn("小型2t車の代理調整を明示的に依頼された場合に限り", page)
+        self.assertIn("必要な最小限の連絡先、運行経路および荷物情報", page)
+        self.assertIn("メーカー・型番のみを検索条件として使用", page)
+        self.assertIn("最終改定日：2026年8月29日", page)
+
     def test_index_links_admin_contract_generator_from_services_heading(self):
         response = create_app(database_url="").test_client().get("/")
         page = response.get_data(as_text=True)
@@ -764,7 +774,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertGreaterEqual(page.count('class="estimate-grand-total"'), 3)
         self.assertIn(".type-b-contract-page { height: auto;", page)
         self.assertIn("公開カタログURL（1行1件・最大7件）", page)
-        self.assertIn("掲載順先頭の候補 ${formatEstimateYen(result.recommended_price)}円を反映", page)
+        self.assertIn("https://pearldrum.com/ja/support/product-catalogs", page)
+        self.assertIn("https://www.korogi.co.jp/product/", page)
+        self.assertIn("https://www.suzuki-music.co.jp/products/", page)
+        self.assertIn("https://www.nonaka.com/instrument/", page)
+        self.assertIn("完全一致しない場合も一部一致候補を表示します。", page)
+        self.assertIn("candidate.match_type === 'exact' ? '完全一致' : '一部一致'", page)
+        self.assertIn('data-apply-price-candidate="${candidateIndex}"', page)
+        self.assertIn("function applyInstrumentPrice(rowIndex, candidateIndex = 0)", page)
         self.assertIn("指定カタログ内で型番価格を検索・反映", page)
         self.assertIn("function instrumentLookupReady(rowIndex)", page)
         self.assertIn("async function lookupInstrumentPriceWithFeedback(rowIndex)", page)
@@ -801,7 +818,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("data-cargo-price-source", page)
         self.assertIn("source_urls: [sourceUrl]", page)
         self.assertIn("lookup_source_url: item.lookup_source_url", page)
-        self.assertIn("</small></article>`).join('')}", page)
+        self.assertIn("</small></article>`;\n      }).join('')}", page)
         self.assertNotIn("</small></article>`).join(')}", page)
         self.assertIn("function transportReadiness(values)", page)
         self.assertIn("function transportValidationIssues(values)", page)
@@ -812,6 +829,13 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("案件受付（下書き）", page)
         self.assertIn("軽貨物運賃・日程を調整中", page)
         self.assertIn("標準車両：自社軽貨物車", page)
+        self.assertIn("標準見積は個人事業主による自社軽貨物車の運行に限定します。", page)
+        self.assertIn("if (overCapacity && !partner2tRequested) throw new Error", page)
+        self.assertIn("let baseFreightGross = partner2tRequested", page)
+        self.assertIn("recommendedType: partner2tRequested ? '依頼に基づく外部2t車チャーター（要正式見積り）'", page)
+        self.assertIn("<div${values.partner_2t_requested ? '' : ' hidden'} data-partner-2t-details>", page)
+        self.assertNotIn("<div${values.partner_2t_requested || overCapacity ? '' : ' hidden'} data-partner-2t-details>", page)
+        self.assertNotIn("let baseFreightGross = overCapacity", page)
         self.assertNotIn("field('正式見積書の共有URL', 'carrier_quote_url'", page)
         self.assertIn("data-cargo-consent", page)
         self.assertIn("data-generate-transport-sheet", page)
@@ -1058,6 +1082,30 @@ class UpdatesTest(unittest.TestCase):
                 response.json["values"]["freight_rate_master"]["external_2t_charter"],
                 "120000",
             )
+
+            over_capacity_payload = response.get_json()
+            over_capacity_payload["values"]["cargo_items"][0]["volume_points"] = "10"
+            over_capacity_payload["values"]["partner_2t_requested"] = False
+            over_capacity_payload["values"]["partner_2t_status"] = "not_needed"
+            over_capacity_payload["values"]["partner_2t_budget"] = "0"
+            without_request = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=over_capacity_payload,
+            )
+            self.assertEqual(without_request.status_code, 400)
+            self.assertIn("小型2t車はお客様から依頼された場合だけ", without_request.json["error"])
+
+            over_capacity_payload["values"]["partner_2t_requested"] = True
+            over_capacity_payload["values"]["partner_2t_status"] = "confirmed"
+            over_capacity_payload["values"]["partner_2t_budget"] = "120000"
+            with_request = client.post(
+                "/api/contracts",
+                headers={"X-Editor-Password": "editor-secret"},
+                json=over_capacity_payload,
+            )
+            self.assertEqual(with_request.status_code, 201, with_request.get_json())
+            self.assertTrue(with_request.json["values"]["partner_2t_requested"])
 
     def test_contract_api_saves_transport_case_while_formal_quote_is_pending(self):
         with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(

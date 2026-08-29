@@ -1323,7 +1323,13 @@ def validate_contract(payload):
             for item in ready_cargo_items
             if isinstance(item, dict)
         ) if isinstance(ready_cargo_items, list) else 0
-        needs_partner_2t = cargo_volume >= 100
+        partner_2t_requested = raw_values.get("partner_2t_requested") is True
+        light_cargo_over_capacity = cargo_volume >= 100 and not partner_2t_requested
+        partner_2t_not_ready = partner_2t_requested and (
+            raw_values.get("partner_2t_status") != "confirmed"
+            or not str(raw_values.get("partner_2t_budget", "")).strip().isdigit()
+            or int(str(raw_values.get("partner_2t_budget", "0"))) <= 0
+        )
         if (
             raw_values.get("transport_provider_mode") != "self_light_cargo"
             or raw_values.get("vehicle_class") != "light_cargo"
@@ -1331,17 +1337,10 @@ def validate_contract(payload):
             or not isinstance(ready_rate_master, dict)
             or ready_rate_master.get("verified") is not True
             or not cargo_values_ready
-            or (
-                needs_partner_2t
-                and (
-                    raw_values.get("partner_2t_requested") is not True
-                    or raw_values.get("partner_2t_status") != "confirmed"
-                    or not str(raw_values.get("partner_2t_budget", "")).strip().isdigit()
-                    or int(str(raw_values.get("partner_2t_budget", "0"))) <= 0
-                )
-            )
+            or light_cargo_over_capacity
+            or partner_2t_not_ready
         ):
-            raise ValueError("正式見積の発行準備に必要な軽貨物料金・楽器評価額・協力会社2t車の代理調整状況を確認してください。")
+            raise ValueError("正式見積の発行準備に必要な軽貨物の積載条件・料金・楽器評価額を確認してください。小型2t車はお客様から依頼された場合だけ調整状況と予算を確定してください。")
     values = {}
     for key in configuration["keys"]:
         if key == "workflow_status":
