@@ -809,8 +809,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("ハラスメント", page)
         self.assertIn("運送中止", page)
         self.assertIn("事故、滅失、毀損または遅延", page)
-        self.assertIn("待機料・付帯作業料", page)
-        self.assertIn("燃油特別付加運賃", page)
+        self.assertIn("待機・追加作業", page)
+        self.assertIn("軽貨物料金の算定根拠", page)
         self.assertNotIn("field('事業許可番号', 'permit_number'", page)
         self.assertNotIn("field('管轄営業所情報', 'office_information'", page)
         self.assertNotIn("field('運行管理者情報', 'operation_manager'", page)
@@ -854,9 +854,25 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("お客様が積卸し（荷役料なし）", page)
         self.assertIn("loadingSupportMode === 'customer_loads'", page)
         self.assertIn("role: 'freight'", page)
-        self.assertIn("role: 'loading'", page)
-        self.assertIn("const itemByRole = role", page)
-        self.assertIn("if (items[rowIndex]?.role) return;", page)
+        self.assertIn("loading: { description: '積卸し作業費'", page)
+        self.assertNotIn("if (items[rowIndex]?.role) return;", page)
+        self.assertIn("data-transport-estimate-item", page)
+        self.assertIn("data-add-transport-estimate-item", page)
+        self.assertIn("values.estimate_items.length <= 1 ? ' disabled' : ''", page)
+        self.assertIn("const ensureItem = role", page)
+        self.assertIn("if (result.loadingFee > 0)", page)
+        self.assertIn("軽貨物 基本運送料", page)
+        self.assertIn("軽貨物運送 見積明細", page)
+        self.assertIn("自社軽貨物の料金算定基準・適用条件", page)
+        self.assertIn("当方（自社軽貨物車）", page)
+        self.assertNotIn("御見積明細（運賃・料金分離型）", page)
+        self.assertNotIn("values.carrier_name || '未定'", page)
+        self.assertNotIn("contractValues.estimateB.carrier_name", page)
+        self.assertNotIn("contractValues.estimateB.carrier_quote_url", page)
+        self.assertNotIn("contractValues.estimateB.carrier_quote_date", page)
+        self.assertNotIn("estimate_items[3]", page)
+        self.assertIn("legacyTransportItemDescriptions", page)
+        self.assertNotIn("外部運送会社の正式見積取得後に確定", page)
         self.assertIn("values.freight_operation", page)
         self.assertIn("[50, 'distance_per_km_101_150']", page)
         self.assertIn("[Infinity, 'distance_per_km_151_plus']", page)
@@ -1235,6 +1251,20 @@ class UpdatesTest(unittest.TestCase):
                 response.json["values"]["instrument_price_master"]["refresh_interval_days"],
                 "30",
             )
+            loaded = client.get(
+                f'/api/contracts/{response.json["contract_id"]}',
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+            self.assertEqual(loaded.status_code, 200)
+            loaded_cargo = loaded.json["contract"]["values"]["cargo_items"][0]
+            self.assertEqual(loaded_cargo["catalog_price"], "500000")
+            self.assertEqual(loaded_cargo["unit_value"], "500000")
+            self.assertEqual(loaded_cargo["total_value"], "5000000")
+            self.assertEqual(loaded_cargo["price_tax_status"], "tax_included")
+            self.assertEqual(
+                loaded_cargo["price_source_url"],
+                "https://jp.yamaha.com/products/model-100.html",
+            )
 
             stale_price_payload = response.get_json()
             stale_price_payload["values"]["cargo_items"][0]["price_checked_at"] = "2026-07-01"
@@ -1301,12 +1331,9 @@ class UpdatesTest(unittest.TestCase):
                         "workflow_status": "quote_pending",
                         "transport_provider_mode": "self_light_cargo",
                         "vehicle_class": "light_cargo",
-                        "pricing_basis": "light_cargo_reference",
-                        "carrier_name": "",
-                        "carrier_quote_url": "",
-                        "carrier_quote_date": "",
+                        "pricing_basis": "self_light_cargo_rate",
                         "transport_name": "楽器輸送業務一式",
-                        "validity": "正式見積取得後に確定",
+                        "validity": "料金算定条件の確認後に確定",
                         "permit_number": "",
                         "office_information": "",
                         "operation_manager": "",
@@ -1314,8 +1341,8 @@ class UpdatesTest(unittest.TestCase):
                         "route_document_url": "",
                         "compliance_document_url": "",
                         "fee_document_url": "",
-                        "waiting_fee": "正式見積取得後に確定",
-                        "ancillary_fee": "正式見積取得後に確定",
+                        "waiting_fee": "30分毎に金額を入力",
+                        "ancillary_fee": "作業員1名1時間毎に金額を入力",
                         "detour_expenses": "実費精算",
                         "cargo_restrictions_agreed": False,
                         "cargo_contact_email": "",
@@ -1342,23 +1369,24 @@ class UpdatesTest(unittest.TestCase):
                             "verified": False,
                         },
                         "freight_rate_master": {
-                            "effective_date": "2024-03-22",
-                            "source_url": "https://www.mlit.go.jp/jidosha/jidosha_tk4_000118.html",
+                            "effective_date": "2026-04-01",
+                            "source_url": "https://namegawa-brass-lab.onrender.com/contract-generator/",
                             "verified": False,
-                            "distance_base_20": "0",
-                            "distance_per_km_21_50": "0",
-                            "distance_per_km_51_100": "0",
-                            "distance_per_km_101_plus": "0",
-                            "distance_per_km_101_150": "154",
-                            "distance_per_km_151_plus": "132",
-                            "charter_2h": "6050",
-                            "charter_4h": "0",
-                            "charter_8h": "0",
-                            "extra_30m": "1375",
-                            "extra_hour": "0",
-                            "waiting_per_30m": "0",
+                            "distance_base_20": "5000",
+                            "distance_per_km_21_50": "200",
+                            "distance_per_km_51_100": "150",
+                            "distance_per_km_101_plus": "120",
+                            "distance_per_km_101_150": "120",
+                            "distance_per_km_151_plus": "120",
+                            "charter_2h": "0",
+                            "charter_4h": "12000",
+                            "charter_8h": "22000",
+                            "extra_30m": "0",
+                            "extra_hour": "3000",
+                            "waiting_per_30m": "1500",
                             "loading_base": "0",
-                            "loading_per_15m": "550",
+                            "loading_per_15m": "0",
+                            "loading_per_30m": "1500",
                             "loading_per_25_points": "0",
                             "holiday_percent": "20",
                             "night_percent": "30",
@@ -1382,12 +1410,13 @@ class UpdatesTest(unittest.TestCase):
                             "notes": "型番・再調達価格を案件ごとに確認",
                         }],
                         "estimate_items": [{
-                            "description": "外部運送会社の正式見積",
+                            "role": "freight",
+                            "description": "軽貨物 基本運送料",
                             "quantity": "1",
-                            "unit": "式",
+                            "unit": "運行",
                             "unit_price": "0",
                             "amount": "0",
-                            "details": "国土交通省標準運賃は参考のみ。正式見積取得後に確定",
+                            "details": "自社軽貨物の料金算定基準と案件条件に基づき算定",
                         }],
                     },
                 },
@@ -1396,9 +1425,9 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(response.status_code, 201, response.get_json())
             self.assertEqual(response.json["values"]["workflow_status"], "quote_pending")
             self.assertEqual(response.json["values"]["vehicle_class"], "light_cargo")
-            self.assertEqual(response.json["values"]["pricing_basis"], "light_cargo_reference")
+            self.assertEqual(response.json["values"]["pricing_basis"], "self_light_cargo_rate")
             self.assertEqual(response.json["values"]["freight_operation"]["loading_support_mode"], "customer_assisted")
-            self.assertEqual(response.json["values"]["freight_rate_master"]["distance_per_km_151_plus"], "132")
+            self.assertEqual(response.json["values"]["freight_rate_master"]["distance_per_km_151_plus"], "120")
             self.assertTrue(response.json["values"]["freight_rate_master"]["tax_included"])
             self.assertFalse(response.json["values"]["freight_rate_master"]["verified"])
 

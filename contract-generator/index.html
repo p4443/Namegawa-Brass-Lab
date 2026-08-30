@@ -800,7 +800,7 @@
       },
       typeB: {
         cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
-        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機料・付帯作業料）甲または施設側の都合により、事前の運行計画で定めた積卸し時間を超える待機が発生した場合、または申告のない付帯作業（過度な梱包作業、階段荷揚げ等）が発生した場合、乙は事前に提示した運賃・料金規定に基づき甲へ追加料金を請求できる。\n6. （運賃等の見直し）契約締結後、著しい経済情勢の変動、燃油価格の急激な高騰または関連法令の改定が生じた場合、乙は根拠資料を提示し、運賃および料金の改定（燃油特別付加運賃の導入を含む）を甲乙協議の上で請求できる。'
+        special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機・追加作業）基本運送料に含む作業範囲と、待機、階段搬入、梱包補助、助手追加その他の追加作業費を見積書に明示する。予定外の作業が必要になった場合、乙は内容と金額を甲へ説明し、記録可能な方法で合意した上で請求する。\n6. （料金の見直し）契約締結後、燃油価格、道路料金、法令その他の算定条件が著しく変動した場合、乙は軽貨物料金の算定根拠を提示し、変更内容を甲乙協議の上で決定する。'
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
@@ -823,15 +823,7 @@
         },
         cargo_items: [{ category: 'その他', instrument_key: 'other', description: '案件受付後に入力', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '型番・再調達価格を案件ごとに確認' }],
         estimate_items: [
-          { role: 'freight', description: '軽貨物運賃', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '自社の軽貨物運賃・案件条件に基づき算定' },
-          { role: 'loading', description: '荷役料（積卸し作業費）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '運賃とは分離した指定場所での積卸し作業費' },
-          { description: '特殊車両・機材指定料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '空調車、パワーゲート車等の指定費' },
-          { role: 'insurance', description: '動産総合・運送保険料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '申告総評価額3,000万円に対する補償特約費' },
-          { role: 'fuel', description: '燃料サーチャージ（予定）', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '燃油価格に応じた特別付加料金' },
-          { role: 'cancellation', description: 'キャンセル料', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '前日50%、当日出発前80%、当日出発後100%' },
-          { role: 'actual_expenses', description: '高速道路・駐車場等立替実費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '高速道路、有料橋、有料駐車場等は実費精算' },
-          { role: 'instrument_surcharge', description: '楽器等運搬上乗せ料金', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '一般貨物のみ（上乗せなし）' },
-          { role: 'special_work', description: '助手追加・特殊作業費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '作業内容を確認のうえ別途見積' }
+          { role: 'freight', description: '軽貨物 基本運送料', quantity: '1', unit: '運行', unit_price: '0', amount: '0', details: '自社軽貨物の料金算定基準と案件条件に基づき算定' }
         ]
       },
       estimateC: {
@@ -955,6 +947,20 @@
       unit: ['回', '時間', '日', '月', '名', '運行', '式', '件', '画面'],
       unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
       amount: ['10000', '30000', '40000', '50000', '90000', '100000']
+    };
+    const transportEstimateItemTemplates = {
+      freight: { description: '軽貨物 基本運送料', unit: '運行', details: '自社軽貨物の料金算定基準と案件条件に基づき算定' },
+      loading: { description: '積卸し作業費', unit: '式', details: '当方が行う積込み・取卸し作業' },
+      insurance: { description: '運送保険・補償特約費', unit: '式', details: '申告総評価額と補償条件に基づく費用' },
+      fuel: { description: '燃料価格調整額', unit: '式', details: '基準燃料価格との差額に基づく調整額' },
+      cancellation: { description: 'キャンセル料', unit: '式', details: '取消時期と料金規定に基づく費用' },
+      actual_expenses: { description: '高速道路・駐車場等の実費', unit: '式', details: '高速道路、有料橋、有料駐車場等の立替実費' },
+      instrument_surcharge: { description: '楽器取扱追加費', unit: '式', details: '固定・積み置き等の追加対応費' },
+      special_work: { description: '助手追加・特殊作業費', unit: '式', details: '助手、階段搬入その他の個別作業費' }
+    };
+    const legacyTransportItemDescriptions = {
+      '軽貨物運賃': 'freight',
+      '動産総合・運送保険料': 'insurance'
     };
 
     const cargoCategories = ['木管楽器', '金管楽器', '弦楽器・鍵盤楽器', '打楽器（基本・大型）', '打楽器（小物・民族・特殊）', 'その他'];
@@ -1433,15 +1439,18 @@
     }
 
     function renderEstimateItemEditors(values, taxIncluded = false) {
-      return values.estimate_items.map((item, index) => `
+      const transportItemSelector = docType.value === 'estimateB'
+        ? `<div class="estimate-item-tools"><select data-transport-estimate-item><option value="">必要な料金項目を選択</option>${Object.entries(transportEstimateItemTemplates).filter(([role]) => !values.estimate_items.some(item => item.role === role)).map(([role, item]) => `<option value="${role}">${item.description}</option>`).join('')}<option value="custom">任意項目</option></select><button class="secondary-button" data-add-transport-estimate-item type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>選択項目を追加</button></div>`
+        : '';
+      return transportItemSelector + values.estimate_items.map((item, index) => `
         <section class="estimate-editor" data-estimate-row="${index}">
-          <h2>明細 ${index + 1}${item.role ? '<span class="estimate-auto-label">自動計算</span>' : `<button class="estimate-row-remove" data-remove-estimate-row="${index}" type="button" aria-label="明細${index + 1}を削除">削除</button>`}</h2><div class="estimate-editor-grid">
+          <h2>明細 ${index + 1}${item.role ? '<span class="estimate-auto-label">運賃計算連動</span>' : ''}<button class="estimate-row-remove" data-remove-estimate-row="${index}" type="button" aria-label="明細${index + 1}を削除"${values.estimate_items.length <= 1 ? ' disabled' : ''}>削除</button></h2><div class="estimate-editor-grid">
             ${estimateInput('品目・作業内容', 'description', item.description, 'estimate-description')}
             ${estimateInput('数量', 'quantity', item.quantity)}${estimateInput('単位', 'unit', item.unit)}
             ${estimateInput(taxIncluded ? '単価（税込・円）' : '単価（円）', 'unit_price', item.unit_price)}${estimateInput(taxIncluded ? '金額（税込・円）' : '金額（円）', 'amount', item.amount)}
             <label class="estimate-details">概要・内訳<textarea data-estimate-key="details" maxlength="300">${escapeHtml(item.details)}</textarea></label>
           </div>
-        </section>`).join('') + `<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`;
+        </section>`).join('') + (docType.value === 'estimateB' ? '' : `<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`);
     }
 
     function applyEstimatePreset(select) {
@@ -1536,20 +1545,21 @@
         price_checked_at: item.price_checked_at || '',
         price_tax_status: item.price_tax_status || ''
       }));
-      values.estimate_items = values.estimate_items || [];
-      [
-        { role: 'freight', description: '軽貨物運賃', details: '自社の軽貨物運賃・案件条件に基づき算定', unit: '運行' },
-        { role: 'loading', description: '荷役料（積卸し作業費）', details: '運賃とは分離した指定場所での積卸し作業費' },
-        { role: 'insurance', description: '動産総合・運送保険料', details: '申告総評価額に対する補償特約費' },
-        { role: 'fuel', description: '燃料サーチャージ（予定）', details: '燃油価格に応じた特別付加料金' },
-        { role: 'cancellation', description: 'キャンセル料', details: '前日50%、当日出発前80%、当日出発後100%' },
-        { role: 'actual_expenses', description: '高速道路・駐車場等立替実費', details: '高速道路、有料橋、有料駐車場等は実費精算' },
-        { role: 'instrument_surcharge', description: '楽器等運搬上乗せ料金', details: '一般貨物のみ（上乗せなし）' },
-        { role: 'special_work', description: '助手追加・特殊作業費', details: '作業内容を確認のうえ別途見積' }
-      ].forEach(item => {
-        const existing = values.estimate_items.find(candidate => candidate.role === item.role || candidate.description === item.description);
-        if (existing) existing.role = item.role;
-        else values.estimate_items.push({ ...item, quantity: '1', unit: item.unit || '式', unit_price: '0', amount: '0' });
+      values.estimate_items = (values.estimate_items || []).filter(item =>
+        !item.role
+        || item.role === 'freight'
+        || estimateNumber(item.unit_price) > 0
+        || estimateNumber(item.amount) > 0
+      );
+      if (!values.estimate_items.length) {
+        const template = transportEstimateItemTemplates.freight;
+        values.estimate_items.push({ role: 'freight', ...template, quantity: '1', unit_price: '0', amount: '0' });
+      }
+      values.estimate_items.forEach(item => {
+        const migratedRole = legacyTransportItemDescriptions[item.description];
+        if (migratedRole && transportEstimateItemTemplates[migratedRole]) {
+          Object.assign(item, { role: migratedRole, ...transportEstimateItemTemplates[migratedRole] });
+        }
       });
       return values;
     }
@@ -1834,11 +1844,15 @@
         };
         const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours), operation);
         const itemByRole = role => values.estimate_items.find(item => item.role === role);
-        const freight = itemByRole('freight');
-        const loading = itemByRole('loading');
-        const insurance = itemByRole('insurance');
-        const fuel = itemByRole('fuel');
-        if (!freight || !loading || !insurance || !fuel) throw new Error('自動計算用の見積明細を復元してから再度お試しください。');
+        const ensureItem = role => {
+          const existing = itemByRole(role);
+          if (existing) return existing;
+          const template = transportEstimateItemTemplates[role];
+          const item = { role, ...template, quantity: '1', unit_price: '0', amount: '0' };
+          values.estimate_items.push(item);
+          return item;
+        };
+        const freight = ensureItem('freight');
         const billedFreight = result.cancellationRate ? 0 : result.baseFreightCost + result.waitingFee;
         Object.assign(freight, { description: result.recommendedType, unit_price: String(billedFreight), amount: String(billedFreight), details: `${result.reason}。2026年度自社料金規定（税抜）${result.waitingFee ? `、待機料${formatEstimateYen(result.waitingFee)}円を含む` : ''}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${values.freight_rate_master.effective_date}）` });
         const loadingDetails = result.loadingSupportMode === 'customer_loads'
@@ -1846,19 +1860,16 @@
           : result.loadingSupportMode === 'customer_assisted'
             ? `お客様のお手伝いあり。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料（追加スタッフ料金なし）`
             : `当方が積卸し。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料`;
-        Object.assign(loading, { description: '荷役料（積卸し作業費）', unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: loadingDetails });
-        Object.assign(fuel, { description: '燃料サーチャージ', unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
-        const cancellation = itemByRole('cancellation');
-        const actualExpenses = itemByRole('actual_expenses');
-        const instrumentSurcharge = itemByRole('instrument_surcharge');
-        const specialWork = itemByRole('special_work');
-        if (cancellation) Object.assign(cancellation, { unit_price: String(result.cancellationFee), amount: String(result.cancellationFee), details: result.cancellationRate ? `基本運賃${formatEstimateYen(result.baseFreightCost)}円の${result.cancellationRate * 100}%` : 'キャンセルなし' });
-        if (actualExpenses) Object.assign(actualExpenses, { unit_price: String(result.actualExpenses), amount: String(result.actualExpenses), details: '高速道路、有料橋、有料駐車場等の立替実費' });
-        if (instrumentSurcharge) Object.assign(instrumentSurcharge, { unit_price: String(result.instrumentSurcharge), amount: String(result.instrumentSurcharge), details: `${result.instrumentSurchargeLabel}${result.instrumentSurchargeSourceUrl ? `（市場調査出典：${result.instrumentSurchargeSourceUrl}）` : ''}` });
-        if (specialWork) Object.assign(specialWork, { unit_price: String(result.specialWorkAmount), amount: String(result.specialWorkAmount), details: result.specialWorkAmount ? '助手追加・特殊作業の個別見積額' : '作業内容を確認のうえ別途見積' });
+        if (result.loadingFee > 0) Object.assign(ensureItem('loading'), { unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: loadingDetails });
+        if (result.fuelSurcharge > 0) Object.assign(ensureItem('fuel'), { unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
+        if (result.cancellationFee > 0) Object.assign(ensureItem('cancellation'), { unit_price: String(result.cancellationFee), amount: String(result.cancellationFee), details: `基本運送料${formatEstimateYen(result.baseFreightCost)}円の${result.cancellationRate * 100}%` });
+        if (result.actualExpenses > 0) Object.assign(ensureItem('actual_expenses'), { unit_price: String(result.actualExpenses), amount: String(result.actualExpenses), details: '高速道路、有料橋、有料駐車場等の立替実費' });
+        if (result.instrumentSurcharge > 0) Object.assign(ensureItem('instrument_surcharge'), { unit_price: String(result.instrumentSurcharge), amount: String(result.instrumentSurcharge), details: `${result.instrumentSurchargeLabel}${result.instrumentSurchargeSourceUrl ? `（市場調査出典：${result.instrumentSurchargeSourceUrl}）` : ''}` });
+        if (result.specialWorkAmount > 0) Object.assign(ensureItem('special_work'), { unit_price: String(result.specialWorkAmount), amount: String(result.specialWorkAmount), details: '助手追加・特殊作業の個別見積額' });
         values.waiting_fee = `最初の30分は無料、以降30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（税抜反映額 ${formatEstimateYen(result.waitingFee)}円）`;
         values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
         syncCargoValuation();
+        const insurance = itemByRole('insurance');
         if (insurance) insurance.details = `申告総評価額${formatEstimateYen(calculateCargoValuation())}円に対する補償特約費`;
         renderDynamicFields();
         renderPreview();
@@ -1882,9 +1893,6 @@
           transport_provider_mode: contractValues.estimateB.transport_provider_mode,
           vehicle_class: contractValues.estimateB.vehicle_class,
           pricing_basis: contractValues.estimateB.pricing_basis,
-          carrier_name: contractValues.estimateB.carrier_name,
-          carrier_quote_url: contractValues.estimateB.carrier_quote_url,
-          carrier_quote_date: contractValues.estimateB.carrier_quote_date,
           cargo_items: contractValues.estimateB.cargo_items,
           freight_rate_master: contractValues.estimateB.freight_rate_master,
           instrument_price_master: contractValues.estimateB.instrument_price_master
@@ -1904,8 +1912,8 @@
     function syncCargoValuation() {
       const total = calculateCargoValuation();
       const insuranceItem = contractValues.estimateB.estimate_items.find(
-        item => item.description === '動産総合・運送保険料'
-      ) || contractValues.estimateB.estimate_items[3];
+        item => item.role === 'insurance'
+      );
       if (insuranceItem) insuranceItem.details = `申告総評価額${formatEstimateYen(total)}円に対する補償特約費`;
       return total;
     }
@@ -2021,7 +2029,7 @@
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
       const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
-      const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '外部運送会社へ見積依頼中' : '正式見積の発行準備完了';
+      const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '軽貨物運賃・日程を調整中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
@@ -2031,8 +2039,8 @@
           <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
           <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
-          <p><strong>運送実施：</strong>${values.transport_provider_mode === 'external_carrier' ? '外部の許可運送会社へ委託' : '自社運送（許認可確認必須）'}　<strong>参考車両：</strong>${escapeHtml(values.vehicle_class === 'undecided' ? '未定' : values.vehicle_class)}</p>
-          <p><strong>運送会社：</strong>${escapeHtml(values.carrier_name || '未定')}　<strong>正式見積：</strong>${values.carrier_quote_url ? `<a href="${escapeHtml(values.carrier_quote_url)}" target="_blank" rel="noopener noreferrer">確認する</a>` : '未取得'}</p>
+          <p><strong>運送実施：</strong>当方（自社軽貨物車）　<strong>使用車両：</strong>黒ナンバー軽貨物車</p>
+          ${values.partner_2t_requested ? `<p><strong>小型2t車：</strong>${values.partner_2t_status === 'confirmed' ? 'お客様の依頼に基づき協力会社の車両・日程・費用を調整済み' : 'お客様の依頼に基づき協力会社を調整中'}</p>` : ''}
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           ${estimateIssuerHtml('受託者（乙）')}
           <h2>1. 法定開示・クラウド添付書類</h2>
@@ -2046,8 +2054,8 @@
           </ul>
         </section>
         <section class="contract-page estimate-page transport-estimate-detail" data-page-number="2">
-          <h1>御見積明細（運賃・料金分離型）</h1>
-          <div class="estimate-total">${isReady ? `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -` : '御見積金額：未確定（外部運送会社の正式見積取得後に確定）'}</div>
+          <h1>軽貨物運送 見積明細</h1>
+          <div class="estimate-total">${isReady ? `御見積金額（税込）：￥${formatEstimateYen(totals.total)} -` : '御見積金額：未確定（必要項目と算定条件の確認後に確定）'}</div>
           <table class="estimate-table">
             <thead><tr><th>項目</th><th class="quantity">数量</th><th class="number">単価（円）</th><th class="number">金額（円）</th><th>算定内容</th></tr></thead>
             <tbody>${values.estimate_items.map((item, index) => `<tr><td>${estimatePreviewEditor('description', item.description, index)}</td><td class="quantity">${estimatePreviewEditor('quantity', item.quantity, index)}${estimatePreviewEditor('unit', item.unit, index)}</td><td class="number">${estimatePreviewEditor('unit_price', item.unit_price, index)}</td><td class="number">${estimatePreviewEditor('amount', item.amount, index)}</td><td>${escapeHtml(item.details)}</td></tr>`).join('')}</tbody>
@@ -2059,8 +2067,8 @@
             <li><strong>付帯作業料</strong>${escapeHtml(values.ancillary_fee)}</li>
             <li><strong>迂回・延泊実費</strong>${escapeHtml(values.detour_expenses)}</li>
           </ul>
-          <p>追加料金は個別契約書B第4項・第5項および事前提示した料金規定に基づき、発生理由と算定根拠を示して精算します。燃油価格や法令改定による運賃見直しは第6項に基づき協議します。</p>
-          <p><strong>参考運賃資料：</strong>${rateMaster.source_url ? `<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">${values.pricing_basis === 'light_cargo_reference' ? '軽貨物の公開料金・自社届出運賃' : '国土交通省「標準的な運賃」'}</a>` : '未設定'}。${values.pricing_basis === 'light_cargo_reference' ? '軽貨物事業者の届出運賃ではなく、2t未満の軽貨物車に限る業界参考値です。' : ''}請求額は自社届出運賃または外部運送会社の正式見積で確定します。</p>
+          <p>基本運送料に含まれない待機、追加作業および実費は、発生理由と算定内容を確認できる形で明示します。算定条件が変わる場合は、変更内容を事前に協議します。</p>
+          <p><strong>軽貨物料金の算定根拠：</strong>${rateMaster.source_url ? `<a href="${escapeHtml(rateMaster.source_url)}" target="_blank" rel="noopener noreferrer">自社軽貨物の料金算定基準・適用条件</a>` : '未設定'}。距離、拘束時間、積卸し時間、待機、休日・深夜条件および実費を案件ごとに確認し、必要な項目だけを見積明細へ反映します。</p>
           <p><strong>契約書との関係：</strong>発注時は業務委託基本契約書および個別契約書Bを締結し、本見積書および添付書類を個別契約の一部として扱います。</p>
         </section>
         <section class="contract-page estimate-page" data-page-number="3">
@@ -2716,13 +2724,30 @@
         renderPreview();
         return;
       }
+      if (event.target.closest('[data-add-transport-estimate-item]')) {
+        const items = contractValues.estimateB.estimate_items;
+        const selector = dynamicFields.querySelector('[data-transport-estimate-item]');
+        if (!selector?.value || items.length >= 10) return;
+        if (selector.value === 'custom') {
+          items.push({ description: '任意の料金・実費項目', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '' });
+        } else if (!items.some(item => item.role === selector.value)) {
+          const template = transportEstimateItemTemplates[selector.value];
+          items.push({ role: selector.value, ...template, quantity: '1', unit_price: '0', amount: '0' });
+        }
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
       const removeEstimateButton = event.target.closest('[data-remove-estimate-row]');
       if (removeEstimateButton) {
         const items = contractValues[docType.value]?.estimate_items;
         if (!items || items.length <= 1) return;
         const rowIndex = Number(removeEstimateButton.dataset.removeEstimateRow);
-        if (items[rowIndex]?.role) return;
         items.splice(rowIndex, 1);
+        if (!items.length) {
+          const template = transportEstimateItemTemplates.freight;
+          items.push({ role: 'freight', ...template, quantity: '1', unit_price: '0', amount: '0' });
+        }
         renderDynamicFields();
         renderPreview();
         return;
