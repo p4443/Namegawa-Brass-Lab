@@ -31,6 +31,8 @@ services:
         sync: false
       - key: STRIPE_FLOW_HARMONY_PRICE_ID
         sync: false
+      - key: INVOICE_REGISTRATION_NUMBER
+        sync: false
       - key: DOWNLOAD_TOKEN_SECRET
         generateValue: true
       - key: METRONOME_PRICE_YEN

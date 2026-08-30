@@ -815,7 +815,7 @@
         cargo_document_url: '', route_document_url: '', fee_document_url: '', transport_sheet_signature: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
         cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
-        route_origin: '', route_destination: '', route_distance_km: '', route_measurement_signature: '', total_hours: '8',
+        route_origin: '', route_destination: '', route_distance_km: '', route_provider: '', route_measurement_signature: '', total_hours: '8',
         freight_operation: { waiting_minutes: '0', loading_minutes: '0', loading_support_mode: 'carrier', cancellation_type: 'none', actual_expenses: '0', instrument_surcharge_mode: 'none', instrument_surcharge_amount: '0', special_work_amount: '0', holiday: false, night: false },
         instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', refresh_interval_days: '30', verified: false },
         freight_rate_master: {
@@ -909,6 +909,7 @@
       if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
       if (!Number.isFinite(Number(values.route_distance_km)) || Number(values.route_distance_km) <= 0) missing.push('実車走行距離の自動測定');
+      else if (values.route_provider !== 'Google Maps') missing.push('Google Maps Routes APIでの距離再測定');
       else if (values.route_measurement_signature !== routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)) missing.push('住所変更後の実車走行距離再測定');
       if (!Number.isFinite(Number(values.total_hours)) || Number(values.total_hours) <= 0) missing.push('総拘束時間');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
@@ -960,7 +961,8 @@
         workflow_status: values.workflow_status, transport_provider_mode: values.transport_provider_mode,
         vehicle_class: values.vehicle_class, pricing_basis: values.pricing_basis,
         route_origin: values.route_origin, route_destination: values.route_destination,
-        route_distance_km: values.route_distance_km, route_measurement_signature: values.route_measurement_signature,
+        route_distance_km: values.route_distance_km, route_provider: values.route_provider,
+        route_measurement_signature: values.route_measurement_signature,
         total_hours: values.total_hours,
         freight_operation: values.freight_operation, cargo_items: values.cargo_items,
         freight_rate_master: values.freight_rate_master, instrument_price_master: values.instrument_price_master,
@@ -1263,7 +1265,7 @@
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
         + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
         + (values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)
-          ? `<div class="route-distance-summary"><strong>実車走行距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（自動算出距離の2倍）</span></div>`
+          ? `<div class="route-distance-summary"><strong>走行距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（${escapeHtml(values.route_provider)} Routes APIの自動算出距離）</span></div>`
           : '')
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
@@ -1351,6 +1353,9 @@
       });
       if (!response.ok) throw new Error(await readApiError(response, '公式価格を照会できませんでした。'));
       const result = await response.json();
+      if (result.provider !== 'Google Maps') {
+        throw new Error('Google Maps Routes API以外の距離はB見積書へ反映できません。');
+      }
       const currentItem = contractValues.estimateB.cargo_items[rowIndex];
       if (requestRevision !== editorRevision || currentItem !== item || currentItem.maker_model !== makerModel || currentItem.lookup_source_url !== sourceUrl) {
         throw new Error('入力内容が変更されたため、古い価格照会結果は反映しませんでした。現在の内容で再照会してください。');
@@ -1862,7 +1867,7 @@
       }
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
-      const actualDistanceKm = Math.round(measuredDistanceKm * 2 * 10) / 10;
+      const actualDistanceKm = Math.round(measuredDistanceKm * 10) / 10;
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
       distanceInput.value = String(actualDistanceKm);
@@ -1871,12 +1876,13 @@
         route_origin: resolvedOrigin,
         route_destination: resolvedDestination,
         route_distance_km: String(actualDistanceKm),
+        route_provider: result.provider,
         route_measurement_signature: pendingRouteMeasurementSignature
       });
       editorRevision += 1;
       renderDynamicFields();
       renderPreview();
-      freightCalculatorStatus.textContent = `測定・反映完了：${result.provider || 'ルート検索'}の自動算出距離を2倍し、実車走行距離${actualDistanceKm}kmへ反映しました。走行時間の目安${result.duration_minutes}分。運賃も更新する場合は「見積書に反映して戻る」を押してください。`;
+      freightCalculatorStatus.textContent = `測定・反映完了：Google Maps Routes APIの自動算出距離${actualDistanceKm}kmをそのまま反映しました。走行時間の目安${result.duration_minutes}分。運賃も更新する場合は「見積書に反映して戻る」を押してください。`;
       freightCalculatorStatus.dataset.state = 'success';
     }
 
@@ -1959,7 +1965,7 @@
         renderDynamicFields();
         renderPreview();
         closeFreightCalculator();
-        saveStatus.textContent = `実車走行距離${values.route_distance_km}km（自動算出距離の2倍）を見積書へ反映しました。`;
+        saveStatus.textContent = `Google Maps Routes APIの走行距離${values.route_distance_km}kmを見積書へ反映しました。`;
         saveStatus.dataset.state = 'success';
       } catch (error) {
         freightCalculatorStatus.textContent = error.message;
@@ -1990,6 +1996,7 @@
           route_origin: contractValues.estimateB.route_origin,
           route_destination: contractValues.estimateB.route_destination,
           route_distance_km: contractValues.estimateB.route_distance_km,
+          route_provider: contractValues.estimateB.route_provider,
           route_measurement_signature: contractValues.estimateB.route_measurement_signature,
           total_hours: contractValues.estimateB.total_hours,
           freight_operation: contractValues.estimateB.freight_operation,
@@ -2151,7 +2158,7 @@
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
           <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
           <p><strong>運送実施：</strong>当方（自社軽貨物車）　<strong>使用車両：</strong>黒ナンバー軽貨物車</p>
-          ${routeMeasurementCurrent ? `<p class="transport-route-summary"><strong>運行経路：</strong>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}　<strong>実車走行距離：</strong>${escapeHtml(values.route_distance_km)}km（自動算出距離の2倍）</p>` : ''}
+          ${routeMeasurementCurrent ? `<p class="transport-route-summary"><strong>運行経路：</strong>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}　<strong>走行距離：</strong>${escapeHtml(values.route_distance_km)}km（Google Maps Routes API自動算出）</p>` : ''}
           ${values.partner_2t_requested ? `<p><strong>小型2t車：</strong>${values.partner_2t_status === 'confirmed' ? 'お客様の依頼に基づき協力会社の車両・日程・費用を調整済み' : 'お客様の依頼に基づき協力会社を調整中'}</p>` : ''}
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           ${estimateIssuerHtml('受託者（乙）')}

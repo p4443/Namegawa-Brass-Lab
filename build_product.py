@@ -74,7 +74,7 @@ def build_archive(source_file, output_file, readme):
 
 def build_transpose_lab_archive():
     source_files = [TRANSPOSE_LAB_SOURCE_DIR / name for name in TRANSPOSE_LAB_FILES]
-    missing_files = [path.name for path in source_files if not path.is_file()]
+    missing_files = [source_file.name for source_file in source_files if not source_file.is_file()]
     if missing_files:
         raise FileNotFoundError(
             f"Transpose Lab files not found: {', '.join(missing_files)}"

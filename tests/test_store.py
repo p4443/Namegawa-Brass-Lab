@@ -54,6 +54,7 @@ class StoreTest(unittest.TestCase):
             "DOWNLOAD_TOKEN_SECRET": "download-secret-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
             "METRONOME_PRICE_YEN": "500",
             "FLOW_HARMONY_PRICE_YEN": "1000",
+            "INVOICE_REGISTRATION_NUMBER": "T1234567890123",
             "PUBLIC_SITE_URL": "https://example.com",
         }
         self.environment_patch = patch.dict(os.environ, self.environment, clear=False)
@@ -268,6 +269,7 @@ class StoreTest(unittest.TestCase):
         self.assertIn('id="wavExport"', html)
         self.assertIn('id="midiExport"', html)
         self.assertIn('id="xmlExport"', html)
+        self.assertEqual(app_response.status_code, 200)
         self.assertIn("location.protocol !== 'file:'", app_javascript)
         self.assertIn("button.disabled = isFreeMode", app_javascript)
         self.assertIn("無料Web版では保存できません。", app_javascript)
@@ -365,6 +367,19 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(checkout_arguments["line_items"], [{"price": "price_flow_harmony", "quantity": 1}])
         self.assertEqual(checkout_arguments["metadata"]["product_id"], "trumpet-transpose-lab")
         self.assertEqual(checkout_arguments["metadata"]["price_yen"], "1000")
+        self.assertEqual(checkout_arguments["locale"], "ja")
+        self.assertEqual(checkout_arguments["customer_creation"], "always")
+        invoice_data = checkout_arguments["invoice_creation"]["invoice_data"]
+        self.assertTrue(checkout_arguments["invoice_creation"]["enabled"])
+        self.assertEqual(
+            invoice_data["custom_fields"],
+            [
+                {
+                    "name": "適格請求書発行事業者登録番号",
+                    "value": "T1234567890123",
+                }
+            ],
+        )
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):
         stripe = self.stripe_module(amount_total=1000)
@@ -647,6 +662,52 @@ class StoreTest(unittest.TestCase):
             f"trumpet-metronome:{checkout_request_id}",
         )
         self.assertEqual(create_kwargs["metadata"]["price_yen"], "500")
+        self.assertEqual(create_kwargs["locale"], "ja")
+        self.assertEqual(create_kwargs["customer_creation"], "always")
+        self.assertTrue(create_kwargs["invoice_creation"]["enabled"])
+        self.assertEqual(
+            create_kwargs["invoice_creation"]["invoice_data"]["custom_fields"][0],
+            {
+                "name": "適格請求書発行事業者登録番号",
+                "value": "T1234567890123",
+            },
+        )
+
+    def test_checkout_is_blocked_without_valid_invoice_registration_number(self):
+        self.enable_store()
+        stripe = self.stripe_module()
+        with patch.dict(
+            os.environ, {"INVOICE_REGISTRATION_NUMBER": "1234567890123"}
+        ), patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/checkout",
+                json={
+                    "checkout_request_id": "66e59f96-394e-4df1-9b0b-e80b888d90fc"
+                },
+            )
+
+        self.assertEqual(response.status_code, 503)
+        stripe.checkout.Session.create.assert_not_called()
+
+    def test_checkout_uses_public_invoice_registration_number_by_default(self):
+        self.enable_store()
+        stripe = self.stripe_module()
+        with patch.dict(sys.modules, {"stripe": stripe}), patch.dict(
+            os.environ, {}, clear=False
+        ):
+            os.environ.pop("INVOICE_REGISTRATION_NUMBER", None)
+            response = self.client.post(
+                "/api/store/checkout",
+                json={
+                    "checkout_request_id": "66e59f96-394e-4df1-9b0b-e80b888d90fc"
+                },
+            )
+
+        self.assertEqual(response.status_code, 201)
+        custom_field = stripe.checkout.Session.create.call_args.kwargs[
+            "invoice_creation"
+        ]["invoice_data"]["custom_fields"][0]
+        self.assertEqual(custom_field["value"], "T2810320517878")
 
     def test_checkout_is_blocked_when_stripe_price_does_not_match(self):
         self.enable_store()

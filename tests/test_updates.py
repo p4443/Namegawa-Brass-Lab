@@ -104,21 +104,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(parse_qs(urlparse(urlopen.call_args_list[0].args[0].full_url).query)["q"], [origin_query])
         self.assertEqual(parse_qs(urlparse(urlopen.call_args_list[1].args[0].full_url).query)["q"], [destination_query])
 
-    def test_contract_route_distance_api_requires_editor_and_falls_back_without_google_key(self):
+    def test_contract_route_distance_api_requires_editor_and_google_key(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
-        fallback_route = {
-            "origin": "東京駅",
-            "destination": "東京タワー",
-            "resolved_origin": "東京都千代田区丸の内一丁目 東京駅",
-            "resolved_destination": "東京都港区芝公園四丁目 東京タワー",
-            "distance_km": 4.2,
-            "duration_minutes": 14,
-            "maps_url": "https://www.google.com/maps/dir/?api=1",
-            "provider": "OpenStreetMap / OSRM",
-        }
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False), patch(
-            "app.compute_public_route", return_value=fallback_route
-        ) as compute_public_route:
+            "app.compute_google_route"
+        ) as compute_google_route:
             os.environ.pop("GOOGLE_MAPS_ROUTES_API_KEY", None)
             client = create_app(database_url="").test_client()
             self.assertEqual(
@@ -131,10 +121,9 @@ class UpdatesTest(unittest.TestCase):
                 headers={"X-Editor-Password": "editor-secret"},
             )
 
-        self.assertEqual(missing.status_code, 200)
-        self.assertEqual(missing.json["resolved_origin"], fallback_route["resolved_origin"])
-        self.assertEqual(missing.json["provider"], "OpenStreetMap / OSRM")
-        compute_public_route.assert_called_once_with("東京駅", "東京タワー")
+        self.assertEqual(missing.status_code, 503)
+        self.assertIn("GOOGLE_MAPS_ROUTES_API_KEY", missing.json["error"])
+        compute_google_route.assert_not_called()
 
     def test_contract_route_distance_api_returns_google_route(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
@@ -953,7 +942,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('maxlength="300" autocomplete="off" enterkeyhint="search"', page)
         self.assertIn("function measureGoogleRouteDistance()", page)
         self.assertIn("const measuredDistanceKm = Number(result.distance_km);", page)
-        self.assertIn("const actualDistanceKm = Math.round(measuredDistanceKm * 2 * 10) / 10;", page)
+        self.assertIn("const actualDistanceKm = Math.round(measuredDistanceKm * 10) / 10;", page)
         self.assertIn("測定中に出発地または目的地が変更されました。", page)
         self.assertIn("有効な走行距離を取得できませんでした。", page)
         self.assertIn("Googleマップ方式で自動車ルートを検索しています...", page)
@@ -963,7 +952,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("route_measurement_signature: pendingRouteMeasurementSignature", page)
         self.assertIn("測定・反映完了", page)
         self.assertIn("住所変更後の実車走行距離再測定", page)
-        self.assertIn("route_origin: '', route_destination: '', route_distance_km: '', route_measurement_signature: ''", page)
+        self.assertIn("route_origin: '', route_destination: '', route_distance_km: '', route_provider: '', route_measurement_signature: ''", page)
         self.assertNotIn("測定完了（未反映）", page)
         self.assertNotIn("values.route_document_url = googleMapsRouteUrl(values.route_origin, values.route_destination)", page)
         self.assertIn("function transportSheetSignature(values)", page)
@@ -972,8 +961,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("Object.assign(values, draftValues);", page)
         self.assertIn('class="route-distance-summary"', page)
         self.assertIn('class="transport-route-summary"', page)
-        self.assertIn("<strong>実車走行距離：</strong>${escapeHtml(values.route_distance_km)}km（自動算出距離の2倍）", page)
-        self.assertIn("実車走行距離${values.route_distance_km}km（自動算出距離の2倍）を見積書へ反映しました。", page)
+        self.assertIn("<strong>走行距離：</strong>${escapeHtml(values.route_distance_km)}km（Google Maps Routes API自動算出）", page)
+        self.assertNotIn("自動算出距離の2倍", page)
+        self.assertIn("Google Maps Routes APIの走行距離${values.route_distance_km}kmを見積書へ反映しました。", page)
         self.assertIn("function googleMapsRouteUrl(origin, destination)", page)
         self.assertIn('data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}"', page)
         self.assertIn("経路図を作成するには、出発地と目的地を入力して", page)
@@ -981,7 +971,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("@media (max-width: 520px)", page)
         self.assertIn(".document-tools { grid-template-columns: 1fr; }", page)
         self.assertIn("/api/contracts/route-distance", page)
-        self.assertIn("result.provider || 'ルート検索'", page)
+        self.assertIn("if (result.provider !== 'Google Maps')", page)
         self.assertIn("再調達価格・評価根拠の確認", page)
         self.assertIn("輸送品目を追加", page)
         for instrument_name in (
@@ -1623,6 +1613,7 @@ class UpdatesTest(unittest.TestCase):
             "route_origin": "出発地",
             "route_destination": "目的地",
             "route_distance_km": "8.2",
+            "route_provider": "Google Maps",
             "route_measurement_signature": "route-v1-1234abcd",
             "total_hours": "8",
             "freight_operation": {},
@@ -2115,7 +2106,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-30-contract-workflow-audit-v29";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-31-google-routes-required-v30";', script)
         self.assertLess(do_post.index('if (action === "generate_transport_sheet")'), do_post.index("var spreadsheet = getSpreadsheet();"))
         self.assertIn("data.cargo_restrictions_agreed !== true", script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
@@ -2249,9 +2240,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('["正式見積書URL", safeCell(data.carrier_quote_url)]', script)
         self.assertIn('["参考運賃出典URL", safeCell(rateMaster.source_url)]', script)
         self.assertIn('var routeSheet = workbook.insertSheet("運行計画・積卸し経路図")', script)
-        self.assertIn('["Google自動算出距離（片道参考）", routeDistanceKm / 2]', script)
-        self.assertIn('["実車走行距離", routeDistanceKm]', script)
-        self.assertIn('["距離算定方法", "Google自動算出距離の2倍"]', script)
+        self.assertIn('["Google Maps自動算出距離", routeDistanceKm]', script)
+        self.assertIn('["見積反映距離", routeDistanceKm]', script)
+        self.assertIn('["距離算定方法", routeProvider + " Routes API自動算出距離をそのまま反映"]', script)
+        self.assertNotIn("routeDistanceKm / 2", script)
+        self.assertIn('routeSheet.getRange("A3:D3").merge().setValue(routeOrigin + "  →  " + routeDestination)', script)
+        self.assertIn('routeSheet.getRange("A7:B8").merge().setValue(routeDistanceKm)', script)
+        self.assertIn('routeSheet.getRange("C7:D8").merge().setValue(totalHours)', script)
+        self.assertIn('"▶ Google マップで実際の経路を開く"', script)
+        self.assertIn('routeSheet.setRowHeight(3, 54)', script)
         self.assertIn('routeUrl: workbook.getUrl() + "#gid=" + routeSheet.getSheetId()', script)
         self.assertIn('setFormulaR1C1("=RC[-4]*RC[-1]")', script)
         self.assertIn('setFormulaR1C1("=RC[-6]*RC[-1]")', script)
@@ -2693,7 +2690,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-30-contract-workflow-audit-v29",
+                "version": "2026-08-31-google-routes-required-v30",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)

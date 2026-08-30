@@ -62,6 +62,8 @@ STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
 STORE_RECOVERY_LIMIT = 5
 STORE_RECOVERY_WINDOW_SECONDS = 15 * 60
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
+INVOICE_REGISTRATION_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
+DEFAULT_INVOICE_REGISTRATION_NUMBER = "T2810320517878"
 MEDIA_PATTERN = re.compile(
     r"\[(image|video|pdf|写真|動画|資料)\s*[:：]\s*([^\]]+)\]",
     re.IGNORECASE,
@@ -213,6 +215,7 @@ CONTRACT_TYPES = {
             "route_origin",
             "route_destination",
             "route_distance_km",
+            "route_provider",
             "route_measurement_signature",
             "total_hours",
             "instrument_price_master",
@@ -800,7 +803,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-30-contract-workflow-audit-v29"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-31-google-routes-required-v30"
 
 
 def current_japan_date():
@@ -2346,6 +2349,33 @@ def create_app(
         parsed = urlparse(site_url)
         return f"{parsed.scheme}://{parsed.netloc}"
 
+    def invoice_registration_number():
+        value = os.environ.get(
+            "INVOICE_REGISTRATION_NUMBER", DEFAULT_INVOICE_REGISTRATION_NUMBER
+        ).strip().upper()
+        if INVOICE_REGISTRATION_NUMBER_PATTERN.fullmatch(value) is None:
+            return ""
+        return value
+
+    def japanese_checkout_options():
+        registration_number = invoice_registration_number()
+        return {
+            "locale": "ja",
+            "customer_creation": "always",
+            "invoice_creation": {
+                "enabled": True,
+                "invoice_data": {
+                    "description": "税込価格（消費税を含みます）",
+                    "custom_fields": [
+                        {
+                            "name": "適格請求書発行事業者登録番号",
+                            "value": registration_number,
+                        }
+                    ],
+                },
+            },
+        }
+
     def checkout_payment_is_valid(
         checkout,
         expected_price_yen,
@@ -2642,6 +2672,7 @@ def create_app(
             >= 32,
             "PUBLIC_SITE_URL": bool(public_site_url()),
             "FLOW_HARMONY_PRICE_YEN": price_yen == FLOW_HARMONY_PRODUCT_PRICE_YEN,
+            "INVOICE_REGISTRATION_NUMBER": bool(invoice_registration_number()),
         }
         product_ready = flow_harmony_archive_is_valid()
         return {
@@ -2733,6 +2764,7 @@ def create_app(
             ) >= 32,
             "PUBLIC_SITE_URL": bool(public_site_url()),
             "METRONOME_PRICE_YEN": price_valid,
+            "INVOICE_REGISTRATION_NUMBER": bool(invoice_registration_number()),
         }
         product_ready = product_archive_is_valid()
         return {
@@ -2894,21 +2926,34 @@ def create_app(
         api_key = os.environ.get("GOOGLE_MAPS_ROUTES_API_KEY", "").strip()
         origin = payload.get("origin", "")
         destination = payload.get("destination", "")
-        if api_key:
-            try:
-                return jsonify(compute_google_route(origin, destination, api_key))
-            except (ValueError, OSError, urllib_error.URLError, json.JSONDecodeError, UnicodeError):
-                app.logger.warning("Google Routes API unavailable; falling back to public routing")
+        if not api_key:
+            return jsonify(
+                {
+                    "error": (
+                        "Google Maps Routes APIキーが設定されていません。"
+                        "RenderのGOOGLE_MAPS_ROUTES_API_KEYを設定してください。"
+                    )
+                }
+            ), 503
         try:
-            result = compute_public_route(origin, destination)
+            result = compute_google_route(origin, destination, api_key)
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
         except urllib_error.HTTPError as exc:
-            app.logger.warning("Public route services rejected route request: %s", exc.code)
-            return jsonify({"error": "公開経路サービスが距離測定を受け付けませんでした。住所を確認してください。"}), 502
+            app.logger.warning("Google Routes API rejected route request: %s", exc.code)
+            return jsonify(
+                {
+                    "error": (
+                        "Google Maps Routes APIが距離測定を受け付けませんでした。"
+                        "APIキー、Routes APIの有効化、請求先設定、住所を確認してください。"
+                    )
+                }
+            ), 502
         except (OSError, urllib_error.URLError, json.JSONDecodeError, UnicodeError):
-            app.logger.exception("Public route services request failed")
-            return jsonify({"error": "公開経路サービスから距離を取得できませんでした。"}), 502
+            app.logger.exception("Google Routes API request failed")
+            return jsonify(
+                {"error": "Google Maps Routes APIから距離を取得できませんでした。"}
+            ), 502
         return jsonify(result)
 
     @app.post("/api/contracts/transport-sheet")
@@ -2936,6 +2981,7 @@ def create_app(
         route_origin = str(payload.get("route_origin", "")).strip()
         route_destination = str(payload.get("route_destination", "")).strip()
         route_distance_km = str(payload.get("route_distance_km", "")).strip()
+        route_provider = str(payload.get("route_provider", "")).strip()
         route_measurement_signature = str(payload.get("route_measurement_signature", "")).strip()
         total_hours = str(payload.get("total_hours", "")).strip()
         freight_operation = payload.get("freight_operation", {})
@@ -2959,7 +3005,7 @@ def create_app(
         )
         if not valid_cargo_items:
             return jsonify({"error": "輸送対象物の名称、数量、単価・評価額、容積ポイントを確認してください。"}), 400
-        if not route_origin or len(route_origin) > 200 or not route_destination or len(route_destination) > 200 or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_distance_km) is None or float(route_distance_km) <= 0 or re.fullmatch(r"route-v1-[0-9a-f]{8}", route_measurement_signature) is None or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", total_hours) is None or float(total_hours) <= 0 or not isinstance(freight_operation, dict):
+        if not route_origin or len(route_origin) > 200 or not route_destination or len(route_destination) > 200 or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_distance_km) is None or float(route_distance_km) <= 0 or route_provider != "Google Maps" or re.fullmatch(r"route-v1-[0-9a-f]{8}", route_measurement_signature) is None or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", total_hours) is None or float(total_hours) <= 0 or not isinstance(freight_operation, dict):
             return jsonify({"error": "運行経路、実車走行距離、総拘束時間を確認してください。"}), 400
         if workflow_status not in {"draft", "quote_pending", "ready"} or transport_provider_mode != "self_light_cargo" or vehicle_class != "light_cargo" or pricing_basis not in {"self_light_cargo_rate", "light_cargo_reference"}:
             return jsonify({"error": "輸送案件の進行状態を確認してください。"}), 400
@@ -2988,6 +3034,7 @@ def create_app(
                     "route_origin": route_origin,
                     "route_destination": route_destination,
                     "route_distance_km": route_distance_km,
+                    "route_provider": route_provider,
                     "route_measurement_signature": route_measurement_signature,
                     "total_hours": total_hours,
                     "freight_operation": freight_operation,
@@ -3233,6 +3280,7 @@ def create_app(
         try:
             checkout = stripe_module().checkout.Session.create(
                 mode="payment",
+                **japanese_checkout_options(),
                 line_items=[
                     {
                         "price": os.environ["STRIPE_METRONOME_PRICE_ID"],
@@ -3328,6 +3376,7 @@ def create_app(
         try:
             checkout = stripe_module().checkout.Session.create(
                 mode="payment",
+                **japanese_checkout_options(),
                 line_items=[{"price": configuration["price_id"], "quantity": 1}],
                 client_reference_id=checkout_request_id,
                 metadata={

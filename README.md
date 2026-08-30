@@ -93,11 +93,14 @@ STRIPE_SECRET_KEY=sk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_METRONOME_PRICE_ID=price_...
 STRIPE_FLOW_HARMONY_PRICE_ID=price_...
+INVOICE_REGISTRATION_NUMBER=Tから始まる14文字の適格請求書発行事業者登録番号
 DOWNLOAD_TOKEN_SECRET=十分に長いランダム文字列
 METRONOME_PRICE_YEN=500
 FLOW_HARMONY_PRICE_YEN=1000
 PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 ```
+
+`INVOICE_REGISTRATION_NUMBER`には`T`と13桁の数字からなる登録番号を指定します。未設定時は契約書で公開している登録番号を使用します。メトロノームとTrumpet Transpose LabのCheckoutは日本語表示になり、決済後に作成されるStripeの請求書へこの登録番号と税込表記を記載します。明示的に設定した番号が形式不正の場合は、登録番号のない請求書を発行しないよう購入を停止します。
 
 `PUBLIC_SITE_URL`には購入ページを配信するHTTPSの公開ベースURLを指定し、末尾の`/`、`/lesson/`、クエリ、フラグメントは付けないでください。GitHub Pagesのプロジェクトサイトでは、例として`https://user.github.io/repository`のようにリポジトリ名まで含めます。Stripeの秘密鍵・Webhook secret・Price IDはすべて同じテストモードまたは本番モードの値を組み合わせます。
 

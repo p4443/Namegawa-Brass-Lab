@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-30-contract-workflow-audit-v29";
+var SCRIPT_VERSION = "2026-08-31-google-routes-required-v30";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -442,6 +442,7 @@ function generateTransportWorkbook(data) {
   var rateMaster = data.freight_rate_master || {};
   var instrumentMaster = data.instrument_price_master || {};
   var routeDistanceKm = Number(data.route_distance_km || 0);
+  var routeProvider = String(data.route_provider || "").trim();
   var routeMeasurementSignature = String(data.route_measurement_signature || "").trim();
   var routeOrigin = String(data.route_origin || "").trim();
   var routeDestination = String(data.route_destination || "").trim();
@@ -450,7 +451,7 @@ function generateTransportWorkbook(data) {
   if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length || data.cargo_restrictions_agreed !== true) {
     throw new Error("Invalid transport sheet request");
   }
-  if (!routeOrigin || !routeDestination || !isFinite(routeDistanceKm) || routeDistanceKm <= 0 || !/^route-v1-[0-9a-f]{8}$/.test(routeMeasurementSignature) || !isFinite(totalHours) || totalHours <= 0 || !freightOperation || typeof freightOperation !== "object") {
+  if (!routeOrigin || !routeDestination || !isFinite(routeDistanceKm) || routeDistanceKm <= 0 || routeProvider !== "Google Maps" || !/^route-v1-[0-9a-f]{8}$/.test(routeMeasurementSignature) || !isFinite(totalHours) || totalHours <= 0 || !freightOperation || typeof freightOperation !== "object") {
     throw new Error("Invalid transport route request");
   }
   cargoItems.forEach(function (item) {
@@ -508,24 +509,31 @@ function generateTransportWorkbook(data) {
     ["輸送案件名", safeCell(transportName)],
     ["積込地点（出発地）", safeCell(routeOrigin)],
     ["取卸地点（目的地）", safeCell(routeDestination)],
-    ["Google自動算出距離（片道参考）", routeDistanceKm / 2],
-    ["実車走行距離", routeDistanceKm],
-    ["距離算定方法", "Google自動算出距離の2倍"],
+    ["Google Maps自動算出距離", routeDistanceKm],
+    ["見積反映距離", routeDistanceKm],
+    ["距離算定方法", routeProvider + " Routes API自動算出距離をそのまま反映"],
     ["総拘束時間", totalHours],
     ["待機時間", Number(freightOperation.waiting_minutes || 0)],
     ["積卸し作業時間", Number(freightOperation.loading_minutes || 0)],
-    ["積卸し方法", safeCell(freightOperation.loading_support_mode)],
-    ["Google マップ経路図", mapsUrl]
+    ["積卸し方法", safeCell(freightOperation.loading_support_mode)]
   ];
-  routeSheet.getRange(1, 1, 1, 2).setValues([["運行計画・積卸し経路図", "設定値"]]).setBackground("#0f766e").setFontColor("#ffffff").setFontWeight("bold");
-  routeSheet.getRange(2, 1, routeRows.length, 2).setValues(routeRows);
-  routeSheet.getRange(6, 2, 2, 1).setNumberFormat('0.0"km"');
-  routeSheet.getRange(9, 2).setNumberFormat('0.0"時間"');
-  routeSheet.getRange(10, 2, 2, 1).setNumberFormat('0"分"');
-  routeSheet.getRange(13, 2).setFormula('=HYPERLINK("' + mapsUrl.replace(/"/g, '""') + '","Google マップで経路を開く")');
+  routeSheet.getRange("A1:D1").merge().setValue("運行計画・積卸し経路図").setBackground("#0f766e").setFontColor("#ffffff").setFontWeight("bold").setFontSize(16).setHorizontalAlignment("center");
+  routeSheet.getRange("A3:D3").merge().setValue(routeOrigin + "  →  " + routeDestination).setBackground("#ecfdf5").setFontColor("#064e3b").setFontWeight("bold").setFontSize(14).setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
+  routeSheet.setRowHeight(3, 54);
+  routeSheet.getRange("A4:D4").merge().setValue("Google Maps Routes APIで測定した自動車ルート").setFontColor("#475569").setHorizontalAlignment("center");
+  routeSheet.getRange("A6:B6").merge().setValue("見積反映距離").setBackground("#dbeafe").setFontWeight("bold").setHorizontalAlignment("center");
+  routeSheet.getRange("A7:B8").merge().setValue(routeDistanceKm).setNumberFormat('0.0" km"').setBackground("#eff6ff").setFontColor("#1d4ed8").setFontWeight("bold").setFontSize(22).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  routeSheet.getRange("C6:D6").merge().setValue("総拘束時間").setBackground("#fef3c7").setFontWeight("bold").setHorizontalAlignment("center");
+  routeSheet.getRange("C7:D8").merge().setValue(totalHours).setNumberFormat('0.0" 時間"').setBackground("#fffbeb").setFontColor("#92400e").setFontWeight("bold").setFontSize(22).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  routeSheet.getRange("A10:B10").setValues([["運行情報", "内容"]]).setBackground("#334155").setFontColor("#ffffff").setFontWeight("bold");
+  routeSheet.getRange(11, 1, routeRows.length, 2).setValues(routeRows);
+  routeSheet.getRange(15, 2, 2, 1).setNumberFormat('0.0"km"');
+  routeSheet.getRange(18, 2).setNumberFormat('0.0"時間"');
+  routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0"分"');
+  routeSheet.getRange("A23:D23").merge().setFormula('=HYPERLINK("' + mapsUrl.replace(/"/g, '""') + '","▶ Google マップで実際の経路を開く")').setBackground("#2563eb").setFontColor("#ffffff").setFontWeight("bold").setFontSize(13).setHorizontalAlignment("center");
+  routeSheet.getRange("A1:D23").setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
   routeSheet.setFrozenRows(1);
-  routeSheet.setColumnWidth(1, 240);
-  routeSheet.setColumnWidth(2, 420);
+  routeSheet.setColumnWidths(1, 4, 180);
 
   var feeSheet = workbook.insertSheet("料金規定");
   var feeRows = [
