@@ -1841,14 +1841,30 @@
       });
       if (!response.ok) throw new Error(await readApiError(response, '自動車ルートの距離を取得できませんでした。'));
       const result = await response.json();
+      if (!freightCalculatorDialog.open || originInput.value.trim() !== origin || destinationInput.value.trim() !== destination) {
+        throw new Error('測定中に出発地または目的地が変更されました。現在の住所でもう一度測定してください。');
+      }
+      const measuredDistanceKm = Number(result.distance_km);
+      if (!Number.isFinite(measuredDistanceKm) || measuredDistanceKm <= 0) {
+        throw new Error('有効な走行距離を取得できませんでした。施設名・住所を確認して再測定してください。');
+      }
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
-      const actualDistanceKm = Math.round(Number(result.distance_km) * 2 * 10) / 10;
+      const actualDistanceKm = Math.round(measuredDistanceKm * 2 * 10) / 10;
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
       distanceInput.value = String(actualDistanceKm);
       pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm);
-      freightCalculatorStatus.textContent = `測定完了（未反映）：${result.provider || 'ルート検索'}の自動算出距離を2倍し、実車走行距離${actualDistanceKm}kmとしました。走行時間の目安${result.duration_minutes}分。「見積書に反映して戻る」で確定してください。`;
+      Object.assign(contractValues.estimateB, {
+        route_origin: resolvedOrigin,
+        route_destination: resolvedDestination,
+        route_distance_km: String(actualDistanceKm),
+        route_measurement_signature: pendingRouteMeasurementSignature
+      });
+      editorRevision += 1;
+      renderDynamicFields();
+      renderPreview();
+      freightCalculatorStatus.textContent = `測定・反映完了：${result.provider || 'ルート検索'}の自動算出距離を2倍し、実車走行距離${actualDistanceKm}kmへ反映しました。走行時間の目安${result.duration_minutes}分。運賃も更新する場合は「見積書に反映して戻る」を押してください。`;
       freightCalculatorStatus.dataset.state = 'success';
     }
 
