@@ -55,7 +55,6 @@ class StoreTest(unittest.TestCase):
             "METRONOME_PRICE_YEN": "500",
             "FLOW_HARMONY_PRICE_YEN": "1000",
             "PUBLIC_SITE_URL": "https://example.com",
-            "SALES_ENABLED": "true",
         }
         self.environment_patch = patch.dict(os.environ, self.environment, clear=False)
         self.environment_patch.start()
@@ -179,19 +178,6 @@ class StoreTest(unittest.TestCase):
         self.assertTrue(enabled.get_json()["enabled"])
         self.assertTrue(enabled.get_json()["checkout_available"])
 
-    def test_global_sales_gate_blocks_enabled_store_and_checkout(self):
-        self.enable_store()
-        with patch.dict(os.environ, {"SALES_ENABLED": "false"}):
-            product = self.client.get("/api/store/product")
-            checkout = self.client.post(
-                "/api/store/checkout",
-                json={"checkout_request_id": "00000000-0000-4000-8000-000000000001"},
-            )
-
-        self.assertFalse(product.get_json()["enabled"])
-        self.assertFalse(product.get_json()["checkout_available"])
-        self.assertEqual(checkout.status_code, 403)
-
     def test_each_app_sale_setting_can_be_updated_independently(self):
         stripe = self.stripe_module(amount_total=1000)
         with patch.dict(sys.modules, {"stripe": stripe}):
@@ -267,38 +253,44 @@ class StoreTest(unittest.TestCase):
         self.assertIn('href="../legal/#license"', html)
 
     def test_trumpet_transpose_lab_free_version_is_available(self):
-        response = self.client.get("/trumpet-transpose-lab/")
+        response = self.client.get("/trumpet-transpose-lab/?mode=free")
         html = response.get_data(as_text=True)
-        app_response = self.client.get("/trumpet-transpose-lab/app.mjs")
-        app_javascript = app_response.get_data(as_text=True)
-        app_response.close()
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("Trumpet Transpose Lab", html)
-        self.assertIn('id="capture"', html)
-        self.assertIn('id="score"', html)
-        self.assertIn('id="edit"', html)
-        self.assertIn('id="noteDuration"', html)
-        self.assertIn('id="wavExport"', html)
-        self.assertIn('id="midiExport"', html)
-        self.assertIn('id="xmlExport"', html)
-        self.assertIn("location.protocol !== 'file:'", app_javascript)
-        self.assertIn("button.disabled = isFreeMode", app_javascript)
-        self.assertIn("無料Web版では保存できません。", app_javascript)
-        self.assertIn("transcribeMonophonic", app_javascript)
-        self.assertIn("trumpet-transpose-lab-v2.mid", app_javascript)
-        self.assertIn("trumpet-transpose-lab-v2.musicxml", app_javascript)
-        self.assertIn("function scorePitchPosition", app_javascript)
-        self.assertIn("function inferredKeySignature", app_javascript)
-        self.assertIn("const signaturePositions", app_javascript)
-        self.assertIn("runSilentCountIn", app_javascript)
-        self.assertNotIn("playMetronomeClick", app_javascript)
-        self.assertNotIn("indexedDB", app_javascript)
+        self.assertIn("トランペット専用ワークスペース", html)
+        self.assertIn('id="selectedNoteDuration"', html)
+        self.assertIn("changeSelectedNoteDuration", html)
+        self.assertIn("showSaveFilePicker", html)
+        self.assertIn("保存先を選んでWAV保存", html)
+        self.assertIn("const isFreeWebVersion", html)
+        self.assertIn("if (!allowDataSave()) return;", html)
+        self.assertIn("無料Web版では録音・採譜を利用できますが、データ保存はできません。", html)
+        self.assertIn("document.querySelectorAll('.save-output')", html)
+        self.assertIn("if (!isFreeWebVersion && !await chooseRecordingDestination())", html)
+        self.assertIn("if (isFreeWebVersion) return null;", html)
+        self.assertIn("無料Web版の録音・採譜データは画面を閉じると破棄されます。", html)
+        self.assertIn("prepareRecordedSamples(buffer)", html)
+        self.assertIn("AUDIO_DECODE_FAILED", html)
+        self.assertIn("previousScoreNotes", html)
+        self.assertIn("自動採譜（B♭トランペット）", html)
+        self.assertIn("trumpet-transpose-lab-score.mid", html)
+        self.assertIn("trumpet-transpose-lab-score.musicxml", html)
+        self.assertIn("offsets[positiveModulo(noteNumber, 12)] - 4", html)
+        self.assertIn("updateDetectedKeyFromNotes(scoreNotes)", html)
+        self.assertIn("if (notes.length) updateDetectedKeyFromNotes(notes)", html)
+        self.assertIn('aria-label="ト音記号"', html)
+        self.assertIn("const sharpPositions = [92, 110, 86, 104, 122, 98, 116]", html)
+        self.assertIn("サイレント予備カウント", html)
+        self.assertIn("録音・解析中（無音）", html)
+        self.assertIn("録音開始前に1小節、無音でカウントします", html)
+        self.assertNotIn("playMetronomeClick", html)
+        self.assertNotIn("indexedDB", html)
         self.assertNotIn('id="bluetoothBtn"', html)
         self.assertNotIn('id="chordDisplay"', html)
         self.assertNotIn('id="manualHarmonyPanel"', html)
-        self.assertNotIn("Counterline", app_javascript)
-        self.assertNotIn('<score-part id="P2">', app_javascript)
+        self.assertNotIn("Trumpet 2 - Counterline", html)
+        self.assertNotIn('<score-part id="P2">', html)
         self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
         legacy = self.client.get("/flow-harmony/?mode=free")
         self.assertEqual(legacy.status_code, 308)

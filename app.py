@@ -2301,17 +2301,6 @@ def create_app(
         else:
             save_store_settings(enabled, store_file, product_id)
 
-    def global_sales_enabled():
-        return os.environ.get("SALES_ENABLED", "false").strip().lower() in {
-            "1",
-            "true",
-            "yes",
-            "on",
-        }
-
-    def store_sales_enabled(product_id=PRODUCT_ID):
-        return global_sales_enabled() and get_store_settings(product_id)["enabled"]
-
     def stripe_module():
         import stripe
 
@@ -2830,17 +2819,6 @@ def create_app(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return response
 
-    @app.get("/trumpet-transpose-lab/<path:asset>")
-    def trumpet_transpose_lab_asset(asset):
-        if asset not in {
-            "styles.css",
-            "app.mjs",
-            "recorder-worklet.js",
-            "transcription-core.mjs",
-        }:
-            return app.response_class(status=404)
-        return send_from_directory(BASE_DIR / "trumpet-transpose-lab", asset)
-
     @app.get("/flow-harmony/")
     def flow_harmony_legacy_redirect():
         query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""
@@ -3150,9 +3128,8 @@ def create_app(
 
         settings = get_store_settings()
         configuration = store_configuration()
-        enabled = global_sales_enabled() and settings["enabled"]
         checkout_available = (
-            enabled
+            settings["enabled"]
             and configuration["ready"]
             and stripe_price_is_ready(configuration)
         )
@@ -3161,7 +3138,7 @@ def create_app(
                 "product_id": PRODUCT_ID,
                 "name": PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": enabled,
+                "enabled": settings["enabled"],
                 "checkout_available": checkout_available,
             }
         )
@@ -3201,7 +3178,7 @@ def create_app(
                 "production_ready": ready
                 and configuration["stripe_mode"] == "live",
                 "stripe_mode": configuration["stripe_mode"],
-                "store_enabled": store_sales_enabled(),
+                "store_enabled": get_store_settings()["enabled"],
                 "price_yen": configuration["price_yen"],
                 "flow_harmony_price_yen": flow_configuration["price_yen"],
                 "checks": checks,
@@ -3216,7 +3193,7 @@ def create_app(
     def create_store_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
-        if not store_sales_enabled():
+        if not get_store_settings()["enabled"]:
             return store_json({"error": "現在販売を停止しています。"}, 403)
         configuration = store_configuration()
         if not configuration["ready"]:
@@ -3301,14 +3278,13 @@ def create_app(
 
         settings = get_store_settings(FLOW_HARMONY_PRODUCT_ID)
         configuration = flow_harmony_configuration()
-        enabled = global_sales_enabled() and settings["enabled"]
         return store_json(
             {
                 "product_id": FLOW_HARMONY_PRODUCT_ID,
                 "name": FLOW_HARMONY_PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": enabled,
-                "checkout_available": enabled
+                "enabled": settings["enabled"],
+                "checkout_available": settings["enabled"]
                 and configuration["ready"]
                 and flow_harmony_price_is_ready(configuration),
             }
@@ -3321,7 +3297,7 @@ def create_app(
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
-        if not store_sales_enabled(FLOW_HARMONY_PRODUCT_ID):
+        if not get_store_settings(FLOW_HARMONY_PRODUCT_ID)["enabled"]:
             return store_json({"error": "現在公開を停止しています。"}, 503)
         configuration = flow_harmony_configuration()
         if not configuration["ready"] or not flow_harmony_price_is_ready(configuration):

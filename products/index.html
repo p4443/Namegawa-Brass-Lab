@@ -99,15 +99,7 @@
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
     .transpose-lab-window { height: 1500px; }
-    .tennko-showcase { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; padding: 1px; background: #c5d2ca; }
-    .tennko-preview { min-width: 0; margin: 0; background: #ffffff; }
-    .tennko-preview-frame { position: relative; overflow: hidden; aspect-ratio: 16 / 9; background: #f2f5f1; }
-    .tennko-preview img { position: absolute; top: 0; left: 0; display: block; max-width: none; }
-    .tennko-preview.entry img { width: auto; height: 100%; }
-    .tennko-preview.monthly img { width: 100%; height: auto; }
-    .tennko-preview figcaption { min-height: 74px; padding: 14px 16px; border-top: 1px solid #d3dcd6; }
-    .tennko-preview figcaption strong { display: block; color: #163a2d; font-size: 0.88rem; }
-    .tennko-preview figcaption span { display: block; margin-top: 3px; color: var(--text-muted); font-size: 0.74rem; line-height: 1.5; }
+    .tenko-window { height: 680px; background: #f2f5f1; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -120,22 +112,20 @@
 
     .store-actions { display: grid; align-content: start; gap: 10px; }
     .store-button, .download-link, .recovery-button, .sales-save { min-height: 46px; border: 0; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-weight: 800; cursor: pointer; }
-    .purchase-options { display: grid; gap: 10px; }
-    .purchase-plan { padding: 16px; border: 1px solid #c5d2ca; border-radius: 8px; background: #ffffff; }
-    .purchase-plan-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 5px; }
-    .purchase-plan-heading strong { color: #163a2d; font-size: 0.92rem; }
-    .purchase-price { color: #163a2d; font-size: 1.15rem; font-weight: 800; white-space: nowrap; }
-    .purchase-plan p { margin: 0 0 12px; color: var(--text-muted); font-size: 0.75rem; line-height: 1.6; }
-    .store-button-link { display: flex; min-height: 46px; align-items: center; justify-content: center; padding: 10px 16px; text-align: center; }
-    .store-button-link:hover, .store-button-link:focus-visible { background: var(--primary-hover); }
-    .store-button-link.company { color: #0f172a; background: var(--accent-color); }
-    .store-button-link.company:hover, .store-button-link.company:focus-visible { background: #fbbf24; }
-    .store-button-link[aria-disabled="true"] { cursor: not-allowed; opacity: 0.55; pointer-events: none; }
     .store-button:hover:not(:disabled), .recovery-button:hover:not(:disabled), .sales-save:hover:not(:disabled) { background: var(--primary-hover); }
     .store-button:disabled, .recovery-button:disabled, .sales-save:disabled { cursor: wait; opacity: 0.6; }
     .download-link { display: inline-flex; align-items: center; justify-content: center; background: var(--accent-hover); }
     .download-link[hidden] { display: none; }
     .store-status { min-height: 1.5em; color: var(--text-muted); font-size: 0.8rem; }
+
+    .service-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .service-plan { display: grid; align-content: start; gap: 10px; padding: 18px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); }
+    .service-plan h3 { color: #0f172a; font-size: 1rem; }
+    .service-plan p { color: var(--text-muted); font-size: 0.82rem; }
+    .service-price { color: var(--primary-color); font-size: 1.35rem; font-weight: 800; }
+    .service-price small { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
+    .service-purchase { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; margin-top: auto; padding: 10px 14px; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-size: 0.88rem; font-weight: 800; text-align: center; }
+    .service-purchase:hover, .service-purchase:focus-visible { background: var(--primary-hover); }
 
     .purchase-recovery, .sales-admin { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-color); }
     .purchase-recovery h3, .sales-admin summary { color: var(--text-main); font-size: 0.84rem; font-weight: 800; }
@@ -145,21 +135,6 @@
     .sales-toggle { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
     .store-legal { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 14px; color: var(--text-muted); font-size: 0.74rem; }
     .store-legal a:hover { color: var(--primary-color); }
-
-    .transport-catalog { padding: 80px 0; border-top: 1px solid #d3dcd6; border-bottom: 1px solid #d3dcd6; background: #eef3ef; }
-    .transport-catalog .section-title { color: #163a2d; }
-    .transport-catalog .section-desc { margin-bottom: 28px; }
-    .transport-track .product-feature { width: 100%; border-color: #c5d2ca; border-top: 5px solid #c99635; }
-    .transport-catalog .product-label { color: #79510e; }
-    .transport-catalog .launch-link { border-color: #245943; color: #245943; }
-    .transport-catalog .launch-link:hover { color: #ffffff; background: #245943; }
-    .transport-catalog .store-copy h3 { color: #163a2d; }
-    .transport-catalog .store-benefits li::before { color: #245943; }
-    .transport-catalog .store-button-link { background: #163a2d; }
-    .transport-catalog .store-button-link:hover, .transport-catalog .store-button-link:focus-visible { background: #245943; }
-    .transport-catalog .store-button-link.company { color: #1d2924; background: #c99635; }
-    .transport-catalog .store-button-link.company:hover, .transport-catalog .store-button-link.company:focus-visible { background: #d9ae5b; }
-    .transport-catalog .store-legal a:hover { color: #245943; }
 
     .future-products { padding: 80px 0; }
     .future-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
@@ -177,12 +152,14 @@
 
     @media (max-width: 820px) {
       .hero-grid, .store-panel, .future-grid { grid-template-columns: 1fr; }
+      .service-plans { grid-template-columns: 1fr; }
       .hero-mark { min-height: 190px; }
       .upcoming-app { grid-template-columns: 1fr; }
       .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
       .transpose-lab-window { height: 1800px; }
+      .tenko-window { height: 680px; }
     }
 
     @media (max-width: 520px) {
@@ -195,7 +172,7 @@
       .mobile-title-break { display: block; }
       .hero-copy { margin-top: 14px; font-size: 0.94rem; line-height: 1.75; }
       .hero-mark strong { font-size: 3rem; }
-      .catalog, .transport-catalog, .future-products { padding: 60px 0; }
+      .catalog, .future-products { padding: 60px 0; }
       .catalog-heading { align-items: center; }
       .catalog-heading .section-title { font-size: 1.35rem; }
       .catalog-heading .section-desc { margin-top: 4px; font-size: 0.8rem; }
@@ -217,12 +194,6 @@
       .section-title, .contact h2 { font-size: 1.45rem; line-height: 1.4; }
       .section-desc { margin-bottom: 28px; font-size: 0.9rem; line-height: 1.65; }
       .purchase-recovery h3, .sales-admin summary { font-size: 0.8rem; line-height: 1.5; }
-      .tennko-showcase { grid-template-columns: 1fr; }
-      .tennko-preview-frame { aspect-ratio: 16 / 10; }
-      .tennko-preview figcaption { min-height: 0; padding: 12px 14px; }
-      .purchase-plan { padding: 14px; }
-      .purchase-plan-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
-      .purchase-price { font-size: 1.1rem; }
     }
   </style>
 </head>
@@ -253,7 +224,7 @@
       <div class="container">
         <div class="catalog-heading">
           <div>
-            <h2 class="section-title" id="products-title">音楽アプリ・商品</h2>
+            <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
             <p class="section-desc"><span class="desktop-scroll-copy">右へスクロール</span><span class="mobile-scroll-copy">下へスクロール</span>してアプリを選べます</p>
           </div>
           <div class="carousel-controls" aria-label="アプリ商品のスクロール操作">
@@ -366,45 +337,27 @@
           </div>
           </article>
 
-        </div>
-      </div>
-    </section>
-
-    <section class="transport-catalog" id="transport-products" aria-labelledby="transport-products-title">
-      <div class="container">
-        <h2 class="section-title" id="transport-products-title">業務・輸送アプリ</h2>
-        <p class="section-desc">運送現場の日々の記録と管理を、正確で続けやすく</p>
-        <div class="transport-track">
-          <article class="product-feature" id="tennko-kakuninnbo">
+          <article class="product-feature" id="tenko-checkbook">
           <header class="product-heading">
             <div>
-              <span class="product-label">運送業務Webアプリ</span>
+              <span class="product-label">業務用Webアプリ</span>
               <h2>点呼確認簿</h2>
-              <p>乗務前後の点呼、アルコール検知器の測定値と写真、健康状態、走行距離を一つの帳簿で記録・管理できます。</p>
+              <p>乗務前後の点呼、走行距離、酒気帯び確認写真を一元管理。月次帳票の印刷・PDF保存とExcel・CSV出力に対応します。</p>
             </div>
-            <a class="launch-link" href="https://tennko-kakuninnbo.onrender.com/" target="_blank" rel="noopener">アプリを確認する</a>
+            <a class="launch-link" href="https://tennko-kakuninnbo.onrender.com/" target="_blank" rel="noopener">ログイン画面を開く</a>
           </header>
 
-          <div class="tennko-showcase" aria-label="点呼確認簿の画面例">
-            <figure class="tennko-preview entry">
-              <div class="tennko-preview-frame"><img src="../data/media/tennko-record-entry.png" alt="乗務前点呼の日時、車両、運転者、検知結果を入力する画面" loading="lazy"></div>
-              <figcaption><strong>日々の点呼記録</strong><span>測定値や写真を乗務前後の記録とまとめて管理</span></figcaption>
-            </figure>
-            <figure class="tennko-preview monthly">
-              <div class="tennko-preview-frame"><img src="../data/media/tennko-monthly-ledger.png" alt="乗務前点呼の測定値を含む月次帳票のサンプル画面" loading="lazy"></div>
-              <figcaption><strong>月次帳票・印刷</strong><span>乗務前・乗務後・全項目から選んで保存・印刷（サンプルデータ）</span></figcaption>
-            </figure>
-          </div>
+          <iframe class="app-window tenko-window" src="https://tennko-kakuninnbo.onrender.com/" title="点呼確認簿 ログイン画面" loading="lazy"></iframe>
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>買い切り利用ライセンス</h3>
-              <p>月額料金なしで継続利用できます。用途に合わせて個人版または会社版を選択してください。</p>
+              <h3>買い切りライセンス</h3>
+              <p>インストール不要で、PCやスマートフォンのブラウザーから利用できます。月額料金や自動更新はありません。</p>
               <ul class="store-benefits">
-                <li>個人版は1ユーザー、500円（税込）</li>
-                <li>会社版は管理者を含め最大100ユーザー、50,000円（税込）</li>
-                <li>ブラウザから利用でき、専用ソフトのインストール不要</li>
-                <li>決済後、登録用ライセンスキーをメールで送付</li>
+                <li>個人版は1ユーザー、会社版は管理者を含め最大100ユーザー</li>
+                <li>乗務前・乗務後・全項目の月次帳票に対応</li>
+                <li>決済後、初回登録用ライセンスキーをメールで送付</li>
+                <li>登録後はメールアドレスとパスワードで利用</li>
               </ul>
               <nav class="store-legal" aria-label="点呼確認簿の購入に関する情報">
                 <a href="https://tennko-kakuninnbo.onrender.com/legal-notice" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
@@ -412,28 +365,19 @@
                 <a href="https://tennko-kakuninnbo.onrender.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
               </nav>
             </div>
-            <div class="store-actions">
-              <div class="purchase-options" aria-label="点呼確認簿の購入プラン">
-                <section class="purchase-plan" aria-labelledby="personal-plan-title">
-                  <div class="purchase-plan-heading"><strong id="personal-plan-title">個人版</strong><span class="purchase-price">500円（税込）</span></div>
-                  <p>1ユーザー・買い切り</p>
-                  <a class="store-button store-button-link" data-tennko-purchase="personal" data-purchase-url="https://tennko-kakuninnbo.onrender.com/purchase/personal" aria-disabled="true">販売状態を確認中</a>
-                </section>
-                <section class="purchase-plan" aria-labelledby="company-plan-title">
-                  <div class="purchase-plan-heading"><strong id="company-plan-title">会社版</strong><span class="purchase-price">50,000円（税込）</span></div>
-                  <p>管理者を含め最大100ユーザー・買い切り（最大利用時は1ユーザー相当500円）</p>
-                  <a class="store-button store-button-link company" data-tennko-purchase="company" data-purchase-url="https://tennko-kakuninnbo.onrender.com/purchase/company" aria-disabled="true">販売状態を確認中</a>
-                </section>
-              </div>
-              <p class="store-status" id="tennko-store-status" role="status" aria-live="polite">販売状態を確認しています。</p>
-              <details class="sales-admin">
-                <summary>管理者用：販売設定</summary>
-                <form class="sales-controls" id="tennko-sales-form" novalidate>
-                  <input id="tennko-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
-                  <label class="sales-toggle"><input id="tennko-sales-enabled" type="checkbox">販売ON</label>
-                  <button class="sales-save" id="tennko-sales-save" type="submit">設定を保存</button>
-                </form>
-              </details>
+            <div class="service-plans" aria-label="点呼確認簿の料金プラン">
+              <section class="service-plan">
+                <h3>個人版</h3>
+                <p>購入者本人1名で利用</p>
+                <div class="service-price">500円 <small>税込・買い切り</small></div>
+                <a class="service-purchase" href="https://tennko-kakuninnbo.onrender.com/purchase/personal">個人版の購入へ</a>
+              </section>
+              <section class="service-plan">
+                <h3>会社版</h3>
+                <p>会社管理者を含め最大100ユーザー</p>
+                <div class="service-price">50,000円 <small>税込・買い切り</small></div>
+                <a class="service-purchase" href="https://tennko-kakuninnbo.onrender.com/purchase/company">会社版の購入へ</a>
+              </section>
             </div>
           </div>
           </article>
@@ -534,91 +478,10 @@
     const flowSalesPassword = document.getElementById("flow-sales-password");
     const flowSalesEnabled = document.getElementById("flow-sales-enabled");
     const flowSalesSave = document.getElementById("flow-sales-save");
-    const tennkoPurchaseButtons = document.querySelectorAll("[data-tennko-purchase]");
-    const tennkoStoreStatus = document.getElementById("tennko-store-status");
-    const tennkoSalesForm = document.getElementById("tennko-sales-form");
-    const tennkoSalesPassword = document.getElementById("tennko-sales-password");
-    const tennkoSalesEnabled = document.getElementById("tennko-sales-enabled");
-    const tennkoSalesSave = document.getElementById("tennko-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
     const storeApiCandidates = (path) => buildApiCandidates(`${renderStoreBase}/${path}`, `api/store/${path}`);
-
-    function tennkoSalesStatusUrl() {
-      const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
-      return isLocal
-        ? "http://127.0.0.1:13000/api/sales/status"
-        : "https://tennko-kakuninnbo.onrender.com/api/sales/status";
-    }
-
-    async function loadTennkoSalesStatus() {
-      try {
-        const response = await fetch(tennkoSalesStatusUrl(), { cache: "no-store" });
-        if (!response.ok) throw new Error();
-        const result = await response.json();
-        tennkoSalesEnabled.checked = result.sales_enabled;
-        tennkoPurchaseButtons.forEach((button) => {
-          const licenseType = button.dataset.tennkoPurchase;
-          const product = result.products?.[licenseType];
-          button.textContent = result.sales_enabled
-            ? `${product?.label || "ライセンス"}を購入`
-            : `${product?.label || "ライセンス"} 販売停止中`;
-          button.setAttribute("aria-disabled", String(!result.sales_enabled));
-          if (result.sales_enabled) {
-            button.href = button.dataset.purchaseUrl;
-            button.target = "_blank";
-            button.rel = "noopener";
-          } else {
-            button.removeAttribute("href");
-            button.removeAttribute("target");
-            button.removeAttribute("rel");
-          }
-        });
-        tennkoStoreStatus.textContent = result.sales_enabled
-          ? "購入ページで内容を確認後、Stripeの安全な決済画面へ進みます。"
-          : "現在、点呼確認簿の販売を停止しています。";
-      } catch {
-        tennkoPurchaseButtons.forEach((button) => {
-          button.textContent = "販売状態を確認できません";
-          button.setAttribute("aria-disabled", "true");
-          button.removeAttribute("href");
-        });
-        tennkoStoreStatus.textContent = "販売状態を確認できません。時間をおいて再読み込みしてください。";
-      }
-    }
-
-    tennkoSalesForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const password = tennkoSalesPassword.value;
-      if (!password) {
-        tennkoStoreStatus.textContent = "編集用パスワードを入力してください。";
-        tennkoSalesPassword.focus();
-        return;
-      }
-      const requestedState = tennkoSalesEnabled.checked;
-      tennkoSalesEnabled.disabled = true;
-      tennkoSalesSave.disabled = true;
-      tennkoStoreStatus.textContent = "販売設定を更新しています…";
-      try {
-        const response = await fetch(tennkoSalesStatusUrl(), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "X-Editor-Password": password },
-          body: JSON.stringify({ enabled: requestedState }),
-        });
-        const result = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(result.message || "販売設定を更新できませんでした。");
-        tennkoSalesPassword.value = "";
-        await loadTennkoSalesStatus();
-        tennkoStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
-      } catch (error) {
-        tennkoSalesEnabled.checked = !requestedState;
-        tennkoStoreStatus.textContent = error.message;
-      } finally {
-        tennkoSalesEnabled.disabled = false;
-        tennkoSalesSave.disabled = false;
-      }
-    });
 
     async function requestStore(path, options = {}) {
       let lastError = null;
@@ -964,7 +827,6 @@
 
     loadStoreProduct().then(applyPurchaseResult);
     loadFlowProduct().then(applyFlowPurchaseResult);
-    loadTennkoSalesStatus();
   </script>
 </body>
 </html>

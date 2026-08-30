@@ -744,10 +744,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("小型2t車の代理調整を明示的に依頼された場合に限り", page)
         self.assertIn("必要な最小限の連絡先、運行経路および荷物情報", page)
         self.assertIn("メーカー・型番のみを検索条件として使用", page)
-        self.assertIn("Stripe, Inc.", page)
-        self.assertIn("Google Apps Script", page)
-        self.assertIn("OpenStreetMap Nominatim", page)
-        self.assertIn("最終改定日：2026年8月30日", page)
+        self.assertIn("最終改定日：2026年8月29日", page)
 
     def test_index_links_admin_contract_generator_from_services_heading(self):
         response = create_app(database_url="").test_client().get("/")
@@ -1683,17 +1680,16 @@ class UpdatesTest(unittest.TestCase):
                 self.assertIn('src="../back-navigation.js"', page)
 
     def test_transpose_score_supports_fit_and_original_views(self):
-        app_directory = (
-            Path(__file__).resolve().parents[1] / "trumpet-transpose-lab"
-        )
-        page = (app_directory / "index.html").read_text(encoding="utf-8")
-        app_javascript = (app_directory / "app.mjs").read_text(encoding="utf-8")
-        stylesheet = (app_directory / "styles.css").read_text(encoding="utf-8")
+        page = (
+            Path(__file__).resolve().parents[1]
+            / "trumpet-transpose-lab"
+            / "index.html"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn('id="fitScoreButton"', page)
-        self.assertIn("state.fitScore = !state.fitScore", app_javascript)
-        self.assertIn("classList.toggle('fit', state.fitScore)", app_javascript)
-        self.assertIn(".score-viewport.fit svg", stylesheet)
+        self.assertIn('id="scoreFitToggle"', page)
+        self.assertIn("function toggleScoreFitMode()", page)
+        self.assertIn(".score-viewport.score-fit svg", page)
+        self.assertIn("scoreFitMode = window.matchMedia", page)
 
     def test_docker_image_includes_contract_generator(self):
         dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
