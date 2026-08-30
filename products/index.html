@@ -426,6 +426,14 @@
                 </section>
               </div>
               <p class="store-status" id="tennko-store-status" role="status" aria-live="polite">販売状態を確認しています。</p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="tennko-sales-form" novalidate>
+                  <input id="tennko-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="tennko-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="tennko-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
             </div>
           </div>
           </article>
@@ -528,20 +536,28 @@
     const flowSalesSave = document.getElementById("flow-sales-save");
     const tennkoPurchaseButtons = document.querySelectorAll("[data-tennko-purchase]");
     const tennkoStoreStatus = document.getElementById("tennko-store-status");
+    const tennkoSalesForm = document.getElementById("tennko-sales-form");
+    const tennkoSalesPassword = document.getElementById("tennko-sales-password");
+    const tennkoSalesEnabled = document.getElementById("tennko-sales-enabled");
+    const tennkoSalesSave = document.getElementById("tennko-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
     const storeApiCandidates = (path) => buildApiCandidates(`${renderStoreBase}/${path}`, `api/store/${path}`);
 
-    async function loadTennkoSalesStatus() {
+    function tennkoSalesStatusUrl() {
       const isLocal = location.hostname === "127.0.0.1" || location.hostname === "localhost";
-      const statusUrl = isLocal
+      return isLocal
         ? "http://127.0.0.1:13000/api/sales/status"
         : "https://tennko-kakuninnbo.onrender.com/api/sales/status";
+    }
+
+    async function loadTennkoSalesStatus() {
       try {
-        const response = await fetch(statusUrl, { cache: "no-store" });
+        const response = await fetch(tennkoSalesStatusUrl(), { cache: "no-store" });
         if (!response.ok) throw new Error();
         const result = await response.json();
+        tennkoSalesEnabled.checked = result.sales_enabled;
         tennkoPurchaseButtons.forEach((button) => {
           const licenseType = button.dataset.tennkoPurchase;
           const product = result.products?.[licenseType];
@@ -571,6 +587,38 @@
         tennkoStoreStatus.textContent = "販売状態を確認できません。時間をおいて再読み込みしてください。";
       }
     }
+
+    tennkoSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = tennkoSalesPassword.value;
+      if (!password) {
+        tennkoStoreStatus.textContent = "編集用パスワードを入力してください。";
+        tennkoSalesPassword.focus();
+        return;
+      }
+      const requestedState = tennkoSalesEnabled.checked;
+      tennkoSalesEnabled.disabled = true;
+      tennkoSalesSave.disabled = true;
+      tennkoStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const response = await fetch(tennkoSalesStatusUrl(), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-Editor-Password": password },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        const result = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(result.message || "販売設定を更新できませんでした。");
+        tennkoSalesPassword.value = "";
+        await loadTennkoSalesStatus();
+        tennkoStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        tennkoSalesEnabled.checked = !requestedState;
+        tennkoStoreStatus.textContent = error.message;
+      } finally {
+        tennkoSalesEnabled.disabled = false;
+        tennkoSalesSave.disabled = false;
+      }
+    });
 
     async function requestStore(path, options = {}) {
       let lastError = null;

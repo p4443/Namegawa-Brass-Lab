@@ -579,6 +579,8 @@ def fetch_instrument_price_candidates(source_url, maker_model, opener=None, allo
                 )
                 adopted_result["candidates"] = linked_candidates[:10]
                 return adopted_result
+        if not model_matches:
+            raise ValueError("公式ページ内に一致または一部一致する型番が見つかりませんでした。")
         raise ValueError("型番付近に円価格が見つかりませんでした。")
     candidates.sort(key=lambda candidate: (
         instrument_candidate_priority(candidate),
@@ -611,8 +613,21 @@ def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
         try:
             results.append(price_fetcher(source_url, maker_model))
         except (ValueError, OSError, urllib_error.URLError, UnicodeError) as exc:
-            failures.append({"source_url": source_url, "error": str(exc)})
+            failure_message = str(exc)
+            failure_reason = (
+                "model_not_found"
+                if "型番が見つかりません" in failure_message
+                else "price_not_found"
+                if "円価格が見つかりません" in failure_message
+                else "lookup_failed"
+            )
+            failures.append({
+                "source_url": source_url,
+                "error": failure_message,
+                "reason": failure_reason,
+            })
     if not results:
+        failure_reasons = {failure["reason"] for failure in failures}
         return {
             "checked_at": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat(),
             "catalog_year": datetime.now(ZoneInfo("Asia/Tokyo")).date().isoformat()[:4],
@@ -623,6 +638,7 @@ def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
             "recommended_source_name": "",
             "recommended_source_url": "",
             "manual_entry_required": True,
+            "failure_reason": failure_reasons.pop() if len(failure_reasons) == 1 else "lookup_failed",
             "failures": failures,
         }
 
