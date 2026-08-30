@@ -2219,8 +2219,17 @@
         return;
       }
       preview.dataset.printPages = selection;
-      window.print();
-      delete preview.dataset.printPages;
+      const clearPrintPages = () => {
+        delete preview.dataset.printPages;
+      };
+      window.addEventListener('afterprint', clearPrintPages, { once: true });
+      try {
+        window.print();
+      } catch (error) {
+        window.removeEventListener('afterprint', clearPrintPages);
+        clearPrintPages();
+        throw error;
+      }
     }
 
     function adminHeaders() {

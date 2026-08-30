@@ -773,6 +773,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("preview.dataset.printPages = selection", page)
         self.assertIn('.document[data-print-pages="front"] .contract-page:not([data-page-number="1"])', page)
         self.assertIn('.document[data-print-pages="back"] .contract-page[data-page-number="1"]', page)
+        self.assertIn("window.addEventListener('afterprint', clearPrintPages, { once: true })", page)
+        self.assertNotIn("window.print();\n      delete preview.dataset.printPages;", page)
         self.assertIn("window.print()", page)
         self.assertIn("法令等の制定または改廃", page)
         self.assertIn("電磁的記録", page)
