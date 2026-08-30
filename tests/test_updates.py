@@ -33,6 +33,12 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_render_persists_contracts_on_mounted_disk(self):
+        render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text(encoding="utf-8")
+
+        self.assertIn("mountPath: /app/data", render_config)
+        self.assertIn("- key: CONTRACTS_DIR\n        value: /app/data/contracts", render_config)
+
     def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
         query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
 
@@ -441,6 +447,33 @@ class UpdatesTest(unittest.TestCase):
 
         opener.open.assert_not_called()
 
+    def test_instrument_price_lookup_reports_model_missing_from_catalog(self):
+        class FakeResponse:
+            headers = Message()
+
+            def __init__(self):
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/catalog.html"
+
+            def read(self, size):
+                return "<p>掲載製品 YTR-8335 希望小売価格 423,500円</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        with self.assertRaisesRegex(ValueError, "一致または一部一致する型番が見つかりません"):
+            fetch_instrument_price_candidates(
+                "https://jp.yamaha.com/products/catalog.html", "MODEL-NOT-LISTED", opener
+            )
+
     def test_instrument_catalog_prices_adopts_first_matching_price(self):
         catalog_results = {
             "https://jp.yamaha.com/catalog-a": {
@@ -468,16 +501,21 @@ class UpdatesTest(unittest.TestCase):
             raise ValueError("公式ページ内に型番が見つかりませんでした。")
 
         result = fetch_instrument_catalog_prices(
-            ["https://www.nonaka.com/"], "180ML37", unavailable_fetcher
+            ["https://www.nonaka.com/", "https://jp.yamaha.com/"], "180ML37", unavailable_fetcher
         )
 
         self.assertTrue(result["manual_entry_required"])
         self.assertIsNone(result["recommended_price"])
-        self.assertEqual(result["source_urls"], ["https://www.nonaka.com/"])
+        self.assertEqual(
+            result["source_urls"],
+            ["https://www.nonaka.com/", "https://jp.yamaha.com/"],
+        )
         self.assertEqual(
             result["failures"][0]["error"],
             "公式ページ内に型番が見つかりませんでした。",
         )
+        self.assertEqual(result["failures"][0]["reason"], "model_not_found")
+        self.assertEqual(result["failure_reason"], "model_not_found")
 
     def test_instrument_price_candidates_reports_tax_status(self):
         class FakeResponse:
@@ -888,6 +926,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("if (result.loadingFee > 0)", page)
         self.assertIn("軽貨物 基本運送料", page)
         self.assertIn("軽貨物運送 見積明細", page)
+        self.assertIn("輸送案件名（選択または任意入力）", page)
+        self.assertIn("輸送案件名（候補選択または直接編集）", page)
+        self.assertIn('data-estimate-preset="transport_name"', page)
+        self.assertIn("estimatePresets.transport_name", page)
+        self.assertIn("コンクール 楽器輸送", page)
         self.assertIn("自社軽貨物の料金算定基準・適用条件", page)
         self.assertIn("当方（自社軽貨物車）", page)
         self.assertNotIn("御見積明細（運賃・料金分離型）", page)
@@ -998,6 +1041,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("result.manual_entry_required", page)
         self.assertIn("公式サイトから価格を自動取得できない掲載形式です。", page)
         self.assertIn("選択したカタログは現在のページ構成では価格を自動取得できません。", page)
+        self.assertIn("result.failure_reason === 'model_not_found'", page)
+        self.assertIn("選択したカタログに入力型番", page)
+        self.assertIn('data-instrument-price-results role="alert"', page)
         self.assertNotIn("件のURLは取得できませんでした。掲載形式とURLを確認してください。", page)
         self.assertIn("価格候補を取得しました。候補を確認し", page)
         self.assertIn('class="applied-price-summary"', page)

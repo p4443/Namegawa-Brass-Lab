@@ -13,6 +13,8 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: CONTRACTS_DIR
+        value: /app/data/contracts
       - key: EDITOR_PASSWORD
         sync: false
       - key: GOOGLE_APPS_SCRIPT_URL

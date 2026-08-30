@@ -986,6 +986,7 @@
     }
 
     const estimatePresets = {
+      transport_name: ['吹奏楽部 楽器・機材輸送', '演奏会・発表会 楽器輸送', 'コンクール 楽器輸送', '合宿・遠征 楽器輸送', '学校間・施設間 楽器輸送', '修理・調整に伴う楽器輸送'],
       description: ['楽器別・パート指導', '合奏指導', 'アンサンブル指導', '地域クラブ移行支援', '指導計画・教材作成', '運営会議・関係者調整', '演奏会・発表会支援', '交通費・出張費', '基本運賃（貸切）', '荷役料（積卸し作業費）', '特殊車両・機材指定料', '動産総合・運送保険料', '燃料サーチャージ（予定）', '要件定義・プロンプト設計費', '生成AI支援 アプリケーション実装費', 'UI/UXデザイン・スタイリング費', 'コード監査・セキュリティ検証費', 'パッケージング・納品諸経費', '追加機能開発費', 'データ移行費'],
       quantity: ['1', '2', '3', '5', '10'],
       unit: ['回', '時間', '日', '月', '名', '運行', '式', '件', '画面'],
@@ -1266,7 +1267,7 @@
           : '')
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
-        + field('輸送案件名', 'transport_name', values.transport_name)
+        + `<div class="field"><label>輸送案件名（選択または任意入力）<select class="estimate-preset" data-estimate-preset="transport_name" aria-label="輸送案件名の登録内容から選択">${presetOptions(estimatePresets.transport_name)}</select><input data-contract-key="transport_name" type="text" maxlength="160" value="${escapeHtml(values.transport_name)}" aria-label="輸送案件名の任意入力"></label></div>`
         + field('見積有効期限', 'validity', values.validity)
         + field('A4付属書PDFの共有URL', 'cargo_document_url', values.cargo_document_url)
         + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
@@ -1314,7 +1315,13 @@
       const result = instrumentLookupResults.get(rowIndex);
       if (!result) return '';
       if (result.manual_entry_required || !result.recommended_price) {
-        return `<div class="price-lookup-results" data-instrument-price-results><p>選択したカタログは現在のページ構成では価格を自動取得できません。公式ページで価格と税区分を確認し、カタログ価格を入力してください。</p></div>`;
+        const item = contractValues.estimateB.cargo_items[rowIndex];
+        const message = result.failure_reason === 'model_not_found'
+          ? `選択したカタログに入力型番「${escapeHtml(item?.maker_model || result.maker_model)}」は見つかりませんでした。型番を確認するか、別の公式カタログを選択してください。`
+          : result.failure_reason === 'price_not_found'
+            ? '入力型番は確認できましたが、型番付近に円価格が見つかりませんでした。公式ページで価格と税区分を確認してください。'
+            : '選択したカタログは現在のページ構成では価格を自動取得できません。公式ページで価格と税区分を確認してください。';
+        return `<div class="price-lookup-results" data-instrument-price-results role="alert"><p>${message} カタログ価格は手動入力できます。</p></div>`;
       }
       const taxLabel = status => status === 'tax_included' ? '税込' : status === 'tax_excluded' ? '税別' : '税込／税別の表記不明';
       const item = contractValues.estimateB.cargo_items[rowIndex];
@@ -1355,7 +1362,12 @@
         renderPreview();
         const catalogInput = dynamicFields.querySelector(`[data-cargo-row="${rowIndex}"] [data-cargo-item-key="catalog_price"]`);
         catalogInput?.focus();
-        throw new Error('公式サイトから価格を自動取得できない掲載形式です。公式ページを確認し、カタログ価格を入力してください。');
+        const failureMessage = result.failure_reason === 'model_not_found'
+          ? `選択したカタログに入力型番「${makerModel}」は見つかりませんでした。型番を確認するか、別の公式カタログを選択してください。`
+          : result.failure_reason === 'price_not_found'
+            ? '入力型番は確認できましたが、型番付近に円価格が見つかりませんでした。'
+            : '公式サイトから価格を自動取得できない掲載形式です。';
+        throw new Error(`${failureMessage} カタログ価格を入力してください。`);
       }
       if (result.checked_at > contractDate.value) throw new Error('見積作成日以前に照会した公開カタログ価格だけを反映できます。');
       instrumentLookupResults.set(rowIndex, result);
@@ -2135,7 +2147,7 @@
           <h1>${isReady ? '御見積書' : '見積準備票'}（B契約：楽器輸送業務）</h1>
           <p class="doc-date">${date}</p>
           <div class="estimate-client"><strong>${safeClient} 様</strong><br>${safeRepresentative}</div>
-          <p><strong>輸送案件名（直接編集できます）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
+          <p><strong>輸送案件名（候補選択または直接編集）：</strong>${estimatePreviewEditor('transport_name', values.transport_name)}</p>
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
           <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
           <p><strong>運送実施：</strong>当方（自社軽貨物車）　<strong>使用車両：</strong>黒ナンバー軽貨物車</p>
