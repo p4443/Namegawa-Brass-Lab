@@ -912,6 +912,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const draftValues = JSON.parse(JSON.stringify(values));", page)
         self.assertIn("Object.assign(values, draftValues);", page)
         self.assertIn('class="route-distance-summary"', page)
+        self.assertIn('class="transport-route-summary"', page)
+        self.assertIn("<strong>実車走行距離：</strong>${escapeHtml(values.route_distance_km)}km（自動算出距離の2倍）", page)
         self.assertIn("実車走行距離${values.route_distance_km}km（自動算出距離の2倍）を見積書へ反映しました。", page)
         self.assertIn("function googleMapsRouteUrl(origin, destination)", page)
         self.assertIn('data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}"', page)

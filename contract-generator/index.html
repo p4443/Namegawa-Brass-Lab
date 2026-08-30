@@ -2126,6 +2126,7 @@
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
       const documentsCurrent = values.transport_sheet_signature === transportSheetSignature(values);
+      const routeMeasurementCurrent = values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km);
       const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
       const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '軽貨物運賃・日程を調整中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
@@ -2138,6 +2139,7 @@
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
           <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
           <p><strong>運送実施：</strong>当方（自社軽貨物車）　<strong>使用車両：</strong>黒ナンバー軽貨物車</p>
+          ${routeMeasurementCurrent ? `<p class="transport-route-summary"><strong>運行経路：</strong>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}　<strong>実車走行距離：</strong>${escapeHtml(values.route_distance_km)}km（自動算出距離の2倍）</p>` : ''}
           ${values.partner_2t_requested ? `<p><strong>小型2t車：</strong>${values.partner_2t_status === 'confirmed' ? 'お客様の依頼に基づき協力会社の車両・日程・費用を調整済み' : 'お客様の依頼に基づき協力会社を調整中'}</p>` : ''}
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           ${estimateIssuerHtml('受託者（乙）')}
