@@ -1786,6 +1786,9 @@
       const result = await response.json();
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
+      const mapsUrl = /^https:\/\/www\.google\.com\/maps\/dir\/\?/.test(result.maps_url || '')
+        ? result.maps_url
+        : googleMapsRouteUrl(resolvedOrigin, resolvedDestination);
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
       distanceInput.value = String(result.distance_km);
@@ -1793,9 +1796,15 @@
       values.route_origin = resolvedOrigin;
       values.route_destination = resolvedDestination;
       values.route_distance_km = String(result.distance_km);
+      values.route_document_url = mapsUrl;
+      const routeDocumentInput = dynamicFields.querySelector('[data-contract-key="route_document_url"]');
+      if (routeDocumentInput) routeDocumentInput.value = mapsUrl;
+      const routeMapLink = dynamicFields.querySelector('[data-open-route-map]');
+      if (routeMapLink) routeMapLink.href = mapsUrl;
       freightCalculatorStatus.textContent = `${result.provider || 'ルート検索'}：${resolvedOrigin} → ${resolvedDestination}、${result.distance_km}km、走行時間の目安${result.duration_minutes}分。`;
       freightCalculatorStatus.dataset.state = 'success';
-      freightCalculatorStatus.dataset.mapsUrl = result.maps_url;
+      freightCalculatorStatus.dataset.mapsUrl = mapsUrl;
+      renderPreview();
     }
 
     function loadLightCargoReference() {
