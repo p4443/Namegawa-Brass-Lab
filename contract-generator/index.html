@@ -273,6 +273,9 @@
     .light-cargo-spec { margin-bottom: 14px; padding: 14px; border: 1px solid #0f766e; border-left: 5px solid #0f766e; border-radius: 6px; background: #f0fdfa; }
     .light-cargo-spec strong { display: block; color: #115e59; }
     .light-cargo-spec p { margin: 5px 0 0; color: #134e4a; font-size: 0.8rem; }
+    .route-distance-summary { margin-bottom: 14px; padding: 12px; border: 1px solid #16a34a; border-left: 5px solid #16a34a; border-radius: 6px; color: #14532d; background: #f0fdf4; font-size: 0.8rem; }
+    .route-distance-summary strong { display: block; margin-bottom: 4px; font-size: 0.9rem; }
+    .route-measurement-result[data-state="success"] { padding: 12px; border: 2px solid #059669; border-radius: 6px; color: #064e3b; background: #ecfdf5; font-size: 0.88rem; }
     .partner-2t-panel { margin-bottom: 14px; padding: 14px; border: 1px solid #d97706; border-radius: 6px; background: #fffbeb; }
     .partner-2t-panel h2 { margin: 0 0 6px; font-size: 0.95rem; color: #78350f; }
     .partner-2t-panel p { margin: 0 0 10px; color: #78350f; font-size: 0.78rem; line-height: 1.5; }
@@ -736,7 +739,7 @@
         <label class="rate-confirm"><input data-rate-verified type="checkbox"><span>基準日現在の公表資料と自社料金規定を確認し、入力値を見積根拠として使用します。</span></label>
         </div>
       </details>
-      <p class="save-status" id="freightCalculatorStatus" role="status"></p>
+      <p class="save-status route-measurement-result" id="freightCalculatorStatus" role="status" aria-live="polite"></p>
       <div class="delete-dialog-actions freight-dialog-actions"><button class="secondary-button" id="cancelFreightCalculator" type="button">元の見積書作成へ戻る</button><button class="primary-button" id="applyFreightCalculator" type="button">見積書に反映して戻る</button></div>
     </div>
   </dialog>
@@ -1217,6 +1220,9 @@
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}" data-transport-workflow-status><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
         + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
+        + (values.route_origin && values.route_destination && Number(values.route_distance_km) > 0
+          ? `<div class="route-distance-summary"><strong>実車走行距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（自動算出距離の2倍）</span></div>`
+          : '')
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + field('輸送案件名', 'transport_name', values.transport_name)
@@ -1786,25 +1792,12 @@
       const result = await response.json();
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
-      const mapsUrl = /^https:\/\/www\.google\.com\/maps\/dir\/\?/.test(result.maps_url || '')
-        ? result.maps_url
-        : googleMapsRouteUrl(resolvedOrigin, resolvedDestination);
+      const actualDistanceKm = Math.round(Number(result.distance_km) * 2 * 10) / 10;
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
-      distanceInput.value = String(result.distance_km);
-      const values = contractValues.estimateB;
-      values.route_origin = resolvedOrigin;
-      values.route_destination = resolvedDestination;
-      values.route_distance_km = String(result.distance_km);
-      values.route_document_url = mapsUrl;
-      const routeDocumentInput = dynamicFields.querySelector('[data-contract-key="route_document_url"]');
-      if (routeDocumentInput) routeDocumentInput.value = mapsUrl;
-      const routeMapLink = dynamicFields.querySelector('[data-open-route-map]');
-      if (routeMapLink) routeMapLink.href = mapsUrl;
-      freightCalculatorStatus.textContent = `${result.provider || 'ルート検索'}：${resolvedOrigin} → ${resolvedDestination}、${result.distance_km}km、走行時間の目安${result.duration_minutes}分。`;
+      distanceInput.value = String(actualDistanceKm);
+      freightCalculatorStatus.textContent = `測定完了（未反映）：${result.provider || 'ルート検索'}の自動算出距離を2倍し、実車走行距離${actualDistanceKm}kmとしました。走行時間の目安${result.duration_minutes}分。「見積書に反映して戻る」で確定してください。`;
       freightCalculatorStatus.dataset.state = 'success';
-      freightCalculatorStatus.dataset.mapsUrl = mapsUrl;
-      renderPreview();
     }
 
     function loadLightCargoReference() {
@@ -1830,6 +1823,7 @@
     function applyFreightCalculator() {
       const values = contractValues.estimateB;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { values[input.dataset.freightInput] = input.value; });
+      values.route_document_url = googleMapsRouteUrl(values.route_origin, values.route_destination);
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { values.freight_rate_master[input.dataset.rateKey] = input.value; });
       values.freight_rate_master.tax_included = freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked;
       values.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
@@ -1883,6 +1877,8 @@
         renderDynamicFields();
         renderPreview();
         closeFreightCalculator();
+        saveStatus.textContent = `実車走行距離${values.route_distance_km}km（自動算出距離の2倍）を見積書へ反映しました。`;
+        saveStatus.dataset.state = 'success';
       } catch (error) {
         freightCalculatorStatus.textContent = error.message;
         freightCalculatorStatus.dataset.state = 'error';
