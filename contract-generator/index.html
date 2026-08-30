@@ -1303,7 +1303,7 @@
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
-            <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">指定カタログ内で型番価格を検索・反映</button>
+            <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">指定カタログ内で型番価格を照会</button>
             ${item.price_source_url ? `<section class="applied-price-summary" aria-label="B見積への反映済みカタログ価格"><strong>B見積へ反映済み<br>税込単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円</strong><span class="applied-price-total">行評価額<br>${formatEstimateYen(estimateNumber(item.total_value))}円</span><small>反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</small></section>` : ''}
             ${renderInstrumentPriceCandidates(index)}
           </div>
@@ -1324,7 +1324,7 @@
           ? '表記一致'
           : candidate.match_type === 'normalized' ? '正規化一致' : '近似候補';
         const matchedModel = candidate.matched_model || result.maker_model;
-        return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '反映済み' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
+        return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '現在反映中' : item.price_source_url ? 'この候補に切替' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
       }).join('')}</div>`;
     }
 
@@ -2790,6 +2790,7 @@
       const candidateButton = event.target.closest('[data-apply-price-candidate]');
       if (candidateButton) {
         const rowIndex = Number(candidateButton.dataset.candidateRow);
+        editorRevision += 1;
         applyInstrumentPrice(rowIndex, Number(candidateButton.dataset.applyPriceCandidate));
         renderDynamicFields();
         renderPreview();

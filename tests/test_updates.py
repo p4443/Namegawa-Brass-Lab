@@ -495,13 +495,17 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(result["candidates"][0]["tax_status"], "tax_included")
 
-    def test_instrument_price_lookup_api_aggregates_catalog_urls(self):
+    def test_instrument_price_lookup_api_requires_one_selected_catalog(self):
         payload = {
             "source_urls": [
                 "https://jp.yamaha.com/catalog-a",
                 "https://www.nonaka.com/catalog-b",
             ],
             "maker_model": "MODEL-100",
+        }
+        selected_payload = {
+            "source_urls": [payload["source_urls"][1]],
+            "maker_model": payload["maker_model"],
         }
         result = {
             "checked_at": "2026-08-24",
@@ -516,18 +520,25 @@ class UpdatesTest(unittest.TestCase):
         ) as lookup:
             client = create_app(database_url="").test_client()
             self.assertEqual(
-                client.post("/api/contracts/instrument-price-lookup", json=payload).status_code,
+                client.post("/api/contracts/instrument-price-lookup", json=selected_payload).status_code,
                 401,
             )
-            response = client.post(
+            rejected = client.post(
                 "/api/contracts/instrument-price-lookup",
                 json=payload,
                 headers={"X-Editor-Password": "editor-secret"},
             )
+            response = client.post(
+                "/api/contracts/instrument-price-lookup",
+                json=selected_payload,
+                headers={"X-Editor-Password": "editor-secret"},
+            )
 
+        self.assertEqual(rejected.status_code, 400)
+        self.assertIn("1件だけ", rejected.json["error"])
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json["recommended_price"], 435000)
-        lookup.assert_called_once_with(payload["source_urls"], payload["maker_model"])
+        lookup.assert_called_once_with(selected_payload["source_urls"], payload["maker_model"])
 
     def test_consultation_validation_requires_mode_specific_fields(self):
         valid = {
@@ -950,7 +961,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("candidate.match_type === 'normalized' ? '正規化一致' : '近似候補'", page)
         self.assertIn('data-apply-price-candidate="${candidateIndex}"', page)
         self.assertIn("function applyInstrumentPrice(rowIndex, candidateIndex = 0)", page)
-        self.assertIn("指定カタログ内で型番価格を検索・反映", page)
+        self.assertIn("指定カタログ内で型番価格を照会", page)
+        self.assertIn("item.price_source_url ? 'この候補に切替' : 'この候補を反映'", page)
+        self.assertIn("editorRevision += 1;\n        applyInstrumentPrice(rowIndex", page)
         self.assertIn("function instrumentLookupReady(rowIndex)", page)
         self.assertIn("async function lookupInstrumentPriceWithFeedback(rowIndex)", page)
         self.assertIn("const instrumentLookupRequests = new Map();", page)

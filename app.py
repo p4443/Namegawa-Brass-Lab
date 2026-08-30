@@ -2843,6 +2843,8 @@ def create_app(
             source_urls = payload.get("source_urls")
             if source_urls is None:
                 source_urls = [payload.get("source_url", "")]
+            if not isinstance(source_urls, list) or len(source_urls) != 1:
+                raise ValueError("価格照会する公式カタログを1件だけ指定してください。")
             result = fetch_instrument_catalog_prices(source_urls, payload.get("maker_model", ""))
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
