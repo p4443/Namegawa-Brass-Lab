@@ -2830,6 +2830,17 @@ def create_app(
         response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return response
 
+    @app.get("/trumpet-transpose-lab/<path:asset>")
+    def trumpet_transpose_lab_asset(asset):
+        if asset not in {
+            "styles.css",
+            "app.mjs",
+            "recorder-worklet.js",
+            "transcription-core.mjs",
+        }:
+            return app.response_class(status=404)
+        return send_from_directory(BASE_DIR / "trumpet-transpose-lab", asset)
+
     @app.get("/flow-harmony/")
     def flow_harmony_legacy_redirect():
         query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""

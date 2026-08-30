@@ -1683,16 +1683,17 @@ class UpdatesTest(unittest.TestCase):
                 self.assertIn('src="../back-navigation.js"', page)
 
     def test_transpose_score_supports_fit_and_original_views(self):
-        page = (
-            Path(__file__).resolve().parents[1]
-            / "trumpet-transpose-lab"
-            / "index.html"
-        ).read_text(encoding="utf-8")
+        app_directory = (
+            Path(__file__).resolve().parents[1] / "trumpet-transpose-lab"
+        )
+        page = (app_directory / "index.html").read_text(encoding="utf-8")
+        app_javascript = (app_directory / "app.mjs").read_text(encoding="utf-8")
+        stylesheet = (app_directory / "styles.css").read_text(encoding="utf-8")
 
-        self.assertIn('id="scoreFitToggle"', page)
-        self.assertIn("function toggleScoreFitMode()", page)
-        self.assertIn(".score-viewport.score-fit svg", page)
-        self.assertIn("scoreFitMode = window.matchMedia", page)
+        self.assertIn('id="fitScoreButton"', page)
+        self.assertIn("state.fitScore = !state.fitScore", app_javascript)
+        self.assertIn("classList.toggle('fit', state.fitScore)", app_javascript)
+        self.assertIn(".score-viewport.fit svg", stylesheet)
 
     def test_docker_image_includes_contract_generator(self):
         dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
