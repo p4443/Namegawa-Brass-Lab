@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-27-lesson-types-v26";
+var SCRIPT_VERSION = "2026-08-30-contract-workflow-audit-v29";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -46,7 +46,7 @@ var LESSON_DURATION_MINUTES = {
 };
 
 function doPost(event) {
-  var lock = LockService.getScriptLock();
+  var lock = null;
   var lockAcquired = false;
   try {
     if (!event || !event.postData || !event.postData.contents) {
@@ -62,6 +62,9 @@ function doPost(event) {
     }
 
     var action = String(data.action || "create").toLowerCase();
+    lock = action === "generate_transport_sheet"
+      ? LockService.getUserLock()
+      : LockService.getScriptLock();
     if (action === "health") {
       return jsonResponse({
         ok: true,
@@ -82,15 +85,21 @@ function doPost(event) {
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
+      if (requestId) {
+        var lockedCachedResult = CacheService.getScriptCache().get("admin:" + requestId);
+        if (lockedCachedResult) {
+          return jsonResponse(JSON.parse(lockedCachedResult));
+        }
+      }
+    }
+    if (action === "generate_transport_sheet") {
+      return adminActionResponse(generateTransportWorkbook(data), requestId);
     }
     var spreadsheet = getSpreadsheet();
     var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "cancel"].indexOf(action) !== -1;
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
-    if (action === "generate_transport_sheet") {
-      return adminActionResponse(generateTransportWorkbook(data), requestId);
-    }
     if (action === "consultation") {
       var consultationSheet = getConsultationSheet(spreadsheet);
       var consultationNow = new Date();
@@ -432,13 +441,34 @@ function generateTransportWorkbook(data) {
   var cargoItems = Array.isArray(data.cargo_items) ? data.cargo_items : [];
   var rateMaster = data.freight_rate_master || {};
   var instrumentMaster = data.instrument_price_master || {};
-  if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length) {
+  var routeDistanceKm = Number(data.route_distance_km || 0);
+  var routeMeasurementSignature = String(data.route_measurement_signature || "").trim();
+  var routeOrigin = String(data.route_origin || "").trim();
+  var routeDestination = String(data.route_destination || "").trim();
+  var totalHours = Number(data.total_hours || 0);
+  var freightOperation = data.freight_operation || {};
+  if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length || data.cargo_restrictions_agreed !== true) {
     throw new Error("Invalid transport sheet request");
+  }
+  if (!routeOrigin || !routeDestination || !isFinite(routeDistanceKm) || routeDistanceKm <= 0 || !/^route-v1-[0-9a-f]{8}$/.test(routeMeasurementSignature) || !isFinite(totalHours) || totalHours <= 0 || !freightOperation || typeof freightOperation !== "object") {
+    throw new Error("Invalid transport route request");
+  }
+  cargoItems.forEach(function (item) {
+    var quantity = Number(item && item.quantity);
+    var unitValue = Number(item && item.unit_value);
+    var volumePoints = Number(item && item.volume_points);
+    if (!item || typeof item !== "object" || !String(item.description || "").trim() || !isFinite(quantity) || quantity <= 0 || !isFinite(unitValue) || unitValue <= 0 || !isFinite(volumePoints) || volumePoints < 0) {
+      throw new Error("Invalid transport cargo item");
+    }
+  });
+  if (data.transport_provider_mode !== "self_light_cargo" || data.vehicle_class !== "light_cargo" || ["self_light_cargo_rate", "light_cargo_reference"].indexOf(data.pricing_basis) === -1 || rateMaster.verified !== true) {
+    throw new Error("Invalid transport pricing request");
   }
 
   var createdAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd_HHmmss");
   var workbook = SpreadsheetApp.create("輸送対象物明細_" + clientName + "_" + transportName + "_" + createdAt);
   var file = DriveApp.getFileById(workbook.getId());
+  try {
   var folderId = String(PropertiesService.getScriptProperties().getProperty("TRANSPORT_DOCUMENT_FOLDER_ID") || "").trim();
   if (folderId) {
     file.moveTo(DriveApp.getFolderById(folderId));
@@ -459,6 +489,8 @@ function generateTransportWorkbook(data) {
     ];
   });
   cargoSheet.getRange(2, 1, cargoRows.length, cargoHeaders.length).setValues(cargoRows);
+  cargoSheet.getRange(2, 8, cargoRows.length, 1).setFormulaR1C1("=RC[-4]*RC[-1]");
+  cargoSheet.getRange(2, 10, cargoRows.length, 1).setFormulaR1C1("=RC[-6]*RC[-1]");
   var totalRow = cargoRows.length + 2;
   cargoSheet.getRange(totalRow, 1, 1, 7).merge().setValue("申告総評価額");
   cargoSheet.getRange(totalRow, 8).setFormula("=SUM(H2:H" + (totalRow - 1) + ")");
@@ -468,6 +500,32 @@ function generateTransportWorkbook(data) {
   cargoSheet.getRange("G:H").setNumberFormat("¥#,##0");
   cargoSheet.setFrozenRows(1);
   cargoSheet.autoResizeColumns(1, cargoHeaders.length);
+
+  var mapsUrl = "https://www.google.com/maps/dir/?api=1&origin=" + encodeURIComponent(routeOrigin) + "&destination=" + encodeURIComponent(routeDestination) + "&travelmode=driving";
+  var routeSheet = workbook.insertSheet("運行計画・積卸し経路図");
+  var routeRows = [
+    ["取引先名", safeCell(clientName)],
+    ["輸送案件名", safeCell(transportName)],
+    ["積込地点（出発地）", safeCell(routeOrigin)],
+    ["取卸地点（目的地）", safeCell(routeDestination)],
+    ["Google自動算出距離（片道参考）", routeDistanceKm / 2],
+    ["実車走行距離", routeDistanceKm],
+    ["距離算定方法", "Google自動算出距離の2倍"],
+    ["総拘束時間", totalHours],
+    ["待機時間", Number(freightOperation.waiting_minutes || 0)],
+    ["積卸し作業時間", Number(freightOperation.loading_minutes || 0)],
+    ["積卸し方法", safeCell(freightOperation.loading_support_mode)],
+    ["Google マップ経路図", mapsUrl]
+  ];
+  routeSheet.getRange(1, 1, 1, 2).setValues([["運行計画・積卸し経路図", "設定値"]]).setBackground("#0f766e").setFontColor("#ffffff").setFontWeight("bold");
+  routeSheet.getRange(2, 1, routeRows.length, 2).setValues(routeRows);
+  routeSheet.getRange(6, 2, 2, 1).setNumberFormat('0.0"km"');
+  routeSheet.getRange(9, 2).setNumberFormat('0.0"時間"');
+  routeSheet.getRange(10, 2, 2, 1).setNumberFormat('0"分"');
+  routeSheet.getRange(13, 2).setFormula('=HYPERLINK("' + mapsUrl.replace(/"/g, '""') + '","Google マップで経路を開く")');
+  routeSheet.setFrozenRows(1);
+  routeSheet.setColumnWidth(1, 240);
+  routeSheet.setColumnWidth(2, 420);
 
   var feeSheet = workbook.insertSheet("料金規定");
   var feeRows = [
@@ -519,8 +577,17 @@ function generateTransportWorkbook(data) {
   return {
     ok: true,
     cargoUrl: workbook.getUrl() + "#gid=" + cargoSheet.getSheetId(),
+    routeUrl: workbook.getUrl() + "#gid=" + routeSheet.getSheetId(),
     feeUrl: workbook.getUrl() + "#gid=" + feeSheet.getSheetId()
   };
+  } catch (error) {
+    try {
+      file.setTrashed(true);
+    } catch (cleanupError) {
+      Logger.log(cleanupError);
+    }
+    throw error;
+  }
 }
 
 function getReservationSheet(spreadsheet) {

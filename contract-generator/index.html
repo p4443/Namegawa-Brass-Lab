@@ -780,6 +780,9 @@
     let pendingDeleteContractId = '';
     let editorToken = '';
     let freightCalculatorReturnTarget = null;
+    let pendingRouteMeasurementSignature = '';
+    let editorRevision = 0;
+    let transportSheetRequest = null;
     const instrumentLookupResults = new Map();
     const instrumentLookupRequests = new Map();
     const instrumentLookupErrors = new Map();
@@ -809,10 +812,10 @@
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
         workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'self_light_cargo_rate',
         partner_2t_requested: false, partner_2t_status: 'not_needed', partner_2t_budget: '0', partner_2t_notes: '',
-        cargo_document_url: '', route_document_url: '', fee_document_url: '',
+        cargo_document_url: '', route_document_url: '', fee_document_url: '', transport_sheet_signature: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
         cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
-        route_origin: '', route_destination: '', route_distance_km: '30', total_hours: '8',
+        route_origin: '', route_destination: '', route_distance_km: '', route_measurement_signature: '', total_hours: '8',
         freight_operation: { waiting_minutes: '0', loading_minutes: '0', loading_support_mode: 'carrier', cancellation_type: 'none', actual_expenses: '0', instrument_surcharge_mode: 'none', instrument_surcharge_amount: '0', special_work_amount: '0', holiday: false, night: false },
         instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', refresh_interval_days: '30', verified: false },
         freight_rate_master: {
@@ -905,13 +908,20 @@
       const missing = transportValidationIssues(values).map(issue => issue.message);
       if (!values.cargo_restrictions_agreed) missing.push('輸送対象外品の確認');
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
+      if (!Number.isFinite(Number(values.route_distance_km)) || Number(values.route_distance_km) <= 0) missing.push('実車走行距離の自動測定');
+      else if (values.route_measurement_signature !== routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)) missing.push('住所変更後の実車走行距離再測定');
+      if (!Number.isFinite(Number(values.total_hours)) || Number(values.total_hours) <= 0) missing.push('総拘束時間');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
       if (!['self_light_cargo_rate', 'light_cargo_reference'].includes(values.pricing_basis)) missing.push('軽貨物料金の根拠確認');
       if (calculateCargoVolume() >= 100 && !values.partner_2t_requested) missing.push('軽貨物の積載内容または分割運行の再検討');
       if (values.partner_2t_requested && (values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('依頼された協力会社2t車の代理調整確定');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
-      if (!values.cargo_document_url || !values.route_document_url || !values.fee_document_url) missing.push('正式見積の添付書類URL');
+      const documentsCurrent = values.transport_sheet_signature === transportSheetSignature(values)
+        && values.cargo_document_url && values.route_document_url && values.fee_document_url;
+      if (!documentsCurrent) missing.push(values.cargo_document_url || values.route_document_url || values.fee_document_url
+        ? '入力変更後の輸送書類再発行'
+        : '正式見積の添付書類URL');
       if (!values.cargo_contact_email) missing.push('シート共有先メールアドレス');
       return [...new Set(missing)];
     }
@@ -942,6 +952,37 @@
       status.innerHTML = missing.length
         ? `<strong>発行準備中</strong><span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>`
         : '<strong>正式見積の発行準備完了</strong><span>入力根拠と添付書類を最終確認してください。</span>';
+    }
+
+    function transportSheetSignature(values) {
+      const serialized = JSON.stringify({
+        client_name: clientName.value.trim(), transport_name: values.transport_name,
+        workflow_status: values.workflow_status, transport_provider_mode: values.transport_provider_mode,
+        vehicle_class: values.vehicle_class, pricing_basis: values.pricing_basis,
+        route_origin: values.route_origin, route_destination: values.route_destination,
+        route_distance_km: values.route_distance_km, route_measurement_signature: values.route_measurement_signature,
+        total_hours: values.total_hours,
+        freight_operation: values.freight_operation, cargo_items: values.cargo_items,
+        freight_rate_master: values.freight_rate_master, instrument_price_master: values.instrument_price_master,
+        cargo_contact_email: values.cargo_contact_email,
+        cargo_restrictions_agreed: values.cargo_restrictions_agreed
+      });
+      let hash = 2166136261;
+      for (let index = 0; index < serialized.length; index += 1) {
+        hash ^= serialized.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return `v1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
+    }
+
+    function routeMeasurementSignature(origin, destination, distance) {
+      const serialized = JSON.stringify([String(origin).trim(), String(destination).trim(), String(distance).trim()]);
+      let hash = 2166136261;
+      for (let index = 0; index < serialized.length; index += 1) {
+        hash ^= serialized.charCodeAt(index);
+        hash = Math.imul(hash, 16777619);
+      }
+      return `route-v1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
     }
 
     const estimatePresets = {
@@ -1220,7 +1261,7 @@
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}" data-transport-workflow-status><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
         + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
-        + (values.route_origin && values.route_destination && Number(values.route_distance_km) > 0
+        + (values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)
           ? `<div class="route-distance-summary"><strong>実車走行距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（自動算出距離の2倍）</span></div>`
           : '')
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
@@ -1291,16 +1332,22 @@
       const item = contractValues.estimateB.cargo_items[rowIndex];
       const master = contractValues.estimateB.instrument_price_master;
       const sourceUrl = item?.lookup_source_url || '';
+      const makerModel = item?.maker_model || '';
+      const requestRevision = editorRevision;
       if (!master.effective_date) throw new Error('価格基準日をカレンダーから選択してください。');
       if (master.effective_date > contractDate.value) throw new Error('価格基準日は見積発行日以前を選択してください。');
       if (!sourceUrl) throw new Error('この対象物の公式価格サイトを選択してください。');
       if (!isOfficialInstrumentPriceUrl(sourceUrl)) throw new Error('対応する公式メーカー・国内代理店のHTTPS URLだけを選択してください。');
       if (!item?.maker_model.trim()) throw new Error('照会するメーカー・型番を入力してください。');
       const response = await fetch('/api/contracts/instrument-price-lookup', {
-        method: 'POST', headers: adminHeaders(), body: JSON.stringify({ source_urls: [sourceUrl], maker_model: item.maker_model })
+        method: 'POST', headers: adminHeaders(), body: JSON.stringify({ source_urls: [sourceUrl], maker_model: makerModel })
       });
       if (!response.ok) throw new Error(await readApiError(response, '公式価格を照会できませんでした。'));
       const result = await response.json();
+      const currentItem = contractValues.estimateB.cargo_items[rowIndex];
+      if (requestRevision !== editorRevision || currentItem !== item || currentItem.maker_model !== makerModel || currentItem.lookup_source_url !== sourceUrl) {
+        throw new Error('入力内容が変更されたため、古い価格照会結果は反映しませんでした。現在の内容で再照会してください。');
+      }
       if (result.manual_entry_required || !result.recommended_price) {
         instrumentLookupResults.set(rowIndex, result);
         clearTransportError(rowIndex);
@@ -1326,15 +1373,17 @@
     }
 
     async function lookupInstrumentPriceWithFeedback(rowIndex) {
-      if (instrumentLookupRequests.has(rowIndex)) {
-        return instrumentLookupRequests.get(rowIndex);
+      const item = contractValues.estimateB.cargo_items[rowIndex];
+      const requestKey = `${rowIndex}:${editorRevision}:${item?.maker_model || ''}:${item?.lookup_source_url || ''}`;
+      if (instrumentLookupRequests.has(requestKey)) {
+        return instrumentLookupRequests.get(requestKey);
       }
       const request = runInstrumentPriceLookupWithFeedback(rowIndex);
-      instrumentLookupRequests.set(rowIndex, request);
+      instrumentLookupRequests.set(requestKey, request);
       try {
         return await request;
       } finally {
-        instrumentLookupRequests.delete(rowIndex);
+        instrumentLookupRequests.delete(requestKey);
       }
     }
 
@@ -1649,12 +1698,12 @@
       if (budget) budget.hidden = volume < 100;
     }
 
-    function calculateOptimalFreight(distance, totalHours, operation = {}) {
-      const master = contractValues.estimateB.freight_rate_master;
+    function calculateOptimalFreight(distance, totalHours, operation = {}, values = contractValues.estimateB) {
+      const master = values.freight_rate_master;
       if (!master.verified || !master.effective_date || !/^https?:\/\/[^\s]+$/.test(master.source_url)) {
         throw new Error('料金マスターの基準日・出典URLを確認し、確認済みにしてください。');
       }
-      if (!contractValues.estimateB.route_origin.trim() || !contractValues.estimateB.route_destination.trim()) {
+      if (!values.route_origin.trim() || !values.route_destination.trim()) {
         throw new Error('出発地と目的地を入力してください。');
       }
       const rate = key => estimateNumber(master[key]);
@@ -1678,7 +1727,7 @@
       const waitingFee = Math.ceil(Math.max(0, waitingMinutes - 30) / 30) * rate('waiting_per_30m');
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
-      const partner2tRequested = contractValues.estimateB.partner_2t_requested === true;
+      const partner2tRequested = values.partner_2t_requested === true;
       const useTimeCharter = timePrice <= distancePrice;
       if (overCapacity && !partner2tRequested) throw new Error('軽貨物の積載上限を超えています。積載内容または分割運行を再検討してください。小型2t車はお客様から依頼があった場合だけ検討します。');
       let baseFreightGross = partner2tRequested
@@ -1726,10 +1775,10 @@
         premiumPercent,
         isLightCargo,
         reason: partner2tRequested
-          ? `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、お客様から小型2t車の代理調整依頼があったため外部2t車参考額を適用`
+          ? `${values.route_origin}から${values.route_destination}まで、お客様から小型2t車の代理調整依頼があったため外部2t車参考額を適用`
           : useTimeCharter
-            ? `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し時間制を推奨`
-            : `${contractValues.estimateB.route_origin}から${contractValues.estimateB.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し距離制を推奨`
+            ? `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し時間制を推奨`
+            : `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し距離制を推奨`
       };
     }
 
@@ -1752,6 +1801,7 @@
 
     function openFreightCalculator() {
       const values = contractValues.estimateB;
+      pendingRouteMeasurementSignature = values.route_measurement_signature || '';
       freightCalculatorReturnTarget = document.activeElement;
       freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { input.value = values[input.dataset.freightInput]; });
       freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
@@ -1776,6 +1826,7 @@
         : dynamicFields.querySelector('[data-open-freight-calculator]');
       returnTarget?.focus();
       freightCalculatorReturnTarget = null;
+      pendingRouteMeasurementSignature = '';
     }
 
     async function measureGoogleRouteDistance() {
@@ -1796,24 +1847,21 @@
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
       distanceInput.value = String(actualDistanceKm);
+      pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm);
       freightCalculatorStatus.textContent = `測定完了（未反映）：${result.provider || 'ルート検索'}の自動算出距離を2倍し、実車走行距離${actualDistanceKm}kmとしました。走行時間の目安${result.duration_minutes}分。「見積書に反映して戻る」で確定してください。`;
       freightCalculatorStatus.dataset.state = 'success';
     }
 
     function loadLightCargoReference() {
-      const values = contractValues.estimateB;
       try {
         const latestRates = latestRateForEstimateDate(lightCargoReferenceRateHistory, contractDate.value);
-        values.vehicle_class = 'light_cargo';
-        values.pricing_basis = 'self_light_cargo_rate';
-        values.freight_rate_master = { ...values.freight_rate_master, ...latestRates, tax_included: false };
-        freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { input.value = values.freight_rate_master[input.dataset.rateKey]; });
+        freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => {
+          if (Object.prototype.hasOwnProperty.call(latestRates, input.dataset.rateKey)) input.value = latestRates[input.dataset.rateKey];
+        });
         freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked = false;
         freightCalculatorDialog.querySelector('[data-rate-verified]').checked = true;
         freightCalculatorStatus.textContent = `2026年度自社料金規定（税抜・${latestRates.effective_date}適用開始）を読み込みました。`;
         freightCalculatorStatus.dataset.state = 'success';
-        renderDynamicFields();
-        renderPreview();
       } catch (error) {
         freightCalculatorStatus.textContent = error.message;
         freightCalculatorStatus.dataset.state = 'error';
@@ -1822,12 +1870,16 @@
 
     function applyFreightCalculator() {
       const values = contractValues.estimateB;
-      freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { values[input.dataset.freightInput] = input.value; });
-      values.route_document_url = googleMapsRouteUrl(values.route_origin, values.route_destination);
-      freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { values.freight_rate_master[input.dataset.rateKey] = input.value; });
-      values.freight_rate_master.tax_included = freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked;
-      values.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
+      const draftValues = JSON.parse(JSON.stringify(values));
+      freightCalculatorDialog.querySelectorAll('[data-freight-input]').forEach(input => { draftValues[input.dataset.freightInput] = input.value; });
+      freightCalculatorDialog.querySelectorAll('[data-rate-key]').forEach(input => { draftValues.freight_rate_master[input.dataset.rateKey] = input.value; });
+      draftValues.freight_rate_master.tax_included = freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked;
+      draftValues.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
       try {
+        if (pendingRouteMeasurementSignature !== routeMeasurementSignature(draftValues.route_origin, draftValues.route_destination, draftValues.route_distance_km)) {
+          throw new Error('出発地と目的地を入力し、「Googleで距離を自動測定」を実行してください。住所変更後は再測定が必要です。');
+        }
+        draftValues.route_measurement_signature = pendingRouteMeasurementSignature;
         const operation = {
           waitingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="waiting_minutes"]').value,
           loadingMinutes: freightCalculatorDialog.querySelector('[data-operation-input="loading_minutes"]').value,
@@ -1840,37 +1892,39 @@
           holiday: freightCalculatorDialog.querySelector('[data-operation-input="holiday"]').checked,
           night: freightCalculatorDialog.querySelector('[data-operation-input="night"]').checked
         };
-        values.freight_operation = {
+        draftValues.freight_operation = {
           waiting_minutes: String(operation.waitingMinutes), loading_minutes: String(operation.loadingMinutes), loading_support_mode: operation.loadingSupportMode,
           cancellation_type: operation.cancellationType, actual_expenses: String(operation.actualExpenses), instrument_surcharge_mode: operation.instrumentSurchargeMode,
           instrument_surcharge_amount: String(operation.instrumentSurchargeAmount), special_work_amount: String(operation.specialWorkAmount), holiday: operation.holiday, night: operation.night
         };
-        const result = calculateOptimalFreight(Number(values.route_distance_km), Number(values.total_hours), operation);
-        const itemByRole = role => values.estimate_items.find(item => item.role === role);
+        const result = calculateOptimalFreight(Number(draftValues.route_distance_km), Number(draftValues.total_hours), operation, draftValues);
+        const itemByRole = role => draftValues.estimate_items.find(item => item.role === role);
         const ensureItem = role => {
           const existing = itemByRole(role);
           if (existing) return existing;
           const template = transportEstimateItemTemplates[role];
           const item = { role, ...template, quantity: '1', unit_price: '0', amount: '0' };
-          values.estimate_items.push(item);
+          draftValues.estimate_items.push(item);
           return item;
         };
         const freight = ensureItem('freight');
         const billedFreight = result.cancellationRate ? 0 : result.baseFreightCost + result.waitingFee;
-        Object.assign(freight, { description: result.recommendedType, unit_price: String(billedFreight), amount: String(billedFreight), details: `${result.reason}。2026年度自社料金規定（税抜）${result.waitingFee ? `、待機料${formatEstimateYen(result.waitingFee)}円を含む` : ''}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${values.freight_rate_master.effective_date}）` });
+        Object.assign(freight, { description: result.recommendedType, unit_price: String(billedFreight), amount: String(billedFreight), details: `${result.reason}。2026年度自社料金規定（税抜）${result.waitingFee ? `、待機料${formatEstimateYen(result.waitingFee)}円を含む` : ''}${result.premiumPercent ? `、割増${result.premiumPercent}%適用` : ''}（基準日 ${draftValues.freight_rate_master.effective_date}）` });
         const loadingDetails = result.loadingSupportMode === 'customer_loads'
           ? 'お客様が積卸しを行うため荷役料なし。当方は運送および積載固定を担当'
           : result.loadingSupportMode === 'customer_assisted'
             ? `お客様のお手伝いあり。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料（追加スタッフ料金なし）`
             : `当方が積卸し。積卸し${operation.loadingMinutes || 0}分、30分単位の荷役料`;
         if (result.loadingFee > 0) Object.assign(ensureItem('loading'), { unit_price: String(result.loadingFee), amount: String(result.loadingFee), details: loadingDetails });
-        if (result.fuelSurcharge > 0) Object.assign(ensureItem('fuel'), { unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${values.route_distance_km}kmに基づく` });
+        if (result.fuelSurcharge > 0) Object.assign(ensureItem('fuel'), { unit_price: String(result.fuelSurcharge), amount: String(result.fuelSurcharge), details: `燃料基準価格との差額と実車距離${draftValues.route_distance_km}kmに基づく` });
         if (result.cancellationFee > 0) Object.assign(ensureItem('cancellation'), { unit_price: String(result.cancellationFee), amount: String(result.cancellationFee), details: `基本運送料${formatEstimateYen(result.baseFreightCost)}円の${result.cancellationRate * 100}%` });
         if (result.actualExpenses > 0) Object.assign(ensureItem('actual_expenses'), { unit_price: String(result.actualExpenses), amount: String(result.actualExpenses), details: '高速道路、有料橋、有料駐車場等の立替実費' });
         if (result.instrumentSurcharge > 0) Object.assign(ensureItem('instrument_surcharge'), { unit_price: String(result.instrumentSurcharge), amount: String(result.instrumentSurcharge), details: `${result.instrumentSurchargeLabel}${result.instrumentSurchargeSourceUrl ? `（市場調査出典：${result.instrumentSurchargeSourceUrl}）` : ''}` });
         if (result.specialWorkAmount > 0) Object.assign(ensureItem('special_work'), { unit_price: String(result.specialWorkAmount), amount: String(result.specialWorkAmount), details: '助手追加・特殊作業の個別見積額' });
-        values.waiting_fee = `最初の30分は無料、以降30分毎に${formatEstimateYen(estimateNumber(values.freight_rate_master.waiting_per_30m))}円（税抜反映額 ${formatEstimateYen(result.waitingFee)}円）`;
-        values.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
+        draftValues.waiting_fee = `最初の30分は無料、以降30分毎に${formatEstimateYen(estimateNumber(draftValues.freight_rate_master.waiting_per_30m))}円（税抜反映額 ${formatEstimateYen(result.waitingFee)}円）`;
+        draftValues.ancillary_fee = `荷役料とは別の追加作業は料金規定に基づき精算（基本荷役料 ${formatEstimateYen(result.loadingFee)}円）`;
+        Object.assign(values, draftValues);
+        editorRevision += 1;
         syncCargoValuation();
         const insurance = itemByRole('insurance');
         if (insurance) insurance.details = `申告総評価額${formatEstimateYen(calculateCargoValuation())}円に対する補償特約費`;
@@ -1888,8 +1942,14 @@
     async function generateTransportSheet() {
       const status = dynamicFields.querySelector('[data-document-tool-status]');
       if (!contractValues.estimateB.cargo_restrictions_agreed) throw new Error('輸送対象外品の確認へ同意してください。');
+      const blockingIssues = transportReadiness(contractValues.estimateB).filter(issue =>
+        !['正式見積の添付書類URL', '入力変更後の輸送書類再発行'].includes(issue));
+      if (blockingIssues.length) throw new Error(`発行前に確認してください：${blockingIssues.join('、')}`);
+      if (transportSheetRequest) throw new Error('輸送書類を発行中です。完了するまでお待ちください。');
+      const requestRevision = editorRevision;
+      const requestSignature = transportSheetSignature(contractValues.estimateB);
       status.textContent = '安全な共有シートを発行しています...';
-      const response = await fetch('/api/contracts/transport-sheet', {
+      const request = fetch('/api/contracts/transport-sheet', {
         method: 'POST', headers: adminHeaders(), body: JSON.stringify({
           client_name: clientName.value,
           transport_name: contractValues.estimateB.transport_name,
@@ -1898,19 +1958,35 @@
           transport_provider_mode: contractValues.estimateB.transport_provider_mode,
           vehicle_class: contractValues.estimateB.vehicle_class,
           pricing_basis: contractValues.estimateB.pricing_basis,
+          cargo_restrictions_agreed: contractValues.estimateB.cargo_restrictions_agreed,
+          route_origin: contractValues.estimateB.route_origin,
+          route_destination: contractValues.estimateB.route_destination,
+          route_distance_km: contractValues.estimateB.route_distance_km,
+          route_measurement_signature: contractValues.estimateB.route_measurement_signature,
+          total_hours: contractValues.estimateB.total_hours,
+          freight_operation: contractValues.estimateB.freight_operation,
           cargo_items: contractValues.estimateB.cargo_items,
           freight_rate_master: contractValues.estimateB.freight_rate_master,
           instrument_price_master: contractValues.estimateB.instrument_price_master
         })
       });
+      transportSheetRequest = request;
+      const response = await request.finally(() => {
+        if (transportSheetRequest === request) transportSheetRequest = null;
+      });
       if (!response.ok) throw new Error(await readApiError(response, '輸送明細シートを発行できませんでした。'));
       const result = await response.json();
+      if (requestRevision !== editorRevision || requestSignature !== transportSheetSignature(contractValues.estimateB)) {
+        throw new Error('発行中に入力内容が変更されました。作成済みシートは現在の見積へ反映せず、再発行が必要です。');
+      }
       contractValues.estimateB.cargo_document_url = result.cargo_url;
+      contractValues.estimateB.route_document_url = result.route_url;
       contractValues.estimateB.fee_document_url = result.fee_url;
+      contractValues.estimateB.transport_sheet_signature = requestSignature;
       renderDynamicFields();
       renderPreview();
       const nextStatus = dynamicFields.querySelector('[data-document-tool-status]');
-      nextStatus.textContent = '指定メールだけが編集できる輸送明細・料金規定シートを発行しました。';
+      nextStatus.textContent = '指定メールへ編集権限を追加した輸送明細・運行計画・積卸し経路図・料金規定シートを発行しました。';
       nextStatus.dataset.state = 'success';
     }
 
@@ -2033,6 +2109,7 @@
       const cargoValuation = syncCargoValuation();
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
+      const documentsCurrent = values.transport_sheet_signature === transportSheetSignature(values);
       const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
       const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '軽貨物運賃・日程を調整中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
@@ -2053,9 +2130,9 @@
           <table class="individual-contract-table"><tbody>
           </tbody></table>
           <ul class="estimate-conditions document-links">
-            ${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}
-            ${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}
-            ${transportDocumentLink('追加料金規定表', values.fee_document_url)}
+            ${transportDocumentLink('輸送対象物明細・評価額証明', documentsCurrent ? values.cargo_document_url : '')}
+            ${transportDocumentLink('運行計画書および積卸し経路図', documentsCurrent ? values.route_document_url : '')}
+            ${transportDocumentLink('追加料金規定表', documentsCurrent ? values.fee_document_url : '')}
           </ul>
         </section>
         <section class="contract-page estimate-page transport-estimate-detail" data-page-number="2">
@@ -2203,7 +2280,11 @@
     }
 
     function exportContractCsv() {
-      const escapeCsv = value => `"${String(value).replace(/"/g, '""')}"`;
+      const escapeCsv = value => {
+        const text = String(value);
+        const safeText = /^\s*[=+\-@]/.test(text) ? `'${text}` : text;
+        return `"${safeText.replace(/"/g, '""')}"`;
+      };
       const rows = [['項目', '値'], ...flattenContractData(contractPayload())];
       const csv = `\uFEFF${rows.map(row => row.map(escapeCsv).join(',')).join('\r\n')}`;
       downloadContractFile(csv, 'text/csv;charset=utf-8', 'csv');
@@ -2312,17 +2393,21 @@
     async function openSavedContract() {
       const contractId = savedContractSelect.value;
       if (!contractId) throw new Error('保存済み契約書を選択してください。');
+      const requestRevision = ++editorRevision;
       const response = await fetch(`/api/contracts/${encodeURIComponent(contractId)}`, {
         headers: adminHeaders()
       });
       if (!response.ok) throw new Error(await readApiError(response, '契約書を開けませんでした。'));
       const { contract } = await response.json();
+      if (requestRevision !== editorRevision || savedContractSelect.value !== contractId) {
+        throw new Error('別の契約書が選択されたため、古い読込結果は反映しませんでした。');
+      }
       docType.value = contract.doc_type;
       clientName.value = contract.client_name;
       clientRepresentative.value = contract.client_representative;
       contractDate.value = contract.contract_date;
       if (contract.doc_type !== 'master') {
-        contractValues[contract.doc_type] = { ...contractValues[contract.doc_type], ...contract.values };
+        contractValues[contract.doc_type] = { ...JSON.parse(JSON.stringify(initialContractValues[contract.doc_type])), ...contract.values };
         if (contract.doc_type === 'estimateB') normalizeTransportValues(contractValues.estimateB);
       }
       renderDynamicFields();
@@ -2348,6 +2433,8 @@
     }
 
     function resetContractEditor() {
+      editorRevision += 1;
+      transportSheetRequest = null;
       Object.entries(initialContractValues).forEach(([type, values]) => {
         contractValues[type] = JSON.parse(JSON.stringify(values));
       });
@@ -2365,6 +2452,8 @@
       saveButton.disabled = false;
       pendingDeleteContractId = '';
       instrumentLookupResults.clear();
+      instrumentLookupRequests.clear();
+      instrumentLookupErrors.clear();
       if (deleteDialog.open) deleteDialog.close();
       if (freightCalculatorDialog.open) freightCalculatorDialog.close();
     }
@@ -2422,9 +2511,14 @@
       passwordInput.focus();
     });
 
-    docType.addEventListener('change', () => { renderDynamicFields(); renderPreview(); });
-    [clientName, clientRepresentative].forEach(input => input.addEventListener('input', renderPreview));
+    docType.addEventListener('change', () => { editorRevision += 1; renderDynamicFields(); renderPreview(); });
+    [clientName, clientRepresentative].forEach(input => input.addEventListener('input', () => {
+      editorRevision += 1;
+      updateTransportWorkflowStatus();
+      renderPreview();
+    }));
     contractDate.addEventListener('input', () => {
+      editorRevision += 1;
       if (docType.value === 'estimateB') {
         const values = contractValues.estimateB;
         const catalogUrls = values.instrument_price_master.source_urls || [];
@@ -2436,6 +2530,7 @@
       renderPreview();
     });
     dynamicFields.addEventListener('input', event => {
+      editorRevision += 1;
       if (event.target.matches('[data-cargo-consent]')) {
         contractValues.estimateB.cargo_restrictions_agreed = event.target.checked;
         updateTransportWorkflowStatus();
@@ -2724,6 +2819,7 @@
       }
       if (event.target.closest('[data-add-cargo-row]')) {
         if (contractValues.estimateB.cargo_items.length >= 10) return;
+        editorRevision += 1;
         contractValues.estimateB.cargo_items.push({ category: 'その他', instrument_key: 'other', description: 'その他', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '', lookup_source_url: '' });
         instrumentLookupResults.clear();
         renderDynamicFields();
@@ -2733,6 +2829,7 @@
       if (event.target.closest('[data-add-estimate-row]')) {
         const items = contractValues[docType.value]?.estimate_items;
         if (!items || items.length >= 10) return;
+        editorRevision += 1;
         items.push({ description: '任意の指導・作業内容', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '' });
         renderDynamicFields();
         renderPreview();
@@ -2742,6 +2839,7 @@
         const items = contractValues.estimateB.estimate_items;
         const selector = dynamicFields.querySelector('[data-transport-estimate-item]');
         if (!selector?.value || items.length >= 10) return;
+        editorRevision += 1;
         if (selector.value === 'custom') {
           items.push({ description: '任意の料金・実費項目', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '' });
         } else if (!items.some(item => item.role === selector.value)) {
@@ -2757,6 +2855,7 @@
         const items = contractValues[docType.value]?.estimate_items;
         if (!items || items.length <= 1) return;
         const rowIndex = Number(removeEstimateButton.dataset.removeEstimateRow);
+        editorRevision += 1;
         items.splice(rowIndex, 1);
         if (!items.length) {
           const template = transportEstimateItemTemplates.freight;
@@ -2769,13 +2868,16 @@
       const removeButton = event.target.closest('[data-remove-cargo-row]');
       if (removeButton) {
         if (contractValues.estimateB.cargo_items.length <= 1) return;
+        editorRevision += 1;
         contractValues.estimateB.cargo_items.splice(Number(removeButton.dataset.removeCargoRow), 1);
         instrumentLookupResults.clear();
         renderDynamicFields();
         renderPreview();
         return;
       }
-      if (event.target.closest('[data-generate-transport-sheet]')) {
+      const generateTransportButton = event.target.closest('[data-generate-transport-sheet]');
+      if (generateTransportButton) {
+        generateTransportButton.disabled = true;
         try {
           await generateTransportSheet();
         } catch (error) {
@@ -2784,6 +2886,8 @@
             status.textContent = error.message;
             status.dataset.state = 'error';
           }
+        } finally {
+          if (generateTransportButton.isConnected) generateTransportButton.disabled = false;
         }
       }
     });
@@ -2803,6 +2907,7 @@
     preview.addEventListener('input', event => {
       const key = event.target.dataset.previewEstimateKey;
       if (!key) return;
+      editorRevision += 1;
       const estimateType = activeEstimateType();
       if (key === 'project_name' || key === 'transport_name') {
         contractValues[estimateType][key] = event.target.value;
@@ -2868,6 +2973,8 @@
       }
     });
     loadButton.addEventListener('click', async () => {
+      if (loadButton.disabled) return;
+      loadButton.disabled = true;
       saveStatus.textContent = '';
       saveStatus.dataset.state = '';
       try {
@@ -2877,6 +2984,8 @@
       } catch (error) {
         saveStatus.textContent = error.message || '契約書を開けませんでした。';
         saveStatus.dataset.state = 'error';
+      } finally {
+        loadButton.disabled = false;
       }
     });
     deleteButton.addEventListener('click', () => {
@@ -2897,11 +3006,14 @@
     document.getElementById('continueDeleteContract').addEventListener('click', () => showDeleteStep(2));
     document.getElementById('backDeleteContract').addEventListener('click', () => showDeleteStep(1));
     document.getElementById('confirmDeleteContract').addEventListener('click', async () => {
+      const confirmButton = document.getElementById('confirmDeleteContract');
+      if (confirmButton.disabled) return;
       const confirmationId = deleteContractId.value.trim();
       if (confirmationId !== pendingDeleteContractId) {
         deleteContractError.textContent = '契約書IDが一致しません。';
         return;
       }
+      confirmButton.disabled = true;
       try {
         const result = await deleteSavedContract(pendingDeleteContractId, confirmationId);
         deleteDialog.close();
@@ -2911,6 +3023,8 @@
         saveStatus.dataset.state = 'success';
       } catch (error) {
         deleteContractError.textContent = error.message || '契約書を削除できませんでした。';
+      } finally {
+        confirmButton.disabled = false;
       }
     });
 

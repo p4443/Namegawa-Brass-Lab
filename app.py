@@ -203,6 +203,7 @@ CONTRACT_TYPES = {
             "cargo_document_url",
             "route_document_url",
             "fee_document_url",
+            "transport_sheet_signature",
             "waiting_fee",
             "ancillary_fee",
             "detour_expenses",
@@ -212,6 +213,7 @@ CONTRACT_TYPES = {
             "route_origin",
             "route_destination",
             "route_distance_km",
+            "route_measurement_signature",
             "total_hours",
             "instrument_price_master",
             "freight_rate_master",
@@ -779,7 +781,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-27-lesson-types-v26"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-30-contract-workflow-audit-v29"
 
 
 def current_japan_date():
@@ -1682,6 +1684,13 @@ def validate_contract(payload):
                     raise ValueError("見積明細の入力内容を確認してください。")
                 estimate_items.append(item)
             values[key] = estimate_items
+            continue
+        if key in {"transport_sheet_signature", "route_measurement_signature"}:
+            signature = str(raw_values.get(key, "")).strip()
+            signature_pattern = r"v1-[0-9a-f]{8}" if key == "transport_sheet_signature" else r"route-v1-[0-9a-f]{8}"
+            if signature and re.fullmatch(signature_pattern, signature) is None:
+                raise ValueError("輸送書類または距離測定の内容署名を確認してください。")
+            values[key] = signature
             continue
         value = str(raw_values.get(key, "")).strip()
         if transport_is_pending and key in transport_pending_optional_fields and not value:
@@ -2884,6 +2893,7 @@ def create_app(
         cargo_items = payload.get("cargo_items")
         rate_master = payload.get("freight_rate_master")
         instrument_master = payload.get("instrument_price_master")
+        cargo_restrictions_agreed = payload.get("cargo_restrictions_agreed") is True
         workflow_status = str(payload.get("workflow_status", "draft")).strip()
         transport_provider_mode = str(payload.get("transport_provider_mode", "external_carrier")).strip()
         vehicle_class = str(payload.get("vehicle_class", "undecided")).strip()
@@ -2891,14 +2901,38 @@ def create_app(
         carrier_name = str(payload.get("carrier_name", "")).strip()
         carrier_quote_url = str(payload.get("carrier_quote_url", "")).strip()
         carrier_quote_date = str(payload.get("carrier_quote_date", "")).strip()
+        route_origin = str(payload.get("route_origin", "")).strip()
+        route_destination = str(payload.get("route_destination", "")).strip()
+        route_distance_km = str(payload.get("route_distance_km", "")).strip()
+        route_measurement_signature = str(payload.get("route_measurement_signature", "")).strip()
+        total_hours = str(payload.get("total_hours", "")).strip()
+        freight_operation = payload.get("freight_operation", {})
         if not client_name or len(client_name) > 120 or not transport_name or len(transport_name) > 160:
             return jsonify({"error": "取引先名と輸送案件名を入力してください。"}), 400
         if re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", editor_email) is None:
             return jsonify({"error": "シート共有先メールアドレスを正しく入力してください。"}), 400
         if not isinstance(cargo_items, list) or not 1 <= len(cargo_items) <= 10 or not isinstance(rate_master, dict) or not isinstance(instrument_master, dict):
             return jsonify({"error": "輸送対象物と料金マスターを確認してください。"}), 400
-        if workflow_status not in {"draft", "quote_pending", "ready"} or transport_provider_mode not in {"external_carrier", "self_light_cargo", "self_general_freight"} or vehicle_class not in {"undecided", "light_cargo", "small", "medium", "large", "trailer"} or pricing_basis not in {"mlit_reference", "light_cargo_reference", "carrier_quote"}:
+        if not cargo_restrictions_agreed:
+            return jsonify({"error": "輸送対象外品の確認へ同意してください。"}), 400
+        valid_cargo_items = all(
+            isinstance(item, dict)
+            and 0 < len(str(item.get("description", "")).strip()) <= 160
+            and re.fullmatch(r"\d{1,4}(?:\.\d{1,2})?", str(item.get("quantity", "")).strip()) is not None
+            and float(str(item.get("quantity", "0")).strip()) > 0
+            and re.fullmatch(r"\d{1,12}", str(item.get("unit_value", "")).strip()) is not None
+            and int(str(item.get("unit_value", "0")).strip()) > 0
+            and re.fullmatch(r"\d{1,6}(?:\.\d{1,2})?", str(item.get("volume_points", "")).strip()) is not None
+            for item in cargo_items
+        )
+        if not valid_cargo_items:
+            return jsonify({"error": "輸送対象物の名称、数量、単価・評価額、容積ポイントを確認してください。"}), 400
+        if not route_origin or len(route_origin) > 200 or not route_destination or len(route_destination) > 200 or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_distance_km) is None or float(route_distance_km) <= 0 or re.fullmatch(r"route-v1-[0-9a-f]{8}", route_measurement_signature) is None or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", total_hours) is None or float(total_hours) <= 0 or not isinstance(freight_operation, dict):
+            return jsonify({"error": "運行経路、実車走行距離、総拘束時間を確認してください。"}), 400
+        if workflow_status not in {"draft", "quote_pending", "ready"} or transport_provider_mode != "self_light_cargo" or vehicle_class != "light_cargo" or pricing_basis not in {"self_light_cargo_rate", "light_cargo_reference"}:
             return jsonify({"error": "輸送案件の進行状態を確認してください。"}), 400
+        if rate_master.get("verified") is not True or not str(rate_master.get("effective_date", "")).strip() or re.fullmatch(r"https://[^\s]+", str(rate_master.get("source_url", "")).strip()) is None:
+            return jsonify({"error": "確認済みの軽貨物料金マスターと出典URLを指定してください。"}), 400
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
         if not script_url or not script_secret:
@@ -2915,9 +2949,16 @@ def create_app(
                     "transport_provider_mode": transport_provider_mode,
                     "vehicle_class": vehicle_class,
                     "pricing_basis": pricing_basis,
+                    "cargo_restrictions_agreed": cargo_restrictions_agreed,
                     "carrier_name": carrier_name,
                     "carrier_quote_url": carrier_quote_url,
                     "carrier_quote_date": carrier_quote_date,
+                    "route_origin": route_origin,
+                    "route_destination": route_destination,
+                    "route_distance_km": route_distance_km,
+                    "route_measurement_signature": route_measurement_signature,
+                    "total_hours": total_hours,
+                    "freight_operation": freight_operation,
                     "cargo_items": cargo_items,
                     "freight_rate_master": rate_master,
                     "instrument_price_master": instrument_master,
@@ -2927,8 +2968,10 @@ def create_app(
         except (LessonReservationDeliveryError, OSError, urllib_error.URLError, json.JSONDecodeError):
             app.logger.exception("Apps Script rejected transport sheet generation")
             return jsonify({"error": "輸送明細シートを発行できませんでした。"}), 502
+        if not result.get("cargoUrl") or not result.get("routeUrl") or not result.get("feeUrl"):
+            return jsonify({"error": "Apps Scriptを運行計画・積卸し経路図対応版へ更新してください。"}), 502
         return jsonify(
-            {"cargo_url": result.get("cargoUrl", ""), "fee_url": result.get("feeUrl", "")}
+            {"cargo_url": result.get("cargoUrl", ""), "route_url": result.get("routeUrl", ""), "fee_url": result.get("feeUrl", "")}
         ), 201
 
     @app.route("/api/contracts/<contract_id>", methods=["GET", "DELETE"])
