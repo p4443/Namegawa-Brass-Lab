@@ -1356,9 +1356,6 @@
       });
       if (!response.ok) throw new Error(await readApiError(response, '公式価格を照会できませんでした。'));
       const result = await response.json();
-      if (result.provider !== 'Google Maps') {
-        throw new Error('Google Maps Routes API以外の距離はB見積書へ反映できません。');
-      }
       const currentItem = contractValues.estimateB.cargo_items[rowIndex];
       if (requestRevision !== editorRevision || currentItem !== item || currentItem.maker_model !== makerModel || currentItem.lookup_source_url !== sourceUrl) {
         throw new Error('入力内容が変更されたため、古い価格照会結果は反映しませんでした。現在の内容で再照会してください。');
@@ -1831,6 +1828,9 @@
       });
       if (!response.ok) throw new Error(await readApiError(response, '自動車ルートの距離を取得できませんでした。'));
       const result = await response.json();
+      if (result.provider !== 'Google Maps') {
+        throw new Error('Google Maps Routes API以外の距離はB見積書へ反映できません。');
+      }
       if (!freightCalculatorDialog.open || originInput.value.trim() !== origin || destinationInput.value.trim() !== destination || tripTypeInput.value !== tripType) {
         throw new Error('測定中に出発地、目的地、または片道・往復区分が変更されました。現在の条件でもう一度測定してください。');
       }
@@ -2672,7 +2672,7 @@
           contractValues.estimateB.instrument_price_master.verified = estimateNumber(item.catalog_price) > 0;
           const unitInput = row.querySelector('[data-cargo-item-key="unit_value"]');
           const totalInput = row.querySelector('[data-cargo-item-key="total_value"]');
-          if (unitInput) unitInput.value = String(taxIncludedPrice);
+          if (unitInput) unitInput.value = item.unit_value;
           if (totalInput) totalInput.value = item.total_value;
           syncCargoValuation();
           const editorTotal = dynamicFields.querySelector('[data-cargo-total="editor"]');
