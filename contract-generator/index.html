@@ -276,10 +276,6 @@
     .route-distance-summary { margin-bottom: 14px; padding: 12px; border: 1px solid #16a34a; border-left: 5px solid #16a34a; border-radius: 6px; color: #14532d; background: #f0fdf4; font-size: 0.8rem; }
     .route-distance-summary strong { display: block; margin-bottom: 4px; font-size: 0.9rem; }
     .route-measurement-result[data-state="success"] { padding: 12px; border: 2px solid #059669; border-radius: 6px; color: #064e3b; background: #ecfdf5; font-size: 0.88rem; }
-    .partner-2t-panel { margin-bottom: 14px; padding: 14px; border: 1px solid #d97706; border-radius: 6px; background: #fffbeb; }
-    .partner-2t-panel h2 { margin: 0 0 6px; font-size: 0.95rem; color: #78350f; }
-    .partner-2t-panel p { margin: 0 0 10px; color: #78350f; font-size: 0.78rem; line-height: 1.5; }
-    .partner-2t-panel .field { margin-bottom: 10px; }
     .cargo-editor-fieldset { min-width: 0; margin: 14px 0; padding: 0; border: 0; }
     .cargo-editor-grid select, .cargo-editor-grid input, .cargo-editor-grid textarea {
       width: 100%; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #ffffff;
@@ -695,7 +691,9 @@
         <h3 class="rate-section-title">経路と所要時間</h3>
         <label>出発地（Googleマップ検索語）<input data-freight-input="route_origin" type="text" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="例：〒355-0813 埼玉県比企郡滑川町月輪"></label>
         <label>目的地（Googleマップ検索語）<input data-freight-input="route_destination" type="text" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="例：店舗名、駅名、住所、ランドマーク"></label>
-        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">Googleマップ方式で距離測定</button></div>
+        <label>距離の反映方法<select data-freight-input="route_trip_type"><option value="one_way">片道距離を反映</option><option value="round_trip">往復距離を反映</option></select></label>
+        <label>Google Maps片道測定値（km）<input data-freight-input="route_one_way_distance_km" type="number" min="0" step="0.1" readonly></label>
+        <div class="route-distance-tools"><label>見積反映距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1" readonly></label><button class="secondary-button" data-measure-google-route type="button">Googleマップ方式で距離測定</button></div>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
         <h3 class="rate-section-title">積卸し・追加条件</h3>
         <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
@@ -734,7 +732,6 @@
         <label>燃料基準価格（円/L）<input data-rate-key="fuel_reference_price" type="number" min="0"></label>
         <label>見積時燃料価格（円/L）<input data-rate-key="fuel_current_price" type="number" min="0"></label>
         <label>燃料差額1円・1kmあたり係数<input data-rate-key="fuel_per_km_per_yen" type="number" min="0"></label>
-        <label>外部2t車参考チャーター額（円）<input data-rate-key="external_2t_charter" type="number" min="0"></label>
         <label class="rate-confirm"><input data-rate-tax-included type="checkbox"><span>入力した参考運賃は税込額</span></label>
         <label class="rate-confirm"><input data-rate-verified type="checkbox"><span>基準日現在の公表資料と自社料金規定を確認し、入力値を見積根拠として使用します。</span></label>
         </div>
@@ -805,17 +802,18 @@
         special_terms: '1. 本業務は善良な管理者の注意をもって行う準委任業務であり、技能向上、進学、受賞その他特定の成果を保証するものではない。\n2. 甲は、会場、設備、参加者情報、緊急連絡体制その他安全な実施に必要な環境を整える。未成年者が参加する場合、甲は保護者同意、引渡し、撮影・公開の可否および健康上の配慮事項を管理する。\n3. 甲乙は、事故、災害、感染症、気象、交通障害その他安全な実施が困難な事情がある場合、延期、中止または実施方法の変更を協議する。緊急時は人命および安全を優先する。\n4. 参加者へのハラスメント、差別、暴力、危険行為その他信頼関係を損なう行為を禁止し、改善されない場合、乙は業務を中断または終了できる。\n5. 日程、人数、会場、業務範囲および教材利用の変更ならびにキャンセル料、交通費、宿泊費等は、実施前に電磁的方法を含む記録可能な方法で合意する。'
       },
       typeB: {
-        cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路',
+        transport_name: '楽器輸送業務一式', estimate_reference_id: '', estimate_date: '',
+        cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路', amount: '別途B見積書のとおり',
+        cargo_document_url: '', route_document_url: '', fee_document_url: '',
         special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機・追加作業）基本運送料に含む作業範囲と、待機、階段搬入、梱包補助、助手追加その他の追加作業費を見積書に明示する。予定外の作業が必要になった場合、乙は内容と金額を甲へ説明し、記録可能な方法で合意した上で請求する。\n6. （料金の見直し）契約締結後、燃油価格、道路料金、法令その他の算定条件が著しく変動した場合、乙は軽貨物料金の算定根拠を提示し、変更内容を甲乙協議の上で決定する。'
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
         workflow_status: 'draft', transport_provider_mode: 'self_light_cargo', vehicle_class: 'light_cargo', pricing_basis: 'self_light_cargo_rate',
-        partner_2t_requested: false, partner_2t_status: 'not_needed', partner_2t_budget: '0', partner_2t_notes: '',
         cargo_document_url: '', route_document_url: '', fee_document_url: '', transport_sheet_signature: '',
         waiting_fee: '30分毎に金額を入力', ancillary_fee: '作業員1名1時間毎に金額を入力', detour_expenses: '実費精算',
         cargo_restrictions_agreed: false, cargo_contact_email: '', external_vehicle_budget: '0',
-        route_origin: '', route_destination: '', route_distance_km: '', route_provider: '', route_measurement_signature: '', total_hours: '8',
+        route_origin: '', route_destination: '', route_trip_type: 'one_way', route_one_way_distance_km: '', route_distance_km: '', route_provider: '', route_measurement_signature: '', total_hours: '8',
         freight_operation: { waiting_minutes: '0', loading_minutes: '0', loading_support_mode: 'carrier', cancellation_type: 'none', actual_expenses: '0', instrument_surcharge_mode: 'none', instrument_surcharge_amount: '0', special_work_amount: '0', holiday: false, night: false },
         instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', refresh_interval_days: '30', verified: false },
         freight_rate_master: {
@@ -825,7 +823,7 @@
           charter_2h: '0', extra_30m: '0', loading_per_15m: '0', loading_per_30m: '1500', holiday_percent: '20', night_percent: '30',
           charter_4h: '12000', charter_8h: '22000', extra_hour: '3000', waiting_per_30m: '1500',
           loading_base: '0', loading_per_25_points: '0', fuel_reference_price: '0', fuel_current_price: '0',
-          fuel_per_km_per_yen: '0', external_2t_charter: '0'
+          fuel_per_km_per_yen: '0'
         },
         cargo_items: [{ category: 'その他', instrument_key: 'other', description: '案件受付後に入力', maker_model: '', quantity: '1', condition: '要確認', valuation_mode: 'manual', unit_value: '0', total_value: '0', volume_points: '0', notes: '型番・再調達価格を案件ごとに確認' }],
         estimate_items: [
@@ -876,6 +874,13 @@
       return `<div class="field"><label>${label}${element}</label></div>`;
     }
 
+    function generatedUrlField(label, key, value) {
+      const link = /^https:\/\/docs\.google\.com\/spreadsheets\/[^\s]+#gid=\d+$/.test(value)
+        ? `<a href="${escapeHtml(value)}" target="_blank" rel="noopener noreferrer">作成済みシートを開く</a>`
+        : '<small>「輸送3シート・共有URLを自動作成」を実行すると設定されます。</small>';
+      return `<div class="field"><label>${label}<input data-contract-key="${key}" type="url" value="${escapeHtml(value)}" readonly></label>${link}</div>`;
+    }
+
     function selectField(label, key, value, options) {
       return `<div class="field"><label>${label}<select data-contract-key="${key}">${options.map(option => `<option value="${option.value}"${option.value === value ? ' selected' : ''}>${option.label}</option>`).join('')}</select></label></div>`;
     }
@@ -893,8 +898,8 @@
         else if (!master.source_urls.includes(item.lookup_source_url)) addIssue(`${rowLabel}：選択サイトを公式価格サイト候補へ登録してください。`, rowIndex, 'lookup_source_url');
         if (!item.maker_model.trim()) addIssue(`${rowLabel}：メーカー・型番を入力してください。`, rowIndex, 'maker_model');
         if (estimateNumber(item.unit_value) <= 0) addIssue(`${rowLabel}：単価・評価額を入力または照会してください。`, rowIndex, 'unit_value');
-        if (item.valuation_mode === 'master' && (!item.price_source_url || !item.price_checked_at || !['tax_included', 'tax_excluded'].includes(item.price_tax_status))) {
-          addIssue(`${rowLabel}：公式価格の照会元・照会日・税区分を確認してください。`, rowIndex, 'price_source_url');
+        if (item.valuation_mode === 'master' && (!item.price_source_url || !item.price_checked_at)) {
+          addIssue(`${rowLabel}：公式価格の照会元・照会日を確認してください。`, rowIndex, 'price_source_url');
         }
         if (instrumentPriceIsStale(item, contractDate.value, master.refresh_interval_days)) {
           addIssue(`${rowLabel}：公式価格の更新期限を過ぎています。`, rowIndex, 'lookup');
@@ -910,12 +915,12 @@
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
       if (!Number.isFinite(Number(values.route_distance_km)) || Number(values.route_distance_km) <= 0) missing.push('実車走行距離の自動測定');
       else if (values.route_provider !== 'Google Maps') missing.push('Google Maps Routes APIでの距離再測定');
-      else if (values.route_measurement_signature !== routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)) missing.push('住所変更後の実車走行距離再測定');
+      else if (!['one_way', 'round_trip'].includes(values.route_trip_type) || estimateNumber(values.route_one_way_distance_km) <= 0) missing.push('片道・往復区分を指定した距離再測定');
+      else if (values.route_measurement_signature !== routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km, values.route_trip_type)) missing.push('住所または片道・往復区分変更後の実車走行距離再測定');
       if (!Number.isFinite(Number(values.total_hours)) || Number(values.total_hours) <= 0) missing.push('総拘束時間');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');
       if (!['self_light_cargo_rate', 'light_cargo_reference'].includes(values.pricing_basis)) missing.push('軽貨物料金の根拠確認');
-      if (calculateCargoVolume() >= 100 && !values.partner_2t_requested) missing.push('軽貨物の積載内容または分割運行の再検討');
-      if (values.partner_2t_requested && (values.partner_2t_status !== 'confirmed' || estimateNumber(values.partner_2t_budget) <= 0)) missing.push('依頼された協力会社2t車の代理調整確定');
+      if (calculateCargoVolume() >= 100) missing.push('自社軽貨物の積載内容または分割運行の再検討');
       if (values.instrument_price_master.source_urls?.length && values.instrument_price_master.catalog_year !== contractDate.value.slice(0, 4)) missing.push('見積作成年の公開カタログで再照会');
       if (!values.freight_rate_master.verified) missing.push('参考運賃表の該当車種確認');
       const documentsCurrent = values.transport_sheet_signature === transportSheetSignature(values)
@@ -961,6 +966,7 @@
         workflow_status: values.workflow_status, transport_provider_mode: values.transport_provider_mode,
         vehicle_class: values.vehicle_class, pricing_basis: values.pricing_basis,
         route_origin: values.route_origin, route_destination: values.route_destination,
+        route_trip_type: values.route_trip_type, route_one_way_distance_km: values.route_one_way_distance_km,
         route_distance_km: values.route_distance_km, route_provider: values.route_provider,
         route_measurement_signature: values.route_measurement_signature,
         total_hours: values.total_hours,
@@ -977,8 +983,8 @@
       return `v1-${(hash >>> 0).toString(16).padStart(8, '0')}`;
     }
 
-    function routeMeasurementSignature(origin, destination, distance) {
-      const serialized = JSON.stringify([String(origin).trim(), String(destination).trim(), String(distance).trim()]);
+    function routeMeasurementSignature(origin, destination, distance, tripType) {
+      const serialized = JSON.stringify([String(origin).trim(), String(destination).trim(), String(distance).trim(), String(tripType).trim()]);
       let hash = 2166136261;
       for (let index = 0; index < serialized.length; index += 1) {
         hash ^= serialized.charCodeAt(index);
@@ -1179,8 +1185,7 @@
       night_percent: '30',
       fuel_reference_price: '0',
       fuel_current_price: '0',
-      fuel_per_km_per_yen: '0',
-      external_2t_charter: '0'
+      fuel_per_km_per_yen: '0'
     }];
 
     const instrumentTransportSurchargePresets = {
@@ -1260,26 +1265,26 @@
         ? values.instrument_price_master.source_urls
         : (values.instrument_price_master.source_url ? [values.instrument_price_master.source_url] : []);
       const catalogStatus = instrumentCatalogStatus(values.instrument_price_master, catalogUrls, contractDate.value);
-      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>標準見積は個人事業主による自社軽貨物車の運行に限定します。小型2t車はお客様から明示の依頼があった場合に限り、当方が窓口となって協力会社での対応を検討します。</div>`
+      return `<div class="estimate-edit-guide"><strong>B契約前見積書の編集</strong>見積、契約、配車、運行、完了確認まで、当方の黒ナンバー軽貨物車による自社完結型で扱います。積載上限を超える場合は品目の見直しまたは自社軽貨物での分割運行を行います。</div>`
         + `<div class="transport-workflow-status${missing.length ? '' : ' is-ready'}" data-transport-workflow-status><strong>${missing.length ? '発行準備中' : '正式見積の発行準備完了'}</strong>${missing.length ? `<span>残り${missing.length}項目</span><ul>${missing.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>` : '<span>入力根拠と添付書類を最終確認してください。</span>'}</div>`
+        + `<button class="secondary-button freight-calculator-button" data-create-type-b-contract type="button"${missing.length || values.workflow_status !== 'ready' ? ' disabled' : ''}>この確定見積から個別契約書Bを作成</button>`
         + selectField('案件進行状態', 'workflow_status', values.workflow_status, [{ value: 'draft', label: '案件受付（下書き）' }, { value: 'quote_pending', label: '軽貨物運賃・日程を調整中' }, { value: 'ready', label: '正式見積の発行準備完了' }])
         + `<div class="light-cargo-spec"><strong>標準車両：自社軽貨物車</strong><p>黒ナンバーの軽貨物車で運行します。車両区分と料金根拠は軽貨物仕様に固定されています。</p></div>`
-        + (values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km)
-          ? `<div class="route-distance-summary"><strong>走行距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（${escapeHtml(values.route_provider)} Routes APIの自動算出距離）</span></div>`
+        + (values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km, values.route_trip_type)
+          ? `<div class="route-distance-summary"><strong>${values.route_trip_type === 'round_trip' ? '往復' : '片道'}距離 ${escapeHtml(values.route_distance_km)}km を反映済み</strong><span>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}（Google Maps片道測定値 ${escapeHtml(values.route_one_way_distance_km)}km）</span></div>`
           : '')
         + `<label class="cargo-consent"><input data-cargo-consent type="checkbox"${values.cargo_restrictions_agreed ? ' checked' : ''}>現金、有価証券、貴金属、時計その他規定する貴重品は輸送対象外であることに同意します。</label>`
         + `<div class="cargo-capacity-status ${overCapacity ? 'is-over' : 'is-ok'}" data-cargo-capacity-status><strong>${overCapacity ? '積載量上限アラート' : '軽貨物車両での積載判定'}</strong><span>${formatCargoCapacity(volume)}</span></div>`
         + `<div class="field"><label>輸送案件名（選択または任意入力）<select class="estimate-preset" data-estimate-preset="transport_name" aria-label="輸送案件名の登録内容から選択">${presetOptions(estimatePresets.transport_name)}</select><input data-contract-key="transport_name" type="text" maxlength="160" value="${escapeHtml(values.transport_name)}" aria-label="輸送案件名の任意入力"></label></div>`
         + field('見積有効期限', 'validity', values.validity)
-        + field('A4付属書PDFの共有URL', 'cargo_document_url', values.cargo_document_url)
-        + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
-        + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
+        + generatedUrlField('輸送対象物明細・評価額証明 URL（自動生成）', 'cargo_document_url', values.cargo_document_url)
+        + generatedUrlField('運行計画書・積卸し経路図 URL（自動生成）', 'route_document_url', values.route_document_url)
+        + generatedUrlField('追加料金規定表 URL（自動生成）', 'fee_document_url', values.fee_document_url)
         + field('待機料', 'waiting_fee', values.waiting_fee)
         + field('付帯作業料', 'ancillary_fee', values.ancillary_fee)
         + field('迂回・延泊実費', 'detour_expenses', values.detour_expenses)
         + field('シート共有先メールアドレス', 'cargo_contact_email', values.cargo_contact_email)
-        + `<section class="transport-creation-section"><h2>輸送書類・経路図の作成</h2><p>入力済みの輸送情報から共有シートを発行し、出発地と目的地をGoogle マップで確認します。</p><div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送明細シートを発行</button><a class="secondary-button route-map-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">経路図を作成・確認</a></div><p class="save-status" data-document-tool-status role="status"></p></section>`
-        + `<section class="partner-2t-panel"><h2>協力会社 小型2t車の代理調整</h2><p>小型2t車はお客様から明示の依頼があった場合だけ検討します。協力会社はお客様との契約・見積窓口にはならず、当方が依頼、日程確認、費用調整を一括して行います。</p><label class="cargo-consent"><input data-partner-2t-requested type="checkbox"${values.partner_2t_requested ? ' checked' : ''}>小型2t車の代理調整を依頼する</label><div${values.partner_2t_requested ? '' : ' hidden'} data-partner-2t-details>${selectField('代理調整状況', 'partner_2t_status', values.partner_2t_status, [{ value: 'not_needed', label: '不要' }, { value: 'requested', label: '依頼受付' }, { value: 'adjusting', label: '協力会社と調整中' }, { value: 'confirmed', label: '車両・日程・費用を確定' }])}${field('小型2t車 調整予算（円）', 'partner_2t_budget', values.partner_2t_budget)}${field('代理調整メモ', 'partner_2t_notes', values.partner_2t_notes, true)}</div></section>`
+        + `<section class="transport-creation-section"><h2>輸送書類・経路図の自動作成</h2><p>入力済み情報から、輸送対象物明細、運行計画・積卸し経路図、料金規定を同じ非公開Googleスプレッドシート内に作成し、3つの共有URLを自動設定します。</p><div class="document-tools"><button class="secondary-button" data-generate-transport-sheet type="button">輸送3シート・共有URLを自動作成</button><a class="secondary-button route-map-button" data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}" target="_blank" rel="noopener noreferrer">Googleマップで経路を確認</a></div><p class="save-status" data-document-tool-status role="status"></p></section>`
         + `<button class="primary-button freight-calculator-button" data-open-freight-calculator type="button">距離・時間から参考運賃を算出</button>`
         + `<fieldset class="cargo-editor-fieldset" data-cargo-editor><div class="estimate-editor instrument-price-panel"><h2>再調達価格・評価根拠の確認</h2><div class="cargo-editor-grid"><label>価格基準日<input data-instrument-master-key="effective_date" type="date" max="${escapeHtml(contractDate.value)}" value="${escapeHtml(values.instrument_price_master.effective_date)}"></label><label>価格の更新間隔（日）<input data-instrument-master-key="refresh_interval_days" type="number" min="1" max="365" value="${escapeHtml(values.instrument_price_master.refresh_interval_days || '30')}"></label><label class="cargo-instrument">公式価格サイト候補<div class="price-source-tools"><select data-instrument-source-preset>${instrumentPriceSourceOptions(catalogUrls)}</select><button class="secondary-button" data-open-instrument-source type="button" title="先頭の公式カタログを別タブで開く"${catalogUrls.length && isOfficialInstrumentPriceUrl(catalogUrls[0]) ? '' : ' disabled'}>先頭URLを開く</button><textarea data-instrument-catalog-urls maxlength="3500" aria-label="公開カタログURL（1行1件・最大7件）" placeholder="型番と価格が掲載された公式カタログまたは製品ページURL">${escapeHtml(catalogUrls.join('\n'))}</textarea><small class="price-source-count">登録 ${catalogUrls.length}/7件</small></div></label><button class="secondary-button cargo-wide" data-refresh-stale-instrument-prices type="button">期限切れ価格を一括再照会</button><p class="price-proof${catalogStatus.state === 'ready' ? '' : ` is-${catalogStatus.state}`}" data-instrument-catalog-status>${escapeHtml(catalogStatus.message)}</p></div></div>${renderCargoItemEditors(values)}</fieldset>`
         + renderEstimateItemEditors(values);
@@ -1301,13 +1306,12 @@
             <label>引渡時の状態<input data-cargo-item-key="condition" type="text" maxlength="80" value="${escapeHtml(item.condition)}"></label>
             <label>評価根拠<output>${item.valuation_mode === 'master' && item.price_source_url ? '公式価格を反映' : '手入力'}</output></label>
             <label>カタログ価格（円）<input data-cargo-item-key="catalog_price" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.catalog_price || item.unit_value)}"></label>
-            <label>カタログ価格の税区分<select data-cargo-item-key="price_tax_status"><option value=""${!item.price_tax_status ? ' selected' : ''}>確認してください</option><option value="tax_included"${item.price_tax_status === 'tax_included' ? ' selected' : ''}>税込（そのまま反映）</option><option value="tax_excluded"${item.price_tax_status === 'tax_excluded' ? ' selected' : ''}>税別（10%加算）</option></select></label>
-            <label>税込単価・評価額（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
+            <label>カタログ表示価格・評価単価（円）<input data-cargo-item-key="unit_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.unit_value)}"></label>
             <label>行評価額（円）<input data-cargo-item-key="total_value" type="text" inputmode="numeric" maxlength="12" value="${escapeHtml(item.total_value)}" readonly></label>
             <label>容積ポイント／個<input data-cargo-item-key="volume_points" type="number" min="0" step="0.5" value="${escapeHtml(item.volume_points)}"></label>
             <label class="cargo-notes">備考・ケース・付属品・製造番号<textarea data-cargo-item-key="notes" maxlength="200">${escapeHtml(item.notes)}</textarea></label>
             <button class="secondary-button price-lookup-button cargo-wide" data-lookup-instrument-price="${index}" type="button">指定カタログ内で型番価格を照会</button>
-            ${item.price_source_url ? `<section class="applied-price-summary" aria-label="B見積への反映済みカタログ価格"><strong>B見積へ反映済み<br>税込単価 ${formatEstimateYen(estimateNumber(item.unit_value))}円</strong><span class="applied-price-total">行評価額<br>${formatEstimateYen(estimateNumber(item.total_value))}円</span><small>反映元：${escapeHtml(item.price_checked_at)}・${item.price_tax_status === 'tax_included' ? '税込' : item.price_tax_status === 'tax_excluded' ? '税別' : '税区分未確認'}<br>${escapeHtml(item.price_source_url)}</small></section>` : ''}
+            ${item.price_source_url ? `<section class="applied-price-summary" aria-label="B見積への反映済みカタログ価格"><strong>B見積へ反映済み<br>表示価格 ${formatEstimateYen(estimateNumber(item.unit_value))}円</strong><span class="applied-price-total">行評価額<br>${formatEstimateYen(estimateNumber(item.total_value))}円</span><small>反映元：${escapeHtml(item.price_checked_at)}<br>${escapeHtml(item.price_source_url)}</small></section>` : ''}
             ${renderInstrumentPriceCandidates(index)}
           </div>
         </section>`).join('')}<button class="secondary-button cargo-row-add" data-add-cargo-row type="button"${values.cargo_items.length >= 10 ? ' disabled' : ''}>輸送品目を追加</button>`;
@@ -1321,11 +1325,10 @@
         const message = result.failure_reason === 'model_not_found'
           ? `選択したカタログに入力型番「${escapeHtml(item?.maker_model || result.maker_model)}」は見つかりませんでした。型番を確認するか、別の公式カタログを選択してください。`
           : result.failure_reason === 'price_not_found'
-            ? '入力型番は確認できましたが、型番付近に円価格が見つかりませんでした。公式ページで価格と税区分を確認してください。'
-            : '選択したカタログは現在のページ構成では価格を自動取得できません。公式ページで価格と税区分を確認してください。';
+            ? '入力型番は確認できましたが、型番付近に円価格が見つかりませんでした。公式ページで表示価格を確認してください。'
+            : '選択したカタログは現在のページ構成では価格を自動取得できません。公式ページで表示価格を確認してください。';
         return `<div class="price-lookup-results" data-instrument-price-results role="alert"><p>${message} カタログ価格は手動入力できます。</p></div>`;
       }
-      const taxLabel = status => status === 'tax_included' ? '税込' : status === 'tax_excluded' ? '税別' : '税込／税別の表記不明';
       const item = contractValues.estimateB.cargo_items[rowIndex];
       return `<div class="price-lookup-results" data-instrument-price-results><p>カタログごとのハイフン・末尾記号・世代表記の違いを含めて近似候補を表示します。掲載型番と価格を確認して採用してください。</p>${result.candidates.map((candidate, candidateIndex) => {
         const isApplied = item.price_source_url === candidate.source_url && estimateNumber(item.catalog_price) === candidate.price;
@@ -1333,7 +1336,7 @@
           ? '表記一致'
           : candidate.match_type === 'normalized' ? '正規化一致' : '近似候補';
         const matchedModel = candidate.matched_model || result.maker_model;
-        return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>${formatEstimateYen(candidate.price)}円・${taxLabel(candidate.tax_status)}</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '現在反映中' : item.price_source_url ? 'この候補に切替' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
+        return `<article class="price-candidate"><strong>${escapeHtml(matchedModel)}・${matchLabel}<br>カタログ表示価格 ${formatEstimateYen(candidate.price)}円</strong><button class="secondary-button" data-apply-price-candidate="${candidateIndex}" data-candidate-row="${rowIndex}" type="button"${isApplied ? ' disabled' : ''}>${isApplied ? '現在反映中' : item.price_source_url ? 'この候補に切替' : 'この候補を反映'}</button><small>${escapeHtml(candidate.source_name)}：${escapeHtml(candidate.context)}</small></article>`;
       }).join('')}</div>`;
     }
 
@@ -1469,45 +1472,13 @@
       item.valuation_mode = 'master';
       item.price_source_url = candidateSourceUrl;
       item.price_checked_at = result.checked_at;
-      item.price_tax_status = candidate.tax_status === 'tax_included' || candidate.tax_status === 'tax_excluded'
-        ? candidate.tax_status
-        : '';
-      applyCargoTaxStatus(item, item.price_tax_status);
+      item.unit_value = String(candidate.price);
+      item.total_value = String(estimateNumber(item.quantity) * candidate.price);
       const master = contractValues.estimateB.instrument_price_master;
       master.source_url = master.source_url || item.lookup_source_url;
       master.catalog_year = contractDate.value.slice(0, 4);
-      master.verified = false;
+      master.verified = true;
       syncCargoValuation();
-    }
-
-    function applyCargoTaxStatus(item, taxStatus) {
-      const catalogPrice = estimateNumber(item.catalog_price || item.unit_value);
-      item.catalog_price = String(catalogPrice);
-      item.price_tax_status = taxStatus;
-      const taxIncludedPrice = taxStatus === 'tax_excluded'
-        ? Math.round(catalogPrice * 1.1)
-        : catalogPrice;
-      item.unit_value = String(taxIncludedPrice);
-      item.total_value = String(estimateNumber(item.quantity) * taxIncludedPrice);
-      return taxIncludedPrice;
-    }
-
-    function updateCargoTaxStatus(select) {
-      const rowIndex = Number(select.closest('[data-cargo-row]')?.dataset.cargoRow);
-      const item = contractValues.estimateB.cargo_items[rowIndex];
-      if (!item) return;
-      clearTransportError(rowIndex);
-      const taxIncludedPrice = applyCargoTaxStatus(item, select.value);
-      contractValues.estimateB.instrument_price_master.verified = Boolean(select.value && estimateNumber(item.catalog_price) > 0);
-      syncCargoValuation();
-      renderDynamicFields();
-      renderPreview();
-      saveStatus.textContent = select.value === 'tax_excluded'
-        ? `カタログ価格へ消費税10%を加算し、税込単価 ${formatEstimateYen(taxIncludedPrice)}円を反映しました。`
-        : select.value === 'tax_included'
-          ? `税込カタログ価格 ${formatEstimateYen(taxIncludedPrice)}円をそのまま反映しました。`
-          : 'カタログ価格の税区分を選択してください。';
-      saveStatus.dataset.state = select.value ? 'success' : 'error';
     }
 
     function renderEstimateItemEditors(values, taxIncluded = false) {
@@ -1558,9 +1529,17 @@
           + field('契約期間・実施日', 'term', values.term)
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else if (type === 'typeB') {
-        dynamicFields.innerHTML = field('輸送対象物', 'cargo', values.cargo, true)
+        dynamicFields.innerHTML = `<div class="estimate-edit-guide"><strong>自社完結型 B契約書</strong>確定B見積の保存ID、金額、輸送条件、添付書類を引き継ぎます。顧客承認済みの見積内容と一致することを締結前に確認してください。</div>`
+          + field('輸送案件名', 'transport_name', values.transport_name)
+          + field('参照するB見積書の保存ID', 'estimate_reference_id', values.estimate_reference_id)
+          + field('B見積書の発行日', 'estimate_date', values.estimate_date)
+          + field('輸送対象物', 'cargo', values.cargo, true)
           + field('対象物の総評価額', 'value', values.value)
           + field('運行経路・実施条件', 'route', values.route, true)
+          + field('契約金額（税込）', 'amount', values.amount)
+          + field('輸送対象物明細・評価額証明 URL', 'cargo_document_url', values.cargo_document_url)
+          + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
+          + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else {
         dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
@@ -1576,10 +1555,8 @@
         transport_provider_mode: 'self_light_cargo',
         vehicle_class: 'light_cargo',
         pricing_basis: values.pricing_basis || 'self_light_cargo_rate',
-        partner_2t_requested: values.partner_2t_requested === true,
-        partner_2t_status: values.partner_2t_status || 'not_needed',
-        partner_2t_budget: values.partner_2t_budget || values.external_vehicle_budget || '0',
-        partner_2t_notes: values.partner_2t_notes || ''
+        route_trip_type: values.route_trip_type || 'one_way',
+        route_one_way_distance_km: values.route_one_way_distance_km || values.route_distance_km || '',
       });
       values.instrument_price_master = {
         effective_date: '', source_url: '', source_urls: [], catalog_year: '', refresh_interval_days: '30', verified: false,
@@ -1591,7 +1568,7 @@
         distance_per_km_101_150: '0', distance_per_km_151_plus: '0', charter_2h: '0', extra_30m: '0',
         loading_per_15m: '0', loading_per_30m: '0', holiday_percent: '0', night_percent: '0', tax_included: false,
         charter_4h: '0', charter_8h: '0', extra_hour: '0', waiting_per_30m: '0', loading_base: '0', loading_per_25_points: '0',
-        fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0', external_2t_charter: '0',
+        fuel_reference_price: '0', fuel_current_price: '0', fuel_per_km_per_yen: '0',
         ...(values.freight_rate_master || {})
       };
       values.freight_operation = {
@@ -1615,7 +1592,6 @@
         lookup_source_url: item.lookup_source_url || item.price_source_url || '',
         price_source_url: item.price_source_url || '',
         price_checked_at: item.price_checked_at || '',
-        price_tax_status: item.price_tax_status || ''
       }));
       values.estimate_items = (values.estimate_items || []).filter(item =>
         !item.role
@@ -1698,7 +1674,7 @@
     function formatCargoCapacity(volume) {
       const formatted = Number(volume).toLocaleString('ja-JP', { maximumFractionDigits: 2 });
       return volume >= 100
-        ? `容積スコア ${formatted}pt。軽貨物の運用上限100pt以上のため、積載内容または分割運行を再検討してください。小型2t車はお客様から依頼があった場合だけ検討します。`
+        ? `容積スコア ${formatted}pt。軽貨物の運用上限100pt以上のため、品目を見直すか自社軽貨物で分割運行してください。`
         : `容積スコア ${formatted}pt。軽貨物車両1台の運用上限100pt未満です。最終判断は実寸・重量・固定方法・荷姿の現物確認後に行います。`;
     }
 
@@ -1744,13 +1720,9 @@
       const waitingFee = Math.ceil(Math.max(0, waitingMinutes - 30) / 30) * rate('waiting_per_30m');
       const volume = calculateCargoVolume();
       const overCapacity = volume >= 100;
-      const partner2tRequested = values.partner_2t_requested === true;
       const useTimeCharter = timePrice <= distancePrice;
-      if (overCapacity && !partner2tRequested) throw new Error('軽貨物の積載上限を超えています。積載内容または分割運行を再検討してください。小型2t車はお客様から依頼があった場合だけ検討します。');
-      let baseFreightGross = partner2tRequested
-        ? rate('external_2t_charter')
-        : Math.round(useTimeCharter ? timePrice : distancePrice);
-      if (partner2tRequested && baseFreightGross <= 0) throw new Error('依頼された小型2t車の参考チャーター額を入力してください。');
+      if (overCapacity) throw new Error('軽貨物の積載上限を超えています。品目を見直すか自社軽貨物で分割運行してください。');
+      let baseFreightGross = Math.round(useTimeCharter ? timePrice : distancePrice);
       const premiumPercent = (operation.holiday ? rate('holiday_percent') : 0) + (operation.night ? rate('night_percent') : 0);
       baseFreightGross = Math.round(baseFreightGross * (1 + premiumPercent / 100));
       const loadingSupportMode = ['carrier', 'customer_assisted', 'customer_loads'].includes(operation.loadingSupportMode)
@@ -1774,7 +1746,7 @@
         : Math.max(0, Math.round(Number(operation.instrumentSurchargeAmount) || 0));
       const specialWorkAmount = Math.max(0, Math.round(Number(operation.specialWorkAmount) || 0));
       return {
-        recommendedType: partner2tRequested ? '依頼に基づく外部2t車チャーター（要正式見積り）' : useTimeCharter ? '自社軽貨物運賃（時間制）' : '自社軽貨物運賃（距離制）',
+        recommendedType: useTimeCharter ? '自社軽貨物運賃（時間制）' : '自社軽貨物運賃（距離制）',
         baseFreightCost,
         loadingFee,
         loadingSupportMode,
@@ -1791,11 +1763,9 @@
         referenceGross: baseFreightGross,
         premiumPercent,
         isLightCargo,
-        reason: partner2tRequested
-          ? `${values.route_origin}から${values.route_destination}まで、お客様から小型2t車の代理調整依頼があったため外部2t車参考額を適用`
-          : useTimeCharter
-            ? `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し時間制を推奨`
-            : `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し距離制を推奨`
+        reason: useTimeCharter
+          ? `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し時間制を推奨`
+          : `${values.route_origin}から${values.route_destination}まで、総拘束${totalHours}時間と実車距離${distance}kmを比較し距離制を推奨`
       };
     }
 
@@ -1849,17 +1819,20 @@
     async function measureGoogleRouteDistance() {
       const originInput = freightCalculatorDialog.querySelector('[data-freight-input="route_origin"]');
       const destinationInput = freightCalculatorDialog.querySelector('[data-freight-input="route_destination"]');
+      const tripTypeInput = freightCalculatorDialog.querySelector('[data-freight-input="route_trip_type"]');
+      const oneWayDistanceInput = freightCalculatorDialog.querySelector('[data-freight-input="route_one_way_distance_km"]');
       const distanceInput = freightCalculatorDialog.querySelector('[data-freight-input="route_distance_km"]');
       const origin = originInput.value.trim();
       const destination = destinationInput.value.trim();
+      const tripType = tripTypeInput.value;
       if (!origin || !destination) throw new Error('出発地と目的地を入力してください。');
       const response = await fetch('/api/contracts/route-distance', {
         method: 'POST', headers: adminHeaders(), body: JSON.stringify({ origin, destination })
       });
       if (!response.ok) throw new Error(await readApiError(response, '自動車ルートの距離を取得できませんでした。'));
       const result = await response.json();
-      if (!freightCalculatorDialog.open || originInput.value.trim() !== origin || destinationInput.value.trim() !== destination) {
-        throw new Error('測定中に出発地または目的地が変更されました。現在の住所でもう一度測定してください。');
+      if (!freightCalculatorDialog.open || originInput.value.trim() !== origin || destinationInput.value.trim() !== destination || tripTypeInput.value !== tripType) {
+        throw new Error('測定中に出発地、目的地、または片道・往復区分が変更されました。現在の条件でもう一度測定してください。');
       }
       const measuredDistanceKm = Number(result.distance_km);
       if (!Number.isFinite(measuredDistanceKm) || measuredDistanceKm <= 0) {
@@ -1867,14 +1840,18 @@
       }
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
-      const actualDistanceKm = Math.round(measuredDistanceKm * 10) / 10;
+      const oneWayDistanceKm = Math.round(measuredDistanceKm * 10) / 10;
+      const actualDistanceKm = Math.round(oneWayDistanceKm * (tripType === 'round_trip' ? 2 : 1) * 10) / 10;
       originInput.value = resolvedOrigin;
       destinationInput.value = resolvedDestination;
+      oneWayDistanceInput.value = String(oneWayDistanceKm);
       distanceInput.value = String(actualDistanceKm);
-      pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm);
+      pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm, tripType);
       Object.assign(contractValues.estimateB, {
         route_origin: resolvedOrigin,
         route_destination: resolvedDestination,
+        route_trip_type: tripType,
+        route_one_way_distance_km: String(oneWayDistanceKm),
         route_distance_km: String(actualDistanceKm),
         route_provider: result.provider,
         route_measurement_signature: pendingRouteMeasurementSignature
@@ -1882,7 +1859,7 @@
       editorRevision += 1;
       renderDynamicFields();
       renderPreview();
-      freightCalculatorStatus.textContent = `測定・反映完了：Google Maps Routes APIの自動算出距離${actualDistanceKm}kmをそのまま反映しました。走行時間の目安${result.duration_minutes}分。運賃も更新する場合は「見積書に反映して戻る」を押してください。`;
+      freightCalculatorStatus.textContent = `測定・反映完了：Google Maps片道${oneWayDistanceKm}km、見積には${tripType === 'round_trip' ? `往復${actualDistanceKm}km` : `片道${actualDistanceKm}km`}を反映しました。走行時間の目安${result.duration_minutes}分。運賃も更新する場合は「見積書に反映して戻る」を押してください。`;
       freightCalculatorStatus.dataset.state = 'success';
     }
 
@@ -1910,7 +1887,7 @@
       draftValues.freight_rate_master.tax_included = freightCalculatorDialog.querySelector('[data-rate-tax-included]').checked;
       draftValues.freight_rate_master.verified = freightCalculatorDialog.querySelector('[data-rate-verified]').checked;
       try {
-        if (pendingRouteMeasurementSignature !== routeMeasurementSignature(draftValues.route_origin, draftValues.route_destination, draftValues.route_distance_km)) {
+        if (pendingRouteMeasurementSignature !== routeMeasurementSignature(draftValues.route_origin, draftValues.route_destination, draftValues.route_distance_km, draftValues.route_trip_type)) {
           throw new Error('出発地と目的地を入力し、「Googleで距離を自動測定」を実行してください。住所変更後は再測定が必要です。');
         }
         draftValues.route_measurement_signature = pendingRouteMeasurementSignature;
@@ -1995,6 +1972,8 @@
           cargo_restrictions_agreed: contractValues.estimateB.cargo_restrictions_agreed,
           route_origin: contractValues.estimateB.route_origin,
           route_destination: contractValues.estimateB.route_destination,
+          route_trip_type: contractValues.estimateB.route_trip_type,
+          route_one_way_distance_km: contractValues.estimateB.route_one_way_distance_km,
           route_distance_km: contractValues.estimateB.route_distance_km,
           route_provider: contractValues.estimateB.route_provider,
           route_measurement_signature: contractValues.estimateB.route_measurement_signature,
@@ -2013,6 +1992,11 @@
       const result = await response.json();
       if (requestRevision !== editorRevision || requestSignature !== transportSheetSignature(contractValues.estimateB)) {
         throw new Error('発行中に入力内容が変更されました。作成済みシートは現在の見積へ反映せず、再発行が必要です。');
+      }
+      const generatedUrls = [result.cargo_url, result.route_url, result.fee_url];
+      const validGeneratedUrls = generatedUrls.every(value => /^https:\/\/docs\.google\.com\/spreadsheets\/[^\s]+#gid=\d+$/.test(value));
+      if (!validGeneratedUrls || new Set(generatedUrls).size !== 3) {
+        throw new Error('輸送関連3シートの共有URLを確認できませんでした。Apps Scriptを最新版へ更新してください。');
       }
       contractValues.estimateB.cargo_document_url = result.cargo_url;
       contractValues.estimateB.route_document_url = result.route_url;
@@ -2145,7 +2129,7 @@
       const cargoVolume = calculateCargoVolume();
       const rateMaster = values.freight_rate_master;
       const documentsCurrent = values.transport_sheet_signature === transportSheetSignature(values);
-      const routeMeasurementCurrent = values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km);
+      const routeMeasurementCurrent = values.route_measurement_signature === routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km, values.route_trip_type);
       const isReady = values.workflow_status === 'ready' && transportReadiness(values).length === 0;
       const workflowLabel = values.workflow_status === 'draft' ? '案件受付（下書き）' : values.workflow_status === 'quote_pending' ? '軽貨物運賃・日程を調整中' : '正式見積の発行準備完了';
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
@@ -2158,8 +2142,8 @@
           <p><strong>有効期限：</strong>${escapeHtml(values.validity)}（期限経過後は再見積り）</p>
           <p><strong>案件状態：</strong>${escapeHtml(workflowLabel)}</p>
           <p><strong>運送実施：</strong>当方（自社軽貨物車）　<strong>使用車両：</strong>黒ナンバー軽貨物車</p>
-          ${routeMeasurementCurrent ? `<p class="transport-route-summary"><strong>運行経路：</strong>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}　<strong>走行距離：</strong>${escapeHtml(values.route_distance_km)}km（Google Maps Routes API自動算出）</p>` : ''}
-          ${values.partner_2t_requested ? `<p><strong>小型2t車：</strong>${values.partner_2t_status === 'confirmed' ? 'お客様の依頼に基づき協力会社の車両・日程・費用を調整済み' : 'お客様の依頼に基づき協力会社を調整中'}</p>` : ''}
+          ${routeMeasurementCurrent ? `<p class="transport-route-summary"><strong>運行経路：</strong>${escapeHtml(values.route_origin)} → ${escapeHtml(values.route_destination)}　<strong>${values.route_trip_type === 'round_trip' ? '往復' : '片道'}距離：</strong>${escapeHtml(values.route_distance_km)}km（Google Maps片道測定値 ${escapeHtml(values.route_one_way_distance_km)}km）</p>` : ''}
+          <p><strong>運用方式：</strong>見積・契約・配車・運行・完了確認まで当方の自社軽貨物で一貫対応</p>
           <p><strong>積載判定：</strong>${escapeHtml(formatCargoCapacity(cargoVolume))}</p>
           ${estimateIssuerHtml('受託者（乙）')}
           <h2>1. 法定開示・クラウド添付書類</h2>
@@ -2244,10 +2228,11 @@
           ['特記事項', values.special_terms]
         ])}${parties}</section>`;
       } else if (type === 'typeB') {
-        preview.innerHTML = `<section class="contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
-          ['輸送対象物', values.cargo], ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route],
-          ['特記事項', values.special_terms]
-        ])}${parties}</section>`;
+        const estimateReference = values.estimate_reference_id ? `${values.estimate_reference_id}${values.estimate_date ? `（発行日：${values.estimate_date}）` : ''}` : '別途合意するB見積書';
+        preview.innerHTML = `<section class="contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約および下記B見積書に基づき、当方の自社軽貨物による一貫運送について次のとおり個別契約を締結する。</p>${contractTable([
+          ['輸送案件名', values.transport_name], ['参照するB見積書', estimateReference], ['輸送対象物', values.cargo],
+          ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route], ['契約金額（税込）', values.amount]
+        ])}<h2>添付書類</h2><ul class="estimate-conditions document-links">${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}${transportDocumentLink('追加料金規定表', values.fee_document_url)}</ul><h2>特記事項</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>${parties}</section>`;
       } else {
         preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
@@ -2286,6 +2271,30 @@
         contract_date: contractDate.value,
         values: docType.value === 'master' ? {} : { ...contractValues[docType.value] }
       };
+    }
+
+    function createTypeBContractFromEstimate(estimateId) {
+      const estimate = contractValues.estimateB;
+      const missing = transportReadiness(estimate);
+      if (estimate.workflow_status !== 'ready' || missing.length) throw new Error(`B見積の発行準備を完了してください。未完了：${missing.join('、')}`);
+      contractValues.typeB = {
+        ...JSON.parse(JSON.stringify(initialContractValues.typeB)),
+        transport_name: estimate.transport_name,
+        estimate_reference_id: estimateId,
+        estimate_date: contractDate.value,
+        cargo: estimate.cargo_items.map(item => `${item.category}：${item.description}${item.maker_model ? `（${item.maker_model}）` : ''} × ${item.quantity}`).join('\n'),
+        value: `金 ${formatEstimateYen(calculateCargoValuation())}円`,
+        route: `${estimate.route_origin} → ${estimate.route_destination}\nGoogle Maps片道測定値：${estimate.route_one_way_distance_km}km\n見積反映距離：${estimate.route_distance_km}km（${estimate.route_trip_type === 'round_trip' ? '往復' : '片道'}）\n総拘束時間：${estimate.total_hours}時間\n運送実施：当方の黒ナンバー軽貨物車による自社完結運行`,
+        amount: `${formatEstimateYen(calculateEstimateTotals('estimateB').total)}円（税込）`,
+        cargo_document_url: estimate.cargo_document_url,
+        route_document_url: estimate.route_document_url,
+        fee_document_url: estimate.fee_document_url
+      };
+      docType.value = 'typeB';
+      contractDate.value = new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Tokyo' });
+      editorRevision += 1;
+      renderDynamicFields();
+      renderPreview();
     }
 
     function flattenContractData(value, prefix = '', rows = []) {
@@ -2574,18 +2583,6 @@
         renderPreview();
         return;
       }
-      if (event.target.matches('[data-partner-2t-requested]')) {
-        const values = contractValues.estimateB;
-        values.partner_2t_requested = event.target.checked;
-        if (!event.target.checked) {
-          values.partner_2t_status = 'not_needed';
-          values.partner_2t_budget = '0';
-          values.partner_2t_notes = '';
-        }
-        renderDynamicFields();
-        renderPreview();
-        return;
-      }
       if (event.target.matches('[data-instrument-catalog-urls]')) {
         const sourceUrls = event.target.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean);
         const master = contractValues.estimateB.instrument_price_master;
@@ -2598,7 +2595,6 @@
             item.valuation_mode = 'manual';
             item.price_source_url = '';
             item.price_checked_at = '';
-            item.price_tax_status = '';
           }
         });
         instrumentLookupResults.clear();
@@ -2640,7 +2636,6 @@
           item.valuation_mode = 'manual';
           item.price_source_url = '';
           item.price_checked_at = '';
-          item.price_tax_status = '';
         });
         instrumentLookupResults.clear();
         clearTransportError();
@@ -2664,7 +2659,6 @@
       }
       const cargoKey = event.target.dataset.cargoItemKey;
       if (cargoKey) {
-        if (cargoKey === 'price_tax_status') return;
         const row = event.target.closest('[data-cargo-row]');
         const rowIndex = Number(row?.dataset.cargoRow);
         const item = contractValues.estimateB.cargo_items[rowIndex];
@@ -2673,8 +2667,9 @@
         item[cargoKey] = event.target.value;
         if (cargoKey === 'catalog_price') {
           item.valuation_mode = 'manual';
-          const taxIncludedPrice = applyCargoTaxStatus(item, item.price_tax_status);
-          contractValues.estimateB.instrument_price_master.verified = Boolean(item.price_tax_status && taxIncludedPrice > 0);
+          item.unit_value = item.catalog_price;
+          item.total_value = String(estimateNumber(item.quantity) * estimateNumber(item.catalog_price));
+          contractValues.estimateB.instrument_price_master.verified = estimateNumber(item.catalog_price) > 0;
           const unitInput = row.querySelector('[data-cargo-item-key="unit_value"]');
           const totalInput = row.querySelector('[data-cargo-item-key="total_value"]');
           if (unitInput) unitInput.value = String(taxIncludedPrice);
@@ -2689,7 +2684,6 @@
         if (cargoKey === 'maker_model' || cargoKey === 'unit_value') {
           item.price_source_url = '';
           item.price_checked_at = '';
-          if (cargoKey === 'maker_model') item.price_tax_status = '';
           item.valuation_mode = 'manual';
           instrumentLookupResults.delete(rowIndex);
           contractValues.estimateB.instrument_price_master.verified = false;
@@ -2740,10 +2734,6 @@
       renderPreview();
     });
     dynamicFields.addEventListener('change', async event => {
-      if (event.target.matches('[data-cargo-item-key="price_tax_status"]')) {
-        updateCargoTaxStatus(event.target);
-        return;
-      }
       if (event.target.matches('[data-cargo-item-key="maker_model"]')) {
         const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
         if (instrumentLookupReady(rowIndex)) await lookupInstrumentPriceWithFeedback(rowIndex);
@@ -2758,7 +2748,6 @@
         item.valuation_mode = 'manual';
         item.price_source_url = '';
         item.price_checked_at = '';
-        item.price_tax_status = '';
         instrumentLookupResults.delete(rowIndex);
         contractValues.estimateB.instrument_price_master.verified = false;
         renderDynamicFields();
@@ -2812,6 +2801,23 @@
       }
     });
     dynamicFields.addEventListener('click', async event => {
+      const createTypeBButton = event.target.closest('[data-create-type-b-contract]');
+      if (createTypeBButton) {
+        createTypeBButton.disabled = true;
+        try {
+          saveStatus.textContent = '確定B見積を保存しています...';
+          saveStatus.dataset.state = '';
+          const estimateContract = await saveCurrentContract();
+          createTypeBContractFromEstimate(estimateContract.contract_id);
+          saveStatus.textContent = '確定B見積から自社完結型の個別契約書Bを作成しました。締結日と契約条件を確認して保存してください。';
+          saveStatus.dataset.state = 'success';
+        } catch (error) {
+          saveStatus.textContent = error.message || '個別契約書Bを作成できませんでした。';
+          saveStatus.dataset.state = 'error';
+          if (createTypeBButton.isConnected) createTypeBButton.disabled = false;
+        }
+        return;
+      }
       if (event.target.closest('[data-open-instrument-source]')) {
         const sourceUrl = contractValues.estimateB.instrument_price_master.source_urls?.[0] || '';
         if (isOfficialInstrumentPriceUrl(sourceUrl)) window.open(sourceUrl, '_blank', 'noopener,noreferrer');

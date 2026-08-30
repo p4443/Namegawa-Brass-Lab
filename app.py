@@ -186,7 +186,7 @@ CONTRACT_TYPES = {
     "typeB": {
         "department": "楽器輸送",
         "directory": "transport",
-        "keys": {"cargo", "value", "route", "special_terms"},
+        "keys": {"transport_name", "estimate_reference_id", "estimate_date", "cargo", "value", "route", "amount", "cargo_document_url", "route_document_url", "fee_document_url", "special_terms"},
     },
     "estimateB": {
         "department": "楽器輸送",
@@ -198,10 +198,6 @@ CONTRACT_TYPES = {
             "transport_provider_mode",
             "vehicle_class",
             "pricing_basis",
-            "partner_2t_requested",
-            "partner_2t_status",
-            "partner_2t_budget",
-            "partner_2t_notes",
             "cargo_document_url",
             "route_document_url",
             "fee_document_url",
@@ -214,6 +210,8 @@ CONTRACT_TYPES = {
             "external_vehicle_budget",
             "route_origin",
             "route_destination",
+            "route_trip_type",
+            "route_one_way_distance_km",
             "route_distance_km",
             "route_provider",
             "route_measurement_signature",
@@ -1350,6 +1348,8 @@ def validate_contract(payload):
         "cargo_contact_email",
         "route_origin",
         "route_destination",
+        "route_one_way_distance_km",
+        "route_provider",
     }
     if doc_type == "estimateB" and transport_workflow_status == "ready":
         ready_cargo_items = raw_values.get("cargo_items", [])
@@ -1391,13 +1391,7 @@ def validate_contract(payload):
             for item in ready_cargo_items
             if isinstance(item, dict)
         ) if isinstance(ready_cargo_items, list) else 0
-        partner_2t_requested = raw_values.get("partner_2t_requested") is True
-        light_cargo_over_capacity = cargo_volume >= 100 and not partner_2t_requested
-        partner_2t_not_ready = partner_2t_requested and (
-            raw_values.get("partner_2t_status") != "confirmed"
-            or not str(raw_values.get("partner_2t_budget", "")).strip().isdigit()
-            or int(str(raw_values.get("partner_2t_budget", "0"))) <= 0
-        )
+        light_cargo_over_capacity = cargo_volume >= 100
         if (
             raw_values.get("transport_provider_mode") != "self_light_cargo"
             or raw_values.get("vehicle_class") != "light_cargo"
@@ -1408,9 +1402,8 @@ def validate_contract(payload):
             or not price_refresh_valid
             or stale_catalog_price
             or light_cargo_over_capacity
-            or partner_2t_not_ready
         ):
-            raise ValueError("正式見積の発行準備に必要な軽貨物の積載条件・料金・楽器評価額を確認してください。小型2t車はお客様から依頼された場合だけ調整状況と予算を確定してください。")
+            raise ValueError("正式見積の発行準備に必要な自社軽貨物の積載条件・料金・楽器評価額を確認してください。積載上限を超える場合は品目の見直しまたは分割運行が必要です。")
     values = {}
     for key in configuration["keys"]:
         if key == "workflow_status":
@@ -1437,27 +1430,6 @@ def validate_contract(payload):
             if pricing_basis not in {"self_light_cargo_rate", "light_cargo_reference"}:
                 raise ValueError("B見積の料金根拠は軽貨物料金に限定されています。")
             values[key] = pricing_basis
-            continue
-        if key == "partner_2t_requested":
-            values[key] = raw_values.get(key) is True
-            continue
-        if key == "partner_2t_status":
-            partner_status = str(raw_values.get(key, "not_needed")).strip()
-            if partner_status not in {"not_needed", "requested", "adjusting", "confirmed"}:
-                raise ValueError("協力会社2t車の代理調整状況を選択してください。")
-            values[key] = partner_status
-            continue
-        if key == "partner_2t_budget":
-            partner_budget = str(raw_values.get(key, "0")).strip()
-            if re.fullmatch(r"\d{1,9}", partner_budget) is None:
-                raise ValueError("協力会社2t車の調整予算を0以上の整数で入力してください。")
-            values[key] = partner_budget
-            continue
-        if key == "partner_2t_notes":
-            partner_notes = str(raw_values.get(key, "")).strip()
-            if len(partner_notes) > 500:
-                raise ValueError("協力会社2t車の調整メモは500文字以内で入力してください。")
-            values[key] = partner_notes
             continue
         if key == "cargo_restrictions_agreed":
             agreed = raw_values.get(key) is True
@@ -1489,7 +1461,6 @@ def validate_contract(payload):
                 "fuel_reference_price",
                 "fuel_current_price",
                 "fuel_per_km_per_yen",
-                "external_2t_charter",
             }
             light_cargo_rate_keys = {
                 "distance_per_km_101_150",
@@ -1627,7 +1598,6 @@ def validate_contract(payload):
                     "lookup_source_url": str(raw_item.get("lookup_source_url", "")).strip(),
                     "price_source_url": str(raw_item.get("price_source_url", "")).strip(),
                     "price_checked_at": str(raw_item.get("price_checked_at", "")).strip(),
-                    "price_tax_status": str(raw_item.get("price_tax_status", "")).strip(),
                 }
                 if (
                     not item["category"]
@@ -1649,7 +1619,6 @@ def validate_contract(payload):
                     or len(item["notes"]) > 200
                     or len(item["lookup_source_url"]) > 500
                     or len(item["price_source_url"]) > 500
-                    or item["price_tax_status"] not in {"", "tax_included", "tax_excluded"}
                     or int(item["quantity"]) * int(item["unit_value"])
                     != int(item["total_value"])
                 ):
@@ -1667,7 +1636,6 @@ def validate_contract(payload):
                 if item["valuation_mode"] == "master" and (
                     not item["price_source_url"]
                     or not item["price_checked_at"]
-                    or item["price_tax_status"] not in {"tax_included", "tax_excluded"}
                 ):
                     raise ValueError("公式価格を使う楽器は照会元・照会日・税込／税別を確認してください。")
                 cargo_items.append(item)
@@ -1715,6 +1683,9 @@ def validate_contract(payload):
             values[key] = signature
             continue
         value = str(raw_values.get(key, "")).strip()
+        if doc_type == "typeB" and key in {"transport_name", "estimate_reference_id", "estimate_date", "amount", "cargo_document_url", "route_document_url", "fee_document_url"} and not value:
+            values[key] = ""
+            continue
         if transport_is_pending and key in transport_pending_optional_fields and not value:
             values[key] = ""
             continue
@@ -2975,11 +2946,10 @@ def create_app(
         transport_provider_mode = str(payload.get("transport_provider_mode", "external_carrier")).strip()
         vehicle_class = str(payload.get("vehicle_class", "undecided")).strip()
         pricing_basis = str(payload.get("pricing_basis", "mlit_reference")).strip()
-        carrier_name = str(payload.get("carrier_name", "")).strip()
-        carrier_quote_url = str(payload.get("carrier_quote_url", "")).strip()
-        carrier_quote_date = str(payload.get("carrier_quote_date", "")).strip()
         route_origin = str(payload.get("route_origin", "")).strip()
         route_destination = str(payload.get("route_destination", "")).strip()
+        route_trip_type = str(payload.get("route_trip_type", "one_way")).strip()
+        route_one_way_distance_km = str(payload.get("route_one_way_distance_km", "")).strip()
         route_distance_km = str(payload.get("route_distance_km", "")).strip()
         route_provider = str(payload.get("route_provider", "")).strip()
         route_measurement_signature = str(payload.get("route_measurement_signature", "")).strip()
@@ -3005,7 +2975,7 @@ def create_app(
         )
         if not valid_cargo_items:
             return jsonify({"error": "輸送対象物の名称、数量、単価・評価額、容積ポイントを確認してください。"}), 400
-        if not route_origin or len(route_origin) > 200 or not route_destination or len(route_destination) > 200 or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_distance_km) is None or float(route_distance_km) <= 0 or route_provider != "Google Maps" or re.fullmatch(r"route-v1-[0-9a-f]{8}", route_measurement_signature) is None or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", total_hours) is None or float(total_hours) <= 0 or not isinstance(freight_operation, dict):
+        if not route_origin or len(route_origin) > 200 or not route_destination or len(route_destination) > 200 or route_trip_type not in {"one_way", "round_trip"} or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_one_way_distance_km) is None or float(route_one_way_distance_km) <= 0 or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", route_distance_km) is None or float(route_distance_km) <= 0 or route_provider != "Google Maps" or re.fullmatch(r"route-v1-[0-9a-f]{8}", route_measurement_signature) is None or re.fullmatch(r"\d{1,9}(?:\.\d{1,2})?", total_hours) is None or float(total_hours) <= 0 or not isinstance(freight_operation, dict):
             return jsonify({"error": "運行経路、実車走行距離、総拘束時間を確認してください。"}), 400
         if workflow_status not in {"draft", "quote_pending", "ready"} or transport_provider_mode != "self_light_cargo" or vehicle_class != "light_cargo" or pricing_basis not in {"self_light_cargo_rate", "light_cargo_reference"}:
             return jsonify({"error": "輸送案件の進行状態を確認してください。"}), 400
@@ -3028,11 +2998,10 @@ def create_app(
                     "vehicle_class": vehicle_class,
                     "pricing_basis": pricing_basis,
                     "cargo_restrictions_agreed": cargo_restrictions_agreed,
-                    "carrier_name": carrier_name,
-                    "carrier_quote_url": carrier_quote_url,
-                    "carrier_quote_date": carrier_quote_date,
                     "route_origin": route_origin,
                     "route_destination": route_destination,
+                    "route_trip_type": route_trip_type,
+                    "route_one_way_distance_km": route_one_way_distance_km,
                     "route_distance_km": route_distance_km,
                     "route_provider": route_provider,
                     "route_measurement_signature": route_measurement_signature,
@@ -3047,7 +3016,12 @@ def create_app(
         except (LessonReservationDeliveryError, OSError, urllib_error.URLError, json.JSONDecodeError):
             app.logger.exception("Apps Script rejected transport sheet generation")
             return jsonify({"error": "輸送明細シートを発行できませんでした。"}), 502
-        if not result.get("cargoUrl") or not result.get("routeUrl") or not result.get("feeUrl"):
+        generated_urls = [result.get("cargoUrl", ""), result.get("routeUrl", ""), result.get("feeUrl", "")]
+        valid_generated_urls = all(
+            re.fullmatch(r"https://docs\.google\.com/spreadsheets/[^\s]+#gid=\d+", str(url))
+            for url in generated_urls
+        )
+        if not valid_generated_urls or len(set(generated_urls)) != 3:
             return jsonify({"error": "Apps Scriptを運行計画・積卸し経路図対応版へ更新してください。"}), 502
         return jsonify(
             {"cargo_url": result.get("cargoUrl", ""), "route_url": result.get("routeUrl", ""), "fee_url": result.get("feeUrl", "")}

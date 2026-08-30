@@ -441,6 +441,8 @@ function generateTransportWorkbook(data) {
   var cargoItems = Array.isArray(data.cargo_items) ? data.cargo_items : [];
   var rateMaster = data.freight_rate_master || {};
   var instrumentMaster = data.instrument_price_master || {};
+  var routeTripType = String(data.route_trip_type || "one_way").trim();
+  var routeOneWayDistanceKm = Number(data.route_one_way_distance_km || 0);
   var routeDistanceKm = Number(data.route_distance_km || 0);
   var routeProvider = String(data.route_provider || "").trim();
   var routeMeasurementSignature = String(data.route_measurement_signature || "").trim();
@@ -451,7 +453,7 @@ function generateTransportWorkbook(data) {
   if (!clientName || !transportName || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(editorEmail) || !cargoItems.length || data.cargo_restrictions_agreed !== true) {
     throw new Error("Invalid transport sheet request");
   }
-  if (!routeOrigin || !routeDestination || !isFinite(routeDistanceKm) || routeDistanceKm <= 0 || routeProvider !== "Google Maps" || !/^route-v1-[0-9a-f]{8}$/.test(routeMeasurementSignature) || !isFinite(totalHours) || totalHours <= 0 || !freightOperation || typeof freightOperation !== "object") {
+  if (!routeOrigin || !routeDestination || ["one_way", "round_trip"].indexOf(routeTripType) === -1 || !isFinite(routeOneWayDistanceKm) || routeOneWayDistanceKm <= 0 || !isFinite(routeDistanceKm) || routeDistanceKm <= 0 || routeProvider !== "Google Maps" || !/^route-v1-[0-9a-f]{8}$/.test(routeMeasurementSignature) || !isFinite(totalHours) || totalHours <= 0 || !freightOperation || typeof freightOperation !== "object") {
     throw new Error("Invalid transport route request");
   }
   cargoItems.forEach(function (item) {
@@ -509,9 +511,10 @@ function generateTransportWorkbook(data) {
     ["輸送案件名", safeCell(transportName)],
     ["積込地点（出発地）", safeCell(routeOrigin)],
     ["取卸地点（目的地）", safeCell(routeDestination)],
-    ["Google Maps自動算出距離", routeDistanceKm],
+    ["Google Maps片道測定値", routeOneWayDistanceKm],
+    ["距離反映区分", routeTripType === "round_trip" ? "往復" : "片道"],
     ["見積反映距離", routeDistanceKm],
-    ["距離算定方法", routeProvider + " Routes API自動算出距離をそのまま反映"],
+    ["距離算定方法", routeProvider + " Routes API片道測定値を" + (routeTripType === "round_trip" ? "2倍して往復距離を反映" : "片道距離として反映")],
     ["総拘束時間", totalHours],
     ["待機時間", Number(freightOperation.waiting_minutes || 0)],
     ["積卸し作業時間", Number(freightOperation.loading_minutes || 0)],
@@ -541,16 +544,13 @@ function generateTransportWorkbook(data) {
     ["運送実施形態", safeCell(data.transport_provider_mode)],
     ["参考車両区分", safeCell(data.vehicle_class)],
     ["料金根拠", safeCell(data.pricing_basis)],
-    ["外部運送会社名", safeCell(data.carrier_name)],
-    ["正式見積書URL", safeCell(data.carrier_quote_url)],
-    ["正式見積取得日", safeCell(data.carrier_quote_date)],
     ["楽器再調達価格基準日", safeCell(instrumentMaster.effective_date)],
     ["楽器再調達価格出典URL", safeCell(instrumentMaster.source_url)],
     ["参考運賃基準日", safeCell(rateMaster.effective_date)],
     ["参考運賃出典URL", safeCell(rateMaster.source_url)],
     ["参考車種確認済み", rateMaster.verified === true ? "はい" : "いいえ"],
     ["参考運賃の税込区分", rateMaster.tax_included === true ? "税込" : "税抜"],
-    ["軽貨物参考値の注意", data.pricing_basis === "light_cargo_reference" ? "法定運賃ではありません。2t未満の軽貨物車に限り、自社届出運賃または正式見積の確認前に参考使用します。" : "対象外"],
+    ["軽貨物参考値の注意", data.pricing_basis === "light_cargo_reference" ? "法定運賃ではありません。当方の自社軽貨物車に限り、自社届出運賃との照合後に使用します。" : "対象外"],
     ["20kmまでの距離制基本運賃", Number(rateMaster.distance_base_20 || 0)],
     ["21〜50km 1km加算", Number(rateMaster.distance_per_km_21_50 || 0)],
     ["51〜100km 1km加算", Number(rateMaster.distance_per_km_51_100 || 0)],
@@ -569,15 +569,14 @@ function generateTransportWorkbook(data) {
     ["深夜・早朝割増率", Number(rateMaster.night_percent || 0)],
     ["燃料基準価格", Number(rateMaster.fuel_reference_price || 0)],
     ["見積時燃料価格", Number(rateMaster.fuel_current_price || 0)],
-    ["燃料差額1円・1kmあたり係数", Number(rateMaster.fuel_per_km_per_yen || 0)],
-    ["外部2t車参考チャーター額", Number(rateMaster.external_2t_charter || 0)]
+    ["燃料差額1円・1kmあたり係数", Number(rateMaster.fuel_per_km_per_yen || 0)]
   ];
   feeSheet.getRange(1, 1, 1, 2).setValues([["項目", "設定値"]]).setBackground("#1f5f8b").setFontColor("#ffffff").setFontWeight("bold");
   feeSheet.getRange(2, 1, feeRows.length, 2).setValues(feeRows);
-  feeSheet.getRange(16, 2, 14, 1).setNumberFormat("¥#,##0");
-  feeSheet.getRange(30, 2, 2, 1).setNumberFormat('0"%"');
-  feeSheet.getRange(32, 2, 2, 1).setNumberFormat("¥#,##0");
-  feeSheet.getRange(34, 2).setNumberFormat("0.##");
+  feeSheet.getRange(13, 2, 14, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(27, 2, 2, 1).setNumberFormat('0"%"');
+  feeSheet.getRange(29, 2, 2, 1).setNumberFormat("¥#,##0");
+  feeSheet.getRange(31, 2).setNumberFormat("0.##");
   feeSheet.getRange(35, 2).setNumberFormat("¥#,##0");
   feeSheet.setFrozenRows(1);
   feeSheet.autoResizeColumns(1, 2);

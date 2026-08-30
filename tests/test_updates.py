@@ -268,6 +268,38 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["candidates"][0]["match_type"], "normalized")
         self.assertEqual(result["candidates"][0]["price"], 495000)
 
+    def test_instrument_price_lookup_accepts_natural_user_model_input(self):
+        class FakeResponse:
+            def __init__(self):
+                self.headers = Message()
+                self.headers["Content-Type"] = "text/html; charset=utf-8"
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def geturl(self):
+                return "https://jp.yamaha.com/products/ytr-8335s.html"
+
+            def read(self, size):
+                return "<p>YTR-8335S 希望小売価格 495,000円（税込）</p>".encode()
+
+        opener = MagicMock()
+        opener.open.return_value = FakeResponse()
+
+        result = fetch_instrument_price_candidates(
+            "https://jp.yamaha.com/products/ytr-8335s.html",
+            "ヤマハ　ｙｔｒ ８３３５ｓ",
+            opener,
+        )
+
+        self.assertEqual(result["exact_model"], "ヤマハ ytr 8335s")
+        self.assertEqual(result["candidates"][0]["matched_model"], "YTR-8335S")
+        self.assertEqual(result["candidates"][0]["match_type"], "normalized")
+        self.assertEqual(result["candidates"][0]["price"], 495000)
+
     def test_instrument_price_lookup_finds_distant_tax_included_price(self):
         class FakeResponse:
             def __init__(self):
@@ -667,22 +699,13 @@ class UpdatesTest(unittest.TestCase):
             "イベント企画・プロデュースのみ",
         )
 
-    def test_contract_route_distance_api_falls_back_when_google_fails(self):
+    def test_contract_route_distance_api_rejects_when_google_fails(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
-        fallback_route = {
-            **payload,
-            "resolved_origin": "東京都千代田区 東京駅",
-            "resolved_destination": "東京都港区 東京タワー",
-            "distance_km": 4.2,
-            "duration_minutes": 14,
-            "maps_url": "https://www.google.com/maps/dir/?api=1",
-            "provider": "OpenStreetMap / OSRM",
-        }
         with patch.dict(
             os.environ,
             {"EDITOR_PASSWORD": "editor-secret", "GOOGLE_MAPS_ROUTES_API_KEY": "invalid-key"},
         ), patch("app.compute_google_route", side_effect=ValueError("Google route unavailable")), patch(
-            "app.compute_public_route", return_value=fallback_route
+            "app.compute_public_route"
         ) as compute_public_route:
             response = create_app(database_url="").test_client().post(
                 "/api/contracts/route-distance",
@@ -690,9 +713,9 @@ class UpdatesTest(unittest.TestCase):
                 headers={"X-Editor-Password": "editor-secret"},
             )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json["provider"], "OpenStreetMap / OSRM")
-        compute_public_route.assert_called_once_with("東京駅", "東京タワー")
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Google route unavailable", response.json["error"])
+        compute_public_route.assert_not_called()
 
     def test_apps_script_stores_consultation_attachment_in_drive(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -933,7 +956,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("values.freight_operation", page)
         self.assertIn("[50, 'distance_per_km_101_150']", page)
         self.assertIn("[Infinity, 'distance_per_km_151_plus']", page)
-        self.assertIn("data-partner-2t-requested", page)
+        self.assertNotIn("data-partner-2t-requested", page)
+        self.assertNotIn("external_2t_charter", page)
+        self.assertIn("当方の黒ナンバー軽貨物車による自社完結型", page)
+        self.assertIn("data-create-type-b-contract", page)
+        self.assertIn("function createTypeBContractFromEstimate(estimateId)", page)
+        self.assertIn("estimate_reference_id: estimateId", page)
         self.assertIn("発行準備完了後に確定", page)
         self.assertIn('data-freight-input="route_origin"', page)
         self.assertIn("data-measure-google-route", page)
@@ -942,17 +970,20 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('maxlength="300" autocomplete="off" enterkeyhint="search"', page)
         self.assertIn("function measureGoogleRouteDistance()", page)
         self.assertIn("const measuredDistanceKm = Number(result.distance_km);", page)
-        self.assertIn("const actualDistanceKm = Math.round(measuredDistanceKm * 10) / 10;", page)
-        self.assertIn("測定中に出発地または目的地が変更されました。", page)
+        self.assertIn("const oneWayDistanceKm = Math.round(measuredDistanceKm * 10) / 10;", page)
+        self.assertIn("tripType === 'round_trip' ? 2 : 1", page)
+        self.assertIn("測定中に出発地、目的地、または片道・往復区分が変更されました。", page)
         self.assertIn("有効な走行距離を取得できませんでした。", page)
         self.assertIn("Googleマップ方式で自動車ルートを検索しています...", page)
         self.assertIn("distanceInput.value = String(actualDistanceKm)", page)
-        self.assertIn("pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm)", page)
+        self.assertIn("pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm, tripType)", page)
+        self.assertIn("route_one_way_distance_km: String(oneWayDistanceKm)", page)
+        self.assertIn("route_trip_type: tripType", page)
         self.assertIn("route_distance_km: String(actualDistanceKm)", page)
         self.assertIn("route_measurement_signature: pendingRouteMeasurementSignature", page)
         self.assertIn("測定・反映完了", page)
-        self.assertIn("住所変更後の実車走行距離再測定", page)
-        self.assertIn("route_origin: '', route_destination: '', route_distance_km: '', route_provider: '', route_measurement_signature: ''", page)
+        self.assertIn("住所または片道・往復区分変更後の実車走行距離再測定", page)
+        self.assertIn("route_trip_type: 'one_way', route_one_way_distance_km: ''", page)
         self.assertNotIn("測定完了（未反映）", page)
         self.assertNotIn("values.route_document_url = googleMapsRouteUrl(values.route_origin, values.route_destination)", page)
         self.assertIn("function transportSheetSignature(values)", page)
@@ -961,8 +992,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("Object.assign(values, draftValues);", page)
         self.assertIn('class="route-distance-summary"', page)
         self.assertIn('class="transport-route-summary"', page)
-        self.assertIn("<strong>走行距離：</strong>${escapeHtml(values.route_distance_km)}km（Google Maps Routes API自動算出）", page)
-        self.assertNotIn("自動算出距離の2倍", page)
+        self.assertIn("values.route_trip_type === 'round_trip' ? '往復' : '片道'", page)
+        self.assertIn("Google Maps片道測定値", page)
         self.assertIn("Google Maps Routes APIの走行距離${values.route_distance_km}kmを見積書へ反映しました。", page)
         self.assertIn("function googleMapsRouteUrl(origin, destination)", page)
         self.assertIn('data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}"', page)
@@ -996,8 +1027,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(page.count("volumePoints:"), 64)
         self.assertIn('<fieldset class="cargo-editor-fieldset" data-cargo-editor>', page)
         self.assertNotIn("data-cargo-editor${values.cargo_restrictions_agreed ? '' : ' disabled'}", page)
-        self.assertIn("輸送書類・経路図の作成", page)
-        self.assertIn("経路図を作成・確認", page)
+        self.assertIn("輸送書類・経路図の自動作成", page)
+        self.assertIn("輸送3シート・共有URLを自動作成", page)
+        self.assertIn("Googleマップで経路を確認", page)
+        self.assertIn("function generatedUrlField(label, key, value)", page)
+        self.assertIn('value="${escapeHtml(value)}" readonly', page)
         self.assertIn("元の見積書作成へ戻る", page)
         self.assertIn("function closeFreightCalculator()", page)
         self.assertIn("T2810320517878", page)
@@ -1041,16 +1075,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("候補を確認し、「この候補を反映」を押してください。", page)
         self.assertNotIn("clearTransportError(rowIndex);\n      applyInstrumentPrice(rowIndex);", page)
         self.assertIn('dynamicFields.addEventListener(\'change\', async event => {', page)
-        self.assertIn("価格の税区分", page)
-        self.assertIn("function updateCargoTaxStatus(select)", page)
-        self.assertIn("event.target.matches('[data-cargo-item-key=\"price_tax_status\"]')", page)
-        self.assertIn("if (cargoKey === 'price_tax_status') return;", page)
+        self.assertNotIn("カタログ価格の税区分", page)
+        self.assertIn("カタログ表示価格・評価単価（円）", page)
+        self.assertNotIn("function updateCargoTaxStatus(select)", page)
+        self.assertNotIn("event.target.matches('[data-cargo-item-key=\"price_tax_status\"]')", page)
+        self.assertNotIn("applyCargoTaxStatus", page)
         self.assertIn('data-cargo-item-key="catalog_price"', page)
         self.assertIn("if (cargoKey === 'catalog_price')", page)
         self.assertNotIn("data-instrument-master-verified", page)
         self.assertNotIn("型番・最高額候補・税込／税別を確認済み", page)
         self.assertNotIn("instrumentPricesConfirmable", page)
-        self.assertIn("Boolean(select.value && estimateNumber(item.catalog_price) > 0)", page)
+        self.assertIn("master.verified = true", page)
         self.assertIn("window.location.protocol === 'file:'", page)
         self.assertIn("https://namegawa-brass-lab.onrender.com/contract-generator/", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
@@ -1079,12 +1114,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("案件受付（下書き）", page)
         self.assertIn("軽貨物運賃・日程を調整中", page)
         self.assertIn("標準車両：自社軽貨物車", page)
-        self.assertIn("標準見積は個人事業主による自社軽貨物車の運行に限定します。", page)
-        self.assertIn("if (overCapacity && !partner2tRequested) throw new Error", page)
-        self.assertIn("let baseFreightGross = partner2tRequested", page)
-        self.assertIn("recommendedType: partner2tRequested ? '依頼に基づく外部2t車チャーター（要正式見積り）'", page)
-        self.assertIn("<div${values.partner_2t_requested ? '' : ' hidden'} data-partner-2t-details>", page)
-        self.assertNotIn("<div${values.partner_2t_requested || overCapacity ? '' : ' hidden'} data-partner-2t-details>", page)
+        self.assertIn("当方の黒ナンバー軽貨物車による自社完結型", page)
+        self.assertIn("if (overCapacity) throw new Error", page)
+        self.assertIn("let baseFreightGross = Math.round", page)
+        self.assertNotIn("partner2tRequested", page)
+        self.assertNotIn("data-partner-2t-details", page)
         self.assertNotIn("let baseFreightGross = overCapacity", page)
         self.assertNotIn("field('正式見積書の共有URL', 'carrier_quote_url'", page)
         self.assertIn("data-cargo-consent", page)
@@ -1093,8 +1127,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("route_distance_km: contractValues.estimateB.route_distance_km", page)
         self.assertIn("freight_operation: contractValues.estimateB.freight_operation", page)
         self.assertIn("contractValues.estimateB.route_document_url = result.route_url", page)
+        self.assertIn("const validGeneratedUrls = generatedUrls.every", page)
+        self.assertIn("new Set(generatedUrls).size !== 3", page)
         self.assertIn("documentsCurrent ? values.route_document_url : ''", page)
-        self.assertIn("協力会社 小型2t車の代理調整", page)
+        self.assertNotIn("協力会社 小型2t車の代理調整", page)
         self.assertIn('data-cargo-item-key="unit_value"', page)
         self.assertIn('data-cargo-total="valuation"', page)
         self.assertIn("変更管理", page)
@@ -1234,7 +1270,11 @@ class UpdatesTest(unittest.TestCase):
                         "external_vehicle_budget": "150000",
                         "route_origin": "〇〇高等学校",
                         "route_destination": "〇〇市民ホール",
+                        "route_trip_type": "one_way",
+                        "route_one_way_distance_km": "30",
                         "route_distance_km": "30",
+                        "route_provider": "Google Maps",
+                        "route_measurement_signature": "route-v1-1234abcd",
                         "total_hours": "8",
                         "freight_operation": {
                             "waiting_minutes": "90",
@@ -1273,7 +1313,6 @@ class UpdatesTest(unittest.TestCase):
                             "fuel_reference_price": "170",
                             "fuel_current_price": "180",
                             "fuel_per_km_per_yen": "2",
-                            "external_2t_charter": "120000",
                         },
                         "cargo_items": [
                             {
@@ -1292,7 +1331,6 @@ class UpdatesTest(unittest.TestCase):
                                 "lookup_source_url": "https://jp.yamaha.com/products/model-100.html",
                                 "price_source_url": "https://jp.yamaha.com/products/model-100.html",
                                 "price_checked_at": "2026-08-23",
-                                "price_tax_status": "tax_included",
                             }
                         ],
                         "estimate_items": [
@@ -1326,17 +1364,13 @@ class UpdatesTest(unittest.TestCase):
                 "500000",
             )
             self.assertEqual(
-                response.json["values"]["cargo_items"][0]["price_tax_status"],
-                "tax_included",
-            )
-            self.assertEqual(
                 response.json["values"]["cargo_items"][0]["lookup_source_url"],
                 "https://jp.yamaha.com/products/model-100.html",
             )
             self.assertTrue(response.json["values"]["cargo_restrictions_agreed"])
-            self.assertEqual(
-                response.json["values"]["freight_rate_master"]["external_2t_charter"],
-                "120000",
+            self.assertNotIn(
+                "external_2t_charter",
+                response.json["values"]["freight_rate_master"],
             )
             self.assertNotIn("permit_number", response.json["values"])
             self.assertNotIn("office_information", response.json["values"])
@@ -1355,7 +1389,7 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(loaded_cargo["catalog_price"], "500000")
             self.assertEqual(loaded_cargo["unit_value"], "500000")
             self.assertEqual(loaded_cargo["total_value"], "5000000")
-            self.assertEqual(loaded_cargo["price_tax_status"], "tax_included")
+            self.assertNotIn("price_tax_status", loaded_cargo)
             self.assertEqual(
                 loaded_cargo["price_source_url"],
                 "https://jp.yamaha.com/products/model-100.html",
@@ -1385,27 +1419,13 @@ class UpdatesTest(unittest.TestCase):
 
             over_capacity_payload = response.get_json()
             over_capacity_payload["values"]["cargo_items"][0]["volume_points"] = "10"
-            over_capacity_payload["values"]["partner_2t_requested"] = False
-            over_capacity_payload["values"]["partner_2t_status"] = "not_needed"
-            over_capacity_payload["values"]["partner_2t_budget"] = "0"
-            without_request = client.post(
+            over_capacity = client.post(
                 "/api/contracts",
                 headers={"X-Editor-Password": "editor-secret"},
                 json=over_capacity_payload,
             )
-            self.assertEqual(without_request.status_code, 400)
-            self.assertIn("小型2t車はお客様から依頼された場合だけ", without_request.json["error"])
-
-            over_capacity_payload["values"]["partner_2t_requested"] = True
-            over_capacity_payload["values"]["partner_2t_status"] = "confirmed"
-            over_capacity_payload["values"]["partner_2t_budget"] = "120000"
-            with_request = client.post(
-                "/api/contracts",
-                headers={"X-Editor-Password": "editor-secret"},
-                json=over_capacity_payload,
-            )
-            self.assertEqual(with_request.status_code, 201, with_request.get_json())
-            self.assertTrue(with_request.json["values"]["partner_2t_requested"])
+            self.assertEqual(over_capacity.status_code, 400)
+            self.assertIn("品目の見直しまたは分割運行", over_capacity.json["error"])
 
     def test_contract_api_saves_transport_case_while_formal_quote_is_pending(self):
         with tempfile.TemporaryDirectory() as temporary_directory, patch.dict(
@@ -1444,7 +1464,10 @@ class UpdatesTest(unittest.TestCase):
                         "external_vehicle_budget": "0",
                         "route_origin": "",
                         "route_destination": "",
+                        "route_trip_type": "one_way",
+                        "route_one_way_distance_km": "",
                         "route_distance_km": "0",
+                        "route_provider": "",
                         "total_hours": "0",
                         "freight_operation": {
                             "waiting_minutes": "0",
@@ -1489,7 +1512,6 @@ class UpdatesTest(unittest.TestCase):
                             "fuel_reference_price": "0",
                             "fuel_current_price": "0",
                             "fuel_per_km_per_yen": "0",
-                            "external_2t_charter": "0",
                         },
                         "cargo_items": [{
                             "category": "その他",
@@ -1556,12 +1578,12 @@ class UpdatesTest(unittest.TestCase):
             "vehicle_class": "light_cargo",
             "pricing_basis": "self_light_cargo_rate",
             "cargo_restrictions_agreed": True,
-            "carrier_name": "テスト運送株式会社",
-            "carrier_quote_url": "https://example.com/quote.pdf",
-            "carrier_quote_date": "2026-08-23",
             "route_origin": "滑川町役場",
             "route_destination": "滑川町文化スポーツセンター",
+            "route_trip_type": "round_trip",
+            "route_one_way_distance_km": "4.1",
             "route_distance_km": "8.2",
+            "route_provider": "Google Maps",
             "route_measurement_signature": "route-v1-1234abcd",
             "total_hours": "8",
             "freight_operation": {"loading_minutes": "30"},
@@ -1579,7 +1601,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_request:
             send_request.return_value = {
                 "ok": True,
-                "cargoUrl": "https://docs.google.com/spreadsheets/d/cargo/edit",
+                "cargoUrl": "https://docs.google.com/spreadsheets/d/cargo/edit#gid=0",
                 "routeUrl": "https://docs.google.com/spreadsheets/d/cargo/edit#gid=1",
                 "feeUrl": "https://docs.google.com/spreadsheets/d/cargo/edit#gid=2",
             }
@@ -1596,7 +1618,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(send_request.call_args.kwargs["action"], "generate_transport_sheet")
         self.assertEqual(send_request.call_args.args[2]["editor_email"], "music@example.com")
         self.assertEqual(send_request.call_args.args[2]["workflow_status"], "quote_pending")
-        self.assertEqual(send_request.call_args.args[2]["carrier_name"], "テスト運送株式会社")
+        self.assertEqual(send_request.call_args.args[2]["route_trip_type"], "round_trip")
+        self.assertEqual(send_request.call_args.args[2]["route_one_way_distance_km"], "4.1")
         self.assertEqual(send_request.call_args.args[2]["route_distance_km"], "8.2")
         self.assertEqual(send_request.call_args.args[2]["route_measurement_signature"], "route-v1-1234abcd")
         self.assertTrue(send_request.call_args.args[2]["cargo_restrictions_agreed"])
@@ -1612,6 +1635,8 @@ class UpdatesTest(unittest.TestCase):
             "pricing_basis": "self_light_cargo_rate",
             "route_origin": "出発地",
             "route_destination": "目的地",
+            "route_trip_type": "round_trip",
+            "route_one_way_distance_km": "4.1",
             "route_distance_km": "8.2",
             "route_provider": "Google Maps",
             "route_measurement_signature": "route-v1-1234abcd",
@@ -2236,14 +2261,14 @@ class UpdatesTest(unittest.TestCase):
         )
 
         self.assertIn('["案件進行状態", safeCell(data.workflow_status)]', script)
-        self.assertIn('["外部運送会社名", safeCell(data.carrier_name)]', script)
-        self.assertIn('["正式見積書URL", safeCell(data.carrier_quote_url)]', script)
+        self.assertNotIn('["外部運送会社名", safeCell(data.carrier_name)]', script)
+        self.assertNotIn('["正式見積書URL", safeCell(data.carrier_quote_url)]', script)
         self.assertIn('["参考運賃出典URL", safeCell(rateMaster.source_url)]', script)
         self.assertIn('var routeSheet = workbook.insertSheet("運行計画・積卸し経路図")', script)
-        self.assertIn('["Google Maps自動算出距離", routeDistanceKm]', script)
+        self.assertIn('["Google Maps片道測定値", routeOneWayDistanceKm]', script)
+        self.assertIn('["距離反映区分", routeTripType === "round_trip" ? "往復" : "片道"]', script)
         self.assertIn('["見積反映距離", routeDistanceKm]', script)
-        self.assertIn('["距離算定方法", routeProvider + " Routes API自動算出距離をそのまま反映"]', script)
-        self.assertNotIn("routeDistanceKm / 2", script)
+        self.assertIn('routeTripType === "round_trip" ? "2倍して往復距離を反映"', script)
         self.assertIn('routeSheet.getRange("A3:D3").merge().setValue(routeOrigin + "  →  " + routeDestination)', script)
         self.assertIn('routeSheet.getRange("A7:B8").merge().setValue(routeDistanceKm)', script)
         self.assertIn('routeSheet.getRange("C7:D8").merge().setValue(totalHours)', script)
@@ -2257,9 +2282,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('["151km以上 1km加算", Number(rateMaster.distance_per_km_151_plus', script)
         self.assertIn('["軽貨物2時間・20kmまで", Number(rateMaster.charter_2h', script)
         self.assertIn('["休日割増率", Number(rateMaster.holiday_percent', script)
-        self.assertIn('feeSheet.getRange(16, 2, 14, 1).setNumberFormat("¥#,##0")', script)
-        self.assertIn('feeSheet.getRange(30, 2, 2, 1).setNumberFormat(\'0"%"\')', script)
-        self.assertIn('feeSheet.getRange(34, 2).setNumberFormat("0.##")', script)
+        self.assertIn('feeSheet.getRange(13, 2, 14, 1).setNumberFormat("¥#,##0")', script)
+        self.assertIn('feeSheet.getRange(27, 2, 2, 1).setNumberFormat(\'0"%"\')', script)
+        self.assertIn('feeSheet.getRange(31, 2).setNumberFormat("0.##")', script)
 
     def test_apps_script_avoids_trailing_commas_in_function_calls(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
