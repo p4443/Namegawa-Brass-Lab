@@ -8,7 +8,7 @@ from base64 import b64encode
 from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-from urllib.parse import urljoin
+from urllib.parse import parse_qs, urljoin, urlparse
 
 from app import (
     LessonReservationDeliveryError,
@@ -20,6 +20,7 @@ from app import (
     fetch_instrument_price_candidates,
     load_updates,
     normalize_media_url,
+    normalize_route_query,
     normalize_slot_statuses,
     parse_update_line,
     reservation_slot_times,
@@ -32,6 +33,13 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
+        query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
+
+        self.assertEqual(normalize_route_query(query), query)
+        with self.assertRaisesRegex(ValueError, "出発地と目的地"):
+            normalize_route_query(None)
+
     def test_compute_google_route_returns_distance_without_exposing_api_key(self):
         class FakeResponse:
             def __enter__(self):
@@ -77,7 +85,9 @@ class UpdatesTest(unittest.TestCase):
         ])
         urlopen = MagicMock(side_effect=lambda request, timeout: next(responses))
 
-        result = compute_public_route("滑川町役場", "滑川町文化スポーツセンター", urlopen)
+        origin_query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
+        destination_query = "埼玉県比企郡滑川町 ランドマーク"
+        result = compute_public_route(origin_query, destination_query, urlopen)
 
         self.assertEqual(result["resolved_origin"], "埼玉県滑川町役場")
         self.assertEqual(result["resolved_destination"], "埼玉県滑川町文化スポーツセンター")
@@ -85,6 +95,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(result["duration_minutes"], 13)
         self.assertEqual(result["provider"], "OpenStreetMap / OSRM")
         self.assertEqual(urlopen.call_count, 3)
+        self.assertEqual(parse_qs(urlparse(urlopen.call_args_list[0].args[0].full_url).query)["q"], [origin_query])
+        self.assertEqual(parse_qs(urlparse(urlopen.call_args_list[1].args[0].full_url).query)["q"], [destination_query])
 
     def test_contract_route_distance_api_requires_editor_and_falls_back_without_google_key(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
@@ -893,11 +905,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("発行準備完了後に確定", page)
         self.assertIn('data-freight-input="route_origin"', page)
         self.assertIn("data-measure-google-route", page)
+        self.assertIn("Googleマップ方式で距離測定", page)
+        self.assertIn("住所、郵便番号、施設名、店舗名、駅名、ランドマーク、地名", page)
+        self.assertIn('maxlength="300" autocomplete="off" enterkeyhint="search"', page)
         self.assertIn("function measureGoogleRouteDistance()", page)
         self.assertIn("const measuredDistanceKm = Number(result.distance_km);", page)
         self.assertIn("const actualDistanceKm = Math.round(measuredDistanceKm * 2 * 10) / 10;", page)
         self.assertIn("測定中に出発地または目的地が変更されました。", page)
         self.assertIn("有効な走行距離を取得できませんでした。", page)
+        self.assertIn("Googleマップ方式で自動車ルートを検索しています...", page)
         self.assertIn("distanceInput.value = String(actualDistanceKm)", page)
         self.assertIn("pendingRouteMeasurementSignature = routeMeasurementSignature(resolvedOrigin, resolvedDestination, actualDistanceKm)", page)
         self.assertIn("route_distance_km: String(actualDistanceKm)", page)

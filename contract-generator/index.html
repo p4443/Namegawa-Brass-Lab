@@ -690,12 +690,12 @@
       <h2 id="freightCalculatorTitle">適正運賃・料金 自動算出</h2>
       <p>2026年度 軽貨物運送事業 自社料金規定（2026年4月1日適用・税抜）に基づき算出します。</p>
       <button class="secondary-button" data-load-light-cargo-reference type="button">2026年度 自社料金規定を読み込む</button>
-      <p class="estimate-edit-guide">出発地・目的地は住所のほか、駅、学校、役所、文化施設など国内公共機関の固有名詞を入力できます。距離測定時に確定住所へ置き換えます。</p>
+      <p class="estimate-edit-guide">Googleマップの住所検索と同様に、国内の住所、郵便番号、施設名、店舗名、駅名、ランドマーク、地名などを入力できます。都道府県・市区町村を含めると検索精度が上がります。距離測定時に検索結果の住所へ置き換えます。</p>
       <div class="rate-master-grid">
         <h3 class="rate-section-title">経路と所要時間</h3>
-        <label>出発地（住所・施設名）<input data-freight-input="route_origin" type="text" placeholder="例：滑川町役場"></label>
-        <label>目的地（住所・施設名）<input data-freight-input="route_destination" type="text" placeholder="例：滑川町文化スポーツセンター"></label>
-        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">施設名・住所から距離測定</button></div>
+        <label>出発地（Googleマップ検索語）<input data-freight-input="route_origin" type="text" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="例：〒355-0813 埼玉県比企郡滑川町月輪"></label>
+        <label>目的地（Googleマップ検索語）<input data-freight-input="route_destination" type="text" maxlength="300" autocomplete="off" enterkeyhint="search" placeholder="例：店舗名、駅名、住所、ランドマーク"></label>
+        <div class="route-distance-tools"><label>実車走行距離（km）<input data-freight-input="route_distance_km" type="number" min="0" step="0.1"></label><button class="secondary-button" data-measure-google-route type="button">Googleマップ方式で距離測定</button></div>
         <label>総拘束時間（時間）<input data-freight-input="total_hours" type="number" min="0" step="0.1"></label>
         <h3 class="rate-section-title">積卸し・追加条件</h3>
         <label>待機時間（分）<input data-operation-input="waiting_minutes" type="number" min="0" step="1" value="0"></label>
@@ -1846,7 +1846,7 @@
       }
       const measuredDistanceKm = Number(result.distance_km);
       if (!Number.isFinite(measuredDistanceKm) || measuredDistanceKm <= 0) {
-        throw new Error('有効な走行距離を取得できませんでした。施設名・住所を確認して再測定してください。');
+        throw new Error('有効な走行距離を取得できませんでした。住所・郵便番号・施設名・店舗名などを確認して再測定してください。');
       }
       const resolvedOrigin = result.resolved_origin || origin;
       const resolvedDestination = result.resolved_destination || destination;
@@ -2966,7 +2966,7 @@
     freightCalculatorDialog.querySelector('[data-measure-google-route]').addEventListener('click', async event => {
       const measureButton = event.currentTarget;
       measureButton.disabled = true;
-      freightCalculatorStatus.textContent = '施設名・住所から自動車ルートを検索しています...';
+      freightCalculatorStatus.textContent = 'Googleマップ方式で自動車ルートを検索しています...';
       freightCalculatorStatus.dataset.state = '';
       try {
         await measureGoogleRouteDistance();

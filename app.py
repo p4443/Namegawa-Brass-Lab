@@ -652,12 +652,17 @@ def fetch_instrument_catalog_prices(source_urls, maker_model, fetcher=None):
     }
 
 
-def compute_google_route(origin, destination, api_key, urlopen=None):
-    origin = str(origin).strip()
-    destination = str(destination).strip()
-    api_key = str(api_key).strip()
-    if not origin or not destination or len(origin) > 300 or len(destination) > 300:
+def normalize_route_query(value: object) -> str:
+    query = "" if value is None else str(value).strip()
+    if not query or len(query) > 300:
         raise ValueError("出発地と目的地を300文字以内で入力してください。")
+    return query
+
+
+def compute_google_route(origin, destination, api_key, urlopen=None):
+    origin = normalize_route_query(origin)
+    destination = normalize_route_query(destination)
+    api_key = str(api_key).strip()
     if not api_key:
         raise ValueError("Google Routes APIキーが設定されていません。")
     request_body = json.dumps(
@@ -705,9 +710,7 @@ def compute_google_route(origin, destination, api_key, urlopen=None):
 
 
 def resolve_japan_location(query, urlopen=None):
-    query = str(query).strip()
-    if not query or len(query) > 300:
-        raise ValueError("出発地と目的地を300文字以内で入力してください。")
+    query = normalize_route_query(query)
     search_url = NOMINATIM_SEARCH_API_URL + "?" + urlencode(
         {
             "q": query,
@@ -725,16 +728,16 @@ def resolve_japan_location(query, urlopen=None):
     with request_opener(search_request, timeout=8) as response:
         result = json.loads(response.read(128 * 1024).decode("utf-8"))
     if not isinstance(result, list) or not result or not isinstance(result[0], dict):
-        raise ValueError(f"国内の施設名・住所を特定できませんでした：{query}")
+        raise ValueError(f"国内の場所を特定できませんでした。住所・郵便番号・施設名・店舗名などを確認してください：{query}")
     candidate = result[0]
     try:
         latitude = float(candidate["lat"])
         longitude = float(candidate["lon"])
     except (KeyError, TypeError, ValueError) as exc:
-        raise ValueError(f"国内の施設位置を特定できませんでした：{query}") from exc
+        raise ValueError(f"国内の場所の位置を特定できませんでした：{query}") from exc
     display_name = str(candidate.get("display_name", "")).strip()
     if not display_name:
-        raise ValueError(f"国内の施設住所を特定できませんでした：{query}")
+        raise ValueError(f"国内の場所の住所を特定できませんでした：{query}")
     return {"query": query, "address": display_name, "latitude": latitude, "longitude": longitude}
 
 
@@ -757,11 +760,11 @@ def compute_public_route(origin, destination, urlopen=None):
         result = json.loads(response.read(256 * 1024).decode("utf-8"))
     routes = result.get("routes", []) if isinstance(result, dict) else []
     if not routes or not isinstance(routes[0], dict):
-        raise ValueError("施設間の自動車ルートを確認できませんでした。")
+        raise ValueError("指定地点間の自動車ルートを確認できませんでした。")
     distance_meters = routes[0].get("distance")
     duration_seconds = routes[0].get("duration")
     if not isinstance(distance_meters, (int, float)) or distance_meters <= 0:
-        raise ValueError("施設間の走行距離を取得できませんでした。")
+        raise ValueError("指定地点間の走行距離を取得できませんでした。")
     return {
         "origin": str(origin).strip(),
         "destination": str(destination).strip(),
