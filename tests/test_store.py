@@ -55,6 +55,7 @@ class StoreTest(unittest.TestCase):
             "METRONOME_PRICE_YEN": "500",
             "FLOW_HARMONY_PRICE_YEN": "1000",
             "PUBLIC_SITE_URL": "https://example.com",
+            "SALES_ENABLED": "true",
         }
         self.environment_patch = patch.dict(os.environ, self.environment, clear=False)
         self.environment_patch.start()
@@ -177,6 +178,19 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(enabled.status_code, 200)
         self.assertTrue(enabled.get_json()["enabled"])
         self.assertTrue(enabled.get_json()["checkout_available"])
+
+    def test_global_sales_gate_blocks_enabled_store_and_checkout(self):
+        self.enable_store()
+        with patch.dict(os.environ, {"SALES_ENABLED": "false"}):
+            product = self.client.get("/api/store/product")
+            checkout = self.client.post(
+                "/api/store/checkout",
+                json={"checkout_request_id": "00000000-0000-4000-8000-000000000001"},
+            )
+
+        self.assertFalse(product.get_json()["enabled"])
+        self.assertFalse(product.get_json()["checkout_available"])
+        self.assertEqual(checkout.status_code, 403)
 
     def test_each_app_sale_setting_can_be_updated_independently(self):
         stripe = self.stripe_module(amount_total=1000)

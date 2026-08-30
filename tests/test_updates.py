@@ -744,7 +744,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("小型2t車の代理調整を明示的に依頼された場合に限り", page)
         self.assertIn("必要な最小限の連絡先、運行経路および荷物情報", page)
         self.assertIn("メーカー・型番のみを検索条件として使用", page)
-        self.assertIn("最終改定日：2026年8月29日", page)
+        self.assertIn("Stripe, Inc.", page)
+        self.assertIn("Google Apps Script", page)
+        self.assertIn("OpenStreetMap Nominatim", page)
+        self.assertIn("最終改定日：2026年8月30日", page)
 
     def test_index_links_admin_contract_generator_from_services_heading(self):
         response = create_app(database_url="").test_client().get("/")
