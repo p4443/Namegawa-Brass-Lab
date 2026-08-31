@@ -915,7 +915,7 @@
       if (!values.route_origin || !values.route_destination) missing.push('出発地・目的地');
       if (!Number.isFinite(Number(values.route_distance_km)) || Number(values.route_distance_km) <= 0) missing.push('実車走行距離の自動測定');
       else if (values.route_provider !== 'Google Maps') missing.push('Google Maps Routes APIでの距離再測定');
-      else if (!['one_way', 'round_trip'].includes(values.route_trip_type) || estimateNumber(values.route_one_way_distance_km) <= 0) missing.push('片道・往復区分を指定した距離再測定');
+      else if (!['one_way', 'round_trip'].includes(values.route_trip_type) || Number(values.route_one_way_distance_km) <= 0) missing.push('片道・往復区分を指定した距離再測定');
       else if (values.route_measurement_signature !== routeMeasurementSignature(values.route_origin, values.route_destination, values.route_distance_km, values.route_trip_type)) missing.push('住所または片道・往復区分変更後の実車走行距離再測定');
       if (!Number.isFinite(Number(values.total_hours)) || Number(values.total_hours) <= 0) missing.push('総拘束時間');
       if (values.transport_provider_mode !== 'self_light_cargo' || values.vehicle_class !== 'light_cargo') missing.push('自社軽貨物の運行設定');

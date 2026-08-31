@@ -994,6 +994,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('class="transport-route-summary"', page)
         self.assertIn("values.route_trip_type === 'round_trip' ? '往復' : '片道'", page)
         self.assertIn("Google Maps片道測定値", page)
+        self.assertIn("Number(values.route_one_way_distance_km) <= 0", page)
+        self.assertNotIn("estimateNumber(values.route_one_way_distance_km) <= 0", page)
         self.assertIn("Google Maps Routes APIの走行距離${values.route_distance_km}kmを見積書へ反映しました。", page)
         self.assertIn("function googleMapsRouteUrl(origin, destination)", page)
         self.assertIn('data-open-route-map href="${escapeHtml(googleMapsRouteUrl(values.route_origin, values.route_destination))}"', page)
