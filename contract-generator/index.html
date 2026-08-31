@@ -513,8 +513,30 @@
     .transport-estimate-detail h2 { position: relative; top: -5px; margin-top: 9px; margin-bottom: -1px; }
     .transport-estimate-detail .estimate-conditions li { margin-bottom: 5px; }
     .transport-estimate-detail p { margin-bottom: 4px; }
-    .type-b-contract-page { height: auto; min-height: var(--paper-height); overflow: visible; }
-    .type-b-contract-page .doc-parties { margin-top: 24px; padding-top: 10px; border-top: 2px solid #222222; }
+    .individual-contract-page { height: var(--paper-height); overflow: hidden; }
+    .individual-contract-page.layout-compact { font-size: 9pt; line-height: 1.4; }
+    .individual-contract-page.layout-compact h1 { margin-bottom: 10px; }
+    .individual-contract-page.layout-compact h2 { margin: 8px 0 3px; }
+    .individual-contract-page.layout-compact p { margin-bottom: 4px; }
+    .individual-contract-page.layout-compact .doc-date { margin-bottom: 10px !important; }
+    .individual-contract-page.layout-compact table { margin-top: 10px; }
+    .individual-contract-page.layout-compact th, .individual-contract-page.layout-compact td { padding: 6px; }
+    .individual-contract-page.layout-compact .estimate-conditions li { margin-bottom: 4px; }
+    .individual-contract-page.layout-compact .doc-parties { margin-top: 12px; padding-top: 8px; border-top: 2px solid #222222; }
+    .individual-contract-page.layout-compact .party-box { min-height: 125px; }
+    .individual-contract-page.layout-compact .sign-area { margin-top: 10px; }
+    .individual-contract-page.layout-condensed { font-size: 8pt; line-height: 1.25; }
+    .individual-contract-page.layout-condensed h1 { margin-bottom: 7px; font-size: 15pt; }
+    .individual-contract-page.layout-condensed h2 { margin: 6px 0 2px; font-size: 9.5pt; }
+    .individual-contract-page.layout-condensed p { margin-bottom: 3px; }
+    .individual-contract-page.layout-condensed .doc-date { margin-bottom: 7px !important; }
+    .individual-contract-page.layout-condensed table { margin-top: 7px; }
+    .individual-contract-page.layout-condensed th, .individual-contract-page.layout-condensed td { padding: 4px 5px; }
+    .individual-contract-page.layout-condensed .estimate-conditions li { margin-bottom: 2px; }
+    .individual-contract-page.layout-condensed .doc-parties { margin-top: 8px; padding-top: 6px; border-top: 2px solid #222222; }
+    .individual-contract-page.layout-condensed .party-box { min-height: 110px; }
+    .individual-contract-page.layout-condensed .sign-area { margin-top: 7px; }
+    .individual-contract-page.layout-paginated { height: auto; min-height: var(--paper-height); overflow: visible; }
 
     @media (max-width: 900px) {
       .generator { grid-template-columns: 1fr; }
@@ -544,6 +566,15 @@
         overflow: visible;
         box-shadow: none;
         break-after: page;
+      }
+      .contract-page.individual-contract-page {
+        height: var(--paper-height);
+        min-height: var(--paper-height);
+        overflow: hidden;
+      }
+      .contract-page.individual-contract-page.layout-paginated {
+        height: auto;
+        overflow: visible;
       }
       .contract-page:last-child { break-after: auto; }
       .document[data-print-pages="front"] .contract-page:not([data-page-number="1"]),
@@ -621,6 +652,14 @@
           <button class="secondary-button" id="exportContractExcel" type="button">Excel出力</button>
         </div>
         <div class="print-actions">
+          <label for="printLayoutDensity">印刷密度
+            <select id="printLayoutDensity">
+              <option value="auto">自動</option>
+              <option value="standard">標準</option>
+              <option value="compact">コンパクト</option>
+              <option value="condensed">高密度</option>
+            </select>
+          </label>
           <label for="printPageSelection">印刷範囲
             <select id="printPageSelection">
               <option value="all">全ページ</option>
@@ -774,6 +813,8 @@
     const deleteContractError = document.getElementById('deleteContractError');
     const freightCalculatorDialog = document.getElementById('freightCalculatorDialog');
     const freightCalculatorStatus = document.getElementById('freightCalculatorStatus');
+    const printLayoutDensity = document.getElementById('printLayoutDensity');
+    const printPageSelection = document.getElementById('printPageSelection');
     let pendingDeleteContractId = '';
     let editorToken = '';
     let freightCalculatorReturnTarget = null;
@@ -2223,21 +2264,48 @@
     function renderIndividualContract(type, date, parties) {
       const values = contractValues[type];
       if (type === 'typeA') {
-        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page individual-contract-page" data-page-number="1"><h1>個別契約書 A（音楽指導・地域支援）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['委託業務の内容', values.work], ['委託料', values.amount], ['契約期間・実施日', values.term],
           ['特記事項', values.special_terms]
         ])}${parties}</section>`;
       } else if (type === 'typeB') {
         const estimateReference = values.estimate_reference_id ? `${values.estimate_reference_id}${values.estimate_date ? `（発行日：${values.estimate_date}）` : ''}` : '別途合意するB見積書';
-        preview.innerHTML = `<section class="contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約および下記B見積書に基づき、当方の自社軽貨物による一貫運送について次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page individual-contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（楽器輸送）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約および下記B見積書に基づき、当方の自社軽貨物による一貫運送について次のとおり個別契約を締結する。</p>${contractTable([
           ['輸送案件名', values.transport_name], ['参照するB見積書', estimateReference], ['輸送対象物', values.cargo],
           ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route], ['契約金額（税込）', values.amount]
         ])}<h2>添付書類</h2><ul class="estimate-conditions document-links">${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}${transportDocumentLink('追加料金規定表', values.fee_document_url)}</ul><h2>特記事項</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>${parties}</section>`;
       } else {
-        preview.innerHTML = `<section class="contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
+        preview.innerHTML = `<section class="contract-page individual-contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
           ['特記事項', values.special_terms]
         ])}${parties}</section>`;
+      }
+    }
+
+    function fitIndividualContractLayout() {
+      const partialPrintOptions = [...printPageSelection.options].filter(option => option.value !== 'all');
+      partialPrintOptions.forEach(option => { option.disabled = false; });
+      const page = preview.querySelector('.individual-contract-page');
+      if (!page) return;
+      page.classList.remove('layout-compact', 'layout-condensed', 'layout-paginated');
+      const fitsOnPage = () => page.scrollHeight <= page.clientHeight + 1;
+      const requestedDensity = printLayoutDensity.value;
+      const densities = requestedDensity === 'auto'
+        ? ['standard', 'compact', 'condensed']
+        : [requestedDensity];
+      let appliedDensity = densities[0];
+      for (const density of densities) {
+        page.classList.remove('layout-compact', 'layout-condensed');
+        if (density !== 'standard') page.classList.add(`layout-${density}`);
+        appliedDensity = density;
+        if (fitsOnPage()) break;
+      }
+      if (!fitsOnPage()) page.classList.add('layout-paginated');
+      const isPaginated = page.classList.contains('layout-paginated');
+      page.dataset.layoutDensity = isPaginated ? 'paginated' : appliedDensity;
+      if (isPaginated) {
+        printPageSelection.value = 'all';
+        partialPrintOptions.forEach(option => { option.disabled = true; });
       }
     }
 
@@ -2261,6 +2329,7 @@
       } else {
         renderIndividualContract(type, date, parties);
       }
+      fitIndividualContractLayout();
     }
 
     function contractPayload() {
@@ -2344,7 +2413,8 @@
     }
 
     function printContractPages() {
-      const selection = document.getElementById('printPageSelection').value;
+      fitIndividualContractLayout();
+      const selection = printPageSelection.value;
       if (selection === 'back' && !preview.querySelector('.contract-page[data-page-number="2"]')) {
         saveStatus.textContent = 'この書類に裏面はありません。';
         saveStatus.dataset.state = 'error';
@@ -2558,6 +2628,8 @@
     });
 
     docType.addEventListener('change', () => { editorRevision += 1; renderDynamicFields(); renderPreview(); });
+    printLayoutDensity.addEventListener('change', fitIndividualContractLayout);
+    window.addEventListener('beforeprint', fitIndividualContractLayout);
     [clientName, clientRepresentative].forEach(input => input.addEventListener('input', () => {
       editorRevision += 1;
       updateTransportWorkflowStatus();
