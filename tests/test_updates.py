@@ -2136,7 +2136,10 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-31-google-routes-required-v30";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-08-31-transport-time-format-v31";', script)
+        self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
+        self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
+        self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertLess(do_post.index('if (action === "generate_transport_sheet")'), do_post.index("var spreadsheet = getSpreadsheet();"))
         self.assertIn("data.cargo_restrictions_agreed !== true", script)
         self.assertIn("confirmedReservationCounts(sheet, slotSheet, from, to)", script)
@@ -2720,7 +2723,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-31-google-routes-required-v30",
+                "version": "2026-08-31-transport-time-format-v31",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)

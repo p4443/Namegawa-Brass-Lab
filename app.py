@@ -801,7 +801,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-31-google-routes-required-v30"
+LESSON_APPS_SCRIPT_VERSION = "2026-08-31-transport-time-format-v31"
 
 
 def current_japan_date():

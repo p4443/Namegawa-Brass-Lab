@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-08-31-google-routes-required-v30";
+var SCRIPT_VERSION = "2026-08-31-transport-time-format-v31";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
   "無料体験レッスン": 30,
@@ -530,9 +530,10 @@ function generateTransportWorkbook(data) {
   routeSheet.getRange("C7:D8").merge().setValue(totalHours).setNumberFormat('0.0" 時間"').setBackground("#fffbeb").setFontColor("#92400e").setFontWeight("bold").setFontSize(22).setHorizontalAlignment("center").setVerticalAlignment("middle");
   routeSheet.getRange("A10:B10").setValues([["運行情報", "内容"]]).setBackground("#334155").setFontColor("#ffffff").setFontWeight("bold");
   routeSheet.getRange(11, 1, routeRows.length, 2).setValues(routeRows);
-  routeSheet.getRange(15, 2, 2, 1).setNumberFormat('0.0"km"');
-  routeSheet.getRange(18, 2).setNumberFormat('0.0"時間"');
-  routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0"分"');
+  routeSheet.getRange(15, 2).setNumberFormat('0.0"km"');
+  routeSheet.getRange(17, 2).setNumberFormat('0.0"km"');
+  routeSheet.getRange(19, 2).setNumberFormat('0.0"時間"');
+  routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0"分"');
   routeSheet.getRange("A23:D23").merge().setFormula('=HYPERLINK("' + mapsUrl.replace(/"/g, '""') + '","▶ Google マップで実際の経路を開く")').setBackground("#2563eb").setFontColor("#ffffff").setFontWeight("bold").setFontSize(13).setHorizontalAlignment("center");
   routeSheet.getRange("A1:D23").setBorder(true, true, true, true, true, true, "#cbd5e1", SpreadsheetApp.BorderStyle.SOLID);
   routeSheet.setFrozenRows(1);
