@@ -64,7 +64,9 @@
     .carousel-button { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid var(--primary-color); border-radius: 50%; color: var(--primary-color); background: var(--bg-white); font-size: 1.1rem; cursor: pointer; }
     .carousel-button:hover, .carousel-button:focus-visible { color: #ffffff; background: var(--primary-color); }
     .carousel-button:disabled { cursor: default; opacity: 0.35; }
-    .product-track { display: flex; align-items: flex-start; gap: 24px; overflow-x: auto; padding: 2px 2px 18px; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-color: var(--accent-color) var(--border-color); scrollbar-width: thin; }
+    .music-product-track { display: flex; align-items: flex-start; gap: 24px; overflow-x: auto; padding: 2px 2px 18px; scroll-behavior: smooth; scroll-snap-type: x mandatory; scrollbar-color: var(--accent-color) var(--border-color); scrollbar-width: thin; }
+    .transport-catalog { padding: 80px 0; background: var(--bg-light); }
+    .transport-track { max-width: 1160px; margin: 0 auto; }
 
     .upcoming-app {
       display: grid;
@@ -179,7 +181,7 @@
       .catalog-heading .section-desc { margin-top: 4px; font-size: 0.8rem; }
       .desktop-scroll-copy, .carousel-controls { display: none; }
       .mobile-scroll-copy { display: inline; }
-      .product-track {
+      .music-product-track {
         display: grid;
         gap: 24px;
         overflow-x: visible;
@@ -221,31 +223,31 @@
       </div>
     </section>
 
-    <section class="catalog" id="products" aria-labelledby="products-title">
+    <section class="catalog" id="music-products" aria-labelledby="music-products-title">
       <div class="container">
         <div class="catalog-heading">
           <div>
-            <h2 class="section-title" id="products-title">アプリ・商品ラインアップ</h2>
-            <p class="section-desc"><span class="desktop-scroll-copy">右へスクロール</span><span class="mobile-scroll-copy">下へスクロール</span>してアプリを選べます</p>
+            <h2 class="section-title" id="music-products-title">音楽アプリ・商品</h2>
+            <p class="section-desc"><span class="desktop-scroll-copy">音楽アプリは右へスクロール</span><span class="mobile-scroll-copy">音楽アプリは下へスクロール</span>して選べます</p>
           </div>
-          <div class="carousel-controls" aria-label="アプリ商品のスクロール操作">
-            <button class="carousel-button" type="button" data-carousel-prev="product-track" aria-label="前の商品">←</button>
-            <button class="carousel-button" type="button" data-carousel-next="product-track" aria-label="次の商品">→</button>
+          <div class="carousel-controls" aria-label="音楽アプリ商品のスクロール操作">
+            <button class="carousel-button" type="button" data-carousel-prev="music-product-track" aria-label="前の音楽アプリ">←</button>
+            <button class="carousel-button" type="button" data-carousel-next="music-product-track" aria-label="次の音楽アプリ">→</button>
           </div>
         </div>
 
-        <div class="product-track" id="product-track" aria-labelledby="products-title" tabindex="0">
+        <div class="music-product-track" id="music-product-track" aria-labelledby="music-products-title" tabindex="0">
           <article class="product-feature" id="trumpet-transpose-lab">
           <header class="product-heading">
             <div>
               <span class="product-label">無料Web版</span>
-              <h2>Trumpet Transpose Lab</h2>
+              <h2>Trumpet Transpose Lab V2</h2>
               <p>録音したフレーズを自動採譜し、音高・音価・タイミングを編集。無料Web版では録音・採譜・移調を試せて、買い切り版ではWAV・MIDI・MusicXML保存も利用できます。</p>
             </div>
-            <a class="launch-link" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">無料Web版を開く</a>
+            <a class="launch-link" href="../trumpet-transpose-lab/?mode=free&amp;version=2" target="_blank" rel="noopener">V2 無料Web版を開く</a>
           </header>
 
-          <iframe class="app-window transpose-lab-window" src="../trumpet-transpose-lab/?mode=free" title="Trumpet Transpose Lab" loading="lazy" allow="microphone; autoplay"></iframe>
+          <iframe class="app-window transpose-lab-window" src="../trumpet-transpose-lab/?mode=free&amp;version=2" title="Trumpet Transpose Lab V2" loading="lazy" allow="microphone; autoplay"></iframe>
 
           <div class="store-panel">
             <div class="store-copy">
@@ -338,7 +340,16 @@
           </div>
           </article>
 
-          <article class="product-feature" id="tenko-checkbook">
+        </div>
+      </div>
+    </section>
+
+    <section class="transport-catalog" id="transport-products" aria-labelledby="transport-products-title">
+      <div class="container">
+        <h2 class="section-title" id="transport-products-title">運送業務向けアプリ</h2>
+        <p class="section-desc">音楽アプリとは別に、軽貨物・運送現場の日々の記録と管理を支える業務用商品をご案内します</p>
+        <div class="transport-track">
+          <article class="product-feature" id="tennko-kakuninnbo">
           <header class="product-heading">
             <div>
               <span class="product-label">業務用Webアプリ</span>
@@ -352,15 +363,18 @@
 
           <div class="store-panel">
             <div class="store-copy">
-              <h3>買い切りライセンス</h3>
-              <p>インストール不要で、PCやスマートフォンのブラウザーから利用できます。月額料金や自動更新はありません。</p>
+              <h3>買い切りWebアプリ利用ライセンス</h3>
+              <p>乗務前後の点呼を日々入力し、年月別の確認から月次帳票の保存まで一つの画面で行えます。用途に合わせて個人版または会社版を選択してください。</p>
               <ul class="store-benefits">
-                <li>個人版は1ユーザー、会社版は管理者を含め最大100ユーザー</li>
-                <li>乗務前・乗務後・全項目の月次帳票に対応</li>
-                <li>決済後、初回登録用ライセンスキーをメールで送付</li>
-                <li>登録後はメールアドレスとパスワードで利用</li>
+                <li>乗務開始・終了、健康状態、走行距離を記録</li>
+                <li>アルコール検知器の測定値、確認写真、画像・PDFを保存</li>
+                <li>乗務前・乗務後・全項目の月次帳票を印刷・PDF保存</li>
+                <li>Excel・CSV形式で月次データを書き出し</li>
+                <li>会社版は管理者が参加者を追加し、参加者別・年月別に管理</li>
+                <li>PC・スマートフォンのブラウザから利用可能</li>
               </ul>
               <nav class="store-legal" aria-label="点呼確認簿の購入に関する情報">
+                <a href="https://tennko-kakuninnbo.onrender.com/buyer-guide" target="_blank" rel="noopener">利用開始ガイド</a>
                 <a href="https://tennko-kakuninnbo.onrender.com/legal-notice" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
                 <a href="https://tennko-kakuninnbo.onrender.com/terms" target="_blank" rel="noopener">利用規約</a>
                 <a href="https://tennko-kakuninnbo.onrender.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
@@ -370,13 +384,13 @@
               <div class="service-plans" aria-label="点呼確認簿の料金プラン">
                 <section class="service-plan">
                   <h3>個人版</h3>
-                  <p>購入者本人1名で利用</p>
+                  <p>購入者本人1名で、自分の点呼記録と添付ファイルを管理</p>
                   <div class="service-price">500円 <small>税込・買い切り</small></div>
                   <a class="service-purchase tenko-purchase-link" href="https://tennko-kakuninnbo.onrender.com/purchase/personal">個人版の購入へ</a>
                 </section>
                 <section class="service-plan">
                   <h3>会社版</h3>
-                  <p>会社管理者を含め最大100ユーザー</p>
+                  <p>1法人・1事業者内で、会社管理者を含め最大100ユーザー</p>
                   <div class="service-price">50,000円 <small>税込・買い切り</small></div>
                   <a class="service-purchase tenko-purchase-link" href="https://tennko-kakuninnbo.onrender.com/purchase/company">会社版の購入へ</a>
                 </section>
@@ -443,7 +457,7 @@
     });
     window.addEventListener("resize", resizeTransposeLabWindow);
 
-    document.querySelectorAll(".product-track").forEach((track) => {
+    document.querySelectorAll(".music-product-track").forEach((track) => {
       const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
       const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
       if (!previousButton || !nextButton) return;
