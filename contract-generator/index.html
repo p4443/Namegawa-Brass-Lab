@@ -2624,7 +2624,7 @@
       loginScreen.hidden = false;
       resetContractEditor();
       passwordInput.value = '';
-      passwordInput.focus();
+      window.location.replace('../#web');
     });
 
     docType.addEventListener('change', () => { editorRevision += 1; renderDynamicFields(); renderPreview(); });
