@@ -10,7 +10,7 @@ class TenkoSalesLinksTest(unittest.TestCase):
         )
 
     def test_tenko_product_card_links_both_purchase_plans(self):
-        self.assertIn('id="tenko-checkbook"', self.page)
+        self.assertIn('id="tennko-kakuninnbo"', self.page)
         self.assertIn(
             'class="app-window tenko-window" '
             'src="https://tennko-kakuninnbo.onrender.com/"',
@@ -33,12 +33,12 @@ class TenkoSalesLinksTest(unittest.TestCase):
             )
 
     def test_tenko_purchase_links_do_not_use_download_store_api(self):
-        card = self.page.split('id="tenko-checkbook"', 1)[1].split("</article>", 1)[0]
+        card = self.page.split('id="tennko-kakuninnbo"', 1)[1].split("</article>", 1)[0]
         self.assertNotIn("/api/store/", card)
         self.assertNotIn("download-link", card)
 
     def test_tenko_sales_admin_controls_use_remote_sales_api(self):
-        card = self.page.split('id="tenko-checkbook"', 1)[1].split("</article>", 1)[0]
+        card = self.page.split('id="tennko-kakuninnbo"', 1)[1].split("</article>", 1)[0]
         self.assertIn('id="tenko-sales-form"', card)
         self.assertIn('id="tenko-sales-password"', card)
         self.assertIn('id="tenko-sales-enabled"', card)

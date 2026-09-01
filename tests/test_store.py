@@ -319,7 +319,10 @@ class StoreTest(unittest.TestCase):
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('<span class="mobile-scroll-copy">下へスクロール</span>', html)
+        self.assertIn(
+            '<span class="mobile-scroll-copy">音楽アプリは下へスクロール</span>',
+            html,
+        )
         self.assertIn(".desktop-scroll-copy, .carousel-controls { display: none; }", html)
         self.assertIn("scroll-snap-type: none;", html)
         self.assertIn(".product-feature { width: 100%; min-width: 0;", html)
