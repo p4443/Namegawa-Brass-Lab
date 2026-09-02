@@ -801,7 +801,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-08-31-transport-time-format-v31"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-02-reservation-admin-notification-v34"
 
 
 def current_japan_date():
@@ -3739,6 +3739,7 @@ def create_app(
                 "reservation_id": result.get("reservationId", ""),
                 "status": result.get("status", "確認中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
+                "admin_notification_sent": bool(result.get("adminNotificationSent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
             },

@@ -2125,7 +2125,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel"]', do_post)
+        self.assertIn('var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "cancel", "resend_admin_notification"]', do_post)
         self.assertIn('action === "generate_transport_sheet"', do_post)
         self.assertIn("LockService.getUserLock()", do_post)
         self.assertIn("LockService.getScriptLock()", do_post)
@@ -2143,7 +2143,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-08-31-transport-time-format-v31";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-02-reservation-admin-notification-v34";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2160,20 +2160,39 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('put("admin:" + requestId, JSON.stringify(data), 600)', script)
         self.assertIn("return adminActionResponse({ ok: true, reservationId: reservationId }, requestId);", script)
 
+    def test_apps_script_admin_actions_return_json_responses(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        response_function = script.split("function adminActionResponse", 1)[1]
+
+        self.assertIn("return jsonResponse(data);", response_function)
+        self.assertNotIn("return MailApp.getRemainingDailyQuota();", response_function)
+        self.assertEqual(script.count("function authorizeGmailNotifications"), 1)
+
     def test_apps_script_email_has_utf8_html_fallback(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
         )
         function = script.split("function sendReservationAutoReply", 1)[1].split(
-            "function safeCell", 1
+            "function sendReservationAdminNotification", 1
         )[0]
 
         self.assertIn('charset="UTF-8"', function)
         self.assertIn("htmlBody:", function)
         self.assertIn("sanitizeMailHeader(data.email)", function)
+        self.assertIn("GmailApp.sendEmail(email,", function)
         self.assertIn("sanitizeMailHeader", script)
         self.assertIn('var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";', script)
-        self.assertIn("bcc: ADMIN_NOTIFICATION_EMAIL", function)
+        self.assertNotIn("bcc: ADMIN_NOTIFICATION_EMAIL", function)
+        admin_notification_function = script.split("function sendReservationAdminNotification", 1)[1].split(
+            "function sendConsultationAutoReply", 1
+        )[0]
+        self.assertIn("GmailApp.sendEmail(", admin_notification_function)
+        self.assertIn("ADMIN_NOTIFICATION_EMAIL", admin_notification_function)
+        self.assertIn("新規レッスン予約", admin_notification_function)
+        self.assertIn("function authorizeGmailNotifications", script)
+        self.assertIn("MailApp.getRemainingDailyQuota", script)
 
     def test_apps_script_sends_confirmation_email_on_first_confirmed_transition(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -2730,7 +2749,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-08-31-transport-time-format-v31",
+                "version": "2026-09-02-reservation-admin-notification-v34",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
@@ -2977,6 +2996,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("レッスン予約キャンセル完了", cancellation_function)
         self.assertIn("現在の状態: キャンセル", cancellation_function)
 
+    def test_apps_script_can_resend_admin_notification_without_changing_reservation(self):
+        script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
+            encoding="utf-8"
+        )
+        resend_action = script.split('if (action === "resend_admin_notification")', 1)[1].split(
+            'if (action === "upsert_slot_status_range")', 1
+        )[0]
+
+        self.assertIn("findReservationRowById(sheet, notificationReservationId)", resend_action)
+        self.assertIn('notificationReservation.status === "キャンセル"', resend_action)
+        self.assertIn("sendReservationAdminNotification({", resend_action)
+        self.assertIn('"ADMIN_NOTIFICATION_FAILED: " + lastAdminNotificationError', resend_action)
+        self.assertNotIn("setValue(", resend_action)
+        self.assertIn('"resend_admin_notification"', script)
+
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
@@ -3016,6 +3050,7 @@ class UpdatesTest(unittest.TestCase):
                 "reservationId": "R-20260820-001",
                 "status": "確認中",
                 "autoReplySent": True,
+                "adminNotificationSent": True,
             }
             response = client.post("/api/lesson-reservations", json=payload)
 
@@ -3025,6 +3060,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["status"], "確認中")
         self.assertEqual(response.json["duration_minutes"], 30)
         self.assertTrue(response.json["auto_reply_sent"])
+        self.assertTrue(response.json["admin_notification_sent"])
         send_reservation.assert_called_once_with(
             "https://script.google.com/example",
             "test-secret",

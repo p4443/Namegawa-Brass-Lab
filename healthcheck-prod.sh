@@ -85,7 +85,26 @@ if [[ "$response_body" != *'"slots"'* ]]; then
 fi
 pass "GET /api/lesson-slot-statuses"
 
-# 3) Non-destructive reservation probe via honeypot field.
+# 3) The deployed Apps Script must support the admin schedule features.
+if [[ -z "$STORE_HEALTH_EDITOR_PASSWORD" ]]; then
+  fail "STORE_HEALTH_EDITOR_PASSWORD is unset"
+fi
+
+body_file="${TMPDIR:-/tmp}/hp-lesson-admin-health-$$.json"
+if ! status_code=$(curl -sS -o "$body_file" -w '%{http_code}' \
+  "${BASE_URL}/api/lesson-admin-health" \
+  -H "X-Editor-Password: ${STORE_HEALTH_EDITOR_PASSWORD}"); then
+  rm -f "$body_file"
+  fail "Network error on GET /api/lesson-admin-health"
+fi
+response_body=$(cat "$body_file")
+rm -f "$body_file"
+if [[ "$status_code" != "200" || "$response_body" != *'"ready":true'* ]]; then
+  fail "GET /api/lesson-admin-health failed with HTTP ${status_code}: ${response_body}"
+fi
+pass "GET /api/lesson-admin-health (Apps Script admin schedule)"
+
+# 4) Non-destructive reservation probe via honeypot field.
 request "POST" "${BASE_URL}/api/lesson-reservations" '{"website":"healthcheck-probe"}'
 if [[ "$status_code" != "201" ]]; then
   fail "POST /api/lesson-reservations probe returned HTTP ${status_code}: ${response_body}"
@@ -95,7 +114,7 @@ if [[ "$response_body" != *'"saved":true'* ]]; then
 fi
 pass "POST /api/lesson-reservations (non-destructive probe)"
 
-# 4) Both Stripe products must be publicly available in production.
+# 5) Both Stripe products must be publicly available in production.
 request "GET" "${BASE_URL}/api/store/product"
 if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/product returned HTTP ${status_code}: ${response_body}"
@@ -113,10 +132,6 @@ if [[ "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_
   fail "Trumpet Transpose Lab checkout is unavailable: ${response_body}"
 fi
 pass "GET /api/store/trumpet-transpose-lab/product"
-
-if [[ -z "$STORE_HEALTH_EDITOR_PASSWORD" ]]; then
-  fail "STORE_HEALTH_EDITOR_PASSWORD is unset"
-fi
 
 body_file="${TMPDIR:-/tmp}/hp-store-health-$$.json"
 if ! status_code=$(curl -sS -o "$body_file" -w '%{http_code}' \
