@@ -2920,6 +2920,28 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(send_reservation.call_args.args[2]["status"], "空き")
 
+    def test_lesson_slot_admin_rejects_times_outside_weekday_hours(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-09-03",
+            "end_date": "2026-09-03",
+            "start_time": "13:00",
+            "end_time": "13:30",
+            "status": "予約済",
+            "note": "時間外",
+        }
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("予約可能時間", response.json["error"])
+
     def test_user_can_cancel_confirmed_reservation_and_release_slots(self):
         client = create_app().test_client()
         payload = {

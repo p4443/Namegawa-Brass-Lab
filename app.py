@@ -2109,6 +2109,20 @@ def validate_slot_status_request(payload):
     elif start_time != end_time:
         raise ValueError("要相談を指定する場合は開始時間と終了時間を同じにしてください。")
 
+    current_date = start_date
+    while current_date <= end_date:
+        allowed_times = WEEKDAY_RESERVATION_TIMES[current_date.weekday()]
+        if start_time == CONSULTATION_TIME:
+            is_allowed = start_time in allowed_times
+        else:
+            is_allowed = all(
+                slot_time in allowed_times
+                for slot_time in time_range(start_time, end_time)
+            )
+        if not is_allowed:
+            raise ValueError("選択した曜日の予約可能時間を指定してください。")
+        current_date += timedelta(days=1)
+
     if len(values["note"]) > 200:
         raise ValueError("メモは200文字以内で入力してください。")
 
