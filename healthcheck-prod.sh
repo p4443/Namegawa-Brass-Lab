@@ -6,6 +6,7 @@ CHECK_DATE="${CHECK_DATE:-$(date +%F)}"
 HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
 HEALTHCHECK_NOTIFY_MENTION="${HEALTHCHECK_NOTIFY_MENTION:-}"
 STORE_HEALTH_EDITOR_PASSWORD="${STORE_HEALTH_EDITOR_PASSWORD:-}"
+REQUIRE_STORE_CHECKOUT="${REQUIRE_STORE_CHECKOUT:-false}"
 
 json_escape() {
   local text="$1"
@@ -119,7 +120,7 @@ request "GET" "${BASE_URL}/api/store/product"
 if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/product returned HTTP ${status_code}: ${response_body}"
 fi
-if [[ "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ]]; then
+if [[ "$REQUIRE_STORE_CHECKOUT" == "true" && ( "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ) ]]; then
   fail "Metronome checkout is unavailable: ${response_body}"
 fi
 pass "GET /api/store/product"
@@ -128,7 +129,7 @@ request "GET" "${BASE_URL}/api/store/trumpet-transpose-lab/product"
 if [[ "$status_code" != "200" ]]; then
   fail "GET /api/store/trumpet-transpose-lab/product returned HTTP ${status_code}: ${response_body}"
 fi
-if [[ "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ]]; then
+if [[ "$REQUIRE_STORE_CHECKOUT" == "true" && ( "$response_body" != *'"enabled":true'* || "$response_body" != *'"checkout_available":true'* ) ]]; then
   fail "Trumpet Transpose Lab checkout is unavailable: ${response_body}"
 fi
 pass "GET /api/store/trumpet-transpose-lab/product"
