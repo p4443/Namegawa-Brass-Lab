@@ -181,7 +181,7 @@
       </section>
       <section class="panel detail-panel" aria-labelledby="selected-date-title">
         <h2 id="selected-date-title" tabindex="-1">先にレッスン種別を選択してください</h2>
-        <p class="detail-note">空き状況は15分を1枠として管理しています。予約にはレッスン時間分の連続した空き枠が必要です。体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上・大人は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
+        <p class="detail-note">空き状況は15分を1枠として管理しています。予約には、曜日別の実施時間内に収まるレッスン時間分の連続した空き枠が必要です。体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上・大人は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
         <ul class="slot-list" id="slot-list"></ul>
       </section>
     </div>
@@ -296,12 +296,14 @@
       if (!lessonType) return [];
       const dayTimes = timesByDay[day] || [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
+      const durationMinutes = lessonDurations[lessonType];
       return dayTimes.filter((time) => {
         if (time === "要相談") return true;
         const minute = Number(time.slice(3));
-        return lessonType === "体験レッスン" || lessonType === "小学生"
+        const validStart = lessonType === "体験レッスン" || lessonType === "小学生"
           ? minute === 0 || minute === 30
           : minute === 0;
+        return validStart && occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
       });
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;

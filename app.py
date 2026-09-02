@@ -864,6 +864,15 @@ def is_allowed_lesson_start(lesson_type, preferred_time, available_times):
     return minute == 0
 
 
+def is_allowed_lesson_time(lesson_type, preferred_time, duration_minutes, available_times):
+    if not is_allowed_lesson_start(lesson_type, preferred_time, available_times):
+        return False
+    return preferred_time == CONSULTATION_TIME or all(
+        slot_time in available_times
+        for slot_time in reservation_slot_times(preferred_time, duration_minutes)
+    )
+
+
 WEEKDAY_RESERVATION_TIMES = {
     0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
     1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
@@ -1963,8 +1972,11 @@ def validate_lesson_reservation(payload):
     if not first_available_date <= preferred_date <= last_available_date:
         raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
     available_times = WEEKDAY_RESERVATION_TIMES[preferred_date.weekday()]
-    if not is_allowed_lesson_start(
-        values["lesson_type"], values["preferred_time"], available_times
+    if not is_allowed_lesson_time(
+        values["lesson_type"],
+        values["preferred_time"],
+        values["duration_minutes"],
+        available_times,
     ):
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
     values["occupied_times"] = reservation_slot_times(

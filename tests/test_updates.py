@@ -3156,6 +3156,21 @@ class UpdatesTest(unittest.TestCase):
                         "preferred_time": rejected,
                     })
 
+    def test_lesson_reservation_requires_all_occupied_slots_within_weekday_hours(self):
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "",
+            "lesson_type": "無料体験レッスン",
+            "preferred_date": "2026-09-07",
+            "preferred_time": "09:00",
+            "message": "",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 9, 2)):
+            with self.assertRaisesRegex(ValueError, "予約可能時間"):
+                validate_lesson_reservation(payload)
+
     def test_group_lesson_is_consultation_without_fixed_duration(self):
         payload = {
             "name": "団体 代表",

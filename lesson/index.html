@@ -1477,13 +1477,13 @@
       <div class="reservation-copy">
         <h2 id="reservation-title">レッスン予約</h2>
         <p>予約できる期間は、明日から1か月先までです。同じメールアドレスで予約できる今後の予定は、最大4枠までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
-        <dl class="reservation-hours" aria-label="曜日別の予約可能時間">
+        <dl class="reservation-hours" aria-label="曜日別のレッスン実施時間">
           <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜09:00</span><span class="reservation-time-range">20:30〜22:00</span></dd></div>
           <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜12:00</span></dd></div>
           <div><dt>金曜日</dt><dd><span>06:45〜17:00／それ以外は要相談</span></dd></div>
           <div><dt>土・日</dt><dd><span>土・日：要相談</span></dd></div>
         </dl>
-        <p class="price-note">体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
+        <p class="price-note">予約は上記の実施時間内にレッスンが終了する開始時刻だけを選べます。体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
         <p>体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上・大人は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
       </div>
       <form class="reservation-form" id="reservation-form">
@@ -1713,12 +1713,14 @@
       if (lessonType === "グループ・部活動指導") {
         return ["要相談"];
       }
+      const durationMinutes = lessonDurations[lessonType];
       return dayTimes.filter((time) => {
         if (time === "要相談") return true;
         const minute = Number(time.slice(3));
-        return lessonType === "体験レッスン" || lessonType === "小学生"
+        const validStart = lessonType === "体験レッスン" || lessonType === "小学生"
           ? minute === 0 || minute === 30
           : minute === 0;
+        return validStart && occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
       });
     }
 
