@@ -2403,6 +2403,7 @@ def create_app(
         return {
             "locale": "ja",
             "customer_creation": "always",
+            "managed_payments": {"enabled": False},
             "invoice_creation": {
                 "enabled": True,
                 "invoice_data": {

@@ -372,6 +372,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(checkout_arguments["metadata"]["price_yen"], "1000")
         self.assertEqual(checkout_arguments["locale"], "ja")
         self.assertEqual(checkout_arguments["customer_creation"], "always")
+        self.assertEqual(checkout_arguments["managed_payments"], {"enabled": False})
         invoice_data = checkout_arguments["invoice_creation"]["invoice_data"]
         self.assertTrue(checkout_arguments["invoice_creation"]["enabled"])
         self.assertEqual(
@@ -667,6 +668,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(create_kwargs["metadata"]["price_yen"], "500")
         self.assertEqual(create_kwargs["locale"], "ja")
         self.assertEqual(create_kwargs["customer_creation"], "always")
+        self.assertEqual(create_kwargs["managed_payments"], {"enabled": False})
         self.assertTrue(create_kwargs["invoice_creation"]["enabled"])
         self.assertEqual(
             create_kwargs["invoice_creation"]["invoice_data"]["custom_fields"][0],
