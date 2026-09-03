@@ -106,7 +106,7 @@ PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 
 ストアAPIのCORSは`PUBLIC_SITE_URL`のオリジンとAPI自身のオリジンだけを許可します。
 
-設定ウィザードはWebhookを既定で`https://namegawa-brass-lab.onrender.com/api/store/webhook`へ登録します。APIドメインを変更した場合だけ、`STORE_API_URL=https://新しいAPIドメイン ./setup-store-env.sh`のように実行してください。
+設定ウィザードはWebhookを既定で`https://namegawa-brass-lab.com/api/store/webhook`へ登録します。APIドメインを変更した場合だけ、`STORE_API_URL=https://新しいAPIドメイン ./setup-store-env.sh`のように実行してください。
 
 `DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
 
@@ -234,7 +234,7 @@ docker compose up -d --build
 更新（PUT）の例:
 
 ```bash
-curl -X PUT 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/R-20260810-004' \
+curl -X PUT 'https://namegawa-brass-lab.com/api/lesson-reservations/R-20260810-004' \
 	-H 'Content-Type: application/json' \
 	-H 'X-Editor-Password: ここに編集用パスワード' \
 	-d '{"status":"確認中","message":"日程確認中です"}'
@@ -243,14 +243,14 @@ curl -X PUT 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/R-2
 削除（DELETE）の例:
 
 ```bash
-curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/R-20260810-004' \
+curl -X DELETE 'https://namegawa-brass-lab.com/api/lesson-reservations/R-20260810-004' \
 	-H 'X-Editor-Password: ここに編集用パスワード'
 ```
 
 月単位の一括削除（DELETE）の例:
 
 ```bash
-curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/month/2026-08' \
+curl -X DELETE 'https://namegawa-brass-lab.com/api/lesson-reservations/month/2026-08' \
 	-H 'X-Editor-Password: ここに編集用パスワード'
 ```
 
@@ -264,7 +264,7 @@ curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/
 - 認証ヘッダー: `X-Editor-Password`（`EDITOR_PASSWORD`と同じ値）
 
 ```bash
-curl -X POST 'https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses/admin' \
+curl -X POST 'https://namegawa-brass-lab.com/api/lesson-slot-statuses/admin' \
 	-H 'Content-Type: application/json' \
 	-H 'X-Editor-Password: ここに編集用パスワード' \
 	-d '{"start_date":"2026-08-20","end_date":"2026-08-22","start_time":"09:00","end_time":"10:00","status":"予約済","note":"本番前リハ"}'
@@ -305,7 +305,7 @@ Apps Scriptを更新した場合は、ウェブアプリを再デプロイして
 事前に環境変数を設定してください。
 
 ```bash
-export BASE_URL='https://namegawa-brass-lab.onrender.com'
+export BASE_URL='https://namegawa-brass-lab.com'
 export EDITOR_PASSWORD='ここに編集用パスワード'
 ```
 
@@ -470,7 +470,7 @@ curl -sS -X PUT "${BASE_URL}/api/lesson-reservations/R-20260810-004" \
 1. 事前変数を設定
 
 ```bash
-export BASE_URL='https://namegawa-brass-lab.onrender.com'
+export BASE_URL='https://namegawa-brass-lab.com'
 export CHECK_DATE='2026-08-20'
 export EDITOR_PASSWORD='ここに編集用パスワード'
 ```
@@ -564,7 +564,7 @@ curl -sS "${BASE_URL}/api/lesson-slot-statuses?from=${CHECK_DATE}&to=${CHECK_DAT
 `BASE_URL` と `CHECK_DATE` は必要に応じて上書きできます。
 
 ```bash
-BASE_URL='https://namegawa-brass-lab.onrender.com' CHECK_DATE='2026-08-10' ./healthcheck-prod.sh
+BASE_URL='https://namegawa-brass-lab.com' CHECK_DATE='2026-08-10' ./healthcheck-prod.sh
 ```
 
 失敗通知（任意）:

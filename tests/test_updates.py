@@ -40,6 +40,38 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("mountPath: /app/data", render_config)
         self.assertIn("- key: CONTRACTS_DIR\n        value: /app/data/contracts", render_config)
 
+    def test_responses_include_security_headers(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/health")
+
+        self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
+        self.assertEqual(response.headers["X-Frame-Options"], "SAMEORIGIN")
+        self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
+        self.assertIn("microphone=(self)", response.headers["Permissions-Policy"])
+        self.assertNotIn("Strict-Transport-Security", response.headers)
+
+    def test_editor_auth_rate_limited_after_repeated_failures(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
+            client = create_app(database_url="").test_client()
+            last_response = None
+            for _ in range(21):
+                last_response = client.post(
+                    "/api/updates",
+                    json={},
+                    headers={"X-Editor-Password": "wrong-password"},
+                )
+            self.assertEqual(last_response.status_code, 429)
+            self.assertIn("認証試行", last_response.json["error"])
+
+            recovered = client.post(
+                "/api/editor",
+                headers={"X-Editor-Password": "editor-secret"},
+            )
+
+        self.assertEqual(recovered.status_code, 200)
+        self.assertTrue(recovered.json["authenticated"])
+
     def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
         query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
 
@@ -1100,7 +1132,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("instrumentPricesConfirmable", page)
         self.assertIn("master.verified = true", page)
         self.assertIn("window.location.protocol === 'file:'", page)
-        self.assertIn("https://namegawa-brass-lab.onrender.com/contract-generator/", page)
+        self.assertIn("https://namegawa-brass-lab.com/contract-generator/", page)
         self.assertIn("見積作成年の公開カタログで再照会", page)
         self.assertIn("const candidateSourceUrl = candidate.source_url || result.recommended_source_url || item.lookup_source_url;", page)
         self.assertIn("master.source_url = master.source_url || item.lookup_source_url;", page)
@@ -1501,7 +1533,7 @@ class UpdatesTest(unittest.TestCase):
                         },
                         "freight_rate_master": {
                             "effective_date": "2026-04-01",
-                            "source_url": "https://namegawa-brass-lab.onrender.com/contract-generator/",
+                            "source_url": "https://namegawa-brass-lab.com/contract-generator/",
                             "verified": False,
                             "distance_base_20": "5000",
                             "distance_per_km_21_50": "200",

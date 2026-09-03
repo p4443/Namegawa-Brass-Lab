@@ -68,7 +68,7 @@ current_invoice_registration_number="$(env_value INVOICE_REGISTRATION_NUMBER)"
 current_download_token_secret="$(env_value DOWNLOAD_TOKEN_SECRET)"
 current_public_site_url="$(env_value PUBLIC_SITE_URL)"
 current_editor_password="$(env_value EDITOR_PASSWORD)"
-store_api_url="${STORE_API_URL:-https://namegawa-brass-lab.onrender.com}"
+store_api_url="${STORE_API_URL:-https://namegawa-brass-lab.com}"
 if [[ "$current_stripe_secret_key" == sk_live_* ]]; then
   default_mode_selection="2"
 else

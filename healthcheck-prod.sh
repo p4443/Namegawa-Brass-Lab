@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://namegawa-brass-lab.onrender.com}"
+BASE_URL="${BASE_URL:-https://namegawa-brass-lab.com}"
 CHECK_DATE="${CHECK_DATE:-$(date +%F)}"
 HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
 HEALTHCHECK_NOTIFY_MENTION="${HEALTHCHECK_NOTIFY_MENTION:-}"

@@ -783,7 +783,7 @@
   <script src="../back-navigation.js"></script>
   <script>
     if (window.location.protocol === 'file:') {
-      window.location.replace('https://namegawa-brass-lab.onrender.com/contract-generator/');
+      window.location.replace('https://namegawa-brass-lab.com/contract-generator/');
     }
 
     const loginScreen = document.getElementById('loginScreen');
@@ -858,7 +858,7 @@
         freight_operation: { waiting_minutes: '0', loading_minutes: '0', loading_support_mode: 'carrier', cancellation_type: 'none', actual_expenses: '0', instrument_surcharge_mode: 'none', instrument_surcharge_amount: '0', special_work_amount: '0', holiday: false, night: false },
         instrument_price_master: { effective_date: '', source_url: '', source_urls: [], catalog_year: '', refresh_interval_days: '30', verified: false },
         freight_rate_master: {
-          effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/', verified: true,
+          effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.com/contract-generator/', verified: true,
           distance_base_20: '5000', distance_per_km_21_50: '200', distance_per_km_51_100: '150', distance_per_km_101_plus: '120',
           distance_per_km_101_150: '120', distance_per_km_151_plus: '120',
           charter_2h: '0', extra_30m: '0', loading_per_15m: '0', loading_per_30m: '1500', holiday_percent: '20', night_percent: '30',
@@ -1204,7 +1204,7 @@
 
     const lightCargoReferenceRateHistory = [{
       effective_date: '2026-04-01',
-      source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/',
+      source_url: 'https://namegawa-brass-lab.com/contract-generator/',
       verified: true,
       distance_base_20: '5000',
       distance_per_km_21_50: '200',
@@ -1601,7 +1601,7 @@
         ...(values.instrument_price_master || {})
       };
       values.freight_rate_master = {
-        effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.onrender.com/contract-generator/', verified: true,
+        effective_date: '2026-04-01', source_url: 'https://namegawa-brass-lab.com/contract-generator/', verified: true,
         distance_base_20: '0', distance_per_km_21_50: '0', distance_per_km_51_100: '0', distance_per_km_101_plus: '0',
         distance_per_km_101_150: '0', distance_per_km_151_plus: '0', charter_2h: '0', extra_30m: '0',
         loading_per_15m: '0', loading_per_30m: '0', holiday_percent: '0', night_percent: '0', tax_included: false,

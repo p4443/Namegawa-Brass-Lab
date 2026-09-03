@@ -1621,8 +1621,8 @@
     const reservationCancelForm = document.getElementById("reservation-cancel-form");
     const reservationCancelStatus = document.getElementById("reservation-cancel-status");
     const reservationCancelSubmit = reservationCancelForm.querySelector("button[type='submit']");
-    const renderReservationApi = "https://namegawa-brass-lab.onrender.com/api/lesson-reservations";
-    const renderSlotStatusApi = "https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses";
+    const renderReservationApi = "https://namegawa-brass-lab.com/api/lesson-reservations";
+    const renderSlotStatusApi = "https://namegawa-brass-lab.com/api/lesson-slot-statuses";
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
         ? [renderApi, `../${relativePath}`, `/${relativePath}`]

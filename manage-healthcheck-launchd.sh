@@ -10,7 +10,7 @@ LOG_DIR="${REPO_DIR}/logs"
 OUT_LOG="${LOG_DIR}/healthcheck.out.log"
 ERR_LOG="${LOG_DIR}/healthcheck.err.log"
 
-BASE_URL="${BASE_URL:-https://namegawa-brass-lab.onrender.com}"
+BASE_URL="${BASE_URL:-https://namegawa-brass-lab.com}"
 HEALTHCHECK_HOUR="${HEALTHCHECK_HOUR:-8}"
 HEALTHCHECK_MINUTE="${HEALTHCHECK_MINUTE:-0}"
 HEALTHCHECK_NOTIFY_WEBHOOK="${HEALTHCHECK_NOTIFY_WEBHOOK:-}"
@@ -105,7 +105,7 @@ Usage:
   ./manage-healthcheck-launchd.sh print
 
 Environment variables:
-  BASE_URL             default: https://namegawa-brass-lab.onrender.com
+  BASE_URL             default: https://namegawa-brass-lab.com
   HEALTHCHECK_HOUR     default: 8
   HEALTHCHECK_MINUTE   default: 0
   HEALTHCHECK_NOTIFY_WEBHOOK   optional: webhook URL for failure alerts

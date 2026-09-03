@@ -61,6 +61,9 @@ STORE_DOWNLOAD_LIMIT = 10
 STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
 STORE_RECOVERY_LIMIT = 5
 STORE_RECOVERY_WINDOW_SECONDS = 15 * 60
+EDITOR_AUTH_FAILURE_LIMIT = 20
+EDITOR_AUTH_FAILURE_WINDOW_SECONDS = 10 * 60
+MAX_REQUEST_BYTES = 25 * 1024 * 1024
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 INVOICE_REGISTRATION_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
 DEFAULT_INVOICE_REGISTRATION_NUMBER = "T2810320517878"
@@ -2234,6 +2237,22 @@ def create_app(
 ):
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+    app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+
+    @app.after_request
+    def apply_security_headers(response):
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+        response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Permissions-Policy", "camera=(), microphone=(self), geolocation=()"
+        )
+        if request.is_secure:
+            response.headers.setdefault(
+                "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
+            )
+        return response
+
     configured_database_url = (
         os.environ.get("DATABASE_URL", "") if database_url is None else database_url
     )
@@ -2248,6 +2267,8 @@ def create_app(
     download_count_lock = threading.Lock()
     recovery_attempts = {}
     recovery_attempt_lock = threading.Lock()
+    editor_auth_failures = {}
+    editor_auth_failure_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -2623,6 +2644,20 @@ def create_app(
             recovery_attempts[client_address] = (window_started_at, count)
             return count <= STORE_RECOVERY_LIMIT
 
+    def editor_auth_failure_is_limited(client_address):
+        now = time.monotonic()
+        with editor_auth_failure_lock:
+            window_started_at, count = editor_auth_failures.get(client_address, (now, 0))
+            if now - window_started_at >= EDITOR_AUTH_FAILURE_WINDOW_SECONDS:
+                window_started_at, count = now, 0
+            count += 1
+            editor_auth_failures[client_address] = (window_started_at, count)
+            return count > EDITOR_AUTH_FAILURE_LIMIT
+
+    def clear_editor_auth_failures(client_address):
+        with editor_auth_failure_lock:
+            editor_auth_failures.pop(client_address, None)
+
     def product_archive_is_valid():
         path = Path(product_file)
         try:
@@ -2798,11 +2833,15 @@ def create_app(
             supplied_password = str(payload.get("editor_password", ""))
         if not configured_password:
             return jsonify({"error": "編集用パスワードが設定されていません。"}), 503
-        if not hmac.compare_digest(
+        client_address = request.remote_addr or "unknown"
+        if hmac.compare_digest(
             supplied_password.encode("utf-8"), configured_password.encode("utf-8")
         ):
-            return jsonify({"error": "パスワードが違います。"}), 401
-        return None
+            clear_editor_auth_failures(client_address)
+            return None
+        if editor_auth_failure_is_limited(client_address):
+            return jsonify({"error": "認証試行が多すぎます。時間をおいて再度お試しください。"}), 429
+        return jsonify({"error": "パスワードが違います。"}), 401
 
     @app.get("/")
     def index():
