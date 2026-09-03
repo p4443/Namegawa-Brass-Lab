@@ -72,6 +72,57 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(recovered.status_code, 200)
         self.assertTrue(recovered.json["authenticated"])
 
+    def test_legacy_onrender_host_redirects_get_to_canonical_site(self):
+        with patch.dict(
+            os.environ, {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"}, clear=False
+        ):
+            client = create_app(database_url="").test_client()
+            response = client.get(
+                "/lesson/?a=1",
+                base_url="https://namegawa-brass-lab.onrender.com",
+            )
+
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(
+            response.headers["Location"],
+            "https://namegawa-brass-lab.com/lesson/?a=1",
+        )
+
+    def test_legacy_onrender_host_does_not_redirect_post(self):
+        with patch.dict(
+            os.environ, {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"}, clear=False
+        ):
+            client = create_app(database_url="").test_client()
+            response = client.post(
+                "/api/updates",
+                json={},
+                base_url="https://namegawa-brass-lab.onrender.com",
+            )
+
+        self.assertNotEqual(response.status_code, 301)
+        self.assertNotEqual(response.status_code, 302)
+
+    def test_canonical_host_is_not_redirected(self):
+        with patch.dict(
+            os.environ, {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"}, clear=False
+        ):
+            client = create_app(database_url="").test_client()
+            response = client.get(
+                "/health",
+                base_url="https://namegawa-brass-lab.com",
+            )
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_localhost_is_not_redirected(self):
+        with patch.dict(
+            os.environ, {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"}, clear=False
+        ):
+            client = create_app(database_url="").test_client()
+            response = client.get("/health")
+
+        self.assertEqual(response.status_code, 200)
+
     def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
         query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
 

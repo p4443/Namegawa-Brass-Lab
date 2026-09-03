@@ -2239,6 +2239,22 @@ def create_app(
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
 
+    @app.before_request
+    def redirect_legacy_host():
+        if request.method not in {"GET", "HEAD"}:
+            return None
+        site_url = public_site_url()
+        if not site_url:
+            return None
+        canonical_host = urlparse(site_url).netloc.lower()
+        request_host = (request.host or "").lower()
+        if not request_host or request_host == canonical_host:
+            return None
+        if not request_host.endswith(".onrender.com"):
+            return None
+        target = site_url + request.full_path.rstrip("?")
+        return redirect(target, code=301)
+
     @app.after_request
     def apply_security_headers(response):
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
