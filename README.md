@@ -247,7 +247,14 @@ curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/
 	-H 'X-Editor-Password: ここに編集用パスワード'
 ```
 
-状態に指定できる値は `確認中` / `確定` / `キャンセル` です。管理画面では確定した予約者を折りたたみ一覧へ格納します。
+月単位の一括削除（DELETE）の例:
+
+```bash
+curl -X DELETE 'https://namegawa-brass-lab.onrender.com/api/lesson-reservations/month/2026-08' \
+	-H 'X-Editor-Password: ここに編集用パスワード'
+```
+
+月次削除は毎月1日にのみ実行でき、過去月の予約をすべて削除します。過去の予約枠は解放しません。状態に指定できる値は `確認中` / `確定` / `キャンセル` です。管理画面では「予約者一覧」と「確定した予約者一覧」をそれぞれ管理者の任意のタイミングで開閉できます。
 
 ### 予約枠状態の管理API（管理者）
 
@@ -272,7 +279,7 @@ curl -X POST 'https://namegawa-brass-lab.onrender.com/api/lesson-slot-statuses/a
 
 - 公開URL: `/schedule/`
 - 予約者は月間カレンダーと日別の空き時間を確認し、その日時を引き継いで予約フォームへ移動できます。
-- 管理者は同じページ下部から`EDITOR_PASSWORD`でログインし、予約者一覧の確認、状態変更、削除、予約不可枠の一括設定ができます。
+- 管理者は同じページ下部から`EDITOR_PASSWORD`でログインし、予約者一覧の確認、状態変更、個別・月次削除、予約不可枠の一括設定ができます。
 - 土曜日と日曜日は予約者から「要相談」で受け付け、管理者は予約者一覧の時刻入力へ決定時刻を入れて状態と同時に更新できます。
 - 予約者の氏名・連絡先・要望は、認証済みの管理者用APIからのみ取得され、公開カレンダーには表示されません。
 

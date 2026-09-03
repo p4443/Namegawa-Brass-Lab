@@ -801,7 +801,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-02-reservation-admin-notification-v34"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-03-reservation-monthly-deletion-v36"
 
 
 def current_japan_date():
@@ -2056,6 +2056,13 @@ def validate_reservation_id(value):
     if not re.fullmatch(r"R-\d{8}-\d{3,}", reservation_id):
         raise ValueError("予約番号の形式が正しくありません。")
     return reservation_id
+
+
+def validate_reservation_month(value):
+    month = str(value).strip()
+    if not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", month):
+        raise ValueError("削除する月をYYYY-MM形式で指定してください。")
+    return month
 
 
 def validate_lesson_reservation_cancellation(payload):
@@ -3855,6 +3862,11 @@ def create_app(
         except LessonReservationDeliveryError as exc:
             app.logger.exception("Apps Script rejected lesson reservation list")
             error_message = str(exc)
+            if error_message == "Unauthorized":
+                return lesson_reservation_json(
+                    {"error": "GASのAPI_SECRETとRenderのGOOGLE_APPS_SCRIPT_SECRETが一致していません。両方を同じ値にして、Renderを再デプロイしてください。"},
+                    503,
+                )
             if error_message in {"Unsupported action", "OUTDATED_DEPLOYMENT"}:
                 return lesson_reservation_json(
                     {"error": "Apps Scriptの公開版が古いため予約一覧を取得できません。Code.gsを新しいバージョンで再デプロイしてください。"},
@@ -3868,6 +3880,90 @@ def create_app(
             app.logger.exception("Failed to list lesson reservations")
             return lesson_reservation_json(
                 {"error": "現在、予約一覧を取得できません。"},
+                503,
+            )
+
+    @app.route("/api/lesson-reservations/month/<month>", methods=["DELETE", "OPTIONS"])
+    def delete_lesson_reservations_for_month(month):
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        try:
+            reservation_month = validate_reservation_month(month)
+        except ValueError as exc:
+            response = jsonify({"error": str(exc)})
+            response.status_code = 400
+            return with_lesson_reservation_cors(
+                response,
+                methods="DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        today = current_japan_date()
+        if today.day != 1:
+            return lesson_reservation_json(
+                {"error": "月別の予約削除は毎月1日に実行できます。"},
+                400,
+            )
+        if reservation_month >= today.strftime("%Y-%m"):
+            return lesson_reservation_json(
+                {"error": "過去月の予約のみ削除できます。"},
+                400,
+            )
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、月別の予約削除を利用できません。"},
+                503,
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"month": reservation_month},
+                action="delete_month",
+            )
+            response = jsonify(
+                {
+                    "deleted": True,
+                    "month": reservation_month,
+                    "deleted_count": parse_updated_count(result),
+                }
+            )
+            return with_lesson_reservation_cors(
+                response,
+                methods="DELETE, OPTIONS",
+                headers="Content-Type, X-Editor-Password",
+            )
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script rejected monthly reservation deletion")
+            if str(exc) in {"Unsupported action", "OUTDATED_DEPLOYMENT"}:
+                return lesson_reservation_json(
+                    {"error": "Apps Scriptの公開版が古いため月別の予約を削除できません。Code.gsを新しいバージョンで再デプロイしてください。"},
+                    503,
+                )
+            return lesson_reservation_json(
+                {"error": "月別の予約を削除できませんでした。"},
+                502,
+            )
+        except (json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Failed to delete monthly lesson reservations")
+            return lesson_reservation_json(
+                {"error": "月別の予約を削除できませんでした。"},
                 503,
             )
 
@@ -3945,7 +4041,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -3966,7 +4062,20 @@ def create_app(
                 },
                 200,
             )
-        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script admin deployment is unavailable or outdated")
+            if str(exc) == "Unauthorized":
+                return lesson_reservation_json(
+                    {"error": "GASのAPI_SECRETとRenderのGOOGLE_APPS_SCRIPT_SECRETが一致していません。両方を同じ値にして、Renderを再デプロイしてください。"},
+                    503,
+                )
+            return lesson_reservation_json(
+                {
+                    "error": "Apps Scriptが古いデプロイです。Code.gsを新しいバージョンで再デプロイし、RenderのGOOGLE_APPS_SCRIPT_URLを最新の/exec URLへ更新してください。"
+                },
+                503,
+            )
+        except (json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
             app.logger.exception("Apps Script admin deployment is unavailable or outdated")
             return lesson_reservation_json(
                 {

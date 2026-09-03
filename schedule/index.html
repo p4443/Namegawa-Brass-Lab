@@ -109,6 +109,8 @@
     .reservation-archive { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
     .reservation-archive summary { cursor: pointer; color: var(--navy); font-weight: 800; }
     .reservation-archive-list { display: grid; gap: 10px; margin-top: 10px; }
+    .reservation-list-controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: end; }
+    .reservation-list-controls .field { max-width: 180px; }
     .reservation-item { display: grid; grid-template-columns: minmax(180px, .8fr) minmax(220px, 1.4fr) auto; gap: 14px; align-items: center; padding: 13px; border: 1px solid var(--line); border-radius: 6px; }
     .reservation-date { color: var(--navy); font-weight: 800; }
     .reservation-meta, .reservation-contact { color: var(--muted); font-size: .78rem; overflow-wrap: anywhere; }
@@ -216,9 +218,20 @@
           </section>
           <section class="admin-section">
             <h3>予約者一覧</h3>
-            <button class="retry-button" id="reservation-retry" type="button">予約一覧を再読み込み</button>
-            <button class="button" id="reservation-save-all" type="button" disabled>変更した予約をまとめて更新</button>
-            <div class="reservation-list" id="reservation-list"></div>
+            <div class="reservation-list-controls">
+              <button class="retry-button" id="reservation-retry" type="button">予約一覧を再読み込み</button>
+              <button class="button" id="reservation-save-all" type="button" disabled>変更した予約をまとめて更新</button>
+              <div class="field"><label for="reservation-delete-month">削除する月</label><input id="reservation-delete-month" type="month" required></div>
+              <button class="button danger" id="reservation-delete-month-button" type="button">選択月を削除</button>
+            </div>
+            <details class="reservation-archive" id="pending-reservation-archive" open>
+              <summary id="pending-reservation-summary">予約者一覧</summary>
+              <div class="reservation-archive-list" id="reservation-list"></div>
+            </details>
+            <details class="reservation-archive" id="confirmed-reservation-archive">
+              <summary id="confirmed-reservation-summary">確定した予約者一覧</summary>
+              <div class="reservation-archive-list" id="confirmed-reservation-list"></div>
+            </details>
           </section>
           <section class="admin-section">
             <h3>予約枠の一括設定</h3>
@@ -478,8 +491,13 @@
     const adminStatus = document.getElementById("admin-status");
     const dashboard = document.getElementById("admin-dashboard");
     const reservationList = document.getElementById("reservation-list");
+    const confirmedReservationList = document.getElementById("confirmed-reservation-list");
+    const pendingReservationSummary = document.getElementById("pending-reservation-summary");
+    const confirmedReservationSummary = document.getElementById("confirmed-reservation-summary");
     const reservationRetry = document.getElementById("reservation-retry");
     const reservationSaveAll = document.getElementById("reservation-save-all");
+    const reservationDeleteMonth = document.getElementById("reservation-delete-month");
+    const reservationDeleteMonthButton = document.getElementById("reservation-delete-month-button");
     const adminLogout = document.getElementById("admin-logout");
     const adminSlotCalendar = document.getElementById("admin-slot-calendar");
     const adminCalendarMonth = document.getElementById("admin-calendar-month");
@@ -490,6 +508,10 @@
     let adminPassword = "";
     let adminVisibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedAdminDate = "";
+    const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    reservationDeleteMonth.value = dateText(previousMonth).slice(0, 7);
+    reservationDeleteMonth.max = dateText(previousMonth).slice(0, 7);
+    reservationDeleteMonthButton.disabled = today.getDate() !== 1;
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
@@ -540,6 +562,7 @@
       changedReservationIds.clear();
       reservationEditors.clear();
       reservationList.replaceChildren();
+      confirmedReservationList.replaceChildren();
       reservationSaveAll.disabled = true;
       reservationSaveAll.textContent = "変更した予約をまとめて更新";
       dashboard.hidden = true;
@@ -552,16 +575,16 @@
     });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
+      const pendingReservations = activeReservations.filter((reservation) => reservation.status !== "確定");
       const confirmedReservations = activeReservations.filter((reservation) => reservation.status === "確定");
       reservationList.replaceChildren();
+      confirmedReservationList.replaceChildren();
+      pendingReservationSummary.textContent = `予約者一覧（${pendingReservations.length}件）`;
+      confirmedReservationSummary.textContent = `確定した予約者一覧（${confirmedReservations.length}件）`;
       reservationEditors.clear();
       changedReservationIds.clear();
       reservationSaveAll.disabled = true;
       if (!activeReservations.length) { reservationList.textContent = "予約はありません。"; return; }
-      const confirmedArchive = document.createElement("details"); confirmedArchive.className = "reservation-archive";
-      const confirmedSummary = document.createElement("summary"); confirmedSummary.textContent = `確定した予約者一覧（${confirmedReservations.length}件）`;
-      const confirmedList = document.createElement("div"); confirmedList.className = "reservation-archive-list";
-      confirmedArchive.append(confirmedSummary, confirmedList);
       activeReservations.forEach((reservation) => {
         const item = document.createElement("article"); item.className = "reservation-item";
         const when = document.createElement("div"); when.innerHTML = `<div class="reservation-date"></div><div class="reservation-meta"></div>`;
@@ -593,9 +616,10 @@
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
         reservationEditors.set(reservation.reservation_id, { reservation, status, timeInput, durationInput });
         actions.append(status, timeInput, durationInput, save, remove); item.append(when, person, actions);
-        (reservation.status === "確定" ? confirmedList : reservationList).append(item);
+        (reservation.status === "確定" ? confirmedReservationList : reservationList).append(item);
       });
-      if (confirmedReservations.length) reservationList.append(confirmedArchive);
+      if (!pendingReservations.length) reservationList.textContent = "未確定の予約はありません。";
+      if (!confirmedReservations.length) confirmedReservationList.textContent = "確定した予約はありません。";
     }
     async function loadReservations() {
       const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 });
@@ -692,6 +716,23 @@
       catch (error) { adminStatus.textContent = `予約は削除済みです。一覧の再読み込みに失敗しました: ${error.message}`; }
       loadSchedule();
     }
+    reservationDeleteMonthButton.addEventListener("click", async () => {
+      const month = reservationDeleteMonth.value;
+      if (!month) { adminStatus.textContent = "削除する月を選択してください。"; return; }
+      if (today.getDate() !== 1) { adminStatus.textContent = "月別の予約削除は毎月1日に実行できます。"; return; }
+      if (!window.confirm(`${month} の予約をすべて削除しますか？この操作は元に戻せません。`)) return;
+      reservationDeleteMonthButton.disabled = true;
+      adminStatus.textContent = `${month} の予約を削除しています…`;
+      try {
+        const result = await requestApi(`/api/lesson-reservations/month/${encodeURIComponent(month)}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 120000 });
+        await Promise.all([loadReservations(), loadSchedule()]);
+        adminStatus.textContent = `${result.month} の予約を${result.deleted_count}件削除しました。`;
+      } catch (error) {
+        adminStatus.textContent = error.message;
+      } finally {
+        reservationDeleteMonthButton.disabled = false;
+      }
+    });
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
       event.preventDefault(); const loginForm = event.currentTarget; const passwordInput = document.getElementById("admin-password"); adminPassword = passwordInput.value; adminStatus.textContent = "確認しています…";
       try {
