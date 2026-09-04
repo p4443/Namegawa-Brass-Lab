@@ -293,22 +293,6 @@
     let scheduleReady = false;
     let scheduleLoadError = "";
 
-    const makeRange = (startHour, startMinute, endHour, endMinute) => {
-      const result = [];
-      for (let value = startHour * 60 + startMinute; value <= endHour * 60 + endMinute; value += 15) {
-        result.push(`${String(Math.floor(value / 60)).padStart(2, "0")}:${String(value % 60).padStart(2, "0")}`);
-      }
-      return result;
-    };
-    const timesByDay = {
-      0: ["要相談"],
-      1: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
-      2: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
-      3: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
-      4: makeRange(6,45,12,0),
-      5: [...makeRange(6,45,17,0), "要相談"],
-      6: ["要相談"],
-    };
     const availableTimesForLesson = (lessonType, value) => {
       const day = calendarDays.get(value);
       if (!lessonType || !day) return [];
@@ -515,28 +499,17 @@
     reservationDeleteMonthButton.disabled = today.getDate() !== 1;
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function adminSlotsForDate(value) {
-      const date = new Date(`${value}T00:00:00`);
       const savedSlots = new Map(scheduleSlots
         .filter((slot) => slot.date === value)
         .map((slot) => [slot.time, slot]));
-      const times = new Set([...(timesByDay[date.getDay()] || []), ...savedSlots.keys()]);
+      const internalTimes = calendarDays.get(value)?.internal_times || [];
+      const times = new Set([...internalTimes, ...savedSlots.keys()]);
       return [...times].map((time) => savedSlots.get(time) || {
         date: value,
         time,
         status: "空き",
         note: "通常受付枠",
       });
-    }
-    function adminAvailableBookingCount(slots, durationMinutes, startMinutes) {
-      const statusByMinute = new Map(slots
-        .filter((slot) => /^\d{2}:\d{2}$/.test(slot.time))
-        .map((slot) => [Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3)), slot.status]));
-      const candidates = [...statusByMinute.keys()]
-        .filter((minutes) => startMinutes.includes(minutes % 60))
-        .filter((minutes) => Array.from({ length: durationMinutes / 15 }, (_, index) => minutes + index * 15)
-          .every((slotMinutes) => statusByMinute.get(slotMinutes) === "空き"))
-        .sort((left, right) => left - right);
-      return candidates.length;
     }
     function adminStatusRanges(slots) {
       const blockedSlots = slots

@@ -925,6 +925,7 @@ def lesson_calendar_days(from_date, to_date, slots):
                 "group_consultation_required": True,
                 "lessons": lessons,
                 "blocked_statuses": sorted(day_statuses),
+                "internal_times": internal_times_for_date(current_date),
             }
         )
         current_date += timedelta(days=1)
@@ -967,6 +968,14 @@ WEEKDAY_RESERVATION_TIMES = {
     5: {CONSULTATION_TIME},
     6: {CONSULTATION_TIME},
 }
+
+
+def internal_times_for_date(value):
+    weekday_times = WEEKDAY_RESERVATION_TIMES[value.weekday()]
+    times = sorted(time for time in weekday_times if time != CONSULTATION_TIME)
+    if CONSULTATION_TIME in weekday_times:
+        times.append(CONSULTATION_TIME)
+    return times
 
 
 class LessonReservationDeliveryError(Exception):
@@ -2136,14 +2145,10 @@ def validate_lesson_reservation_update(payload):
 
 def validate_admin_reservation_schedule(current_reservation, updates):
     lesson_type = updates.get("lesson_type", current_reservation["lesson_type"])
-    preferred_date = updates.get("preferred_date", current_reservation["preferred_date"])
-    preferred_time = updates.get("preferred_time", current_reservation["preferred_time"])
     if lesson_type == "グループ・部活動指導":
         return
-    if preferred_time == CONSULTATION_TIME:
-        if datetime.strptime(preferred_date, "%Y-%m-%d").weekday() != 4:
-            raise ValueError("要相談は金曜日またはグループ・部活動指導で指定できます。")
-        return
+    preferred_date = updates.get("preferred_date", current_reservation["preferred_date"])
+    preferred_time = updates.get("preferred_time", current_reservation["preferred_time"])
     reservation_date = datetime.strptime(preferred_date, "%Y-%m-%d").date()
     if preferred_time not in lesson_start_times(reservation_date, lesson_type):
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
@@ -4434,6 +4439,24 @@ def create_app(
                 )
 
             values = validate_lesson_reservation_update(request.get_json(silent=True))
+            if {"lesson_type", "preferred_date", "preferred_time"} & values.keys():
+                listing = send_lesson_reservation(
+                    script_url,
+                    script_secret,
+                    {},
+                    action="list",
+                )
+                current_reservation = next(
+                    (
+                        reservation
+                        for reservation in listing.get("reservations", [])
+                        if reservation.get("reservation_id") == valid_reservation_id
+                    ),
+                    None,
+                )
+                # キャンセル済みなど一覧に無い予約はGAS側の存在確認に委ねる
+                if current_reservation is not None:
+                    validate_admin_reservation_schedule(current_reservation, values)
             result = send_lesson_reservation(
                 script_url,
                 script_secret,

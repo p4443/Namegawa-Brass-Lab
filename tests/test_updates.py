@@ -2603,10 +2603,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("06:45〜17:00／それ以外は要相談", page)
         self.assertIn("月〜水</dt><dd><span class=\"reservation-time-range\">06:45〜09:00", page)
         self.assertNotIn("月〜水</dt><dd><span class=\"reservation-time-range\">07:00〜09:00", page)
-        self.assertIn('1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
-        self.assertIn('4: makeTimeRange(6, 45, 12, 0)', page)
-        self.assertIn('5: [...makeTimeRange(6, 45, 17, 0), "要相談"]', page)
-        self.assertIn('6: ["要相談"]', page)
+        self.assertNotIn("timesByDay", page)
+        self.assertNotIn("makeTimeRange", page)
+        self.assertIn("fetchLessonCalendarDay", page)
+        self.assertIn("api/lesson-calendar", page)
         self.assertIn("土・日：要相談", page)
         self.assertIn("種別ごとの開始可能時刻は、予約フォームで空き状況とあわせてご確認ください。", page)
         self.assertIn('id="elementary-lesson-toggle" type="button" aria-expanded="false"', page)
@@ -2629,8 +2629,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("detail.hidden = true", page)
         self.assertIn("detail.hidden = isOpen", page)
         self.assertIn("scroll-snap-type: none", page)
-        self.assertIn("function availableTimesForLesson", page)
-        self.assertIn('lessonType === "グループ・部活動指導"', page)
+        self.assertNotIn("function availableTimesForLesson", page)
+        self.assertIn('reservationType.value === "グループ・部活動指導"', page)
         self.assertIn('time === "要相談"', page)
         self.assertIn('status === "お休み"', page)
 
@@ -2760,12 +2760,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function renderAdminSlotCalendar()", page)
         self.assertIn("function renderAdminSlotDetails(value)", page)
         self.assertIn("function adminSlotsForDate(value)", page)
-        self.assertIn("function adminAvailableBookingCount(slots, durationMinutes, startMinutes)", page)
         self.assertIn("function adminStatusRanges(slots)", page)
         self.assertIn('`${range.status} ${String(Math.floor(range.startMinutes / 60))', page)
         self.assertIn('statusRanges.map((range) => range.label)', page)
         self.assertIn('admin-status-range', page)
-        self.assertIn('statusByMinute.get(slotMinutes) === "空き"', page)
         self.assertIn('|| "通常受付"', page)
         self.assertIn('statusRanges.map((range) => range.label).join("・")', page)
         self.assertIn('slots.every((slot) => slot.time === "要相談")', page)
@@ -2811,8 +2809,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("}, 30000);", page)
         self.assertIn('total ? "受付日" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
-        self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', page)
-        self.assertIn('6: ["要相談"]', page)
+        self.assertNotIn("timesByDay", page)
+        self.assertNotIn("makeRange", page)
+        self.assertIn("calendarDays.get(value)?.internal_times", page)
         self.assertIn('time === "要相談"', page)
         self.assertIn('status === "お休み"', page)
         self.assertIn('timeInput.type = "time"', page)
@@ -3366,6 +3365,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("07:15", monday["lessons"]["高校生以上・大人"]["available_times"])
         self.assertTrue(saturday["consultation_required"])
         self.assertEqual(saturday["lessons"]["中学生"]["available_times"], ["要相談"])
+        self.assertEqual(monday["internal_times"][0], "06:45")
+        self.assertIn("09:00", monday["internal_times"])
+        self.assertIn("22:00", monday["internal_times"])
+        self.assertNotIn("要相談", monday["internal_times"])
+        self.assertEqual(saturday["internal_times"], ["要相談"])
+        friday = lesson_calendar_days(date(2026, 8, 14), date(2026, 8, 14), [])[0]
+        self.assertIn("17:00", friday["internal_times"])
+        self.assertEqual(friday["internal_times"][-1], "要相談")
 
     def test_lesson_calendar_api_returns_server_calculated_candidates(self):
         client = create_app().test_client()
@@ -3736,9 +3743,9 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("makeRange(6,45,9,0), ...makeRange(20,30,22,0)", schedule_source)
-        self.assertIn("4: makeRange(6,45,12,0)", schedule_source)
-        self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', schedule_source)
+        self.assertNotIn("timesByDay", schedule_source)
+        self.assertNotIn("makeRange", schedule_source)
+        self.assertIn("internal_times", schedule_source)
 
     def test_schedule_clamps_one_month_limit_at_month_end(self):
         schedule_source = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
@@ -3854,12 +3861,27 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
-            send_reservation.return_value = {
-                "ok": True,
-                "reservationId": "R-20260810-001",
-                "status": "予約済",
-                "conflict": True,
-            }
+            send_reservation.side_effect = [
+                {
+                    "ok": True,
+                    "reservations": [
+                        {
+                            "reservation_id": "R-20260810-001",
+                            "lesson_type": "体験レッスン",
+                            "preferred_date": "2026-08-20",
+                            "preferred_time": "08:00",
+                            "duration_minutes": 30,
+                            "status": "確認中",
+                        }
+                    ],
+                },
+                {
+                    "ok": True,
+                    "reservationId": "R-20260810-001",
+                    "status": "予約済",
+                    "conflict": True,
+                },
+            ]
             response = client.put(
                 "/api/lesson-reservations/R-20260810-001",
                 json={"preferred_date": "2026-08-20", "preferred_time": "09:00"},
@@ -3869,6 +3891,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 409)
         self.assertFalse(response.json["saved"])
         self.assertTrue(response.json["conflict"])
+        self.assertEqual(send_reservation.call_args_list[0].kwargs["action"], "list")
+        self.assertEqual(send_reservation.call_args_list[1].kwargs["action"], "update")
 
     def test_lesson_reservation_manage_reports_not_found(self):
         client = create_app().test_client()
@@ -3924,11 +3948,26 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
-            send_reservation.return_value = {
-                "ok": True,
-                "reservationId": "R-20260816-001",
-                "status": "確定",
-            }
+            send_reservation.side_effect = [
+                {
+                    "ok": True,
+                    "reservations": [
+                        {
+                            "reservation_id": "R-20260816-001",
+                            "lesson_type": "中学生",
+                            "preferred_date": "2026-08-21",
+                            "preferred_time": "要相談",
+                            "duration_minutes": 45,
+                            "status": "確認中",
+                        }
+                    ],
+                },
+                {
+                    "ok": True,
+                    "reservationId": "R-20260816-001",
+                    "status": "確定",
+                },
+            ]
             response = client.put(
                 "/api/lesson-reservations/R-20260816-001",
                 json={"status": "確定", "preferred_time": "13:15"},
@@ -3937,6 +3976,193 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(send_reservation.call_args.args[2]["preferred_time"], "13:15")
+        self.assertEqual(send_reservation.call_args_list[0].kwargs["action"], "list")
+        self.assertEqual(send_reservation.call_args_list[1].kwargs["action"], "update")
+
+    def test_lesson_reservation_manage_rejects_time_outside_lesson_rules(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservations": [
+                    {
+                        "reservation_id": "R-20260810-001",
+                        "lesson_type": "体験レッスン",
+                        "preferred_date": "2026-08-20",
+                        "preferred_time": "08:00",
+                        "duration_minutes": 30,
+                        "status": "確認中",
+                    }
+                ],
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"preferred_time": "07:15"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("予約可能時間", response.json["error"])
+        self.assertEqual(send_reservation.call_count, 1)
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
+
+    def test_lesson_reservation_manage_rejects_consultation_time_on_plain_weekday(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservations": [
+                    {
+                        "reservation_id": "R-20260810-001",
+                        "lesson_type": "中学生",
+                        "preferred_date": "2026-08-10",
+                        "preferred_time": "07:00",
+                        "duration_minutes": 45,
+                        "status": "確認中",
+                    }
+                ],
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"preferred_time": "要相談"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("予約可能時間", response.json["error"])
+        self.assertEqual(send_reservation.call_count, 1)
+
+    def test_lesson_reservation_manage_allows_consultation_time_on_weekend(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.side_effect = [
+                {
+                    "ok": True,
+                    "reservations": [
+                        {
+                            "reservation_id": "R-20260815-001",
+                            "lesson_type": "中学生",
+                            "preferred_date": "2026-08-15",
+                            "preferred_time": "07:00",
+                            "duration_minutes": 45,
+                            "status": "確認中",
+                        }
+                    ],
+                },
+                {
+                    "ok": True,
+                    "reservationId": "R-20260815-001",
+                    "status": "確認中",
+                    "updatedFields": ["preferred_time"],
+                },
+            ]
+            response = client.put(
+                "/api/lesson-reservations/R-20260815-001",
+                json={"preferred_time": "要相談"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["saved"])
+        self.assertEqual(send_reservation.call_args_list[0].kwargs["action"], "list")
+        self.assertEqual(send_reservation.call_args_list[1].kwargs["action"], "update")
+
+    def test_lesson_reservation_manage_group_time_is_not_window_restricted(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.side_effect = [
+                {
+                    "ok": True,
+                    "reservations": [
+                        {
+                            "reservation_id": "R-20260815-001",
+                            "lesson_type": "グループ・部活動指導",
+                            "preferred_date": "2026-08-15",
+                            "preferred_time": "要相談",
+                            "duration_minutes": None,
+                            "status": "確認中",
+                        }
+                    ],
+                },
+                {
+                    "ok": True,
+                    "reservationId": "R-20260815-001",
+                    "status": "確認中",
+                    "updatedFields": ["preferred_time", "duration_minutes"],
+                },
+            ]
+            response = client.put(
+                "/api/lesson-reservations/R-20260815-001",
+                json={"preferred_time": "13:15", "duration_minutes": 90},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["saved"])
+
+    def test_lesson_reservation_manage_status_only_skips_schedule_fetch(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260810-001",
+                "status": "確認中",
+                "updatedFields": ["status"],
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "確認中"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(send_reservation.call_count, 1)
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "update")
 
     def test_lesson_reservation_manage_rejects_invalid_admin_time(self):
         with self.assertRaisesRegex(ValueError, "希望時間"):

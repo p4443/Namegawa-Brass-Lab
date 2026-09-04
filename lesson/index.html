@@ -1622,7 +1622,7 @@
     const reservationCancelStatus = document.getElementById("reservation-cancel-status");
     const reservationCancelSubmit = reservationCancelForm.querySelector("button[type='submit']");
     const renderReservationApi = "https://namegawa-brass-lab.com/api/lesson-reservations";
-    const renderSlotStatusApi = "https://namegawa-brass-lab.com/api/lesson-slot-statuses";
+    const renderLessonCalendarApi = "https://namegawa-brass-lab.com/api/lesson-calendar";
     const buildApiCandidates = (renderApi, relativePath) => {
       const urls = location.hostname.endsWith("github.io")
         ? [renderApi, `../${relativePath}`, `/${relativePath}`]
@@ -1632,11 +1632,7 @@
 
     const reservationApiCandidates = buildApiCandidates(renderReservationApi, "api/lesson-reservations");
     const reservationCancelApiCandidates = buildApiCandidates(`${renderReservationApi}/cancel`, "api/lesson-reservations/cancel");
-    const slotStatusApiCandidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-slot-statuses");
     let slotRequestId = 0;
-    const slotStatusCache = new Map();
-    const slotStatusCacheDuration = 30 * 1000;
-    let slotStatusPreloadPromise = null;
 
     const japanDateText = new Intl.DateTimeFormat("sv-SE", {
       timeZone: "Asia/Tokyo",
@@ -1663,27 +1659,6 @@
     reservationDate.min = dateValue(firstAvailableDate);
     reservationDate.max = dateValue(lastAvailableDate);
 
-    const makeTimeRange = (startHour, startMinute, endHour, endMinute) => {
-      const times = [];
-      let minutes = startHour * 60 + startMinute;
-      const end = endHour * 60 + endMinute;
-      while (minutes <= end) {
-        times.push(`${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`);
-        minutes += 15;
-      }
-      return times;
-    };
-
-    const timesByDay = {
-      0: ["要相談"],
-      1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
-      2: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
-      3: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
-      4: makeTimeRange(6, 45, 12, 0),
-      5: [...makeTimeRange(6, 45, 17, 0), "要相談"],
-      6: ["要相談"],
-    };
-
     const blockedStatuses = new Set(["調整中", "予約済", "お休み"]);
     const blocksReservationTime = (time, status) => time === "要相談"
       ? status === "お休み"
@@ -1706,18 +1681,6 @@
           ? "要相談"
           : "レッスン種別を選択してください";
       reservationDurationMinutes.value = durationMinutes || "";
-    }
-
-    function availableTimesForLesson(lessonType, day) {
-      const dayTimes = timesByDay[day] || [];
-      if (lessonType === "グループ・部活動指導") {
-        return ["要相談"];
-      }
-      const durationMinutes = lessonDurations[lessonType];
-      return dayTimes.filter((time) => {
-        if (time === "要相談") return true;
-        return occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
-      });
     }
 
     function occupiedTimes(startTime, durationMinutes) {
@@ -1755,88 +1718,8 @@
       return map;
     }
 
-    async function requestSlotStatuses(fromDateText, toDateText) {
-      let lastError = null;
-      for (const endpoint of slotStatusApiCandidates) {
-        try {
-          const url = new URL(endpoint, location.href);
-          url.searchParams.set("from", fromDateText);
-          url.searchParams.set("to", toDateText);
-          const response = await fetch(url.toString(), { method: "GET" });
-          if (!response.ok) {
-            lastError = new Error("現在、空き状況を確認できません。");
-            continue;
-          }
-          const result = await response.json();
-          return Array.isArray(result.slots) ? result.slots : [];
-        } catch (error) {
-          lastError = error;
-        }
-      }
-      if (lastError) {
-        console.warn(lastError);
-      }
-      throw lastError || new Error("現在、空き状況を確認できません。");
-    }
-
-    function cacheSlotStatuses(fromDateText, toDateText, slots) {
-      const slotsByDate = new Map();
-      slots.forEach((slot) => {
-        const dateText = String(slot.date || "").trim();
-        if (!slotsByDate.has(dateText)) {
-          slotsByDate.set(dateText, []);
-        }
-        slotsByDate.get(dateText).push(slot);
-      });
-
-      const endDate = new Date(`${toDateText}T00:00:00`);
-      for (
-        let currentDate = new Date(`${fromDateText}T00:00:00`);
-        currentDate <= endDate;
-        currentDate.setDate(currentDate.getDate() + 1)
-      ) {
-        const dateText = dateValue(currentDate);
-        slotStatusCache.set(dateText, {
-          slots: slotsByDate.get(dateText) || [],
-          expiresAt: Date.now() + slotStatusCacheDuration,
-        });
-      }
-    }
-
-    async function preloadSlotStatuses() {
-      if (slotStatusPreloadPromise) {
-        return slotStatusPreloadPromise;
-      }
-      const fromDateText = dateValue(firstAvailableDate);
-      const toDateText = dateValue(lastAvailableDate);
-      slotStatusPreloadPromise = requestSlotStatuses(fromDateText, toDateText)
-        .then((slots) => cacheSlotStatuses(fromDateText, toDateText, slots))
-        .catch(() => {})
-        .finally(() => {
-          slotStatusPreloadPromise = null;
-        });
-      return slotStatusPreloadPromise;
-    }
-
-    async function fetchSlotStatuses(dateText) {
-      const cached = slotStatusCache.get(dateText);
-      if (cached && cached.expiresAt > Date.now()) {
-        return cached.slots;
-      }
-      if (slotStatusPreloadPromise) {
-        await slotStatusPreloadPromise;
-        const preloaded = slotStatusCache.get(dateText);
-        if (preloaded && preloaded.expiresAt > Date.now()) {
-          return preloaded.slots;
-        }
-      }
-      const slots = await requestSlotStatuses(dateText, dateText);
-      cacheSlotStatuses(dateText, dateText, slots);
-      return slots;
-    }
-
     async function fetchLessonCalendarDay(dateText) {
-      const candidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-calendar");
+      const candidates = buildApiCandidates(renderLessonCalendarApi, "api/lesson-calendar");
       for (const endpoint of candidates) {
         const url = new URL(endpoint, location.href);
         url.searchParams.set("from", dateText);
@@ -2084,7 +1967,6 @@
       }
     });
 
-    preloadSlotStatuses();
     applyRequestedSlot();
   </script>
 </body>
