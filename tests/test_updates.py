@@ -2761,6 +2761,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('`中${adminAvailableBookingCount(slots, 60)}`', page)
         self.assertIn('`高大${adminAvailableBookingCount(slots, 60)}`', page)
         self.assertIn('blockedStatuses.join("・")', page)
+        self.assertIn('slots.every((slot) => slot.time === "要相談")', page)
+        self.assertIn('`要確認${blockedStatuses.length', page)
         self.assertIn('status: "空き"', page)
         self.assertIn("...savedSlots.keys()", page)
         self.assertIn("const slots = adminSlotsForDate(value);", page)

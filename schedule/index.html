@@ -579,7 +579,10 @@
           `高大${adminAvailableBookingCount(slots, 60)}`,
         ];
         const blockedStatuses = ["調整中", "予約済", "お休み"].filter((status) => slots.some((slot) => slot.status === status));
-        summary.textContent = slots.length
+        const consultationOnly = slots.length && slots.every((slot) => slot.time === "要相談");
+        summary.textContent = consultationOnly
+          ? `要確認${blockedStatuses.length ? ` / ${blockedStatuses.join("・")}あり` : ""}`
+          : slots.length
           ? `${bookingCounts.join(" ")}${blockedStatuses.length ? ` / ${blockedStatuses.join("・")}あり` : ""}`
           : "受付なし";
         button.append(number, summary);
