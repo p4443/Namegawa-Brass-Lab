@@ -98,6 +98,7 @@
     .admin-calendar { box-shadow: none; }
     .admin-day { min-height: 82px; aspect-ratio: auto; }
     .admin-day-summary { display: grid; gap: 1px; color: var(--muted); text-align: left; font-size: .66rem; line-height: 1.3; }
+    .admin-day-status { color: var(--busy); font-weight: 800; }
     .admin-day.has-slots { border-color: #9bb6c5; background: #f7fbfc; }
     .admin-slot-detail { min-height: 100%; padding: 14px; border: 1px solid var(--line); border-radius: 6px; background: #f8fafb; }
     .admin-slot-detail h4 { margin: 0 0 10px; color: var(--navy); font-size: .88rem; }
@@ -105,6 +106,8 @@
     .admin-slot-row { display: grid; grid-template-columns: 62px 64px minmax(0, 1fr); gap: 7px; align-items: start; padding: 7px 8px; border-left: 3px solid var(--blue); background: #fff; font-size: .75rem; }
     .admin-slot-row strong { color: var(--navy); }
     .admin-slot-note { color: var(--muted); overflow-wrap: anywhere; }
+    .admin-status-ranges { display: grid; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
+    .admin-status-range { padding: 7px 8px; border-left: 3px solid var(--busy); background: #fff4f2; color: var(--navy); font-size: .75rem; font-weight: 800; }
     .reservation-list { display: grid; gap: 10px; }
     .reservation-archive { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 12px; }
     .reservation-archive summary { cursor: pointer; color: var(--navy); font-weight: 800; }
@@ -535,12 +538,34 @@
         .sort((left, right) => left - right);
       return candidates.length;
     }
+    function adminStatusRanges(slots) {
+      const blockedSlots = slots
+        .filter((slot) => ["調整中", "予約済", "お休み"].includes(slot.status) && /^\d{2}:\d{2}$/.test(slot.time))
+        .map((slot) => ({ ...slot, minutes: Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3)) }))
+        .sort((left, right) => left.minutes - right.minutes);
+      const ranges = [];
+      blockedSlots.forEach((slot) => {
+        const previous = ranges[ranges.length - 1];
+        if (previous && previous.status === slot.status && previous.endMinutes === slot.minutes) {
+          previous.endMinutes += 15;
+          return;
+        }
+        ranges.push({ status: slot.status, startMinutes: slot.minutes, endMinutes: slot.minutes + 15 });
+      });
+      return ranges.map((range) => ({
+        status: range.status,
+        label: `${range.status} ${String(Math.floor(range.startMinutes / 60)).padStart(2, "0")}:${String(range.startMinutes % 60).padStart(2, "0")}〜${String(Math.floor(range.endMinutes / 60)).padStart(2, "0")}:${String(range.endMinutes % 60).padStart(2, "0")}`,
+      }));
+    }
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
       adminSlotDate.textContent = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date(`${value}T00:00:00`));
       adminSlotList.replaceChildren();
       const slots = adminSlotsForDate(value).sort((left, right) => left.time.localeCompare(right.time));
       if (!slots.length) { adminSlotList.textContent = "通常受付枠はありません。"; return; }
+      adminStatusRanges(slots).forEach((range) => {
+        const item = document.createElement("li"); item.className = "admin-status-range"; item.textContent = range.label; adminSlotList.append(item);
+      });
       slots.forEach((slot) => {
         const item = document.createElement("li"); item.className = "admin-slot-row";
         const time = document.createElement("strong"); time.textContent = slot.time;
@@ -564,18 +589,14 @@
         button.setAttribute("aria-pressed", String(selectedAdminDate === value));
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span"); summary.className = "admin-day-summary";
-        const bookingCounts = [
-          `体小${adminAvailableBookingCount(slots, 30, [0, 15, 30, 45])}`,
-          `中${adminAvailableBookingCount(slots, 45, [0, 15, 30, 45])}`,
-          `高大${adminAvailableBookingCount(slots, 60, [0, 15, 30, 45])}`,
-        ];
-        const blockedStatuses = ["調整中", "予約済", "お休み"].filter((status) => slots.some((slot) => slot.status === status));
+        const statusRanges = adminStatusRanges(slots);
         const consultationOnly = slots.length && slots.every((slot) => slot.time === "要相談");
         summary.textContent = consultationOnly
-          ? `要確認${blockedStatuses.length ? ` / ${blockedStatuses.join("・")}あり` : ""}`
+          ? `要確認${statusRanges.length ? ` / ${statusRanges.map((range) => range.label).join("・")}` : ""}`
           : slots.length
-          ? `${bookingCounts.join(" ")}${blockedStatuses.length ? ` / ${blockedStatuses.join("・")}あり` : ""}`
+          ? `${statusRanges.map((range) => range.label).join("・") || "通常受付"}`
           : "受付なし";
+        if (statusRanges.length) summary.classList.add("admin-day-status");
         button.append(number, summary);
         button.addEventListener("click", () => { renderAdminSlotDetails(value); renderAdminSlotCalendar(); });
         adminSlotCalendar.append(button);
