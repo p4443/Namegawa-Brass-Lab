@@ -526,6 +526,24 @@
         note: "通常受付枠",
       });
     }
+    function adminAvailableBookingCount(slots, durationMinutes) {
+      const availableMinutes = slots
+        .filter((slot) => slot.status === "空き" && /^\d{2}:\d{2}$/.test(slot.time))
+        .map((slot) => Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3)))
+        .sort((left, right) => left - right);
+      let count = 0;
+      let consecutiveMinutes = 0;
+      let previousMinutes = null;
+      availableMinutes.forEach((minutes) => {
+        if (previousMinutes !== null && minutes !== previousMinutes + 15) {
+          count += Math.floor(consecutiveMinutes / durationMinutes);
+          consecutiveMinutes = 0;
+        }
+        consecutiveMinutes += 15;
+        previousMinutes = minutes;
+      });
+      return count + Math.floor(consecutiveMinutes / durationMinutes);
+    }
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
       adminSlotDate.textContent = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date(`${value}T00:00:00`));
@@ -551,14 +569,19 @@
       for (let day = 1; day <= days; day += 1) {
         const value = dateText(new Date(adminVisibleMonth.getFullYear(), adminVisibleMonth.getMonth(), day));
         const slots = adminSlotsForDate(value);
-        const counts = slots.reduce((result, slot) => { result[slot.status] = (result[slot.status] || 0) + 1; return result; }, {});
         const button = document.createElement("button"); button.type = "button"; button.className = `day admin-day${slots.length ? " has-slots" : ""}`;
         button.setAttribute("aria-pressed", String(selectedAdminDate === value));
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span"); summary.className = "admin-day-summary";
+        const bookingCounts = [
+          `体小${adminAvailableBookingCount(slots, 30)}`,
+          `中${adminAvailableBookingCount(slots, 60)}`,
+          `高大${adminAvailableBookingCount(slots, 60)}`,
+        ];
+        const blockedStatuses = ["調整中", "予約済", "お休み"].filter((status) => slots.some((slot) => slot.status === status));
         summary.textContent = slots.length
-          ? [["空", counts["空き"]], ["調", counts["調整中"]], ["済", counts["予約済"]], ["休", counts["お休み"]]].filter((entry) => entry[1]).map((entry) => `${entry[0]}${entry[1]}`).join(" ")
-          : "未設定";
+          ? `${bookingCounts.join(" ")}${blockedStatuses.length ? ` / ${blockedStatuses.join("・")}あり` : ""}`
+          : "受付なし";
         button.append(number, summary);
         button.addEventListener("click", () => { renderAdminSlotDetails(value); renderAdminSlotCalendar(); });
         adminSlotCalendar.append(button);
