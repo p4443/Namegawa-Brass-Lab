@@ -526,23 +526,24 @@
         note: "通常受付枠",
       });
     }
-    function adminAvailableBookingCount(slots, durationMinutes) {
-      const availableMinutes = slots
-        .filter((slot) => slot.status === "空き" && /^\d{2}:\d{2}$/.test(slot.time))
-        .map((slot) => Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3)))
+    function adminAvailableBookingCount(slots, durationMinutes, startMinutes) {
+      const statusByMinute = new Map(slots
+        .filter((slot) => /^\d{2}:\d{2}$/.test(slot.time))
+        .map((slot) => [Number(slot.time.slice(0, 2)) * 60 + Number(slot.time.slice(3)), slot.status]));
+      const candidates = [...statusByMinute.keys()]
+        .filter((minutes) => startMinutes.includes(minutes % 60))
+        .filter((minutes) => Array.from({ length: durationMinutes / 15 }, (_, index) => minutes + index * 15)
+          .every((slotMinutes) => statusByMinute.get(slotMinutes) === "空き"))
         .sort((left, right) => left - right);
       let count = 0;
-      let consecutiveMinutes = 0;
-      let previousMinutes = null;
-      availableMinutes.forEach((minutes) => {
-        if (previousMinutes !== null && minutes !== previousMinutes + 15) {
-          count += Math.floor(consecutiveMinutes / durationMinutes);
-          consecutiveMinutes = 0;
+      let occupiedUntil = -1;
+      candidates.forEach((minutes) => {
+        if (minutes >= occupiedUntil) {
+          count += 1;
+          occupiedUntil = minutes + durationMinutes;
         }
-        consecutiveMinutes += 15;
-        previousMinutes = minutes;
       });
-      return count + Math.floor(consecutiveMinutes / durationMinutes);
+      return count;
     }
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
@@ -574,9 +575,9 @@
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span"); summary.className = "admin-day-summary";
         const bookingCounts = [
-          `体小${adminAvailableBookingCount(slots, 30)}`,
-          `中${adminAvailableBookingCount(slots, 60)}`,
-          `高大${adminAvailableBookingCount(slots, 60)}`,
+          `体小${adminAvailableBookingCount(slots, 30, [0, 30])}`,
+          `中${adminAvailableBookingCount(slots, 60, [0])}`,
+          `高大${adminAvailableBookingCount(slots, 60, [0])}`,
         ];
         const blockedStatuses = ["調整中", "予約済", "お休み"].filter((status) => slots.some((slot) => slot.status === status));
         const consultationOnly = slots.length && slots.every((slot) => slot.time === "要相談");
