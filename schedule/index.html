@@ -421,7 +421,10 @@
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span");
         summary.className = `day-summary${hasLessonType && scheduleReady ? (available ? "" : " busy") : " unknown"}`;
-        summary.textContent = hasLessonType
+        const isPastDate = date < firstDate;
+        summary.textContent = isPastDate
+          ? "受付終了"
+          : hasLessonType
           ? (scheduleReady ? (total ? `${available ? `空き ${available}` : "満席"}${confirmed ? ` / 予約済 ${confirmed}件` : ""}` : "休み") : (total ? "受付日" : "休み"))
           : "";
         button.append(number, summary); button.addEventListener("click", () => {
