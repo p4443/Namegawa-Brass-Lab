@@ -2599,7 +2599,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("06:45〜17:00／それ以外は要相談", page)
         self.assertIn("月〜水</dt><dd><span class=\"reservation-time-range\">07:00〜09:00", page)
         self.assertNotIn("月〜水</dt><dd><span class=\"reservation-time-range\">06:45〜09:00", page)
-        self.assertIn('1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
+        self.assertIn('1: [...makeTimeRange(7, 0, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
         self.assertIn('4: makeTimeRange(6, 45, 12, 0)', page)
         self.assertIn('5: [...makeTimeRange(6, 45, 17, 0), "要相談"]', page)
         self.assertIn('6: ["要相談"]', page)
@@ -3633,6 +3633,7 @@ class UpdatesTest(unittest.TestCase):
             invalid_reservations = [
                 {**payload, "preferred_date": "2026-08-09"},
                 {**payload, "preferred_date": "2026-09-10"},
+                {**payload, "preferred_time": "06:45"},
                 {**payload, "preferred_date": "2026-08-15", "preferred_time": "09:00"},
             ]
             for reservation in invalid_reservations:
@@ -3672,7 +3673,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("makeRange(6,45,9,0), ...makeRange(20,30,22,0)", schedule_source)
+        self.assertIn("makeRange(7,0,9,0), ...makeRange(20,30,22,0)", schedule_source)
         self.assertIn("4: makeRange(6,45,12,0)", schedule_source)
         self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', schedule_source)
 

@@ -877,9 +877,9 @@ def is_allowed_lesson_time(lesson_type, preferred_time, duration_minutes, availa
 
 
 WEEKDAY_RESERVATION_TIMES = {
-    0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
-    1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
-    2: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    0: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
+    1: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
+    2: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
     3: time_range("06:45", "12:00"),
     4: time_range("06:45", "17:00") | {CONSULTATION_TIME},
     5: {CONSULTATION_TIME},
