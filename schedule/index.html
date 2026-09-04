@@ -518,7 +518,8 @@
       const savedSlots = new Map(scheduleSlots
         .filter((slot) => slot.date === value)
         .map((slot) => [slot.time, slot]));
-      return (timesByDay[date.getDay()] || []).map((time) => savedSlots.get(time) || {
+      const times = new Set([...(timesByDay[date.getDay()] || []), ...savedSlots.keys()]);
+      return [...times].map((time) => savedSlots.get(time) || {
         date: value,
         time,
         status: "空き",

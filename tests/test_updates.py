@@ -2757,6 +2757,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function renderAdminSlotDetails(value)", page)
         self.assertIn("function adminSlotsForDate(value)", page)
         self.assertIn('status: "空き"', page)
+        self.assertIn("...savedSlots.keys()", page)
         self.assertIn("const slots = adminSlotsForDate(value);", page)
         self.assertIn("const slots = adminSlotsForDate(value).sort", page)
         self.assertIn("scheduleSlots = result.slots || []", page)
