@@ -2597,6 +2597,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('"高校生以上": 60', page)
         self.assertIn("function occupiedTimes", page)
         self.assertIn("06:45〜17:00／それ以外は要相談", page)
+        self.assertIn("月〜水</dt><dd><span class=\"reservation-time-range\">07:00〜09:00", page)
+        self.assertNotIn("月〜水</dt><dd><span class=\"reservation-time-range\">06:45〜09:00", page)
         self.assertIn('1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
         self.assertIn('4: makeTimeRange(6, 45, 12, 0)', page)
         self.assertIn('5: [...makeTimeRange(6, 45, 17, 0), "要相談"]', page)
@@ -2798,6 +2800,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('durationInput.step = "15"', page)
         self.assertIn("payload.duration_minutes = Number(durationInput.value)", page)
         self.assertIn("グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。", page)
+        self.assertIn("最終枠の開始時間", page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
@@ -3869,6 +3872,8 @@ class UpdatesTest(unittest.TestCase):
     def test_lesson_reservation_manage_rejects_invalid_admin_time(self):
         with self.assertRaisesRegex(ValueError, "希望時間"):
             validate_lesson_reservation_update({"preferred_time": "午後1時"})
+        with self.assertRaisesRegex(ValueError, "15分単位"):
+            validate_lesson_reservation_update({"preferred_time": "13:07"})
 
     def test_lesson_reservation_manage_accepts_group_duration(self):
         self.assertEqual(

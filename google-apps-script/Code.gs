@@ -1315,7 +1315,7 @@ function expandTimes(startTime, endTime) {
 
 function toMinutes(timeText) {
   var match = /^([01]\d|2[0-3]):([0-5]\d)$/.exec(String(timeText || "").trim());
-  if (!match) {
+  if (!match || Number(match[2]) % 15 !== 0) {
     return -1;
   }
   return Number(match[1]) * 60 + Number(match[2]);

@@ -2034,6 +2034,8 @@ def validate_lesson_reservation_update(payload):
             r"(?:[01]\d|2[0-3]):[0-5]\d", preferred_time
         ):
             raise ValueError("希望時間を正しく入力してください。")
+        if preferred_time != CONSULTATION_TIME and int(preferred_time[3:]) % 15:
+            raise ValueError("希望時間は15分単位で入力してください。")
         values["preferred_time"] = preferred_time
     if "duration_minutes" in payload:
         try:
