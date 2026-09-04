@@ -804,7 +804,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-05-reservation-slot-reconciliation-v38"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39"
 
 
 def current_japan_date():
@@ -836,6 +836,14 @@ LESSON_TIME_WINDOWS = {
     5: (),
     6: (),
 }
+LESSON_START_MINUTES = {
+    "体験レッスン": {0, 30},
+    "無料体験レッスン": {0, 30},
+    "小学生": {0, 30},
+    "中学生": {0, 15, 30, 45},
+    "高校生以上": {0},
+    "高校生以上・大人": {0},
+}
 
 
 def time_to_minutes(value):
@@ -855,6 +863,7 @@ def lesson_start_times(reservation_date, lesson_type):
     duration_minutes = LESSON_DURATION_MINUTES[lesson_type]
     if duration_minutes is None:
         return []
+    start_minutes_allowed = LESSON_START_MINUTES[lesson_type]
     starts = []
     for start_time, end_time in LESSON_TIME_WINDOWS[reservation_date.weekday()]:
         start_minutes = time_to_minutes(start_time)
@@ -862,6 +871,7 @@ def lesson_start_times(reservation_date, lesson_type):
         starts.extend(
             minutes_to_time(minutes)
             for minutes in range(start_minutes, end_minutes - duration_minutes + 1, 15)
+            if minutes % 60 in start_minutes_allowed
         )
     if reservation_date.weekday() == 4:
         starts.append(CONSULTATION_TIME)

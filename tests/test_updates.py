@@ -2201,6 +2201,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('if (note === "受付自動設定")', list_function)
         self.assertIn("reservationSlots.slots[key]", list_function)
         self.assertIn("slot.source && reservationSlots.ids[slot.source]", list_function)
+        self.assertIn("reservationSlot.date < fromDateText", list_function)
+        self.assertIn("reservationSlot.date > toDateText", list_function)
         self.assertIn("function activeReservationSlots", list_function)
 
     def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
@@ -2229,7 +2231,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-reconciliation-v38";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2859,7 +2861,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-05-reservation-slot-reconciliation-v38",
+                "version": "2026-09-05-reservation-slot-range-v39",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
@@ -3338,7 +3340,7 @@ class UpdatesTest(unittest.TestCase):
         saturday = lesson_calendar_days(date(2026, 8, 15), date(2026, 8, 15), [])[0]
 
         self.assertEqual(
-            monday["lessons"]["体験レッスン"]["available_times"][0], "06:45"
+            monday["lessons"]["体験レッスン"]["available_times"][0], "07:00"
         )
         self.assertEqual(
             monday["lessons"]["体験レッスン"]["available_times"][-1], "21:30"
@@ -3352,6 +3354,16 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(
             monday["lessons"]["高校生以上・大人"]["available_times"][-1], "21:00"
         )
+        self.assertEqual(
+            monday["lessons"]["高校生以上・大人"]["available_times"][0], "07:00"
+        )
+        self.assertNotIn("06:45", monday["lessons"]["体験レッスン"]["available_times"])
+        self.assertNotIn("06:45", monday["lessons"]["高校生以上・大人"]["available_times"])
+        self.assertIn("07:00", monday["lessons"]["体験レッスン"]["available_times"])
+        self.assertIn("07:00", monday["lessons"]["中学生"]["available_times"])
+        self.assertIn("07:00", monday["lessons"]["高校生以上・大人"]["available_times"])
+        self.assertNotIn("07:15", monday["lessons"]["体験レッスン"]["available_times"])
+        self.assertNotIn("07:15", monday["lessons"]["高校生以上・大人"]["available_times"])
         self.assertTrue(saturday["consultation_required"])
         self.assertEqual(saturday["lessons"]["中学生"]["available_times"], ["要相談"])
 
@@ -3383,10 +3395,10 @@ class UpdatesTest(unittest.TestCase):
 
         with patch("app.current_japan_date", return_value=date(2026, 8, 9)):
             for lesson_type, accepted, rejected in (
-                ("体験レッスン", "09:15", "16:45"),
-                ("小学生", "09:45", "16:45"),
+                ("体験レッスン", "09:00", "16:45"),
+                ("小学生", "09:30", "16:45"),
                 ("中学生", "09:30", "16:30"),
-                ("高校生以上", "09:15", "16:15"),
+                ("高校生以上", "09:00", "16:15"),
             ):
                 validate_lesson_reservation({
                     **base_payload,

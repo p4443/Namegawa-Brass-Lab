@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-05-reservation-slot-reconciliation-v38";
+var SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39";
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
@@ -1021,6 +1021,9 @@ function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
   });
   Object.keys(reservationSlots.slots).forEach(function (key) {
     var reservationSlot = reservationSlots.slots[key];
+    if ((fromDate && reservationSlot.date < fromDateText) || (toDate && reservationSlot.date > toDateText)) {
+      return;
+    }
     if (!slotsByKey[key]) {
       slotsByKey[key] = {
         date: reservationSlot.date,
