@@ -2146,7 +2146,7 @@ class UpdatesTest(unittest.TestCase):
         conflict_function = script.split("function findReservationSlotConflict", 1)[1].split(
             "function getSlotRecord", 1
         )[0]
-        active_statuses_function = script.split("function activeReservationSlotStatuses", 1)[1].split(
+        active_statuses_function = script.split("function activeReservationSlots", 1)[1].split(
             "function upsertSlotStatusRange", 1
         )[0]
 
@@ -2197,10 +2197,11 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn('"get_slot_statuses"', do_post.split("needsReservationSheet", 1)[1])
         self.assertIn("listSlotStatuses(slotSheet, sheet, from, to)", do_post)
-        self.assertIn("activeReservationSlotStatuses(reservationSheet)", list_function)
+        self.assertIn("activeReservationSlots(reservationSheet)", list_function)
         self.assertIn('if (note === "受付自動設定")', list_function)
-        self.assertIn('status = reservationStatuses[key] || "空き"', list_function)
-        self.assertIn("function activeReservationSlotStatuses", list_function)
+        self.assertIn("reservationSlots.slots[key]", list_function)
+        self.assertIn("slot.source && reservationSlots.ids[slot.source]", list_function)
+        self.assertIn("function activeReservationSlots", list_function)
 
     def test_apps_script_reads_skip_lock_and_open_spreadsheet_once(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -2228,7 +2229,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-validation-v37";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-reconciliation-v38";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2858,7 +2859,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-05-reservation-slot-validation-v37",
+                "version": "2026-09-05-reservation-slot-reconciliation-v38",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)

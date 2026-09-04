@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-05-reservation-slot-validation-v37";
+var SCRIPT_VERSION = "2026-09-05-reservation-slot-reconciliation-v38";
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
@@ -972,7 +972,7 @@ function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
   var fromDate = parseIsoDate(fromDateText);
   var toDate = parseIsoDate(toDateText);
   var values = sheet.getRange(2, 1, lastRow - 1, SLOT_HEADERS.length).getValues();
-  var reservationStatuses = activeReservationSlotStatuses(reservationSheet);
+  var reservationSlots = activeReservationSlots(reservationSheet);
   var slotsByKey = {};
 
   values.forEach(function (row, index) {
@@ -991,7 +991,7 @@ function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
     var note = String(row[3] || "").trim();
     var status = String(row[2] || "").trim();
     if (note === "受付自動設定") {
-      status = reservationStatuses[key] || "空き";
+      status = reservationSlots.slots[key] ? reservationSlots.slots[key].status : "空き";
     }
     var updatedAt = slotUpdatedAt(row[4]);
     var current = slotsByKey[key];
@@ -1008,6 +1008,29 @@ function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
     };
   });
 
+  Object.keys(slotsByKey).forEach(function (key) {
+    var slot = slotsByKey[key];
+    if (reservationSlots.slots[key]) {
+      slot.status = reservationSlots.slots[key].status;
+      slot.note = "予約内容";
+      return;
+    }
+    if (slot.source && reservationSlots.ids[slot.source]) {
+      delete slotsByKey[key];
+    }
+  });
+  Object.keys(reservationSlots.slots).forEach(function (key) {
+    var reservationSlot = reservationSlots.slots[key];
+    if (!slotsByKey[key]) {
+      slotsByKey[key] = {
+        date: reservationSlot.date,
+        time: reservationSlot.time,
+        status: reservationSlot.status,
+        note: "予約内容"
+      };
+    }
+  });
+
   return Object.keys(slotsByKey).map(function (key) {
     var slot = slotsByKey[key];
     return {
@@ -1019,15 +1042,20 @@ function listSlotStatuses(sheet, reservationSheet, fromDateText, toDateText) {
   });
 }
 
-function activeReservationSlotStatuses(sheet) {
-  var statuses = {};
+function activeReservationSlots(sheet) {
+  var slots = {};
+  var ids = {};
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
-    return statuses;
+    return { slots: slots, ids: ids };
   }
   var values = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
   values.forEach(function (row) {
     var reservationStatus = String(row[2] || "").trim();
+    var reservationId = String(row[1] || "").trim();
+    if (reservationId) {
+      ids[reservationId] = true;
+    }
     var slotStatus = reservationStatusToSlotStatus(reservationStatus);
     if (slotStatus === "空き") {
       return;
@@ -1038,10 +1066,14 @@ function activeReservationSlotStatuses(sheet) {
       return;
     }
     reservationSlotTimes(startTime, getLessonDuration(row[6], row[10])).forEach(function (time) {
-      statuses[dateText + "|" + time] = slotStatus;
+      slots[dateText + "|" + time] = {
+        date: dateText,
+        time: time,
+        status: slotStatus
+      };
     });
   });
-  return statuses;
+  return { slots: slots, ids: ids };
 }
 
 function confirmedReservationCounts(sheet, slotSheet, fromDateText, toDateText) {
