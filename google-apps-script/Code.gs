@@ -1245,10 +1245,6 @@ function slotUpdatedAt(value) {
   return isNaN(parsed.getTime()) ? 0 : parsed.getTime();
 }
 
-function getSlotStatus(sheet, dateText, timeText) {
-  return getSlotRecord(sheet, dateText, timeText).status;
-}
-
 function getLessonDuration(lessonType, explicitDuration) {
   var normalizedType = String(lessonType || "").trim();
   var configuredDuration = LESSON_DURATION_MINUTES[normalizedType];
@@ -1473,9 +1469,6 @@ function sendReservationAdminNotification(data, reservationId) {
   }
 }
 
-function authorizeGmailNotifications() {
-  return MailApp.getRemainingDailyQuota();
-}
 function sendConsultationAutoReply(data, consultationId) {
   var email = sanitizeMailHeader(data.email).trim();
   if (!email || email.indexOf("@") <= 0) {

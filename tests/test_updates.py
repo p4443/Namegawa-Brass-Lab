@@ -2124,9 +2124,8 @@ class UpdatesTest(unittest.TestCase):
             "function upsertSlotStatusRange", 1
         )[0]
         find_function = script.split("function findSlotRow", 1)[1].split(
-            "function getSlotStatus", 1
+            "function getLessonDuration", 1
         )[0]
-
         self.assertIn("slotsByKey = {}", list_function)
         self.assertIn("slotUpdatedAt(row[4])", list_function)
         self.assertIn("Object.keys(slotsByKey)", list_function)
@@ -2255,8 +2254,6 @@ class UpdatesTest(unittest.TestCase):
         response_function = script.split("function adminActionResponse", 1)[1]
 
         self.assertIn("return jsonResponse(data);", response_function)
-        self.assertNotIn("return MailApp.getRemainingDailyQuota();", response_function)
-        self.assertEqual(script.count("function authorizeGmailNotifications"), 1)
 
     def test_apps_script_email_has_utf8_html_fallback(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
@@ -2279,8 +2276,6 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("GmailApp.sendEmail(", admin_notification_function)
         self.assertIn("ADMIN_NOTIFICATION_EMAIL", admin_notification_function)
         self.assertIn("新規レッスン予約", admin_notification_function)
-        self.assertIn("function authorizeGmailNotifications", script)
-        self.assertIn("MailApp.getRemainingDailyQuota", script)
 
     def test_apps_script_sends_confirmation_email_on_first_confirmed_transition(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
