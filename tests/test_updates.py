@@ -19,6 +19,7 @@ from app import (
     fetch_instrument_catalog_prices,
     fetch_instrument_price_candidates,
     load_updates,
+    lesson_calendar_days,
     normalize_media_url,
     normalize_route_query,
     normalize_slot_statuses,
@@ -2597,14 +2598,14 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('"高校生以上": 60', page)
         self.assertIn("function occupiedTimes", page)
         self.assertIn("06:45〜17:00／それ以外は要相談", page)
-        self.assertIn("月〜水</dt><dd><span class=\"reservation-time-range\">07:00〜09:00", page)
-        self.assertNotIn("月〜水</dt><dd><span class=\"reservation-time-range\">06:45〜09:00", page)
-        self.assertIn('1: [...makeTimeRange(7, 0, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
+        self.assertIn("月〜水</dt><dd><span class=\"reservation-time-range\">06:45〜09:00", page)
+        self.assertNotIn("月〜水</dt><dd><span class=\"reservation-time-range\">07:00〜09:00", page)
+        self.assertIn('1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)]', page)
         self.assertIn('4: makeTimeRange(6, 45, 12, 0)', page)
         self.assertIn('5: [...makeTimeRange(6, 45, 17, 0), "要相談"]', page)
         self.assertIn('6: ["要相談"]', page)
         self.assertIn("土・日：要相談", page)
-        self.assertIn("体験レッスン・小学生は毎時00分／30分開始", page)
+        self.assertIn("種別ごとの開始可能時刻は、予約フォームで空き状況とあわせてご確認ください。", page)
         self.assertIn('id="elementary-lesson-toggle" type="button" aria-expanded="false"', page)
         self.assertIn('id="elementary-trial" aria-labelledby="elementary-trial-title" hidden', page)
         elementary_card_start = page.index('<article class="price-card">')
@@ -2757,9 +2758,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function renderAdminSlotDetails(value)", page)
         self.assertIn("function adminSlotsForDate(value)", page)
         self.assertIn("function adminAvailableBookingCount(slots, durationMinutes, startMinutes)", page)
-        self.assertIn('`体小${adminAvailableBookingCount(slots, 30, [0, 30])}`', page)
-        self.assertIn('`中${adminAvailableBookingCount(slots, 60, [0])}`', page)
-        self.assertIn('`高大${adminAvailableBookingCount(slots, 60, [0])}`', page)
+        self.assertIn('`体小${adminAvailableBookingCount(slots, 30, [0, 15, 30, 45])}`', page)
+        self.assertIn('`中${adminAvailableBookingCount(slots, 45, [0, 15, 30, 45])}`', page)
+        self.assertIn('`高大${adminAvailableBookingCount(slots, 60, [0, 15, 30, 45])}`', page)
         self.assertIn('statusByMinute.get(slotMinutes) === "空き"', page)
         self.assertIn('blockedStatuses.join("・")', page)
         self.assertIn('slots.every((slot) => slot.time === "要相談")', page)
@@ -3328,7 +3329,46 @@ class UpdatesTest(unittest.TestCase):
         )
         self.assertEqual(reservation_slot_times("要相談", 60), ["要相談"])
 
-    def test_lesson_start_minutes_follow_lesson_type(self):
+    def test_lesson_calendar_uses_all_bookable_fifteen_minute_starts(self):
+        monday = lesson_calendar_days(date(2026, 8, 10), date(2026, 8, 10), [])[0]
+        saturday = lesson_calendar_days(date(2026, 8, 15), date(2026, 8, 15), [])[0]
+
+        self.assertEqual(
+            monday["lessons"]["体験レッスン"]["available_times"][0], "06:45"
+        )
+        self.assertEqual(
+            monday["lessons"]["体験レッスン"]["available_times"][-1], "21:30"
+        )
+        self.assertEqual(
+            monday["lessons"]["中学生"]["available_times"][0], "06:45"
+        )
+        self.assertEqual(
+            monday["lessons"]["中学生"]["available_times"][-1], "21:15"
+        )
+        self.assertEqual(
+            monday["lessons"]["高校生以上・大人"]["available_times"][-1], "21:00"
+        )
+        self.assertTrue(saturday["consultation_required"])
+        self.assertEqual(saturday["lessons"]["中学生"]["available_times"], ["要相談"])
+
+    def test_lesson_calendar_api_returns_server_calculated_candidates(self):
+        client = create_app().test_client()
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={"slots": [{
+            "date": "2026-08-10", "time": "06:45", "status": "予約済"
+        }]}):
+            response = client.get("/api/lesson-calendar?from=2026-08-10&to=2026-08-10")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("days", response.json)
+        self.assertNotIn("06:45", response.json["days"][0]["lessons"]["中学生"]["available_times"])
+
+    def test_lesson_start_times_follow_duration_and_time_window(self):
         base_payload = {
             "name": "予約 太郎",
             "email": "taro@example.com",
@@ -3339,10 +3379,10 @@ class UpdatesTest(unittest.TestCase):
 
         with patch("app.current_japan_date", return_value=date(2026, 8, 9)):
             for lesson_type, accepted, rejected in (
-                ("体験レッスン", "09:30", "09:15"),
-                ("小学生", "09:30", "09:45"),
-                ("中学生", "09:00", "09:30"),
-                ("高校生以上", "09:00", "09:30"),
+                ("体験レッスン", "09:15", "16:45"),
+                ("小学生", "09:45", "16:45"),
+                ("中学生", "09:30", "16:30"),
+                ("高校生以上", "09:15", "16:15"),
             ):
                 validate_lesson_reservation({
                     **base_payload,
@@ -3641,7 +3681,6 @@ class UpdatesTest(unittest.TestCase):
             invalid_reservations = [
                 {**payload, "preferred_date": "2026-08-09"},
                 {**payload, "preferred_date": "2026-09-10"},
-                {**payload, "preferred_time": "06:45"},
                 {**payload, "preferred_date": "2026-08-15", "preferred_time": "09:00"},
             ]
             for reservation in invalid_reservations:
@@ -3681,7 +3720,7 @@ class UpdatesTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-        self.assertIn("makeRange(7,0,9,0), ...makeRange(20,30,22,0)", schedule_source)
+        self.assertIn("makeRange(6,45,9,0), ...makeRange(20,30,22,0)", schedule_source)
         self.assertIn("4: makeRange(6,45,12,0)", schedule_source)
         self.assertIn('5: [...makeRange(6,45,17,0), "要相談"]', schedule_source)
 

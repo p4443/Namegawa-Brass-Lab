@@ -273,6 +273,7 @@
       : blockedStatuses.has(status);
     const lessonDurations = { "体験レッスン": 30, "小学生": 30, "中学生": 45, "高校生以上": 60, "高校生以上・大人": 60, "グループ・部活動指導": null };
     const statusMap = new Map();
+    const calendarDays = new Map();
     const confirmedCounts = new Map();
     let scheduleSlots = [];
     const nowText = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -298,26 +299,18 @@
     };
     const timesByDay = {
       0: ["要相談"],
-      1: [...makeRange(7,0,9,0), ...makeRange(20,30,22,0)],
-      2: [...makeRange(7,0,9,0), ...makeRange(20,30,22,0)],
-      3: [...makeRange(7,0,9,0), ...makeRange(20,30,22,0)],
+      1: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
+      2: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
+      3: [...makeRange(6,45,9,0), ...makeRange(20,30,22,0)],
       4: makeRange(6,45,12,0),
       5: [...makeRange(6,45,17,0), "要相談"],
       6: ["要相談"],
     };
-    const availableTimesForLesson = (lessonType, day) => {
-      if (!lessonType) return [];
-      const dayTimes = timesByDay[day] || [];
+    const availableTimesForLesson = (lessonType, value) => {
+      const day = calendarDays.get(value);
+      if (!lessonType || !day) return [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
-      const durationMinutes = lessonDurations[lessonType];
-      return dayTimes.filter((time) => {
-        if (time === "要相談") return true;
-        const minute = Number(time.slice(3));
-        const validStart = lessonType === "体験レッスン" || lessonType === "小学生"
-          ? minute === 0 || minute === 30
-          : minute === 0;
-        return validStart && occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
-      });
+      return day.lessons?.[lessonType]?.available_times || [];
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {
@@ -364,7 +357,7 @@
 
     function availabilityFor(date) {
       const value = dateText(date);
-      const times = availableTimesForLesson(scheduleLessonType.value, date.getDay());
+      const times = availableTimesForLesson(scheduleLessonType.value, value);
       const durationMinutes = lessonDurations[scheduleLessonType.value];
       return times.filter((time) => occupiedTimes(time, durationMinutes).every(
         (slotTime) => !blocksReservationTime(time, statusMap.get(`${value}|${slotTime}`)),
@@ -382,7 +375,7 @@
         slotList.append(item);
         return;
       }
-      const times = availableTimesForLesson(scheduleLessonType.value, date.getDay());
+      const times = availableTimesForLesson(scheduleLessonType.value, value);
       if (!times.length) {
         const item = document.createElement("li"); item.className = "slot busy"; item.textContent = "受付時間外です"; slotList.append(item); return;
       }
@@ -419,7 +412,7 @@
       for (let day = 1; day <= days; day += 1) {
         const date = new Date(visibleMonth.getFullYear(), visibleMonth.getMonth(), day);
         const value = dateText(date);
-        const total = availableTimesForLesson(scheduleLessonType.value, date.getDay()).length;
+        const total = availableTimesForLesson(scheduleLessonType.value, value).length;
         const available = availabilityFor(date);
         const confirmed = confirmedCounts.get(value) || 0;
         const button = document.createElement("button"); button.type = "button"; button.className = "day";
@@ -454,10 +447,12 @@
         : "レッスン種別を選択すると、日付を選べます。";
       renderCalendar();
       try {
-        const result = await requestApi(`/api/lesson-slot-statuses?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
+        const result = await requestApi(`/api/lesson-calendar?from=${dateText(firstDate)}&to=${dateText(lastDate)}`);
         statusMap.clear();
+        calendarDays.clear();
         confirmedCounts.clear();
         scheduleSlots = result.slots || [];
+        (result.days || []).forEach((day) => calendarDays.set(day.date, day));
         scheduleSlots.forEach((slot) => statusMap.set(`${slot.date}|${slot.time}`, slot.status));
         Object.entries(result.confirmed_counts || {}).forEach(([date, count]) => confirmedCounts.set(date, Number(count) || 0));
         scheduleReady = true; scheduleStatus.textContent = ""; renderCalendar(); renderAdminSlotCalendar();
@@ -535,15 +530,7 @@
         .filter((minutes) => Array.from({ length: durationMinutes / 15 }, (_, index) => minutes + index * 15)
           .every((slotMinutes) => statusByMinute.get(slotMinutes) === "空き"))
         .sort((left, right) => left - right);
-      let count = 0;
-      let occupiedUntil = -1;
-      candidates.forEach((minutes) => {
-        if (minutes >= occupiedUntil) {
-          count += 1;
-          occupiedUntil = minutes + durationMinutes;
-        }
-      });
-      return count;
+      return candidates.length;
     }
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
@@ -575,9 +562,9 @@
         const number = document.createElement("span"); number.className = "day-number"; number.textContent = day;
         const summary = document.createElement("span"); summary.className = "admin-day-summary";
         const bookingCounts = [
-          `体小${adminAvailableBookingCount(slots, 30, [0, 30])}`,
-          `中${adminAvailableBookingCount(slots, 60, [0])}`,
-          `高大${adminAvailableBookingCount(slots, 60, [0])}`,
+          `体小${adminAvailableBookingCount(slots, 30, [0, 15, 30, 45])}`,
+          `中${adminAvailableBookingCount(slots, 45, [0, 15, 30, 45])}`,
+          `高大${adminAvailableBookingCount(slots, 60, [0, 15, 30, 45])}`,
         ];
         const blockedStatuses = ["調整中", "予約済", "お休み"].filter((status) => slots.some((slot) => slot.status === status));
         const consultationOnly = slots.length && slots.every((slot) => slot.time === "要相談");

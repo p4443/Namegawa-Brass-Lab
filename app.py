@@ -827,6 +827,100 @@ def time_range(start, end):
     return times
 
 
+LESSON_TIME_WINDOWS = {
+    0: (("06:45", "09:00"), ("20:30", "22:00")),
+    1: (("06:45", "09:00"), ("20:30", "22:00")),
+    2: (("06:45", "09:00"), ("20:30", "22:00")),
+    3: (("06:45", "12:00"),),
+    4: (("06:45", "17:00"),),
+    5: (),
+    6: (),
+}
+
+
+def time_to_minutes(value):
+    parsed = datetime.strptime(value, "%H:%M")
+    return parsed.hour * 60 + parsed.minute
+
+
+def minutes_to_time(value):
+    return f"{value // 60:02d}:{value % 60:02d}"
+
+
+def lesson_start_times(reservation_date, lesson_type):
+    if lesson_type == "グループ・部活動指導":
+        return [CONSULTATION_TIME]
+    if not LESSON_TIME_WINDOWS[reservation_date.weekday()]:
+        return [CONSULTATION_TIME]
+    duration_minutes = LESSON_DURATION_MINUTES[lesson_type]
+    if duration_minutes is None:
+        return []
+    starts = []
+    for start_time, end_time in LESSON_TIME_WINDOWS[reservation_date.weekday()]:
+        start_minutes = time_to_minutes(start_time)
+        end_minutes = time_to_minutes(end_time)
+        starts.extend(
+            minutes_to_time(minutes)
+            for minutes in range(start_minutes, end_minutes - duration_minutes + 1, 15)
+        )
+    if reservation_date.weekday() == 4:
+        starts.append(CONSULTATION_TIME)
+    return starts
+
+
+def lesson_calendar_days(from_date, to_date, slots):
+    statuses = {
+        (str(slot.get("date", "")).strip(), str(slot.get("time", "")).strip()): str(
+            slot.get("status", "")
+        ).strip()
+        for slot in slots
+        if isinstance(slot, dict)
+    }
+    days = []
+    current_date = from_date
+    lesson_types = (
+        "体験レッスン",
+        "小学生",
+        "中学生",
+        "高校生以上・大人",
+    )
+    blocked_statuses = {"調整中", "予約済", "お休み"}
+    while current_date <= to_date:
+        date_text = current_date.isoformat()
+        lessons = {}
+        for lesson_type in lesson_types:
+            duration_minutes = LESSON_DURATION_MINUTES[lesson_type]
+            available_times = [
+                start_time
+                for start_time in lesson_start_times(current_date, lesson_type)
+                if all(
+                    statuses.get((date_text, slot_time), "空き") not in blocked_statuses
+                    for slot_time in reservation_slot_times(start_time, duration_minutes)
+                )
+            ]
+            lessons[lesson_type] = {
+                "duration_minutes": duration_minutes,
+                "available_times": available_times,
+                "available_count": len(available_times),
+            }
+        day_statuses = {
+            status
+            for (slot_date, _slot_time), status in statuses.items()
+            if slot_date == date_text and status in blocked_statuses
+        }
+        days.append(
+            {
+                "date": date_text,
+                "consultation_required": not LESSON_TIME_WINDOWS[current_date.weekday()],
+                "group_consultation_required": True,
+                "lessons": lessons,
+                "blocked_statuses": sorted(day_statuses),
+            }
+        )
+        current_date += timedelta(days=1)
+    return days
+
+
 def reservation_slot_times(start_time, duration_minutes):
     if start_time == CONSULTATION_TIME:
         return [CONSULTATION_TIME]
@@ -854,32 +948,10 @@ def normalize_slot_statuses(slots: object) -> list[dict[str, object]]:
     return normalized_slots
 
 
-def is_allowed_lesson_start(lesson_type, preferred_time, available_times):
-    if lesson_type == "グループ・部活動指導":
-        return preferred_time == CONSULTATION_TIME
-    if preferred_time == CONSULTATION_TIME:
-        return preferred_time in available_times
-    if preferred_time not in available_times:
-        return False
-    minute = int(preferred_time[3:])
-    if lesson_type in {"体験レッスン", "無料体験レッスン", "小学生"}:
-        return minute in {0, 30}
-    return minute == 0
-
-
-def is_allowed_lesson_time(lesson_type, preferred_time, duration_minutes, available_times):
-    if not is_allowed_lesson_start(lesson_type, preferred_time, available_times):
-        return False
-    return preferred_time == CONSULTATION_TIME or all(
-        slot_time in available_times
-        for slot_time in reservation_slot_times(preferred_time, duration_minutes)
-    )
-
-
 WEEKDAY_RESERVATION_TIMES = {
-    0: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
-    1: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
-    2: time_range("07:00", "09:00") | time_range("20:30", "22:00"),
+    0: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    1: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
+    2: time_range("06:45", "09:00") | time_range("20:30", "22:00"),
     3: time_range("06:45", "12:00"),
     4: time_range("06:45", "17:00") | {CONSULTATION_TIME},
     5: {CONSULTATION_TIME},
@@ -1974,12 +2046,8 @@ def validate_lesson_reservation(payload):
     last_available_date = add_one_month(current_japan_date())
     if not first_available_date <= preferred_date <= last_available_date:
         raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
-    available_times = WEEKDAY_RESERVATION_TIMES[preferred_date.weekday()]
-    if not is_allowed_lesson_time(
-        values["lesson_type"],
-        values["preferred_time"],
-        values["duration_minutes"],
-        available_times,
+    if values["preferred_time"] not in lesson_start_times(
+        preferred_date, values["lesson_type"]
     ):
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
     values["occupied_times"] = reservation_slot_times(
@@ -2054,6 +2122,21 @@ def validate_lesson_reservation_update(payload):
     if not values:
         raise ValueError("更新する項目を指定してください。")
     return values
+
+
+def validate_admin_reservation_schedule(current_reservation, updates):
+    lesson_type = updates.get("lesson_type", current_reservation["lesson_type"])
+    preferred_date = updates.get("preferred_date", current_reservation["preferred_date"])
+    preferred_time = updates.get("preferred_time", current_reservation["preferred_time"])
+    if lesson_type == "グループ・部活動指導":
+        return
+    if preferred_time == CONSULTATION_TIME:
+        if datetime.strptime(preferred_date, "%Y-%m-%d").weekday() != 4:
+            raise ValueError("要相談は金曜日またはグループ・部活動指導で指定できます。")
+        return
+    reservation_date = datetime.strptime(preferred_date, "%Y-%m-%d").date()
+    if preferred_time not in lesson_start_times(reservation_date, lesson_type):
+        raise ValueError("選択した曜日の予約可能時間を指定してください。")
 
 
 def validate_reservation_id(value):
@@ -4183,6 +4266,40 @@ def create_app(
                 {"error": "現在、空き状況を確認できません。"},
                 503,
             )
+
+    @app.route("/api/lesson-calendar", methods=["GET", "OPTIONS"])
+    def lesson_calendar():
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(app.response_class(status=204), methods="GET, OPTIONS")
+        try:
+            from_date = datetime.strptime(str(request.args.get("from", "")).strip(), "%Y-%m-%d").date()
+            to_date = datetime.strptime(str(request.args.get("to", "")).strip(), "%Y-%m-%d").date()
+            if to_date < from_date or (to_date - from_date).days > 62:
+                raise ValueError
+        except ValueError:
+            return lesson_reservation_json({"error": "期間を正しく指定してください。"}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json({"error": "現在、空き状況を確認できません。"}, 503)
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"from": from_date.isoformat(), "to": to_date.isoformat()},
+                action="get_slot_statuses",
+            )
+            return lesson_reservation_json(
+                {
+                    "days": lesson_calendar_days(from_date, to_date, normalize_slot_statuses(result.get("slots", []))),
+                    "slots": normalize_slot_statuses(result.get("slots", [])),
+                },
+                200,
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+            app.logger.exception("Failed to get lesson calendar")
+            return lesson_reservation_json({"error": "現在、空き状況を確認できません。"}, 503)
 
     @app.route("/api/lesson-slot-statuses/admin", methods=["POST", "OPTIONS"])
     def manage_lesson_slot_statuses():

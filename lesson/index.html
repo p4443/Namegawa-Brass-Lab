@@ -1478,13 +1478,13 @@
         <h2 id="reservation-title">レッスン予約</h2>
         <p>予約できる期間は、明日から1か月先までです。同じメールアドレスで予約できる今後の予定は、最大4枠までです。送信後に自動返信メールをお送りします。日程を調整した後、確定内容をご連絡します。</p>
         <dl class="reservation-hours" aria-label="曜日別のレッスン実施時間">
-          <div><dt>月〜水</dt><dd><span class="reservation-time-range">07:00〜09:00</span><span class="reservation-time-range">20:30〜22:00</span></dd></div>
+          <div><dt>月〜水</dt><dd><span class="reservation-time-range">06:45〜09:00</span><span class="reservation-time-range">20:30〜22:00</span></dd></div>
           <div><dt>木曜日</dt><dd><span class="reservation-time-range">06:45〜12:00</span></dd></div>
           <div><dt>金曜日</dt><dd><span>06:45〜17:00／それ以外は要相談</span></dd></div>
           <div><dt>土・日</dt><dd><span>土・日：要相談</span></dd></div>
         </dl>
-        <p class="price-note">予約は上記の実施時間内にレッスンが終了する開始時刻だけを選べます。体験レッスン・小学生は毎時00分／30分開始です。グループレッスンなどは別途相談となります。</p>
-        <p>体験レッスンと小学生は毎時00分または30分開始、中学生と高校生以上・大人は毎時00分開始です。グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。</p>
+        <p class="price-note">予約は上記の実施時間内にレッスンが終了する開始時刻だけを選べます。種別ごとの開始可能時刻は、予約フォームで空き状況とあわせてご確認ください。グループレッスンなどは別途相談となります。</p>
+        <p>グループレッスン・部活動指導は「要相談」で受け付け、開始時刻と所要時間は個別に調整します。</p>
       </div>
       <form class="reservation-form" id="reservation-form">
         <div class="form-field">
@@ -1676,9 +1676,9 @@
 
     const timesByDay = {
       0: ["要相談"],
-      1: [...makeTimeRange(7, 0, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
-      2: [...makeTimeRange(7, 0, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
-      3: [...makeTimeRange(7, 0, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      1: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      2: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
+      3: [...makeTimeRange(6, 45, 9, 0), ...makeTimeRange(20, 30, 22, 0)],
       4: makeTimeRange(6, 45, 12, 0),
       5: [...makeTimeRange(6, 45, 17, 0), "要相談"],
       6: ["要相談"],
@@ -1716,11 +1716,7 @@
       const durationMinutes = lessonDurations[lessonType];
       return dayTimes.filter((time) => {
         if (time === "要相談") return true;
-        const minute = Number(time.slice(3));
-        const validStart = lessonType === "体験レッスン" || lessonType === "小学生"
-          ? minute === 0 || minute === 30
-          : minute === 0;
-        return validStart && occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
+        return occupiedTimes(time, durationMinutes).every((slotTime) => dayTimes.includes(slotTime));
       });
     }
 
@@ -1839,6 +1835,21 @@
       return slots;
     }
 
+    async function fetchLessonCalendarDay(dateText) {
+      const candidates = buildApiCandidates(renderSlotStatusApi, "api/lesson-calendar");
+      for (const endpoint of candidates) {
+        const url = new URL(endpoint, location.href);
+        url.searchParams.set("from", dateText);
+        url.searchParams.set("to", dateText);
+        const response = await fetch(url.toString(), { method: "GET" });
+        if (!response.ok) continue;
+        const result = await response.json();
+        const day = Array.isArray(result.days) ? result.days[0] : null;
+        if (day) return { day, slots: Array.isArray(result.slots) ? result.slots : [] };
+      }
+      throw new Error("現在、空き状況を確認できません。");
+    }
+
     function renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, slotMap, selectedValue) {
       reservationTime.replaceChildren(new Option("時間を選択してください", ""));
       let selectableCount = 0;
@@ -1867,8 +1878,6 @@
     async function updateReservationTimeOptions() {
       const requestId = ++slotRequestId;
       const selectedDateText = reservationDate.value;
-      const selectedDate = new Date(`${selectedDateText}T00:00:00`);
-      const availableTimes = availableTimesForLesson(reservationType.value, selectedDate.getDay());
       const durationMinutes = lessonDurations[reservationType.value];
       reservationTime.replaceChildren();
       reservationTime.disabled = true;
@@ -1880,13 +1889,12 @@
         return;
       }
 
-      renderReservationTimeOptions(selectedDateText, availableTimes, durationMinutes, new Map(), "");
       reservationStatus.dataset.state = "";
       reservationStatus.textContent = "空き状況を確認しています…";
 
-      let slotMap;
+      let calendar;
       try {
-        slotMap = buildSlotMap(await fetchSlotStatuses(selectedDateText));
+        calendar = await fetchLessonCalendarDay(selectedDateText);
       } catch (error) {
         if (requestId !== slotRequestId) {
           return;
@@ -1898,12 +1906,15 @@
       if (requestId !== slotRequestId) {
         return;
       }
+      const availableTimes = reservationType.value === "グループ・部活動指導"
+        ? ["要相談"]
+        : calendar.day.lessons?.[reservationType.value]?.available_times || [];
       const selectedValue = reservationTime.value;
       const selectableCount = renderReservationTimeOptions(
         selectedDateText,
         availableTimes,
         durationMinutes,
-        slotMap,
+        buildSlotMap(calendar.slots),
         selectedValue
       );
       if (selectableCount === 0) {
