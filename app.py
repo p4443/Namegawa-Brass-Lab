@@ -254,7 +254,6 @@ INSTRUMENT_PRICE_SOURCE_DOMAINS = {
     "global-inst.co.jp": "グローバル",
 }
 INSTRUMENT_PRICE_PAGE_MAX_BYTES = 2 * 1024 * 1024
-INSTRUMENT_PRICE_SITEMAP_MAX_BYTES = 8 * 1024 * 1024
 INSTRUMENT_MODEL_CODE_PATTERN = re.compile(
     r"[A-Za-z](?=[A-Za-z0-9._/-]*\d)[A-Za-z0-9._/-]{2,}"
 )
@@ -341,10 +340,6 @@ def instrument_url_match_priority(url, maker_model):
         rf"(?<![a-z0-9]){re.escape(exact_model.casefold())}(?![a-z0-9])"
     )
     return 0 if exact_pattern.search(url.casefold()) else 1
-
-
-def has_exact_instrument_url(urls, maker_model):
-    return any(instrument_url_match_priority(url, maker_model) == 0 for url in urls)
 
 
 def discover_instrument_model_urls(source_url, maker_model, links):
