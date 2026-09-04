@@ -513,12 +513,24 @@
     reservationDeleteMonth.max = dateText(previousMonth).slice(0, 7);
     reservationDeleteMonthButton.disabled = today.getDate() !== 1;
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
+    function adminSlotsForDate(value) {
+      const date = new Date(`${value}T00:00:00`);
+      const savedSlots = new Map(scheduleSlots
+        .filter((slot) => slot.date === value)
+        .map((slot) => [slot.time, slot]));
+      return (timesByDay[date.getDay()] || []).map((time) => savedSlots.get(time) || {
+        date: value,
+        time,
+        status: "空き",
+        note: "通常受付枠",
+      });
+    }
     function renderAdminSlotDetails(value) {
       selectedAdminDate = value;
       adminSlotDate.textContent = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long", day: "numeric", weekday: "long" }).format(new Date(`${value}T00:00:00`));
       adminSlotList.replaceChildren();
-      const slots = scheduleSlots.filter((slot) => slot.date === value).sort((left, right) => left.time.localeCompare(right.time));
-      if (!slots.length) { adminSlotList.textContent = "設定された予約枠はありません。"; return; }
+      const slots = adminSlotsForDate(value).sort((left, right) => left.time.localeCompare(right.time));
+      if (!slots.length) { adminSlotList.textContent = "通常受付枠はありません。"; return; }
       slots.forEach((slot) => {
         const item = document.createElement("li"); item.className = "admin-slot-row";
         const time = document.createElement("strong"); time.textContent = slot.time;
@@ -537,7 +549,7 @@
       const days = new Date(adminVisibleMonth.getFullYear(), adminVisibleMonth.getMonth() + 1, 0).getDate();
       for (let day = 1; day <= days; day += 1) {
         const value = dateText(new Date(adminVisibleMonth.getFullYear(), adminVisibleMonth.getMonth(), day));
-        const slots = scheduleSlots.filter((slot) => slot.date === value);
+        const slots = adminSlotsForDate(value);
         const counts = slots.reduce((result, slot) => { result[slot.status] = (result[slot.status] || 0) + 1; return result; }, {});
         const button = document.createElement("button"); button.type = "button"; button.className = `day admin-day${slots.length ? " has-slots" : ""}`;
         button.setAttribute("aria-pressed", String(selectedAdminDate === value));
