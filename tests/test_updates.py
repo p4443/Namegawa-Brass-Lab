@@ -2227,7 +2227,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-03-reservation-monthly-deletion-v36";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-validation-v37";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2841,7 +2841,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-03-reservation-monthly-deletion-v36",
+                "version": "2026-09-05-reservation-slot-validation-v37",
                 "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)

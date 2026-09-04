@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-03-reservation-monthly-deletion-v36";
+var SCRIPT_VERSION = "2026-09-05-reservation-slot-validation-v37";
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,

@@ -804,7 +804,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-03-reservation-monthly-deletion-v36"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-05-reservation-slot-validation-v37"
 
 
 def current_japan_date():
