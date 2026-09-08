@@ -102,8 +102,6 @@ export function transcribeMonophonic(samples, sampleRate, options = {}) {
   const hopSize = options.hopSize ?? 512;
   const referenceHz = options.referenceHz ?? DEFAULT_REFERENCE_HZ;
   const minimumNoteMs = options.minimumNoteMs ?? 70;
-  const articulationRatio = options.articulationRatio ?? 1.65;
-  const articulationRise = options.articulationRise ?? 0.01;
   const frames = [];
 
   if (samples.length < windowSize) return [];
@@ -128,56 +126,55 @@ export function transcribeMonophonic(samples, sampleRate, options = {}) {
     return Number.isFinite(center) ? Math.round(center) : null;
   });
 
-  for (let index = 1; index < pitches.length - 1; index += 1) {
-    if (pitches[index] === null && pitches[index - 1] === pitches[index + 1]) {
-      pitches[index] = pitches[index - 1];
+  const smoothedPitches = pitches.map((pitch, index) => {
+    if (!Number.isFinite(pitch)) return null;
+    const neighborhood = pitches
+      .slice(Math.max(0, index - 2), Math.min(pitches.length, index + 3))
+      .filter(Number.isFinite);
+    if (!neighborhood.length) return pitch;
+    const center = median(neighborhood);
+    return Number.isFinite(center) && Math.abs(center - pitch) <= 1 ? Math.round(center) : pitch;
+  });
+
+  for (let index = 1; index < smoothedPitches.length - 1; index += 1) {
+    if (smoothedPitches[index] === null && smoothedPitches[index - 1] === smoothedPitches[index + 1]) {
+      smoothedPitches[index] = smoothedPitches[index - 1];
     }
   }
 
   const notes = [];
-  let runStart = 0;
   const millisecondsPerFrame = (hopSize / sampleRate) * 1000;
-  const minimumGapFrames = Math.max(3, Math.round(80 / millisecondsPerFrame));
 
-  function appendRun(endFrame) {
-    const pitch = pitches[runStart];
-    if (!Number.isFinite(pitch)) return;
-    const boundaries = [runStart];
-    for (let index = runStart + minimumGapFrames; index < endFrame - 1; index += 1) {
-      const previousRms = Math.max(frames[index - 2]?.rms ?? 0, frames[index - 1]?.rms ?? 0, 0.001);
-      const currentRms = frames[index].rms;
-      const farEnough = index - boundaries.at(-1) >= minimumGapFrames;
-      if (farEnough && currentRms > previousRms * articulationRatio && currentRms - previousRms > articulationRise) {
-        boundaries.push(index);
-      }
-    }
-    boundaries.push(endFrame);
-
-    for (let index = 0; index < boundaries.length - 1; index += 1) {
-      const startFrame = boundaries[index];
-      const stopFrame = boundaries[index + 1];
-      const startMs = startFrame * millisecondsPerFrame;
-      const endMs = Math.min(
-        (samples.length / sampleRate) * 1000,
-        ((stopFrame - 1) * hopSize + windowSize) / sampleRate * 1000,
-      );
-      if (endMs - startMs < minimumNoteMs) continue;
-      const confidenceFrames = frames.slice(startFrame, stopFrame);
-      notes.push({
-        pitch,
-        startMs,
-        endMs,
-        confidence: confidenceFrames.reduce((sum, frame) => sum + frame.confidence, 0)
-          / Math.max(1, confidenceFrames.length),
-        articulated: index > 0,
-      });
-    }
+  function flushRun(startFrame, endFrame, pitch) {
+    if (!Number.isFinite(pitch) || endFrame <= startFrame) return;
+    const startMs = startFrame * millisecondsPerFrame;
+    const endMs = Math.min(
+      (samples.length / sampleRate) * 1000,
+      ((endFrame - 1) * hopSize + windowSize) / sampleRate * 1000,
+    );
+    if (endMs - startMs < minimumNoteMs) return;
+    const confidenceFrames = frames.slice(startFrame, endFrame);
+    notes.push({
+      pitch,
+      startMs,
+      endMs,
+      confidence: confidenceFrames.reduce((sum, frame) => sum + (frame.confidence ?? 0), 0)
+        / Math.max(1, confidenceFrames.length),
+      articulated: notes.length > 0,
+    });
   }
 
-  for (let index = 1; index <= pitches.length; index += 1) {
-    if (index < pitches.length && pitches[index] === pitches[runStart]) continue;
-    appendRun(index);
-    runStart = index;
+  let runStart = 0;
+  let currentPitch = smoothedPitches[0] ?? null;
+
+  for (let index = 1; index <= smoothedPitches.length; index += 1) {
+    const candidate = index < smoothedPitches.length ? smoothedPitches[index] : null;
+    const shouldBreak = candidate === null || currentPitch === null || Math.abs((candidate ?? currentPitch) - currentPitch) > 1;
+    if (shouldBreak) {
+      flushRun(runStart, index, currentPitch);
+      runStart = index;
+      currentPitch = candidate;
+    }
   }
 
   return notes;

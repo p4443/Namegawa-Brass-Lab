@@ -474,6 +474,7 @@ function updateToolState() {
     control.disabled = !selectedNote();
   });
   $('transposeTools').disabled = !state.notes.length;
+  $('fixTools').disabled = !state.notes.length;
   $('wavExport').disabled = isFreeMode || !state.audioBlob;
   $('midiExport').disabled = isFreeMode || !state.notes.length;
   $('xmlExport').disabled = isFreeMode || !state.notes.length;
@@ -498,6 +499,8 @@ function editSelected(action) {
   if (action === 'pitch-up') note.pitch = Math.min(127, note.pitch + 1);
   if (action === 'time-left') note.startQuarter = Math.max(0, note.startQuarter - grid);
   if (action === 'time-right') note.startQuarter += grid;
+  if (action === 'duration-down') note.durationQuarter = Math.max(grid, note.durationQuarter - grid);
+  if (action === 'duration-up') note.durationQuarter = Math.min(32, note.durationQuarter + grid);
   if (action === 'delete') {
     state.notes = state.notes.filter((candidate) => candidate.id !== note.id);
     state.selectedId = null;
@@ -506,6 +509,81 @@ function editSelected(action) {
   renderScore();
   updateToolState();
   setStatus('音符を修正しました。元に戻すこともできます。');
+}
+
+function addNote() {
+  if (!state.notes.length) return;
+  snapshot();
+  const grid = settings().gridQuarter;
+  const selected = selectedNote();
+  const startQuarter = selected ? selected.startQuarter + selected.durationQuarter : Math.max(...state.notes.map((note) => note.startQuarter + note.durationQuarter));
+  const previousPitch = selected ? selected.pitch : state.notes[state.notes.length - 1].pitch;
+  const note = {
+    id: `note-${Date.now()}-add`,
+    pitch: previousPitch,
+    startQuarter,
+    durationQuarter: grid,
+    confidence: 1,
+    articulated: true,
+  };
+  state.notes.push(note);
+  state.notes.sort((left, right) => left.startQuarter - right.startQuarter);
+  state.selectedId = note.id;
+  renderScore();
+  updateToolState();
+  setStatus('音符を追加しました。');
+}
+
+function splitSelectedNote() {
+  const note = selectedNote();
+  if (!note) return;
+  const grid = settings().gridQuarter;
+  if (note.durationQuarter < grid * 2) {
+    setStatus('この音符はこれ以上分割できません。');
+    return;
+  }
+  snapshot();
+  const half = note.durationQuarter / 2;
+  note.durationQuarter = half;
+  const next = { ...note, id: `note-${Date.now()}-split`, startQuarter: note.startQuarter + half };
+  state.notes.push(next);
+  state.notes.sort((left, right) => left.startQuarter - right.startQuarter);
+  state.selectedId = next.id;
+  renderScore();
+  updateToolState();
+  setStatus('選択音符を2つに分割しました。');
+}
+
+function snapAllToGrid() {
+  if (!state.notes.length) return;
+  snapshot();
+  const grid = settings().gridQuarter;
+  state.notes.forEach((note) => {
+    note.startQuarter = Math.max(0, Math.round(note.startQuarter / grid) * grid);
+    note.durationQuarter = Math.max(grid, Math.round(note.durationQuarter / grid) * grid);
+  });
+  state.notes.sort((left, right) => left.startQuarter - right.startQuarter);
+  renderScore();
+  updateToolState();
+  setStatus('全音符を現在のグリッドに再スナップしました。');
+}
+
+function removeShortNotes() {
+  if (!state.notes.length) return;
+  const grid = settings().gridQuarter;
+  const before = state.notes.length;
+  const removable = state.notes.filter((note) => note.durationQuarter < grid);
+  if (!removable.length) {
+    setStatus('除去できる短い不要音はありません。');
+    return;
+  }
+  snapshot();
+  const removableIds = new Set(removable.map((note) => note.id));
+  state.notes = state.notes.filter((note) => !removableIds.has(note.id));
+  if (state.selectedId && removableIds.has(state.selectedId)) state.selectedId = null;
+  renderScore();
+  updateToolState();
+  setStatus(`${before - state.notes.length}個の短い不要音を除去しました。`);
 }
 
 function undo() {
@@ -676,6 +754,10 @@ $('scoreSvg').addEventListener('keydown', (event) => {
   if (group) group.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 });
 document.querySelectorAll('[data-edit]').forEach((button) => button.addEventListener('click', () => editSelected(button.dataset.edit)));
+$('noteAddButton').addEventListener('click', addNote);
+$('noteSplitButton').addEventListener('click', splitSelectedNote);
+$('snapAllButton').addEventListener('click', snapAllToGrid);
+$('removeShortButton').addEventListener('click', removeShortNotes);
 $('noteDuration').addEventListener('change', () => {
   const note = selectedNote();
   if (!note) return;

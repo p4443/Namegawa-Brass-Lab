@@ -115,8 +115,20 @@
           </div>
           <div class="tool-row">
             <label>音価<select id="noteDuration"><option value="4">全音符</option><option value="3">付点2分</option><option value="2">2分音符</option><option value="1.5">付点4分</option><option value="1" selected>4分音符</option><option value="0.75">付点8分</option><option value="0.5">8分音符</option><option value="0.375">付点16分</option><option value="0.25">16分音符</option><option value="0.125">32分音符</option></select></label>
+            <button type="button" data-edit="duration-down" title="現在のグリッド1つ分だけ短くする">音価 −</button>
+            <button type="button" data-edit="duration-up" title="現在のグリッド1つ分だけ長くする">音価 ＋</button>
+            <button type="button" id="noteAddButton" title="選択位置の直後に音符を追加">音符を追加</button>
+            <button type="button" id="noteSplitButton" title="選択音符を2つに分割">分割</button>
             <button type="button" data-edit="delete" class="danger-button">削除</button>
             <button type="button" id="undoButton" disabled>元に戻す</button>
+          </div>
+        </fieldset>
+
+        <fieldset class="tool-group" id="fixTools" disabled>
+          <legend>採譜の一括修正</legend>
+          <div class="tool-row">
+            <button type="button" id="snapAllButton" title="全音符の開始・音価を現在のグリッドに再スナップ">グリッドに再スナップ</button>
+            <button type="button" id="removeShortButton" class="secondary-button" title="現在のグリッドより短い不要音を一括除去">短い不要音を除去</button>
           </div>
         </fieldset>
 

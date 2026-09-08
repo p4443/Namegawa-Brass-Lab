@@ -43,6 +43,46 @@ class ProductsPageTests(unittest.TestCase):
         self.assertNotIn('href="./styles.css"', archive_html)
         self.assertNotIn('src="./app.mjs"', archive_html)
 
+    def test_transpose_lab_has_bulk_correction_tools(self):
+        root = Path(__file__).resolve().parents[1]
+        source_html = (root / "trumpet-transpose-lab" / "index.html").read_text(
+            encoding="utf-8"
+        )
+        source_js = (root / "trumpet-transpose-lab" / "app.mjs").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn('id="fixTools"', source_html)
+        self.assertIn('id="noteAddButton"', source_html)
+        self.assertIn('id="noteSplitButton"', source_html)
+        self.assertIn('id="snapAllButton"', source_html)
+        self.assertIn('id="removeShortButton"', source_html)
+        self.assertIn('id="noteDuration"', source_html)
+        self.assertIn('data-edit="duration-down"', source_html)
+        self.assertIn('data-edit="duration-up"', source_html)
+        self.assertIn('data-edit="delete"', source_html)
+        self.assertIn("function addNote()", source_js)
+        self.assertIn("function splitSelectedNote()", source_js)
+        self.assertIn("function snapAllToGrid()", source_js)
+        self.assertIn("function removeShortNotes()", source_js)
+        self.assertIn("action === 'duration-down'", source_js)
+        self.assertIn("action === 'duration-up'", source_js)
+        self.assertIn("$('fixTools').disabled", source_js)
+        self.assertIn("$('noteAddButton').addEventListener", source_js)
+        self.assertIn("$('noteSplitButton').addEventListener", source_js)
+        self.assertIn("$('snapAllButton').addEventListener", source_js)
+        self.assertIn("$('removeShortButton').addEventListener", source_js)
+
+    def test_breath_metronome_uses_count_in_and_stops_after_one_cycle(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "music App" / "index.html").read_text(encoding="utf-8")
+
+        self.assertIn("let breathCountInRemaining = 0;", source)
+        self.assertIn("breathCountInRemaining = 4;", source)
+        self.assertIn("予備カウント ${currentCount}/4", source)
+        self.assertIn("ブレス練習を1サイクル完了しました", source)
+        self.assertIn("再開すると予備カウントから始まります", source)
+
 
 if __name__ == "__main__":
     unittest.main()
