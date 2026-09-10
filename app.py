@@ -2969,7 +2969,7 @@ def create_app(
 
     @app.get("/assets/branding/<path:asset>")
     def branding_asset(asset):
-        if asset not in {"site-logo.png", "trumpet-school-logo.png"}:
+        if asset not in {"favicon.png", "site-logo.png", "trumpet-school-logo.png"}:
             return app.response_class(status=404)
         return send_from_directory(BASE_DIR / "assets" / "branding", asset)
 
