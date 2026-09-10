@@ -142,9 +142,11 @@
 
     .hero-icon {
       display: grid;
-      width: 88px;
-      height: 88px;
+      width: min(100%, 320px);
+      aspect-ratio: 800 / 526;
+      height: auto;
       margin: 0 auto 20px;
+      padding: 12px 24px;
       place-items: center;
       border: 2px solid var(--gold);
       border-radius: 50%;
@@ -930,9 +932,11 @@
     }
 
     .hero-icon {
-      width: 72px;
-      height: 72px;
+      width: min(100%, 320px);
+      aspect-ratio: 800 / 526;
+      height: auto;
       margin: 0 0 20px;
+      padding: 12px 24px;
       border: 0;
       border-radius: 8px;
       color: #ffffff;
@@ -1163,6 +1167,7 @@
 
       .hero-icon {
         margin: 0 auto 20px;
+        width: min(86vw, 320px);
       }
 
       .hero-copy {
