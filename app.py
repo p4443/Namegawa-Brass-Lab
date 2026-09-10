@@ -2965,7 +2965,7 @@ def create_app(
 
     @app.get("/favicon.ico")
     def favicon():
-        return send_file(BASE_DIR / "assets" / "branding" / "trumpet-school-logo.png", mimetype="image/png")
+        return send_file(BASE_DIR / "assets" / "branding" / "favicon.png", mimetype="image/png")
 
     @app.get("/assets/branding/<path:asset>")
     def branding_asset(asset):
