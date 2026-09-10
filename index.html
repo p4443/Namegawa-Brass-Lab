@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="data/media/trumpet-school-logo.png">
   <script>
     const isLiveServer = ['localhost', '127.0.0.1'].includes(location.hostname)
       && location.port === '5500';
@@ -159,12 +160,11 @@
       gap: 10px;
     }
 
-    .logo-dummy {
-      width: 36px;
-      height: 36px;
-      background-color: var(--primary-color);
-      border-radius: 8px;
-      display: inline-block;
+    .logo-image {
+      width: 150px;
+      height: 58px;
+      object-fit: contain;
+      object-position: left center;
     }
 
     .nav-wrapper {
@@ -1799,8 +1799,7 @@
   <header>
     <div class="container header-inner">
       <div class="logo">
-        <span class="logo-dummy"></span>
-        <span>なめがわブラス・ラボ</span>
+        <img class="logo-image" src="data/media/site-logo.png" alt="なめがわブラス・ラボ">
       </div>
       <div class="nav-wrapper">
         <nav>

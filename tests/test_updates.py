@@ -1980,12 +1980,13 @@ class UpdatesTest(unittest.TestCase):
 
         initialize_database.assert_not_called()
 
-    def test_missing_favicon_is_handled_without_a_404(self):
+    def test_favicon_serves_the_trumpet_school_logo(self):
         test_app = create_app(database_url="")
         response = test_app.test_client().get("/favicon.ico")
 
-        self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.data, b"")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "image/png")
+        self.assertTrue(response.data.startswith(b"\x89PNG\r\n\x1a\n"))
 
     def test_shared_back_navigation_script_is_served(self):
         response = create_app(database_url="").test_client().get("/back-navigation.js")

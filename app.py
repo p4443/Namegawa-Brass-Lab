@@ -2965,7 +2965,10 @@ def create_app(
 
     @app.get("/favicon.ico")
     def favicon():
-        return app.response_class(status=204)
+        return send_file(
+            BASE_DIR / "data" / "media" / "trumpet-school-logo.png",
+            mimetype="image/png",
+        )
 
     @app.get("/back-navigation.js")
     def back_navigation_script():
