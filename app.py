@@ -2971,6 +2971,7 @@ def create_app(
     def branding_asset(asset):
         if asset not in {
             "favicon.png",
+            "5.png",
             "lesson-header-logo.png",
             "site-logo.png",
             "trumpet-school-logo.png",
