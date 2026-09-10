@@ -2965,10 +2965,13 @@ def create_app(
 
     @app.get("/favicon.ico")
     def favicon():
-        return send_file(
-            BASE_DIR / "data" / "media" / "trumpet-school-logo.png",
-            mimetype="image/png",
-        )
+        return send_file(BASE_DIR / "assets" / "branding" / "trumpet-school-logo.png", mimetype="image/png")
+
+    @app.get("/assets/branding/<path:asset>")
+    def branding_asset(asset):
+        if asset not in {"site-logo.png", "trumpet-school-logo.png"}:
+            return app.response_class(status=404)
+        return send_from_directory(BASE_DIR / "assets" / "branding", asset)
 
     @app.get("/back-navigation.js")
     def back_navigation_script():

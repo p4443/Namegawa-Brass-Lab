@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py index.html back-navigation.js build_product.py ./
 COPY healthcheck-prod.sh ./
+COPY assets ./assets
 COPY data ./data
 COPY lesson ./lesson
 COPY products ./products

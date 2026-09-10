@@ -1988,6 +1988,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.mimetype, "image/png")
         self.assertTrue(response.data.startswith(b"\x89PNG\r\n\x1a\n"))
 
+        asset_response = test_app.test_client().get("/assets/branding/site-logo.png")
+        self.assertEqual(asset_response.status_code, 200)
+        self.assertEqual(asset_response.mimetype, "image/png")
+
     def test_shared_back_navigation_script_is_served(self):
         response = create_app(database_url="").test_client().get("/back-navigation.js")
 
