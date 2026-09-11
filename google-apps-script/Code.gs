@@ -34,7 +34,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39";
+var SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40";
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
@@ -70,19 +70,19 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "resend_admin_notification", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range"]
       });
     }
 
     var requestId = String(data.request_id || "").trim();
-    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "delete_month" || action === "cancel" || action === "resend_admin_notification") && requestId) {
+    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "delete_day" || action === "cancel" || action === "resend_admin_notification") && requestId) {
       var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
       if (cachedResult) {
         return jsonResponse(JSON.parse(cachedResult));
       }
     }
 
-    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "delete_month", "cancel", "resend_admin_notification"];
+    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "delete_day", "cancel", "resend_admin_notification"];
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
@@ -97,7 +97,7 @@ function doPost(event) {
       return adminActionResponse(generateTransportWorkbook(data), requestId);
     }
     var spreadsheet = getSpreadsheet();
-    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_month", "cancel", "resend_admin_notification"].indexOf(action) !== -1;
+    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_day", "cancel", "resend_admin_notification"].indexOf(action) !== -1;
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
@@ -450,13 +450,13 @@ function doPost(event) {
       return adminActionResponse({ ok: true, reservationId: reservationId }, requestId);
     }
 
-    if (action === "delete_month") {
-      var month = String(data.month || "").trim();
-      if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
-        return adminActionResponse({ ok: false, error: "INVALID_MONTH" }, requestId);
+    if (action === "delete_day") {
+      var dateText = String(data.date || "").trim();
+      if (!/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(dateText)) {
+        return adminActionResponse({ ok: false, error: "INVALID_DATE" }, requestId);
       }
-      var deletedCount = deleteReservationsForMonth(sheet, month);
-      return adminActionResponse({ ok: true, month: month, updatedCount: deletedCount }, requestId);
+      var deletedCount = deleteReservationsForDate(sheet, dateText);
+      return adminActionResponse({ ok: true, date: dateText, updatedCount: deletedCount }, requestId);
     }
 
     return jsonResponse({ ok: false, error: "Unsupported action" });
@@ -838,7 +838,7 @@ function listReservations(sheet) {
   });
 }
 
-function deleteReservationsForMonth(sheet, month) {
+function deleteReservationsForDate(sheet, dateText) {
   var lastRow = sheet.getLastRow();
   if (lastRow <= 1) {
     return 0;
@@ -847,7 +847,7 @@ function deleteReservationsForMonth(sheet, month) {
   var deletedCount = 0;
   for (var index = values.length - 1; index >= 0; index -= 1) {
     var row = values[index];
-    if (normalizeReservationDate(row[7]).indexOf(month + "-") !== 0) {
+    if (normalizeReservationDate(row[7]) !== dateText) {
       continue;
     }
     sheet.deleteRow(index + 2);

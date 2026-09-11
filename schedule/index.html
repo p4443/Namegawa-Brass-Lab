@@ -226,8 +226,8 @@
             <div class="reservation-list-controls">
               <button class="retry-button" id="reservation-retry" type="button">予約一覧を再読み込み</button>
               <button class="button" id="reservation-save-all" type="button" disabled>変更した予約をまとめて更新</button>
-              <div class="field"><label for="reservation-delete-month">削除する月</label><input id="reservation-delete-month" type="month" required></div>
-              <button class="button danger" id="reservation-delete-month-button" type="button">選択月を削除</button>
+              <div class="field"><label for="reservation-delete-date">削除する日</label><input id="reservation-delete-date" type="date" required></div>
+              <button class="button danger" id="reservation-delete-date-button" type="button">選択日を削除</button>
             </div>
             <details class="reservation-archive" id="pending-reservation-archive" open>
               <summary id="pending-reservation-summary">予約者一覧</summary>
@@ -483,8 +483,8 @@
     const confirmedReservationSummary = document.getElementById("confirmed-reservation-summary");
     const reservationRetry = document.getElementById("reservation-retry");
     const reservationSaveAll = document.getElementById("reservation-save-all");
-    const reservationDeleteMonth = document.getElementById("reservation-delete-month");
-    const reservationDeleteMonthButton = document.getElementById("reservation-delete-month-button");
+    const reservationDeleteDate = document.getElementById("reservation-delete-date");
+    const reservationDeleteDateButton = document.getElementById("reservation-delete-date-button");
     const adminLogout = document.getElementById("admin-logout");
     const adminSlotCalendar = document.getElementById("admin-slot-calendar");
     const adminCalendarMonth = document.getElementById("admin-calendar-month");
@@ -495,10 +495,7 @@
     let adminPassword = "";
     let adminVisibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedAdminDate = "";
-    const previousMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    reservationDeleteMonth.value = dateText(previousMonth).slice(0, 7);
-    reservationDeleteMonth.max = dateText(previousMonth).slice(0, 7);
-    reservationDeleteMonthButton.disabled = today.getDate() !== 1;
+    reservationDeleteDate.value = dateText(today);
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
     function adminSlotsForDate(value) {
       const savedSlots = new Map(scheduleSlots
@@ -742,21 +739,20 @@
       catch (error) { adminStatus.textContent = `予約は削除済みです。一覧の再読み込みに失敗しました: ${error.message}`; }
       loadSchedule();
     }
-    reservationDeleteMonthButton.addEventListener("click", async () => {
-      const month = reservationDeleteMonth.value;
-      if (!month) { adminStatus.textContent = "削除する月を選択してください。"; return; }
-      if (today.getDate() !== 1) { adminStatus.textContent = "月別の予約削除は毎月1日に実行できます。"; return; }
-      if (!window.confirm(`${month} の予約をすべて削除しますか？この操作は元に戻せません。`)) return;
-      reservationDeleteMonthButton.disabled = true;
-      adminStatus.textContent = `${month} の予約を削除しています…`;
+    reservationDeleteDateButton.addEventListener("click", async () => {
+      const reservationDate = reservationDeleteDate.value;
+      if (!reservationDate) { adminStatus.textContent = "削除する日を選択してください。"; return; }
+      if (!window.confirm(`${reservationDate} の予約をすべて削除しますか？この操作は元に戻せません。`)) return;
+      reservationDeleteDateButton.disabled = true;
+      adminStatus.textContent = `${reservationDate} の予約を削除しています…`;
       try {
-        const result = await requestApi(`/api/lesson-reservations/month/${encodeURIComponent(month)}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 120000 });
+        const result = await requestApi(`/api/lesson-reservations/day/${encodeURIComponent(reservationDate)}`, { method: "DELETE", headers: adminHeaders(), timeoutMs: 120000 });
         await Promise.all([loadReservations(), loadSchedule()]);
-        adminStatus.textContent = `${result.month} の予約を${result.deleted_count}件削除しました。`;
+        adminStatus.textContent = `${result.date} の予約を${result.deleted_count}件削除しました。`;
       } catch (error) {
         adminStatus.textContent = error.message;
       } finally {
-        reservationDeleteMonthButton.disabled = false;
+        reservationDeleteDateButton.disabled = false;
       }
     });
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {

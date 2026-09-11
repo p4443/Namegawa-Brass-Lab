@@ -29,7 +29,7 @@ from app import (
     validate_consultation,
     validate_lesson_reservation,
     validate_lesson_reservation_update,
-    validate_reservation_month,
+    validate_reservation_date,
     validate_update,
 )
 
@@ -2217,7 +2217,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('"delete_month"', do_post)
+        self.assertIn('"delete_day"', do_post)
         self.assertIn('action === "generate_transport_sheet"', do_post)
         self.assertIn("LockService.getUserLock()", do_post)
         self.assertIn("LockService.getScriptLock()", do_post)
@@ -2235,7 +2235,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2752,9 +2752,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="reservation-save-all"', page)
         self.assertIn('id="pending-reservation-archive"', page)
         self.assertIn('id="confirmed-reservation-archive"', page)
-        self.assertIn('id="reservation-delete-month"', page)
-        self.assertIn('id="reservation-delete-month-button"', page)
-        self.assertIn('api/lesson-reservations/month/${encodeURIComponent(month)}', page)
+        self.assertIn('id="reservation-delete-date"', page)
+        self.assertIn('id="reservation-delete-date-button"', page)
+        self.assertIn('api/lesson-reservations/day/${encodeURIComponent(reservationDate)}', page)
         self.assertIn('id="admin-slot-calendar"', page)
         self.assertIn('id="admin-slot-list"', page)
         self.assertIn("function renderAdminSlotCalendar()", page)
@@ -2860,8 +2860,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-05-reservation-slot-range-v39",
-                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
+                "version": "2026-09-12-reservation-delete-day-v40",
+                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -2988,15 +2988,15 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
 
-    def test_lesson_reservation_monthly_deletion_requires_editor_password(self):
+    def test_lesson_reservation_daily_deletion_requires_editor_password(self):
         client = create_app().test_client()
 
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
-            response = client.delete("/api/lesson-reservations/month/2026-08")
+            response = client.delete("/api/lesson-reservations/day/2026-08-20")
 
         self.assertEqual(response.status_code, 401)
 
-    def test_lesson_reservation_monthly_deletion_forwards_selected_month(self):
+    def test_lesson_reservation_daily_deletion_forwards_selected_date(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
@@ -3007,61 +3007,61 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.current_japan_date", return_value=date(2026, 9, 1)), patch(
+        ), patch("app.current_japan_date", return_value=date(2026, 9, 12)), patch(
             "app.send_lesson_reservation", return_value={"ok": True, "updatedCount": 3}
         ) as send_reservation:
             response = client.delete(
-                "/api/lesson-reservations/month/2026-08",
+                "/api/lesson-reservations/day/2026-08-20",
                 headers=headers,
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {"deleted": True, "month": "2026-08", "deleted_count": 3})
-        self.assertEqual(send_reservation.call_args.args[2], {"month": "2026-08"})
-        self.assertEqual(send_reservation.call_args.kwargs["action"], "delete_month")
+        self.assertEqual(response.json, {"deleted": True, "date": "2026-08-20", "deleted_count": 3})
+        self.assertEqual(send_reservation.call_args.args[2], {"date": "2026-08-20"})
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "delete_day")
 
-    def test_lesson_reservation_monthly_deletion_validates_month(self):
-        self.assertEqual(validate_reservation_month("2026-08"), "2026-08")
-        with self.assertRaisesRegex(ValueError, "YYYY-MM"):
-            validate_reservation_month("2026-13")
+    def test_lesson_reservation_daily_deletion_validates_date(self):
+        self.assertEqual(validate_reservation_date("2026-08-20"), "2026-08-20")
+        with self.assertRaisesRegex(ValueError, "YYYY-MM-DD"):
+            validate_reservation_date("2026-08")
 
-    def test_lesson_reservation_monthly_deletion_requires_first_day_and_past_month(self):
+    def test_lesson_reservation_daily_deletion_rejects_today_and_future(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}), patch(
-            "app.current_japan_date", return_value=date(2026, 9, 2)
+            "app.current_japan_date", return_value=date(2026, 9, 12)
         ):
             non_first_day_response = client.delete(
-                "/api/lesson-reservations/month/2026-08", headers=headers
+                "/api/lesson-reservations/day/2026-09-12", headers=headers
             )
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}), patch(
-            "app.current_japan_date", return_value=date(2026, 9, 1)
+            "app.current_japan_date", return_value=date(2026, 9, 12)
         ):
             current_month_response = client.delete(
-                "/api/lesson-reservations/month/2026-09", headers=headers
+                "/api/lesson-reservations/day/2026-09-13", headers=headers
             )
 
         self.assertEqual(non_first_day_response.status_code, 400)
-        self.assertIn("毎月1日", non_first_day_response.json["error"])
+        self.assertIn("過去日の予約", non_first_day_response.json["error"])
         self.assertEqual(current_month_response.status_code, 400)
-        self.assertIn("過去月", current_month_response.json["error"])
+        self.assertIn("過去日の予約", current_month_response.json["error"])
 
-    def test_apps_script_deletes_each_monthly_reservation_without_releasing_slots(self):
+    def test_apps_script_deletes_each_daily_reservation_without_releasing_slots(self):
         script = (Path(__file__).parents[1] / "google-apps-script" / "Code.gs").read_text(
             encoding="utf-8"
         )
-        delete_month_action = script.split('if (action === "delete_month")', 1)[1].split(
+        delete_day_action = script.split('if (action === "delete_day")', 1)[1].split(
             'return jsonResponse({ ok: false, error: "Unsupported action" })', 1
         )[0]
-        delete_month_function = script.split("function deleteReservationsForMonth", 1)[1].split(
+        delete_day_function = script.split("function deleteReservationsForDate", 1)[1].split(
             "function reservationStatusToSlotStatus", 1
         )[0]
 
-        self.assertIn('"delete_month"', script)
-        self.assertIn("deleteReservationsForMonth(sheet, month)", delete_month_action)
-        self.assertNotIn("releaseReservationSlots(", delete_month_function)
-        self.assertIn("sheet.deleteRow(index + 2)", delete_month_function)
+        self.assertIn('"delete_day"', script)
+        self.assertIn("deleteReservationsForDate(sheet, dateText)", delete_day_action)
+        self.assertNotIn("releaseReservationSlots(", delete_day_function)
+        self.assertIn("sheet.deleteRow(index + 2)", delete_day_function)
 
     def test_lesson_slot_admin_updates_schedule(self):
         client = create_app().test_client()

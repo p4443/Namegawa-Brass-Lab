@@ -799,7 +799,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40"
 
 
 def current_japan_date():
@@ -2156,11 +2156,15 @@ def validate_reservation_id(value):
     return reservation_id
 
 
-def validate_reservation_month(value):
-    month = str(value).strip()
-    if not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])", month):
-        raise ValueError("削除する月をYYYY-MM形式で指定してください。")
-    return month
+def validate_reservation_date(value):
+    reservation_date = str(value).strip()
+    if not re.fullmatch(r"\d{4}-(?:0[1-9]|1[0-2])-\d{2}", reservation_date):
+        raise ValueError("削除する日をYYYY-MM-DD形式で指定してください。")
+    try:
+        datetime.strptime(reservation_date, "%Y-%m-%d")
+    except ValueError as exc:
+        raise ValueError("削除する日を正しく指定してください。") from exc
+    return reservation_date
 
 
 def validate_lesson_reservation_cancellation(payload):
@@ -2264,7 +2268,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -4046,8 +4050,8 @@ def create_app(
                 503,
             )
 
-    @app.route("/api/lesson-reservations/month/<month>", methods=["DELETE", "OPTIONS"])
-    def delete_lesson_reservations_for_month(month):
+    @app.route("/api/lesson-reservations/day/<reservation_date>", methods=["DELETE", "OPTIONS"])
+    def delete_lesson_reservations_for_day(reservation_date):
         if request.method == "OPTIONS":
             return with_lesson_reservation_cors(
                 app.response_class(status=204),
@@ -4065,7 +4069,7 @@ def create_app(
                 headers="Content-Type, X-Editor-Password",
             )
         try:
-            reservation_month = validate_reservation_month(month)
+            valid_reservation_date = validate_reservation_date(reservation_date)
         except ValueError as exc:
             response = jsonify({"error": str(exc)})
             response.status_code = 400
@@ -4075,14 +4079,9 @@ def create_app(
                 headers="Content-Type, X-Editor-Password",
             )
         today = current_japan_date()
-        if today.day != 1:
+        if valid_reservation_date >= today.strftime("%Y-%m-%d"):
             return lesson_reservation_json(
-                {"error": "月別の予約削除は毎月1日に実行できます。"},
-                400,
-            )
-        if reservation_month >= today.strftime("%Y-%m"):
-            return lesson_reservation_json(
-                {"error": "過去月の予約のみ削除できます。"},
+                {"error": "過去日の予約のみ削除できます。"},
                 400,
             )
 
@@ -4090,20 +4089,20 @@ def create_app(
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
         if not script_url or not script_secret:
             return lesson_reservation_json(
-                {"error": "現在、月別の予約削除を利用できません。"},
+                {"error": "現在、日別の予約削除を利用できません。"},
                 503,
             )
         try:
             result = send_lesson_reservation(
                 script_url,
                 script_secret,
-                {"month": reservation_month},
-                action="delete_month",
+                {"date": valid_reservation_date},
+                action="delete_day",
             )
             response = jsonify(
                 {
                     "deleted": True,
-                    "month": reservation_month,
+                    "date": valid_reservation_date,
                     "deleted_count": parse_updated_count(result),
                 }
             )
@@ -4113,20 +4112,20 @@ def create_app(
                 headers="Content-Type, X-Editor-Password",
             )
         except LessonReservationDeliveryError as exc:
-            app.logger.exception("Apps Script rejected monthly reservation deletion")
+            app.logger.exception("Apps Script rejected daily reservation deletion")
             if str(exc) in {"Unsupported action", "OUTDATED_DEPLOYMENT"}:
                 return lesson_reservation_json(
-                    {"error": "Apps Scriptの公開版が古いため月別の予約を削除できません。Code.gsを新しいバージョンで再デプロイしてください。"},
+                    {"error": "Apps Scriptの公開版が古いため日別の予約を削除できません。Code.gsを新しいバージョンで再デプロイしてください。"},
                     503,
                 )
             return lesson_reservation_json(
-                {"error": "月別の予約を削除できませんでした。"},
+                {"error": "日別の予約を削除できませんでした。"},
                 502,
             )
         except (json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
-            app.logger.exception("Failed to delete monthly lesson reservations")
+            app.logger.exception("Failed to delete daily lesson reservations")
             return lesson_reservation_json(
-                {"error": "月別の予約を削除できませんでした。"},
+                {"error": "日別の予約を削除できませんでした。"},
                 503,
             )
 
@@ -4204,7 +4203,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
