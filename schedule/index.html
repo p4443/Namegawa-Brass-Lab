@@ -258,10 +258,10 @@
   <script>
     const renderBase = "https://namegawa-brass-lab.com";
     const apiCandidates = (path) => {
-      const candidates = location.hostname.endsWith("github.io")
-        ? [`${renderBase}${path}`, `..${path}`]
-        : [path, `${renderBase}${path}`];
-      return [...new Set(candidates.map((candidate) => new URL(candidate, location.href).href))];
+      const localHost = ["localhost", "127.0.0.1"].includes(location.hostname);
+      return [localHost ? path : `${renderBase}${path}`].map(
+        (candidate) => new URL(candidate, location.href).href,
+      );
     };
     const calendar = document.getElementById("schedule-calendar");
     const monthTitle = document.getElementById("calendar-month");
