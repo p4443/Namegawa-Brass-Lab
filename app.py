@@ -799,7 +799,7 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40"
+LESSON_APPS_SCRIPT_VERSION = "2026-09-05-reservation-slot-range-v39"
 
 
 def current_japan_date():
@@ -4093,17 +4093,29 @@ def create_app(
                 503,
             )
         try:
-            result = send_lesson_reservation(
+            reservations_result = send_lesson_reservation(
                 script_url,
                 script_secret,
-                {"date": valid_reservation_date},
-                action="delete_day",
+                {},
+                action="list",
             )
+            reservations = reservations_result.get("reservations", [])
+            matching_reservations = [
+                reservation for reservation in reservations
+                if reservation.get("preferred_date") == valid_reservation_date
+            ]
+            for reservation in matching_reservations:
+                send_lesson_reservation(
+                    script_url,
+                    script_secret,
+                    {"reservation_id": reservation.get("reservation_id", "")},
+                    action="delete",
+                )
             response = jsonify(
                 {
                     "deleted": True,
                     "date": valid_reservation_date,
-                    "deleted_count": parse_updated_count(result),
+                    "deleted_count": len(matching_reservations),
                 }
             )
             return with_lesson_reservation_cors(
@@ -4203,7 +4215,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,

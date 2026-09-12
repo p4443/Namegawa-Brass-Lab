@@ -2860,8 +2860,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-12-reservation-delete-day-v40",
-                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"],
+                "version": "2026-09-05-reservation-slot-range-v39",
+                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -3008,7 +3008,11 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
         ), patch("app.current_japan_date", return_value=date(2026, 9, 12)), patch(
-            "app.send_lesson_reservation", return_value={"ok": True, "updatedCount": 3}
+            "app.send_lesson_reservation",
+            side_effect=[
+                {"ok": True, "reservations": [{"reservation_id": "R-20260820-001", "preferred_date": "2026-08-20"}]},
+                {"ok": True},
+            ],
         ) as send_reservation:
             response = client.delete(
                 "/api/lesson-reservations/day/2026-08-20",
@@ -3016,9 +3020,10 @@ class UpdatesTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json, {"deleted": True, "date": "2026-08-20", "deleted_count": 3})
-        self.assertEqual(send_reservation.call_args.args[2], {"date": "2026-08-20"})
-        self.assertEqual(send_reservation.call_args.kwargs["action"], "delete_day")
+        self.assertEqual(response.json, {"deleted": True, "date": "2026-08-20", "deleted_count": 1})
+        self.assertEqual(send_reservation.call_args_list[0].kwargs["action"], "list")
+        self.assertEqual(send_reservation.call_args_list[1].args[2], {"reservation_id": "R-20260820-001"})
+        self.assertEqual(send_reservation.call_args_list[1].kwargs["action"], "delete")
 
     def test_lesson_reservation_daily_deletion_validates_date(self):
         self.assertEqual(validate_reservation_date("2026-08-20"), "2026-08-20")
