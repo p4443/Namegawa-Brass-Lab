@@ -2233,7 +2233,10 @@ def validate_slot_status_request(payload):
     current_date = start_date
     while current_date <= end_date:
         allowed_times = WEEKDAY_RESERVATION_TIMES[current_date.weekday()]
-        if not allowed_times and start_time != CONSULTATION_TIME:
+        if (
+            start_time != CONSULTATION_TIME
+            and not (allowed_times - {CONSULTATION_TIME})
+        ):
             current_date += timedelta(days=1)
             continue
         if start_time == CONSULTATION_TIME:
