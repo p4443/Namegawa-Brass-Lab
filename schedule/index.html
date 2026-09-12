@@ -304,11 +304,7 @@
       const day = calendarDays.get(value);
       if (!lessonType || !day) return [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
-      const configuredTimes = new Set(day.configured_times || []);
-      const durationMinutes = lessonDurations[lessonType];
-      const starts = [...configuredTimes];
-      const configuredStarts = starts.filter((time) => occupiedTimes(time, durationMinutes).every((slot) => configuredTimes.has(slot)));
-      return [...new Set([...(day.lessons?.[lessonType]?.available_times || []), ...configuredStarts])].sort();
+      return day.lessons?.[lessonType]?.available_times || [];
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {
