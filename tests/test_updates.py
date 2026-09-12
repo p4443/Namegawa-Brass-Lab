@@ -2792,7 +2792,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('available ? `空き ${available}` : "満席"', page)
         self.assertIn('` / 予約済 ${confirmed}件`', page)
         self.assertIn("result.confirmed_counts || {}", page)
-        self.assertIn('(total ? "受付日" : "休み")', page)
+        self.assertIn('date > lastDate ? "受付準備中" : "休み"', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
         self.assertIn("controller.abort(), timeoutMs", page)
@@ -2807,7 +2807,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('reservation.status !== "キャンセル"', page)
         self.assertIn("setInterval(() =>", page)
         self.assertIn("}, 30000);", page)
-        self.assertIn('total ? "受付日" : "休み"', page)
+        self.assertIn('date > lastDate ? "受付準備中" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
         self.assertNotIn("timesByDay", page)
         self.assertNotIn("makeRange", page)
@@ -3752,12 +3752,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("makeRange", schedule_source)
         self.assertIn("internal_times", schedule_source)
 
-    def test_schedule_sets_one_month_reservation_window(self):
+    def test_schedule_sets_two_month_reservation_window(self):
         schedule_source = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("lastDate.setMonth(lastDate.getMonth() + 1)", schedule_source)
+        self.assertIn("lastDate.setDate(lastDate.getDate() + 61)", schedule_source)
 
     def test_lesson_reservation_manage_requires_editor_password(self):
         client = create_app().test_client()

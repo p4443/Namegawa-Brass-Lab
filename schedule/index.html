@@ -285,7 +285,7 @@
     const today = new Date(`${nowText}T00:00:00`);
     const firstDate = new Date(today); firstDate.setDate(firstDate.getDate() + 1);
     const lastDate = new Date(today);
-    lastDate.setMonth(lastDate.getMonth() + 1);
+    lastDate.setDate(lastDate.getDate() + 61);
     let visibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedDate = "";
     let scheduleReady = false;
@@ -410,7 +410,11 @@
         summary.textContent = isPastDate
           ? "受付終了"
           : hasLessonType
-          ? (scheduleReady ? (total ? `${available ? `空き ${available}` : "満席"}${confirmed ? ` / 予約済 ${confirmed}件` : ""}` : "休み") : (total ? "受付日" : "休み"))
+          ? (scheduleReady
+            ? (total
+              ? `${available ? `空き ${available}` : "満席"}${confirmed ? ` / 予約済 ${confirmed}件` : ""}`
+              : (date > lastDate ? "受付準備中" : "休み"))
+            : (total ? "受付日" : (date > lastDate ? "受付準備中" : "休み")))
           : "";
         button.append(number, summary); button.addEventListener("click", () => {
           renderSlots(value);
