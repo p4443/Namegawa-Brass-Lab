@@ -421,7 +421,13 @@
           }
         });
         const formatTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-        const labels = ranges.map((range) => range.label || `${range.status} ${formatTime(range.start)}〜${formatTime(range.end)}`);
+        const labels = ranges.map((range) => {
+          if (range.label) return range.label;
+          const end = range.status === "予約済" && durationMinutes
+            ? range.start + durationMinutes
+            : range.end + 15;
+          return `${range.status} ${formatTime(range.start)}〜${formatTime(end)}`;
+        });
         summary.textContent = `受付不可: ${labels.join("・")}`;
         slotList.append(summary);
       }
