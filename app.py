@@ -2042,7 +2042,7 @@ def delete_event_pdf(
     return deleted_count
 
 
-def validate_lesson_reservation(payload):
+def validate_lesson_reservation(payload, extra_start_times=None):
     if not isinstance(payload, dict):
         raise ValueError("入力内容を確認してください。")
 
@@ -2072,9 +2072,9 @@ def validate_lesson_reservation(payload):
     last_available_date = add_one_month(current_japan_date())
     if not first_available_date <= preferred_date <= last_available_date:
         raise ValueError("予約日は明日から1か月先までの範囲で選択してください。")
-    if values["preferred_time"] not in lesson_start_times(
-        preferred_date, values["lesson_type"]
-    ):
+    allowed_start_times = set(lesson_start_times(preferred_date, values["lesson_type"]))
+    allowed_start_times.update(extra_start_times or ())
+    if values["preferred_time"] not in allowed_start_times:
         raise ValueError("選択した曜日の予約可能時間を指定してください。")
     values["occupied_times"] = reservation_slot_times(
         values["preferred_time"], values["duration_minutes"]
@@ -3858,10 +3858,40 @@ def create_app(
             )
         if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
             return lesson_reservation_json({"saved": True}, 201)
+        reservation_payload = request.get_json(silent=True)
         try:
-            values = validate_lesson_reservation(request.get_json(silent=True))
+            values = validate_lesson_reservation(reservation_payload)
         except ValueError as exc:
-            return lesson_reservation_json({"error": str(exc)}, 400)
+            if str(exc) != "選択した曜日の予約可能時間を指定してください。":
+                return lesson_reservation_json({"error": str(exc)}, 400)
+            script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+            script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+            try:
+                preferred_date = str(reservation_payload.get("preferred_date", "")).strip()
+                preferred_time = str(reservation_payload.get("preferred_time", "")).strip()
+                lesson_type = str(reservation_payload.get("lesson_type", "")).strip()
+                extra_result = send_lesson_reservation(
+                    script_url,
+                    script_secret,
+                    {"from": preferred_date, "to": preferred_date},
+                    action="get_slot_statuses",
+                )
+                configured_times = {
+                    str(slot.get("time", "")).strip()
+                    for slot in extra_result.get("slots", [])
+                    if isinstance(slot, dict)
+                    and str(slot.get("date", "")).strip() == preferred_date
+                }
+                duration_minutes = LESSON_DURATION_MINUTES.get(lesson_type)
+                required_times = reservation_slot_times(preferred_time, duration_minutes)
+                if preferred_time not in configured_times or not set(required_times).issubset(configured_times):
+                    return lesson_reservation_json({"error": str(exc)}, 400)
+                values = validate_lesson_reservation(
+                    reservation_payload,
+                    extra_start_times={preferred_time},
+                )
+            except (AttributeError, TypeError, LessonReservationDeliveryError, json.JSONDecodeError, OSError, urllib_error.URLError, ValueError):
+                return lesson_reservation_json({"error": str(exc)}, 400)
 
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
