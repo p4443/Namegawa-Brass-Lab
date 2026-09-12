@@ -70,10 +70,14 @@
     .detail-panel { padding: 20px; }
     .detail-panel h2 { margin: 0 0 4px; color: var(--navy); font-size: 1.05rem; }
     .detail-note { margin: 0 0 14px; color: var(--muted); font-size: .78rem; line-height: 1.75; text-wrap: pretty; }
-    .slot-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
-    .slot { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 42px; padding: 8px 10px; border-left: 3px solid var(--available); background: #f3faf6; font-size: .84rem; }
-    .slot.busy { border-left-color: var(--busy); background: #fff5f3; color: var(--muted); }
-    .slot a { color: var(--available); font-weight: 800; }
+    .slot-list { display: grid; gap: 13px; margin: 0; padding: 0; list-style: none; }
+    .slot-section { display: grid; gap: 8px; }
+    .slot-section-title { margin: 0; color: var(--navy); font-size: .76rem; font-weight: 800; letter-spacing: .04em; }
+    .slot-choices { display: flex; flex-wrap: wrap; gap: 7px; }
+    .slot { display: block; min-height: 0; padding: 0; border: 0; background: transparent; font-size: .84rem; }
+    .slot a { display: block; padding: 9px 12px; border: 1px solid #a9d4bd; border-radius: 999px; color: var(--available); background: #f3faf6; font-weight: 800; text-decoration: none; }
+    .slot a:hover, .slot a:focus-visible { border-color: var(--available); outline: 2px solid rgba(22,121,76,.16); }
+    .slot-summary { margin: 0; padding: 10px 12px; border-left: 3px solid var(--busy); color: var(--muted); background: #fff5f3; font-size: .78rem; }
     .load-status { margin: 12px 0 0; color: var(--muted); font-size: .8rem; }
     .retry-button { margin-top: 10px; min-height: 38px; padding: 7px 13px; border: 1px solid var(--blue); border-radius: 5px; color: var(--blue); background: #fff; font-weight: 800; cursor: pointer; }
     .admin { margin-top: 28px; overflow: hidden; }
@@ -368,25 +372,33 @@
         const item = document.createElement("li"); item.className = "slot busy"; item.textContent = "受付時間外です"; slotList.append(item); return;
       }
       const durationMinutes = lessonDurations[scheduleLessonType.value];
+      const availableTimes = [];
+      const blockedTimes = [];
       times.forEach((time) => {
         const status = occupiedTimes(time, durationMinutes)
           .map((slotTime) => statusMap.get(`${value}|${slotTime}`) || "空き")
           .find((slotStatus) => blocksReservationTime(time, slotStatus)) || "空き";
-        const item = document.createElement("li"); item.className = `slot${blocksReservationTime(time, status) ? " busy" : ""}`;
-        const timeLabel = document.createElement("strong");
-        timeLabel.textContent = time === "要相談"
-          ? (durationMinutes ? `要相談（${durationMinutes}分）` : "要相談（時間は個別調整）")
-          : `${time}〜${endTime(time, durationMinutes)}（${durationMinutes}分）`;
-        item.append(timeLabel);
-        if (blocksReservationTime(time, status)) {
-          const state = document.createElement("span"); state.textContent = status; item.append(state);
-        } else {
+        (blocksReservationTime(time, status) ? blockedTimes : availableTimes).push({ time, status });
+      });
+      if (availableTimes.length) {
+        const section = document.createElement("li"); section.className = "slot-section";
+        const title = document.createElement("h3"); title.className = "slot-section-title"; title.textContent = "予約できる時間";
+        const choices = document.createElement("div"); choices.className = "slot-choices";
+        availableTimes.forEach(({ time }) => {
+          const item = document.createElement("span"); item.className = "slot";
           const link = document.createElement("a");
           link.href = `../lesson/?lesson_type=${encodeURIComponent(scheduleLessonType.value)}&date=${value}&time=${encodeURIComponent(time)}#reservation-title`;
-          link.textContent = "予約する"; item.append(link);
-        }
-        slotList.append(item);
-      });
+          link.textContent = time === "要相談" ? "要相談" : `${time}〜${endTime(time, durationMinutes)}`;
+          item.append(link); choices.append(item);
+        });
+        section.append(title, choices); slotList.append(section);
+      }
+      if (blockedTimes.length) {
+        const summary = document.createElement("li"); summary.className = "slot-summary";
+        const labels = blockedTimes.map(({ time, status }) => time === "要相談" ? status : `${time} ${status}`);
+        summary.textContent = `受付不可: ${labels.join("・")}`;
+        slotList.append(summary);
+      }
     }
     function renderCalendar() {
       monthTitle.textContent = `${visibleMonth.getFullYear()}年 ${visibleMonth.getMonth()+1}月`;
