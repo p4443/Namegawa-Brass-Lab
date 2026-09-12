@@ -4503,7 +4503,28 @@ def create_app(
                 )
                 # キャンセル済みなど一覧に無い予約はGAS側の存在確認に委ねる
                 if current_reservation is not None:
-                    validate_admin_reservation_schedule(current_reservation, values)
+                    try:
+                        validate_admin_reservation_schedule(current_reservation, values)
+                    except ValueError:
+                        requested_date = values.get("preferred_date", current_reservation["preferred_date"])
+                        requested_time = values.get("preferred_time", current_reservation["preferred_time"])
+                        requested_type = values.get("lesson_type", current_reservation["lesson_type"])
+                        requested_duration = values.get("duration_minutes", LESSON_DURATION_MINUTES[requested_type])
+                        slot_result = send_lesson_reservation(
+                            script_url,
+                            script_secret,
+                            {"from": requested_date, "to": requested_date},
+                            action="get_slot_statuses",
+                        )
+                        configured_times = {
+                            str(slot.get("time", "")).strip()
+                            for slot in slot_result.get("slots", [])
+                            if isinstance(slot, dict)
+                            and str(slot.get("date", "")).strip() == requested_date
+                        }
+                        required_times = reservation_slot_times(requested_time, requested_duration)
+                        if not set(required_times).issubset(configured_times):
+                            raise
             result = send_lesson_reservation(
                 script_url,
                 script_secret,
