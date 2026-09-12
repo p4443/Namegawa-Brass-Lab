@@ -3131,7 +3131,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(send_reservation.call_args.args[2]["status"], "空き")
 
-    def test_lesson_slot_admin_rejects_times_outside_weekday_hours(self):
+    def test_lesson_slot_admin_accepts_admin_defined_times_outside_weekday_hours(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
         payload = {
@@ -3143,15 +3143,22 @@ class UpdatesTest(unittest.TestCase):
             "note": "時間外",
         }
 
-        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={"ok": True, "updatedCount": 3}):
             response = client.post(
                 "/api/lesson-slot-statuses/admin",
                 json=payload,
                 headers=headers,
             )
 
-        self.assertEqual(response.status_code, 400)
-        self.assertIn("予約可能時間", response.json["error"])
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json["updated_count"], 3)
 
     def test_user_can_cancel_confirmed_reservation_and_release_slots(self):
         client = create_app().test_client()
