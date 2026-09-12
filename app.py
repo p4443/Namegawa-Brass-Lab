@@ -892,6 +892,17 @@ def lesson_calendar_days(from_date, to_date, slots):
     blocked_statuses = {"調整中", "予約済", "お休み"}
     while current_date <= to_date:
         date_text = current_date.isoformat()
+        configured_times = sorted(
+            {
+                str(slot.get("time", "")).strip()
+                for slot in slots
+                if isinstance(slot, dict)
+                and str(slot.get("date", "")).strip() == date_text
+                and re.fullmatch(r"\d{2}:\d{2}", str(slot.get("time", "")).strip())
+                and str(slot.get("time", "")).strip()
+                not in WEEKDAY_RESERVATION_TIMES[current_date.weekday()]
+            }
+        )
         lessons = {}
         for lesson_type in lesson_types:
             duration_minutes = LESSON_DURATION_MINUTES[lesson_type]
@@ -921,6 +932,7 @@ def lesson_calendar_days(from_date, to_date, slots):
                 "lessons": lessons,
                 "blocked_statuses": sorted(day_statuses),
                 "internal_times": internal_times_for_date(current_date),
+                "configured_times": configured_times,
             }
         )
         current_date += timedelta(days=1)

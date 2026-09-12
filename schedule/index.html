@@ -295,7 +295,10 @@
       const day = calendarDays.get(value);
       if (!lessonType || !day) return [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
-      return day.lessons?.[lessonType]?.available_times || [];
+      return [...new Set([
+        ...(day.lessons?.[lessonType]?.available_times || []),
+        ...(lessonType === "グループ・部活動指導" ? [] : (day.configured_times || [])),
+      ])].sort();
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {

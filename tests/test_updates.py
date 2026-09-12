@@ -3385,6 +3385,12 @@ class UpdatesTest(unittest.TestCase):
         friday = lesson_calendar_days(date(2026, 8, 14), date(2026, 8, 14), [])[0]
         self.assertIn("17:00", friday["internal_times"])
         self.assertEqual(friday["internal_times"][-1], "要相談")
+        configured = lesson_calendar_days(
+            date(2026, 10, 9),
+            date(2026, 10, 9),
+            [{"date": "2026-10-09", "time": "17:45", "status": "予約済"}],
+        )[0]
+        self.assertEqual(configured["configured_times"], ["17:45"])
 
     def test_lesson_calendar_api_returns_server_calculated_candidates(self):
         client = create_app().test_client()
