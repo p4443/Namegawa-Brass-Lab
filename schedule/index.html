@@ -304,10 +304,16 @@
       const day = calendarDays.get(value);
       if (!lessonType || !day) return [];
       if (lessonType === "グループ・部活動指導") return ["要相談"];
-      return [...new Set([
-        ...(day.lessons?.[lessonType]?.available_times || []),
-        ...(lessonType === "グループ・部活動指導" ? [] : (day.configured_times || [])),
-      ])].sort();
+      const configuredTimes = new Set(day.configured_times || []);
+      const durationMinutes = lessonDurations[lessonType];
+      const starts = lessonType === "中学生"
+        ? [...configuredTimes]
+        : [...configuredTimes].filter((time) => {
+          const minute = Number(time.slice(3));
+          return lessonType === "高校生以上・大人" ? minute === 0 : minute === 0 || minute === 30;
+        });
+      const configuredStarts = starts.filter((time) => occupiedTimes(time, durationMinutes).every((slot) => configuredTimes.has(slot)));
+      return [...new Set([...(day.lessons?.[lessonType]?.available_times || []), ...configuredStarts])].sort();
     };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {
@@ -400,7 +406,22 @@
       }
       if (blockedTimes.length) {
         const summary = document.createElement("li"); summary.className = "slot-summary";
-        const labels = blockedTimes.map(({ time, status }) => time === "要相談" ? status : `${time} ${status}`);
+        const ranges = [];
+        blockedTimes.forEach(({ time, status }) => {
+          if (time === "要相談") {
+            ranges.push({ label: status });
+            return;
+          }
+          const minutes = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+          const previous = ranges[ranges.length - 1];
+          if (previous && previous.status === status && previous.end + 15 === minutes) {
+            previous.end = minutes;
+          } else {
+            ranges.push({ status, start: minutes, end: minutes });
+          }
+        });
+        const formatTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+        const labels = ranges.map((range) => range.label || `${range.status} ${formatTime(range.start)}〜${formatTime(range.end)}`);
         summary.textContent = `受付不可: ${labels.join("・")}`;
         slotList.append(summary);
       }
