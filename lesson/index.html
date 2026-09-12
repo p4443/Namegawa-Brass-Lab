@@ -1675,11 +1675,7 @@
     const firstAvailableDate = new Date(today);
     firstAvailableDate.setDate(firstAvailableDate.getDate() + 1);
     const lastAvailableDate = new Date(today);
-    const targetMonth = lastAvailableDate.getMonth() + 1;
-    lastAvailableDate.setDate(1);
-    lastAvailableDate.setMonth(targetMonth + 1);
-    lastAvailableDate.setDate(0);
-    lastAvailableDate.setDate(Math.min(today.getDate(), lastAvailableDate.getDate()));
+    lastAvailableDate.setMonth(lastAvailableDate.getMonth() + 1);
 
     const dateValue = (date) => {
       const year = date.getFullYear();

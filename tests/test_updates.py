@@ -3752,13 +3752,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("makeRange", schedule_source)
         self.assertIn("internal_times", schedule_source)
 
-    def test_schedule_clamps_one_month_limit_at_month_end(self):
+    def test_schedule_sets_one_month_reservation_window(self):
         schedule_source = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
             encoding="utf-8"
         )
 
-        self.assertIn("const targetMonth = lastDate.getMonth() + 1", schedule_source)
-        self.assertIn("lastDate.setDate(Math.min(today.getDate(), lastDate.getDate()))", schedule_source)
+        self.assertIn("lastDate.setMonth(lastDate.getMonth() + 1)", schedule_source)
 
     def test_lesson_reservation_manage_requires_editor_password(self):
         client = create_app().test_client()

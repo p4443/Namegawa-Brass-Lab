@@ -285,11 +285,7 @@
     const today = new Date(`${nowText}T00:00:00`);
     const firstDate = new Date(today); firstDate.setDate(firstDate.getDate() + 1);
     const lastDate = new Date(today);
-    const targetMonth = lastDate.getMonth() + 1;
-    lastDate.setDate(1);
-    lastDate.setMonth(targetMonth + 1);
-    lastDate.setDate(0);
-    lastDate.setDate(Math.min(today.getDate(), lastDate.getDate()));
+    lastDate.setMonth(lastDate.getMonth() + 1);
     let visibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedDate = "";
     let scheduleReady = false;
