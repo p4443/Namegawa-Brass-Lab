@@ -306,12 +306,7 @@
       if (lessonType === "グループ・部活動指導") return ["要相談"];
       const configuredTimes = new Set(day.configured_times || []);
       const durationMinutes = lessonDurations[lessonType];
-      const starts = lessonType === "中学生"
-        ? [...configuredTimes]
-        : [...configuredTimes].filter((time) => {
-          const minute = Number(time.slice(3));
-          return lessonType === "高校生以上・大人" ? minute === 0 : minute === 0 || minute === 30;
-        });
+      const starts = [...configuredTimes];
       const configuredStarts = starts.filter((time) => occupiedTimes(time, durationMinutes).every((slot) => configuredTimes.has(slot)));
       return [...new Set([...(day.lessons?.[lessonType]?.available_times || []), ...configuredStarts])].sort();
     };
