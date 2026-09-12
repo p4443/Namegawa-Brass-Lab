@@ -2235,10 +2235,11 @@ def validate_slot_status_request(payload):
     if start_time != CONSULTATION_TIME and end_time != CONSULTATION_TIME:
         start_minutes = int(start_time[:2]) * 60 + int(start_time[3:])
         end_minutes = int(end_time[:2]) * 60 + int(end_time[3:])
-        if end_minutes < start_minutes:
-            raise ValueError("終了時間は開始時間以降を指定してください。")
+        if end_minutes <= start_minutes:
+            raise ValueError("終了時間は開始時間より後を指定してください。")
         if start_minutes % 15 or end_minutes % 15:
             raise ValueError("時間は15分単位で指定してください。")
+        end_time = minutes_to_time(end_minutes - 15)
     elif start_time != end_time:
         raise ValueError("要相談を指定する場合は開始時間と終了時間を同じにしてください。")
 

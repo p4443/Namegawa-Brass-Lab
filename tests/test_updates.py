@@ -2819,7 +2819,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('durationInput.step = "15"', page)
         self.assertIn("payload.duration_minutes = Number(durationInput.value)", page)
         self.assertIn("グループレッスン・部活動指導は、開始時刻と所要時間を個別に調整します。", page)
-        self.assertIn("最終枠の開始時間", page)
+        self.assertIn("終了時間（この時刻は含まない）", page)
         self.assertIn(".panel { min-width: 0;", page)
         self.assertIn('selectedDateTitle.focus({ preventScroll: true })', page)
         self.assertIn('matchMedia("(max-width: 760px)").matches', page)
