@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: namegawa-brass-lab
+    name: Namegawa-Brass-Lab-1
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
