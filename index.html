@@ -6,9 +6,13 @@
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/branding/favicon.png?v=gold-addressbar-20260910">
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <script>
+    const isGitHubPages = location.hostname === 'p4443.github.io'
+      && location.pathname.startsWith('/Namegawa-Brass-Lab');
     const isLiveServer = ['localhost', '127.0.0.1'].includes(location.hostname)
       && location.port === '5500';
-    if (location.protocol === 'file:' || isLiveServer) {
+    if (isGitHubPages) {
+      location.replace(`https://namegawa-brass-lab.com/${location.search}${location.hash}`);
+    } else if (location.protocol === 'file:' || isLiveServer) {
       location.replace(`http://localhost:8080/${location.search}${location.hash}`);
     }
   </script>
