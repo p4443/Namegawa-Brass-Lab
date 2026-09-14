@@ -2865,8 +2865,8 @@ class UpdatesTest(unittest.TestCase):
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
-                "version": "2026-09-05-reservation-slot-range-v39",
-                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_month", "cancel", "upsert_slot_status_range"],
+                "version": "2026-09-12-reservation-delete-day-v40",
+                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"],
             }
             response = client.get("/api/lesson-admin-health", headers=headers)
 
