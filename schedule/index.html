@@ -531,11 +531,11 @@
     const adminReleaseHoliday = document.getElementById("admin-release-holiday");
     const reservationEditors = new Map();
     const changedReservationIds = new Set();
-    let adminPassword = "";
+    let adminToken = "";
     let adminVisibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedAdminDate = "";
     reservationDeleteDate.value = dateText(today);
-    const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Password": adminPassword });
+    const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Token": adminToken });
     function adminSlotsForDate(value) {
       const savedSlots = new Map(scheduleSlots
         .filter((slot) => slot.date === value)
@@ -663,7 +663,7 @@
     document.getElementById("admin-previous-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() - 1); renderAdminSlotCalendar(); });
     document.getElementById("admin-next-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() + 1); renderAdminSlotCalendar(); });
     adminLogout.addEventListener("click", () => {
-      adminPassword = "";
+      adminToken = "";
       changedReservationIds.clear();
       reservationEditors.clear();
       reservationList.replaceChildren();
@@ -738,7 +738,7 @@
       renderReservations(result.reservations || []);
     }
     setInterval(() => {
-      if (adminPassword && !dashboard.hidden && !document.hidden && changedReservationIds.size === 0) {
+      if (adminToken && !dashboard.hidden && !document.hidden && changedReservationIds.size === 0) {
         loadReservations().catch(() => {});
       }
     }, 30000);
@@ -845,12 +845,18 @@
       }
     });
     document.getElementById("admin-login-form").addEventListener("submit", async (event) => {
-      event.preventDefault(); const loginForm = event.currentTarget; const passwordInput = document.getElementById("admin-password"); adminPassword = passwordInput.value; adminStatus.textContent = "確認しています…";
+      event.preventDefault(); const loginForm = event.currentTarget; const passwordInput = document.getElementById("admin-password"); adminStatus.textContent = "確認しています…";
       try {
-        await requestApi("/api/editor", { headers: adminHeaders() });
+        const result = await requestApi("/api/editor", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ editor_password: passwordInput.value }),
+        });
+        if (!result.editor_token) throw new Error("管理者セッションを開始できませんでした。");
+        adminToken = result.editor_token;
         await requestApi("/api/lesson-admin-health", { headers: adminHeaders(), timeoutMs: 30000 });
       }
-      catch (error) { adminPassword = ""; adminStatus.textContent = error.message; return; }
+      catch (error) { adminToken = ""; adminStatus.textContent = error.message; return; }
       passwordInput.value = ""; dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
       catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
