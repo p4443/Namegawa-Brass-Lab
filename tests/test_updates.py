@@ -1776,7 +1776,6 @@ class UpdatesTest(unittest.TestCase):
     def test_all_back_links_use_shared_previous_page_navigation(self):
         client = create_app(database_url="").test_client()
         page_paths = (
-            "/lesson/",
             "/lesson/application-form.html",
             "/products/",
             "/download-guide/",
@@ -4392,6 +4391,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn('id="reservation-form"', products_page)
         self.assertIn('class="hero-photo"', lesson_page)
         self.assertIn('src="../data/media/lesson-header-photo.jpg"', lesson_page)
+        self.assertIn('srcset="../data/media/lesson-header-photo-mobile.jpg"', lesson_page)
+        self.assertIn('楽しく<span class="mobile-break"></span><span class="hero-copy-ending">着実な上達を支えます。</span>', lesson_page)
+        self.assertIn(".hero-copy-ending", lesson_page)
+        self.assertIn("white-space: nowrap", lesson_page)
+        self.assertNotIn("1つ前へ戻る", lesson_page)
+        self.assertNotIn('class="back-link"', lesson_page)
+        self.assertRegex(
+            lesson_page,
+            r"@media \(max-width: 760px\)[\s\S]*?\.hero-photo\s*\{[^}]*aspect-ratio: 4 / 3;",
+        )
+        self.assertIn('<li><a href="../">ホームに戻る</a></li>', lesson_page)
         self.assertIn('id="reservation-form"', lesson_page)
         self.assertIn('id="reservation-cancel-form"', lesson_page)
         self.assertIn('レッスンで<span class="mobile-break"></span>大切にしていること', lesson_page)
@@ -4491,6 +4501,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('音楽と文化で育む、<span class="mobile-break"></span>広がる3つの輪', page)
         self.assertIn('音楽とITで、滑川町から<span class="mobile-break"></span>未来の可能性を広げる。', page)
         self.assertIn('居場所づくり、<span class="mobile-break"></span>イベント企画・輸送', page)
+        self.assertIn('自社アプリ開発まで。「なめがわブラス・ラボ」は', page)
         self.assertIn('佐々木 久和<span class="profile-name-reading">（ささき ひさかず）</span>', page)
         self.assertIn('class="profile-role-secondary">Webエンジニア・軽貨物事業主', page)
         self.assertIn('kazooささき<span class="mobile-break"></span>トランペット教室', page)

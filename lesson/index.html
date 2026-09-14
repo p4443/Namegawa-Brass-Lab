@@ -83,17 +83,6 @@
       object-fit: contain;
     }
 
-    .back-link {
-      font-size: 0.82rem;
-      color: rgba(255, 255, 255, 0.82);
-      text-decoration: none;
-    }
-
-    .back-link:hover {
-      color: #ffffff;
-      text-decoration: underline;
-    }
-
     .section-title,
     #contact-title,
     #reservation-title,
@@ -920,15 +909,6 @@
       font-size: 1.05rem;
     }
 
-    .back-link {
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .back-link:hover {
-      color: var(--navy);
-    }
-
     .hero {
       padding: 72px 0 80px;
       display: grid;
@@ -972,12 +952,21 @@
       font-size: 1rem;
     }
 
-    .hero-photo {
+    .hero-copy-ending {
+      white-space: nowrap;
+    }
+
+    .hero-photo-container {
       display: block;
       width: min(100%, 320px);
+      justify-self: end;
+    }
+
+    .hero-photo {
+      display: block;
+      width: 100%;
       height: auto;
       aspect-ratio: 2 / 3;
-      justify-self: end;
       object-fit: cover;
       border: 4px solid #ffffff;
       border-radius: 8px;
@@ -1168,7 +1157,7 @@
       .hero {
         grid-template-columns: 1fr;
         padding: 48px 0 54px;
-        gap: 32px;
+        gap: 24px;
         text-align: center;
       }
 
@@ -1181,9 +1170,13 @@
         margin-left: auto;
       }
 
-      .hero-photo {
-        width: min(78vw, 280px);
+      .hero-photo-container {
+        width: min(100%, 460px);
         justify-self: center;
+      }
+
+      .hero-photo {
+        aspect-ratio: 4 / 3;
       }
 
       .page-nav-list {
@@ -1339,21 +1332,24 @@
         <img class="nav-brand-logo" src="/assets/branding/lesson-header-logo.png" alt="">
         <img class="nav-brand-wordmark" src="/assets/branding/5.png" alt="なめがわブラス・ラボ">
       </a>
-      <a class="back-link" href="../" data-history-back>← 1つ前へ戻る</a>
     </nav>
     <div class="hero">
       <div class="hero-content">
         <div class="hero-icon" aria-hidden="true"><img src="/assets/branding/trumpet-school-logo.png" alt=""></div>
         <p class="eyebrow">TRUMPET LESSON</p>
         <h1>kazooささき<br>トランペット教室</h1>
-        <p class="hero-copy">初めての音出しから音大受験まで。一人ひとりの目標に合わせた個別指導で、楽しく着実な上達を支えます。</p>
+        <p class="hero-copy">初めての音出しから音大受験まで。一人ひとりの目標に合わせた個別指導で、楽しく<span class="mobile-break"></span><span class="hero-copy-ending">着実な上達を支えます。</span></p>
       </div>
-      <img class="hero-photo" src="../data/media/lesson-header-photo.jpg" alt="トランペットを持つ講師の佐々木久和" width="1200" height="1800" decoding="async">
+      <picture class="hero-photo-container">
+        <source media="(max-width: 760px)" srcset="../data/media/lesson-header-photo-mobile.jpg">
+        <img class="hero-photo" src="../data/media/lesson-header-photo.jpg" alt="トランペットを持つ講師の佐々木久和" width="1200" height="1800" decoding="async">
+      </picture>
     </div>
   </header>
 
   <nav class="page-nav" aria-label="教室内ページナビ">
     <ul class="page-nav-list">
+      <li><a href="../">ホームに戻る</a></li>
       <li><a href="../schedule/">空き状況</a></li>
       <li><a href="#instructor-title">講師プロフィール</a></li>
       <li><a href="#method-title">レッスン内容</a></li>
