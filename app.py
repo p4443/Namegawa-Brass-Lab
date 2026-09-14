@@ -799,7 +799,10 @@ def compute_public_route(origin, destination, urlopen=None):
         ),
         "provider": "OpenStreetMap / OSRM",
     }
-LESSON_APPS_SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40"
+LESSON_APPS_SCRIPT_VERSIONS = {
+    "2026-09-05-reservation-slot-range-v39",
+    "2026-09-12-reservation-delete-day-v40",
+}
 
 
 def current_japan_date():
@@ -4215,7 +4218,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -4226,7 +4229,7 @@ def create_app(
             capabilities = set(result.get("capabilities", []))
             if (
                 not required_capabilities.issubset(capabilities)
-                or result.get("version") != LESSON_APPS_SCRIPT_VERSION
+                or result.get("version") not in LESSON_APPS_SCRIPT_VERSIONS
             ):
                 raise LessonReservationDeliveryError("OUTDATED_DEPLOYMENT")
             return lesson_reservation_json(

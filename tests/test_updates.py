@@ -2855,24 +2855,28 @@ class UpdatesTest(unittest.TestCase):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
-        with patch.dict(
-            os.environ,
-            {
-                "EDITOR_PASSWORD": "correct-password",
-                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
-                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
-            },
-        ), patch("app.send_lesson_reservation") as send_reservation:
-            send_reservation.return_value = {
-                "ok": True,
-                "version": "2026-09-12-reservation-delete-day-v40",
-                "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"],
-            }
-            response = client.get("/api/lesson-admin-health", headers=headers)
+        for version in (
+            "2026-09-05-reservation-slot-range-v39",
+            "2026-09-12-reservation-delete-day-v40",
+        ):
+            with self.subTest(version=version), patch.dict(
+                os.environ,
+                {
+                    "EDITOR_PASSWORD": "correct-password",
+                    "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                    "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                },
+            ), patch("app.send_lesson_reservation") as send_reservation:
+                send_reservation.return_value = {
+                    "ok": True,
+                    "version": version,
+                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                }
+                response = client.get("/api/lesson-admin-health", headers=headers)
 
-        self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json["ready"])
-        self.assertEqual(send_reservation.call_args.kwargs["action"], "health")
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.json["ready"])
+            self.assertEqual(send_reservation.call_args.kwargs["action"], "health")
 
     def test_lesson_admin_health_rejects_wrong_apps_script_version(self):
         client = create_app().test_client()
