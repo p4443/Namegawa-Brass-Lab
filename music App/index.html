@@ -397,7 +397,11 @@
       .mode-copy span { font-size: 0.65rem; }
 
       .display-panel {
-        min-height: 82px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 118px;
+        height: clamp(132px, 24dvh, 205px);
         margin-bottom: clamp(5px, 1dvh, 9px);
         padding: 8px 10px;
         border-width: 2px;
@@ -498,7 +502,7 @@
 
       .action-controls {
         gap: 5px;
-        margin-top: auto;
+        margin-top: clamp(14px, 3dvh, 28px);
       }
 
       .btn-toggle,
@@ -510,6 +514,13 @@
       }
 
       .btn-secondary { font-size: 0.82rem; }
+    }
+
+    @media (max-width: 600px) and (max-height: 620px) {
+      .display-panel {
+        min-height: 112px;
+        height: clamp(120px, 22dvh, 142px);
+      }
     }
   </style>
 </head>
