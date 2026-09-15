@@ -32,6 +32,25 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn("運送業務アプリ", future_products)
         self.assertIn("日報、点呼、配送実績", future_products)
 
+    def test_transport_apps_use_mobile_visual_previews(self):
+        self.assertIn('class="mobile-app-preview"', self.html)
+        self.assertIn("../data/media/tennko-record-entry.png", self.html)
+        self.assertIn("../data/media/beisia-work-records-mobile.png", self.html)
+        self.assertIn(".transport-catalog .app-window { display: none; }", self.html)
+        self.assertIn(".transport-catalog .store-actions { order: -1; }", self.html)
+
+    def test_hero_represents_music_and_one_transport_app(self):
+        hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
+        hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"
+
+        self.assertIn("音楽・運送の現場を", hero)
+        self.assertIn("メトロノーム", hero)
+        self.assertIn("自在稼働記録", hero)
+        self.assertIn("../data/media/products-operations-hero.png", hero)
+        self.assertNotIn("Transpose", hero)
+        self.assertNotIn("点呼確認簿", hero)
+        self.assertTrue(hero_image.is_file())
+
     def test_transpose_lab_uses_only_the_v2_source(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "trumpet-transpose-lab" / "index.html").read_bytes()
