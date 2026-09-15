@@ -4037,8 +4037,10 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("予約可能時間", response.json["error"])
-        self.assertEqual(send_reservation.call_count, 1)
-        self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
+        self.assertEqual(
+            [call.kwargs["action"] for call in send_reservation.call_args_list],
+            ["list", "get_slot_statuses"],
+        )
 
     def test_lesson_reservation_manage_rejects_consultation_time_on_plain_weekday(self):
         client = create_app().test_client()
@@ -4073,7 +4075,10 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 400)
         self.assertIn("予約可能時間", response.json["error"])
-        self.assertEqual(send_reservation.call_count, 1)
+        self.assertEqual(
+            [call.kwargs["action"] for call in send_reservation.call_args_list],
+            ["list", "get_slot_statuses"],
+        )
 
     def test_lesson_reservation_manage_allows_consultation_time_on_weekend(self):
         client = create_app().test_client()
@@ -4503,7 +4508,7 @@ class UpdatesTest(unittest.TestCase):
         page = response.get_data(as_text=True)
         self.assertIn('音楽と文化で育む、<span class="mobile-break"></span>広がる3つの輪', page)
         self.assertIn('音楽とITで、滑川町から<span class="mobile-break"></span>未来の可能性を広げる。', page)
-        self.assertIn('居場所づくり、<span class="mobile-break"></span>イベント企画・輸送', page)
+        self.assertIn('教室」をはじめ、部活動の地域連携、子どもの居場所づくり、イベント企画・輸送', page)
         self.assertIn('自社アプリ開発まで。「なめがわブラス・ラボ」は', page)
         self.assertIn('佐々木 久和<span class="profile-name-reading">（ささき ひさかず）</span>', page)
         self.assertIn('class="profile-role-secondary">Webエンジニア・軽貨物事業主', page)
