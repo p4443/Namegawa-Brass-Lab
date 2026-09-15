@@ -409,6 +409,65 @@
             </div>
           </div>
           </article>
+
+          <article class="product-feature" id="beisia-work-records">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">業務用Webアプリ</span>
+              <h2>自在稼働記録</h2>
+              <p>案件別の稼働記録、配送件数、走行距離をまとめて管理。月次帳票の印刷・PDF保存とCSV出力に対応します。</p>
+            </div>
+            <a class="launch-link" href="https://beisia-work-records.vercel.app/" target="_blank" rel="noopener">ログイン画面を開く</a>
+          </header>
+
+          <iframe class="app-window tenko-window" src="https://beisia-work-records.vercel.app/" title="自在稼働記録 ログイン画面" loading="lazy"></iframe>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>買い切りWebアプリ利用ライセンス</h3>
+              <p>案件ごとに日々の稼働記録と便設定を分けて管理できます。用途に合わせて個人版または会社版を選択してください。</p>
+              <ul class="store-benefits">
+                <li>1アカウントにつき最大10案件を管理</li>
+                <li>出退勤、配送件数、走行距離、備考を日別に記録</li>
+                <li>案件ごとの便設定と記録管理</li>
+                <li>A4月次帳票の印刷・PDF保存とCSV出力</li>
+                <li>会社版は管理者を含む最大20名で利用可能</li>
+                <li>点呼確認簿との任意連携に対応</li>
+              </ul>
+              <nav class="store-legal" aria-label="自在稼働記録の購入に関する情報">
+                <a href="https://beisia-work-records.vercel.app/integration-guide.html" target="_blank" rel="noopener">連携マニュアル</a>
+                <a href="https://beisia-work-records.vercel.app/legal-notice.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                <a href="https://beisia-work-records.vercel.app/terms.html" target="_blank" rel="noopener">利用規約</a>
+                <a href="https://beisia-work-records.vercel.app/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+              </nav>
+            </div>
+            <div class="store-actions">
+              <div class="service-plans" aria-label="自在稼働記録の料金プラン">
+                <section class="service-plan">
+                  <h3>個人版</h3>
+                  <p>購入者本人1名で、最大10案件の稼働記録を管理</p>
+                  <div class="service-price">400円 <small>税込・買い切り</small></div>
+                  <a class="service-purchase beisia-purchase-link" href="https://beisia-work-records.vercel.app/purchase.html">個人版の購入へ</a>
+                </section>
+                <section class="service-plan">
+                  <h3>会社版</h3>
+                  <p>管理者1名を含む最大20名で、各利用者が最大10案件を管理</p>
+                  <div class="service-price">8,000円 <small>税込・買い切り</small></div>
+                  <a class="service-purchase beisia-purchase-link" href="https://beisia-work-records.vercel.app/purchase.html">会社版の購入へ</a>
+                </section>
+              </div>
+              <p class="store-status" id="beisia-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="beisia-sales-form" novalidate>
+                  <input id="beisia-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="beisia-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="beisia-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
+            </div>
+          </div>
+          </article>
         </div>
       </div>
     </section>
@@ -420,6 +479,7 @@
         <div class="future-grid">
           <article class="future-card"><strong>練習サポートアプリ</strong><p>基礎練習や日々の記録を支える新しいツールを準備しています。</p></article>
           <article class="future-card"><strong>音楽教育コンテンツ</strong><p>指導現場で使いやすい教材やデジタルコンテンツを企画しています。</p></article>
+          <article class="future-card"><strong>運送業務アプリ</strong><p>日報、点呼、配送実績など、運送現場の記録と管理を効率化する業務ツールを展開します。</p></article>
           <article class="future-card"><strong>WEB制作・開発相談</strong><p>教室・店舗・地域活動に合ったWebサイトやアプリ開発をご相談いただけます。</p></article>
         </div>
       </div>
@@ -513,6 +573,12 @@
     const tenkoSalesPassword = document.getElementById("tenko-sales-password");
     const tenkoSalesEnabled = document.getElementById("tenko-sales-enabled");
     const tenkoSalesSave = document.getElementById("tenko-sales-save");
+    const beisiaPurchaseLinks = document.querySelectorAll(".beisia-purchase-link");
+    const beisiaStoreStatus = document.getElementById("beisia-store-status");
+    const beisiaSalesForm = document.getElementById("beisia-sales-form");
+    const beisiaSalesPassword = document.getElementById("beisia-sales-password");
+    const beisiaSalesEnabled = document.getElementById("beisia-sales-enabled");
+    const beisiaSalesSave = document.getElementById("beisia-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -549,6 +615,19 @@
       return result;
     }
 
+    async function requestBeisiaSales(options = {}) {
+      const response = await fetch("../api/store/beisia-work-records/product", options);
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/json")) {
+        throw new Error("自在稼働記録の販売サーバーから正しい応答を取得できませんでした。");
+      }
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "自在稼働記録の販売設定を確認できませんでした。");
+      }
+      return result;
+    }
+
     function renderTenkoSales(result) {
       const enabled = result.sales_enabled === true;
       tenkoSalesEnabled.checked = enabled;
@@ -570,6 +649,30 @@
           link.tabIndex = -1;
         });
         tenkoStoreStatus.textContent = error.message;
+      }
+    }
+
+    function renderBeisiaSales(product) {
+      const enabled = product.enabled === true;
+      beisiaSalesEnabled.checked = enabled;
+      beisiaPurchaseLinks.forEach((link) => {
+        link.setAttribute("aria-disabled", String(!enabled));
+        link.tabIndex = enabled ? 0 : -1;
+      });
+      beisiaStoreStatus.textContent = enabled
+        ? "個人版・会社版を販売中です。"
+        : "現在、自在稼働記録の販売を停止しています。";
+    }
+
+    async function loadBeisiaSales() {
+      try {
+        renderBeisiaSales(await requestBeisiaSales());
+      } catch (error) {
+        beisiaPurchaseLinks.forEach((link) => {
+          link.setAttribute("aria-disabled", "true");
+          link.tabIndex = -1;
+        });
+        beisiaStoreStatus.textContent = error.message;
       }
     }
 
@@ -896,6 +999,39 @@
       }
     });
 
+    beisiaSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = beisiaSalesPassword.value;
+      if (!password) {
+        beisiaStoreStatus.textContent = "編集用パスワードを入力してください。";
+        beisiaSalesPassword.focus();
+        return;
+      }
+      const requestedState = beisiaSalesEnabled.checked;
+      beisiaSalesEnabled.disabled = true;
+      beisiaSalesSave.disabled = true;
+      beisiaStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestBeisiaSales({
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Editor-Password": password,
+          },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderBeisiaSales(product);
+        beisiaSalesPassword.value = "";
+        beisiaStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        beisiaSalesEnabled.checked = !requestedState;
+        beisiaStoreStatus.textContent = error.message;
+      } finally {
+        beisiaSalesEnabled.disabled = false;
+        beisiaSalesSave.disabled = false;
+      }
+    });
+
     async function provideFlowDownload(sessionId) {
       const result = await requestStore("trumpet-transpose-lab/download-link", {
         method: "POST",
@@ -932,6 +1068,7 @@
     loadStoreProduct().then(applyPurchaseResult);
     loadFlowProduct().then(applyFlowPurchaseResult);
     loadTenkoSales();
+    loadBeisiaSales();
   </script>
 </body>
 </html>

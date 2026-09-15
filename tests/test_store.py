@@ -205,6 +205,30 @@ class StoreTest(unittest.TestCase):
             self.client.get("/api/store/trumpet-transpose-lab/product").get_json()["enabled"]
         )
 
+    def test_beisia_sale_setting_requires_editor_and_is_independent(self):
+        product = self.client.get("/api/store/beisia-work-records/product")
+        self.assertEqual(product.status_code, 200)
+        self.assertFalse(product.get_json()["enabled"])
+
+        unauthorized = self.client.put(
+            "/api/store/beisia-work-records/product",
+            json={"enabled": True},
+            headers={"X-Editor-Password": "wrong"},
+        )
+        self.assertEqual(unauthorized.status_code, 401)
+
+        enabled = self.client.put(
+            "/api/store/beisia-work-records/product",
+            json={"enabled": True},
+            headers={"X-Editor-Password": "editor-secret"},
+        )
+        self.assertEqual(enabled.status_code, 200)
+        self.assertTrue(enabled.get_json()["enabled"])
+        self.assertFalse(self.client.get("/api/store/product").get_json()["enabled"])
+        self.assertTrue(
+            self.client.get("/api/store/trumpet-transpose-lab/product").get_json()["enabled"]
+        )
+
     def test_enabled_store_hides_checkout_when_stripe_is_unavailable(self):
         self.enable_store()
         stripe = self.stripe_module()

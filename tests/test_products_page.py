@@ -27,6 +27,11 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn("買い切りWebアプリ利用ライセンス", self.html)
         self.assertIn("利用開始ガイド", self.html)
 
+    def test_future_products_include_transport_apps(self):
+        future_products = self.html.split('<section class="future-products"', 1)[1]
+        self.assertIn("運送業務アプリ", future_products)
+        self.assertIn("日報、点呼、配送実績", future_products)
+
     def test_transpose_lab_uses_only_the_v2_source(self):
         root = Path(__file__).resolve().parents[1]
         source = (root / "trumpet-transpose-lab" / "index.html").read_bytes()

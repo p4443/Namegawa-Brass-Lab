@@ -54,6 +54,8 @@ FLOW_HARMONY_LEGACY_PRODUCT_ID = "flow-harmony"
 FLOW_HARMONY_PRODUCT_NAME = "Trumpet Transpose Lab オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
 FLOW_HARMONY_SALES_ENABLED = True
+BEISIA_WORK_RECORDS_PRODUCT_ID = "beisia-work-records"
+BEISIA_WORK_RECORDS_PRODUCT_NAME = "自在稼働記録"
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -3522,6 +3524,34 @@ def create_app(
                 "checkout_available": settings["enabled"]
                 and configuration["ready"]
                 and flow_harmony_price_is_ready(configuration),
+            }
+        )
+
+    @app.route(
+        "/api/store/beisia-work-records/product", methods=["GET", "PUT", "OPTIONS"]
+    )
+    def beisia_work_records_store_product():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if request.method == "PUT":
+            error = require_editor()
+            if error:
+                response, status_code = error
+                response.status_code = status_code
+                return with_store_cors(response)
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("enabled"), bool
+            ):
+                return store_json({"error": "販売状態を指定してください。"}, 400)
+            set_store_enabled(payload["enabled"], BEISIA_WORK_RECORDS_PRODUCT_ID)
+
+        settings = get_store_settings(BEISIA_WORK_RECORDS_PRODUCT_ID)
+        return store_json(
+            {
+                "product_id": BEISIA_WORK_RECORDS_PRODUCT_ID,
+                "name": BEISIA_WORK_RECORDS_PRODUCT_NAME,
+                "enabled": settings["enabled"],
             }
         )
 
