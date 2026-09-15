@@ -285,6 +285,19 @@
     const video = document.querySelector("video");
     const playButton = document.querySelector(".play-button");
 
+    if (new URLSearchParams(location.search).get("v") === "20260817-1") {
+      document.title = "月の輪小学校 夏休み音楽教室 | なめがわブラス・ラボ";
+      document.querySelector('meta[name="description"]').content = "月の輪小学校で開催した夏休み音楽教室の動画です。";
+      document.querySelector(".event-label").textContent = "SUMMER MUSIC WORKSHOP";
+      document.querySelector("h1").innerHTML = 'トランペットミニコンサート<span class="mobile-title-break"></span>＆自由研究';
+      document.querySelector(".event-detail span:first-child").textContent = "2026年8月7日（金）";
+      document.querySelector(".event-detail span:last-child").textContent = "滑川町立月の輪小学校にて";
+      video.setAttribute("aria-label", "月の輪小学校 夏休み音楽教室の動画");
+      video.querySelector("source").src = "community-workshop.mp4?v=20260915";
+      video.load();
+      document.querySelector(".credit-telop p").innerHTML = "夏休み音楽教室<strong>トランペットミニコンサート＆自由研究</strong>";
+    }
+
     playButton.addEventListener("click", async () => {
       if (!video.paused && !video.ended) {
         video.pause();
