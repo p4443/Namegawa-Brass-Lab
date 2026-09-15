@@ -4538,7 +4538,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("2026年5月10日（日）", video_page)
         self.assertIn("滑川町コミュニティセンターにて", video_page)
         self.assertIn('src="generations.mp4?v=20260817"', video_page)
-        self.assertIn('community-workshop.mp4?v=20260915', video_page)
+        self.assertIn('community-workshop.mp4?v=20260916', video_page)
         for video_number in (1, 2, 3):
             numbered_video_page = client.get(
                 f"/video/?v=20260817-{video_number}"
