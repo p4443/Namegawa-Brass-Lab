@@ -1743,15 +1743,24 @@
 
     async function fetchLessonCalendarDay(dateText) {
       const candidates = buildApiCandidates(renderLessonCalendarApi, "api/lesson-calendar");
-      for (const endpoint of candidates) {
-        const url = new URL(endpoint, location.href);
-        url.searchParams.set("from", dateText);
-        url.searchParams.set("to", dateText);
-        const response = await fetch(url.toString(), { method: "GET" });
-        if (!response.ok) continue;
-        const result = await response.json();
-        const day = Array.isArray(result.days) ? result.days[0] : null;
-        if (day) return { day, slots: Array.isArray(result.slots) ? result.slots : [] };
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        for (const endpoint of candidates) {
+          const url = new URL(endpoint, location.href);
+          url.searchParams.set("from", dateText);
+          url.searchParams.set("to", dateText);
+          try {
+            const response = await fetch(url.toString(), { method: "GET" });
+            if (!response.ok) continue;
+            const result = await response.json();
+            const day = Array.isArray(result.days) ? result.days[0] : null;
+            if (day) return { day, slots: Array.isArray(result.slots) ? result.slots : [] };
+          } catch (error) {
+            // Try the next endpoint or retry after a short Render startup delay.
+          }
+        }
+        if (attempt < 2) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1200 * (attempt + 1)));
+        }
       }
       throw new Error("現在、空き状況を確認できません。");
     }
@@ -1805,8 +1814,9 @@
         if (requestId !== slotRequestId) {
           return;
         }
+        reservationTime.replaceChildren(new Option("空き状況を取得できませんでした", ""));
         reservationStatus.dataset.state = "error";
-        reservationStatus.textContent = "空き状況を確認できませんでした。時間を選択して送信できますが、予約済みの場合は別の時間をご案内します。";
+        reservationStatus.textContent = "空き状況を確認できませんでした。少し待ってから希望日を選び直してください。";
         return;
       }
       if (requestId !== slotRequestId) {
