@@ -43,7 +43,7 @@ class ProductsPageTests(unittest.TestCase):
         hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
         hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"
 
-        self.assertIn("音楽・運送の現場を", hero)
+        self.assertIn("音楽・メディア・運送の現場を", hero)
         self.assertIn("メトロノーム", hero)
         self.assertIn("自在稼働記録", hero)
         self.assertIn("../data/media/products-operations-hero.png", hero)

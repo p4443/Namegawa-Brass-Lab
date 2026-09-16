@@ -344,7 +344,7 @@ class StoreTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn(
-            '<span class="mobile-scroll-copy">音楽アプリは下へスクロール</span>',
+            '<span class="mobile-scroll-copy">アプリは下へスクロール</span>',
             html,
         )
         self.assertIn(".desktop-scroll-copy, .carousel-controls { display: none; }", html)
