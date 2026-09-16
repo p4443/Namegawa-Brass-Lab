@@ -1749,7 +1749,7 @@
           url.searchParams.set("from", dateText);
           url.searchParams.set("to", dateText);
           const controller = new AbortController();
-          const timeout = window.setTimeout(() => controller.abort(), 8000);
+          const timeout = window.setTimeout(() => controller.abort(), 30000);
           try {
             const response = await fetch(url.toString(), { method: "GET", signal: controller.signal });
             if (!response.ok) continue;
@@ -1809,7 +1809,7 @@
       }
 
       reservationStatus.dataset.state = "";
-      reservationStatus.textContent = "空き状況を確認しています…";
+      reservationStatus.textContent = "空き状況を確認しています。最大30秒ほどお待ちください…";
 
       let calendar;
       try {
