@@ -1748,14 +1748,18 @@
           const url = new URL(endpoint, location.href);
           url.searchParams.set("from", dateText);
           url.searchParams.set("to", dateText);
+          const controller = new AbortController();
+          const timeout = window.setTimeout(() => controller.abort(), 8000);
           try {
-            const response = await fetch(url.toString(), { method: "GET" });
+            const response = await fetch(url.toString(), { method: "GET", signal: controller.signal });
             if (!response.ok) continue;
             const result = await response.json();
             const day = Array.isArray(result.days) ? result.days[0] : null;
             if (day) return { day, slots: Array.isArray(result.slots) ? result.slots : [] };
           } catch (error) {
             // Try the next endpoint or retry after a short Render startup delay.
+          } finally {
+            window.clearTimeout(timeout);
           }
         }
         if (attempt < 2) {
