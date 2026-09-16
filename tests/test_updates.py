@@ -35,6 +35,43 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_products_page_links_to_flex_media(self):
+        products_html = (
+            Path(__file__).resolve().parents[1] / "products" / "index.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('id="flex-media"', products_html)
+        self.assertIn("https://kiru-media-editor.onrender.com/", products_html)
+        self.assertIn("500円", products_html)
+        self.assertIn("1ファイル最大1GB", products_html)
+        self.assertIn("音楽・メディアアプリ", products_html)
+        self.assertIn('id="flex-media-sales-form"', products_html)
+        self.assertIn('id="flex-media-sales-enabled"', products_html)
+        self.assertIn('id="flex-media-store-status"', products_html)
+        self.assertIn('requestStore("flex-media/product", options)', products_html)
+
+    def test_flex_media_sales_setting_can_be_updated_by_admin(self):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "test-password"}
+        ):
+            store_file = Path(directory) / "store.json"
+            client = create_app(store_file=store_file).test_client()
+
+            initial_response = client.get("/api/store/flex-media/product")
+            self.assertEqual(initial_response.status_code, 200)
+            self.assertTrue(initial_response.get_json()["enabled"])
+
+            update_response = client.put(
+                "/api/store/flex-media/product",
+                json={"enabled": False},
+                headers={"X-Editor-Password": "test-password"},
+            )
+            self.assertEqual(update_response.status_code, 200)
+            self.assertFalse(update_response.get_json()["enabled"])
+
+            saved_settings = json.loads(store_file.read_text(encoding="utf-8"))
+            self.assertFalse(saved_settings["products"]["flex-media"]["enabled"])
+
     def test_render_persists_contracts_on_mounted_disk(self):
         render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text(encoding="utf-8")
 

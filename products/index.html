@@ -5,7 +5,7 @@
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
+  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・メディア編集・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
   <title>アプリ・商品 | なめがわブラス・ラボ</title>
   <style>
     :root {
@@ -104,6 +104,7 @@
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
     .transpose-lab-window { height: 1500px; }
     .tenko-window { height: 680px; background: #f2f5f1; }
+    .flex-media-window { height: 820px; background: #f7f5f0; }
     .mobile-app-preview { display: none; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
@@ -131,7 +132,7 @@
     .service-price small { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
     .service-purchase { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; margin-top: auto; padding: 10px 14px; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-size: 0.88rem; font-weight: 800; text-align: center; }
     .service-purchase:hover, .service-purchase:focus-visible { background: var(--primary-hover); }
-    .service-purchase[aria-disabled="true"] { pointer-events: none; opacity: 0.6; }
+    .service-purchase[aria-disabled="true"], .flex-media-purchase-link[aria-disabled="true"] { pointer-events: none; opacity: 0.6; }
 
     .purchase-recovery, .sales-admin { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-color); }
     .purchase-recovery h3, .sales-admin summary { color: var(--text-main); font-size: 0.84rem; font-weight: 800; }
@@ -243,9 +244,9 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <p class="eyebrow">MUSIC &amp; TRANSPORT APPS</p>
-          <h1>音楽・運送の現場を<span class="mobile-title-break"></span>支えるアプリ。</h1>
-          <p class="hero-copy">楽器練習を支えるメトロノームと、配送現場の記録を整える自在稼働記録。異なる現場の手間を減らし、毎日の仕事と練習に集中できる道具を届けます。</p>
+          <p class="eyebrow">MUSIC, MEDIA &amp; TRANSPORT APPS</p>
+          <h1>音楽・メディア・運送の現場を<span class="mobile-title-break"></span>支えるアプリ。</h1>
+          <p class="hero-copy">楽器練習、音声・動画編集、配送現場の記録。異なる現場の手間を減らし、毎日の仕事と創作、練習に集中できる道具を届けます。</p>
         </div>
         <figure class="hero-visual">
           <img src="../data/media/products-operations-hero.png" alt="トランペット練習メトロノームと自在稼働記録の操作画面">
@@ -257,8 +258,8 @@
       <div class="container">
         <div class="catalog-heading">
           <div>
-            <h2 class="section-title" id="music-products-title">音楽アプリ・商品</h2>
-            <p class="section-desc"><span class="desktop-scroll-copy">音楽アプリは右へスクロール</span><span class="mobile-scroll-copy">音楽アプリは下へスクロール</span>して選べます</p>
+            <h2 class="section-title" id="music-products-title">音楽・メディアアプリ</h2>
+            <p class="section-desc"><span class="desktop-scroll-copy">アプリは右へスクロール</span><span class="mobile-scroll-copy">アプリは下へスクロール</span>して選べます</p>
           </div>
           <div class="carousel-controls" aria-label="音楽アプリ商品のスクロール操作">
             <button class="carousel-button" type="button" data-carousel-prev="music-product-track" aria-label="前の音楽アプリ">←</button>
@@ -364,6 +365,55 @@
                   <input id="app-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
                   <label class="sales-toggle"><input id="app-sales-enabled" type="checkbox">販売ON</label>
                   <button class="sales-save" id="app-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
+            </div>
+          </div>
+          </article>
+
+          <article class="product-feature" id="flex-media">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">音声・動画編集Webアプリ</span>
+              <h2>Flex Media</h2>
+              <p>動画・音声ファイルへ「最初の5秒をカット」など、ことばで指示するだけで変換と編集をまとめて行えます。</p>
+            </div>
+            <a class="launch-link flex-media-purchase-link" href="https://kiru-media-editor.onrender.com/" target="_blank" rel="noopener">Flex Mediaを開く</a>
+          </header>
+
+          <iframe class="app-window flex-media-window" src="https://kiru-media-editor.onrender.com/" title="Flex Media 音声・動画編集画面" loading="lazy"></iframe>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>買い切りWebアプリ利用ライセンス</h3>
+              <p>1回500円の決済で、期限や回数の制限なく音声・動画の変換と編集を利用できます。</p>
+              <ul class="store-benefits">
+                <li>MP3・MP4は同じ形式のまま編集</li>
+                <li>MOV・MKV・WAV・AIFFなどは扱いやすい形式へ自動変換</li>
+                <li>1ファイル最大1GB、最長20分の処理に対応</li>
+                <li>アップロードした素材は処理後に一時領域から削除</li>
+                <li>適格請求書をオンラインで表示可能</li>
+              </ul>
+              <nav class="store-legal" aria-label="Flex Mediaの購入に関する情報">
+                <a href="https://kiru-media-editor.onrender.com/static/legal-notice.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                <a href="https://kiru-media-editor.onrender.com/static/terms.html" target="_blank" rel="noopener">利用規約</a>
+                <a href="https://kiru-media-editor.onrender.com/static/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+              </nav>
+            </div>
+            <div class="store-actions">
+              <section class="service-plan" aria-label="Flex Mediaの料金">
+                <h3>音声・動画変換編集</h3>
+                <p>購入者本人が、対応する音声・動画ファイルを繰り返し処理できます。</p>
+                <div class="service-price">500円 <small>税込・買い切り</small></div>
+                <a class="service-purchase flex-media-purchase-link" href="https://kiru-media-editor.onrender.com/" target="_blank" rel="noopener">変換・編集をはじめる</a>
+              </section>
+              <p class="store-status" id="flex-media-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="flex-media-sales-form" novalidate>
+                  <input id="flex-media-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="flex-media-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="flex-media-sales-save" type="submit">設定を保存</button>
                 </form>
               </details>
             </div>
@@ -613,6 +663,12 @@
     const beisiaSalesPassword = document.getElementById("beisia-sales-password");
     const beisiaSalesEnabled = document.getElementById("beisia-sales-enabled");
     const beisiaSalesSave = document.getElementById("beisia-sales-save");
+    const flexMediaPurchaseLinks = document.querySelectorAll(".flex-media-purchase-link");
+    const flexMediaStoreStatus = document.getElementById("flex-media-store-status");
+    const flexMediaSalesForm = document.getElementById("flex-media-sales-form");
+    const flexMediaSalesPassword = document.getElementById("flex-media-sales-password");
+    const flexMediaSalesEnabled = document.getElementById("flex-media-sales-enabled");
+    const flexMediaSalesSave = document.getElementById("flex-media-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -662,6 +718,10 @@
       return result;
     }
 
+    async function requestFlexMediaSales(options = {}) {
+      return requestStore("flex-media/product", options);
+    }
+
     function renderTenkoSales(result) {
       const enabled = result.sales_enabled === true;
       tenkoSalesEnabled.checked = enabled;
@@ -707,6 +767,30 @@
           link.tabIndex = -1;
         });
         beisiaStoreStatus.textContent = error.message;
+      }
+    }
+
+    function renderFlexMediaSales(product) {
+      const enabled = product.enabled === true;
+      flexMediaSalesEnabled.checked = enabled;
+      flexMediaPurchaseLinks.forEach((link) => {
+        link.setAttribute("aria-disabled", String(!enabled));
+        link.tabIndex = enabled ? 0 : -1;
+      });
+      flexMediaStoreStatus.textContent = enabled
+        ? "Flex Mediaを販売中です。"
+        : "現在、Flex Mediaの販売を停止しています。";
+    }
+
+    async function loadFlexMediaSales() {
+      try {
+        renderFlexMediaSales(await requestFlexMediaSales());
+      } catch (error) {
+        flexMediaPurchaseLinks.forEach((link) => {
+          link.setAttribute("aria-disabled", "true");
+          link.tabIndex = -1;
+        });
+        flexMediaStoreStatus.textContent = error.message;
       }
     }
 
@@ -1066,6 +1150,39 @@
       }
     });
 
+    flexMediaSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = flexMediaSalesPassword.value;
+      if (!password) {
+        flexMediaStoreStatus.textContent = "編集用パスワードを入力してください。";
+        flexMediaSalesPassword.focus();
+        return;
+      }
+      const requestedState = flexMediaSalesEnabled.checked;
+      flexMediaSalesEnabled.disabled = true;
+      flexMediaSalesSave.disabled = true;
+      flexMediaStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestFlexMediaSales({
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Editor-Password": password,
+          },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderFlexMediaSales(product);
+        flexMediaSalesPassword.value = "";
+        flexMediaStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        flexMediaSalesEnabled.checked = !requestedState;
+        flexMediaStoreStatus.textContent = error.message;
+      } finally {
+        flexMediaSalesEnabled.disabled = false;
+        flexMediaSalesSave.disabled = false;
+      }
+    });
+
     async function provideFlowDownload(sessionId) {
       const result = await requestStore("trumpet-transpose-lab/download-link", {
         method: "POST",
@@ -1103,6 +1220,7 @@
     loadFlowProduct().then(applyFlowPurchaseResult);
     loadTenkoSales();
     loadBeisiaSales();
+    loadFlexMediaSales();
   </script>
 </body>
 </html>
