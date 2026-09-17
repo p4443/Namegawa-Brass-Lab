@@ -12,7 +12,11 @@ var HEADERS = [
   "希望日",
   "希望時間",
   "ご要望",
-  "所要時間（分）"
+  "所要時間（分）",
+  "管理者通知",
+  "通知試行回数",
+  "通知最終試行日時",
+  "通知エラー"
 ];
 var SLOT_HEADERS = ["日付", "時間", "状態", "備考", "更新日時", "更新元"];
 var CONSULTATION_HEADERS = [
@@ -34,7 +38,8 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40";
+var SCRIPT_VERSION = "2026-09-17-admin-notification-retry-v41";
+var MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5;
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
   "体験レッスン": 30,
@@ -70,7 +75,7 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "admin_notification_status", "upsert_slot_status_range"]
       });
     }
 
@@ -132,11 +137,18 @@ function doPost(event) {
       var now = new Date();
       var duplicate = findDuplicateReservation(sheet, data, now);
       if (duplicate) {
+        var duplicateAdminNotificationSent = duplicate.adminNotificationStatus === "送信済";
+        if (!duplicateAdminNotificationSent) {
+          duplicateAdminNotificationSent = sendAndRecordReservationAdminNotification(
+            sheet, duplicate.row, data, duplicate.reservationId
+          );
+        }
         return jsonResponse({
           ok: true,
           reservationId: duplicate.reservationId,
           status: duplicate.status || "確認中",
           autoReplySent: false,
+          adminNotificationSent: duplicateAdminNotificationSent,
           duplicate: true
         });
       }
@@ -181,8 +193,13 @@ function doPost(event) {
         safeCell(data.preferred_date),
         safeCell(data.preferred_time),
         safeCell(data.message),
-        durationMinutes || ""
+        durationMinutes || "",
+        "送信処理中",
+        0,
+        "",
+        ""
       ]);
+      var reservationRow = sheet.getLastRow();
 
       occupiedTimes.forEach(function (time) {
         if (time === "要相談") {
@@ -198,8 +215,10 @@ function doPost(event) {
         );
       });
 
+      var adminNotificationSent = sendAndRecordReservationAdminNotification(
+        sheet, reservationRow, data, reservationId
+      );
       var autoReplySent = sendReservationAutoReply(data, reservationId);
-      var adminNotificationSent = sendReservationAdminNotification(data, reservationId);
       return jsonResponse({
         ok: true,
         reservationId: reservationId,
@@ -232,7 +251,7 @@ function doPost(event) {
       if (notificationReservation.status === "キャンセル") {
         return adminActionResponse({ ok: false, error: "CANCELLED" }, requestId);
       }
-      var adminNotificationSent = sendReservationAdminNotification({
+      var adminNotificationSent = sendAndRecordReservationAdminNotification(sheet, notificationRow, {
         name: notificationReservation.name,
         email: notificationReservation.email,
         phone: notificationReservation.phone,
@@ -658,12 +677,14 @@ function getReservationSheet(spreadsheet) {
     sheet.getRange("A:A").setNumberFormat("yyyy/mm/dd hh:mm:ss");
     sheet.autoResizeColumns(1, HEADERS.length);
   }
-  if (sheet.getRange(1, HEADERS.length).getValue() !== HEADERS[HEADERS.length - 1]) {
-    sheet.getRange(1, HEADERS.length).setValue(HEADERS[HEADERS.length - 1]);
-    sheet.getRange(1, HEADERS.length)
+  if (sheet.getRange(1, 1, 1, HEADERS.length).getValues()[0].join("|") !== HEADERS.join("|")) {
+    sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+    sheet.getRange(1, 1, 1, HEADERS.length)
       .setBackground("#0b2545")
       .setFontColor("#ffffff")
       .setFontWeight("bold");
+    sheet.getRange("N:N").setNumberFormat("yyyy/mm/dd hh:mm:ss");
+    sheet.autoResizeColumns(1, HEADERS.length);
   }
   return sheet;
 }
@@ -830,7 +851,10 @@ function listReservations(sheet) {
       duration_minutes: getLessonDuration(row[6], row[10]) || null,
       preferred_date: normalizeReservationDate(row[7]),
       preferred_time: normalizeReservationTime(row[8]),
-      message: String(row[9] || "").trim()
+      message: String(row[9] || "").trim(),
+      admin_notification_status: String(row[11] || "").trim() || "未記録",
+      admin_notification_attempts: Number(row[12] || 0),
+      admin_notification_error: String(row[14] || "").trim()
     };
   }).sort(function (left, right) {
     var dateOrder = right.preferred_date.localeCompare(left.preferred_date);
@@ -903,8 +927,10 @@ function findDuplicateReservation(sheet, data, now) {
     }
 
     return {
+      row: index + 2,
       reservationId: reservationId,
-      status: status
+      status: status,
+      adminNotificationStatus: String(row[11] || "").trim()
     };
   }
   return null;
@@ -1435,6 +1461,7 @@ function sendReservationAutoReply(data, reservationId) {
 }
 
 function sendReservationAdminNotification(data, reservationId) {
+  lastAdminNotificationError = "";
   var name = sanitizeMailHeader(data.name).trim() || "お客様";
   var email = sanitizeMailHeader(data.email).trim();
   var lessonType = String(data.lesson_type || "").trim();
@@ -1467,6 +1494,96 @@ function sendReservationAdminNotification(data, reservationId) {
     lastAdminNotificationError = String(error && error.message ? error.message : error);
     return false;
   }
+}
+
+function sendAndRecordReservationAdminNotification(sheet, row, data, reservationId) {
+  var attempts = Number(sheet.getRange(row, 13).getValue() || 0) + 1;
+  sheet.getRange(row, 12, 1, 4).setValues([[
+    "送信中",
+    attempts,
+    new Date(),
+    ""
+  ]]);
+  var sent = sendReservationAdminNotification(data, reservationId);
+  var status = sent
+    ? "送信済"
+    : attempts >= MAX_ADMIN_NOTIFICATION_ATTEMPTS
+      ? "要手動再送"
+      : "再送待ち";
+  sheet.getRange(row, 12, 1, 4).setValues([[
+    status,
+    attempts,
+    new Date(),
+    sent ? "" : lastAdminNotificationError
+  ]]);
+  if (!sent && attempts < MAX_ADMIN_NOTIFICATION_ATTEMPTS) {
+    ensureAdminNotificationRetryTrigger();
+  }
+  return sent;
+}
+
+function ensureAdminNotificationRetryTrigger() {
+  try {
+    var handlerName = "retryPendingAdminNotifications";
+    var exists = ScriptApp.getProjectTriggers().some(function (trigger) {
+      return trigger.getHandlerFunction() === handlerName;
+    });
+    if (!exists) {
+      ScriptApp.newTrigger(handlerName).timeBased().after(5 * 60 * 1000).create();
+    }
+  } catch (error) {
+    Logger.log(error);
+  }
+}
+
+function retryPendingAdminNotifications() {
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    return;
+  }
+  try {
+    var sheet = getReservationSheet(getSpreadsheet());
+    var lastRow = sheet.getLastRow();
+    if (lastRow <= 1) {
+      removeAdminNotificationRetryTriggers();
+      return;
+    }
+    var rows = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+    rows.forEach(function (values, index) {
+      var notificationStatus = String(values[11] || "").trim();
+      var attempts = Number(values[12] || 0);
+      if (notificationStatus !== "再送待ち" || attempts >= MAX_ADMIN_NOTIFICATION_ATTEMPTS) {
+        return;
+      }
+      sendAndRecordReservationAdminNotification(sheet, index + 2, {
+        name: values[3],
+        email: values[4],
+        phone: values[5],
+        lesson_type: values[6],
+        preferred_date: normalizeReservationDate(values[7]),
+        preferred_time: normalizeReservationTime(values[8]),
+        message: values[9],
+        duration_minutes: values[10]
+      }, String(values[1] || "").trim());
+    });
+    var remaining = sheet.getRange(2, 12, lastRow - 1, 2).getValues().some(function (values) {
+      return String(values[0] || "").trim() === "再送待ち"
+        && Number(values[1] || 0) < MAX_ADMIN_NOTIFICATION_ATTEMPTS;
+    });
+    if (!remaining) {
+      removeAdminNotificationRetryTriggers();
+    }
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function removeAdminNotificationRetryTriggers() {
+  ScriptApp.getProjectTriggers().forEach(function (trigger) {
+    if (trigger.getHandlerFunction() === "retryPendingAdminNotifications") {
+      ScriptApp.deleteTrigger(trigger);
+    }
+  });
 }
 
 function sendConsultationAutoReply(data, consultationId) {

@@ -2271,7 +2271,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-17-admin-notification-retry-v41";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2901,6 +2901,7 @@ class UpdatesTest(unittest.TestCase):
         for version in (
             "2026-09-05-reservation-slot-range-v39",
             "2026-09-12-reservation-delete-day-v40",
+            "2026-09-17-admin-notification-retry-v41",
         ):
             with self.subTest(version=version), patch.dict(
                 os.environ,
@@ -2913,7 +2914,7 @@ class UpdatesTest(unittest.TestCase):
                 send_reservation.return_value = {
                     "ok": True,
                     "version": version,
-                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "resend_admin_notification", "upsert_slot_status_range"],
                 }
                 response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -3298,10 +3299,70 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn("findReservationRowById(sheet, notificationReservationId)", resend_action)
         self.assertIn('notificationReservation.status === "キャンセル"', resend_action)
-        self.assertIn("sendReservationAdminNotification({", resend_action)
+        self.assertIn("sendAndRecordReservationAdminNotification(sheet, notificationRow, {", resend_action)
         self.assertIn('"ADMIN_NOTIFICATION_FAILED: " + lastAdminNotificationError', resend_action)
         self.assertNotIn("setValue(", resend_action)
         self.assertIn('"resend_admin_notification"', script)
+
+        self.assertIn('"管理者通知"', script)
+        self.assertIn('"再送待ち"', script)
+        self.assertIn('"要手動再送"', script)
+        self.assertIn("function retryPendingAdminNotifications()", script)
+        self.assertIn("MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5", script)
+        self.assertIn('admin_notification_status: String(row[11]', script)
+
+    def test_admin_can_resend_reservation_notification(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260924-001",
+                "adminNotificationSent": True,
+            }
+            response = client.post(
+                "/api/lesson-reservations/R-20260924-001/resend-admin-notification",
+                headers={"X-Editor-Password": "correct-password"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["sent"])
+        self.assertEqual(response.json["reservation_id"], "R-20260924-001")
+        send_reservation.assert_called_once_with(
+            "https://script.google.com/example",
+            "test-secret",
+            {"reservation_id": "R-20260924-001"},
+            action="resend_admin_notification",
+        )
+
+    def test_resend_reservation_notification_requires_editor_authentication(self):
+        client = create_app().test_client()
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = client.post(
+                "/api/lesson-reservations/R-20260924-001/resend-admin-notification"
+            )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_schedule_admin_can_resend_reservation_notification(self):
+        page = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("管理者メールを再送", page)
+        self.assertIn("resendAdminNotification(reservation.reservation_id", page)
+        self.assertIn(
+            "`/api/lesson-reservations/${reservationId}/resend-admin-notification`",
+            page,
+        )
 
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()

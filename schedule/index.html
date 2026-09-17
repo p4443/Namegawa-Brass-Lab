@@ -696,7 +696,10 @@
         when.querySelector(".reservation-date").textContent = `${reservation.preferred_date} ${reservation.preferred_time}`;
         const durationMinutes = reservation.duration_minutes || lessonDurations[reservation.lesson_type];
         const durationLabel = durationMinutes ? `（${durationMinutes}分）` : "（所要時間は要入力）";
-        when.querySelector(".reservation-meta").textContent = `${reservation.reservation_id} / ${reservation.lesson_type}${durationLabel}`;
+        const notificationLabel = reservation.admin_notification_status
+          ? ` / 管理者通知: ${reservation.admin_notification_status}`
+          : "";
+        when.querySelector(".reservation-meta").textContent = `${reservation.reservation_id} / ${reservation.lesson_type}${durationLabel}${notificationLabel}`;
         const person = document.createElement("div"); person.innerHTML = `<div class="reservation-name"></div><div class="reservation-contact"></div>`;
         person.querySelector(".reservation-name").textContent = reservation.name;
         person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
@@ -717,6 +720,8 @@
         durationInput.addEventListener("change", markChanged);
         const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
         save.addEventListener("click", () => updateReservation(reservation, status, timeInput, durationInput));
+        const resendNotification = document.createElement("button"); resendNotification.type = "button"; resendNotification.className = "button"; resendNotification.textContent = "管理者メールを再送";
+        resendNotification.addEventListener("click", () => resendAdminNotification(reservation.reservation_id, resendNotification));
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
         const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "button danger"; cancel.textContent = "予約をキャンセル";
@@ -727,7 +732,7 @@
           await updateReservation(reservation, status, timeInput, durationInput);
         });
         reservationEditors.set(reservation.reservation_id, { reservation, status, timeInput, durationInput });
-        actions.append(status, timeInput, durationInput, save, cancel, remove); item.append(when, person, actions);
+        actions.append(status, timeInput, durationInput, save, resendNotification, cancel, remove); item.append(when, person, actions);
         (reservation.status === "確定" ? confirmedReservationList : reservationList).append(item);
       });
       if (!pendingReservations.length) reservationList.textContent = "未確定の予約はありません。";
@@ -782,6 +787,24 @@
         await loadSchedule();
       }
       return result;
+    }
+    async function resendAdminNotification(reservationId, button) {
+      button.disabled = true;
+      adminStatus.textContent = `${reservationId} の管理者メールを再送しています…`;
+      try {
+        const result = await requestApi(`/api/lesson-reservations/${reservationId}/resend-admin-notification`, {
+          method: "POST",
+          headers: adminHeaders(),
+          timeoutMs: 120000,
+        });
+        adminStatus.textContent = result.sent
+          ? `${reservationId} の管理者メールを再送しました。`
+          : `${reservationId} の管理者メールを再送できませんでした。`;
+      } catch (error) {
+        adminStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
     }
     reservationSaveAll.addEventListener("click", async () => {
       const editors = [...changedReservationIds]

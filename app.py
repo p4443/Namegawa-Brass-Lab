@@ -806,6 +806,7 @@ def compute_public_route(origin, destination, urlopen=None):
 LESSON_APPS_SCRIPT_VERSIONS = {
     "2026-09-05-reservation-slot-range-v39",
     "2026-09-12-reservation-delete-day-v40",
+    "2026-09-17-admin-notification-retry-v41",
 }
 
 
@@ -2274,7 +2275,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -4115,6 +4116,65 @@ def create_app(
                 503,
             )
 
+    @app.route(
+        "/api/lesson-reservations/<reservation_id>/resend-admin-notification",
+        methods=["POST", "OPTIONS"],
+    )
+    def resend_lesson_reservation_admin_notification(reservation_id):
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+        try:
+            valid_reservation_id = validate_reservation_id(reservation_id)
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、管理者通知を再送できません。"}, 503
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": valid_reservation_id},
+                action="resend_admin_notification",
+            )
+        except (
+            LessonReservationDeliveryError,
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            urllib_error.URLError,
+        ):
+            app.logger.exception("Failed to resend reservation admin notification")
+            return lesson_reservation_json(
+                {"error": "管理者通知を再送できませんでした。"}, 502
+            )
+
+        return lesson_reservation_json(
+            {
+                "sent": bool(result.get("adminNotificationSent", False)),
+                "reservation_id": result.get("reservationId", valid_reservation_id),
+            },
+            200,
+        )
+
     @app.route("/api/lesson-reservations/day/<reservation_date>", methods=["DELETE", "OPTIONS"])
     def delete_lesson_reservations_for_day(reservation_date):
         if request.method == "OPTIONS":
@@ -4280,7 +4340,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "resend_admin_notification", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
