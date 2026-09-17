@@ -49,6 +49,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="flex-media-sales-enabled"', products_html)
         self.assertIn('id="flex-media-store-status"', products_html)
         self.assertIn('requestStore("flex-media/product", options)', products_html)
+        self.assertNotIn('class="app-window flex-media-window"', products_html)
 
     def test_flex_media_sales_setting_can_be_updated_by_admin(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
