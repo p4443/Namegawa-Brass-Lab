@@ -17,6 +17,8 @@ services:
         value: /app/data/contracts
       - key: EDITOR_PASSWORD
         sync: false
+      - key: EDITOR_TOKEN_SECRET
+        generateValue: true
       - key: GOOGLE_APPS_SCRIPT_URL
         sync: false
       - key: GOOGLE_APPS_SCRIPT_SECRET

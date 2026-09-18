@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・メディア編集・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
   <title>アプリ・商品 | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --primary-color: #1a56db;
       --primary-hover: #1e40af;
@@ -575,10 +575,10 @@
     </section>
   </main>
 
-  <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
+  <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a><a href="../legal/copyright-policy.html">著作権・侵害申告</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const transposeLabWindow = document.querySelector(".transpose-lab-window");
     const resizeTransposeLabWindow = () => {
       const frameDocument = transposeLabWindow?.contentDocument;

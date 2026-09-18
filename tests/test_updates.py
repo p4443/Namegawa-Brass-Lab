@@ -15,6 +15,7 @@ from app import (
     compute_google_route,
     compute_public_route,
     create_app,
+    editor_auth_client_bucket,
     discover_instrument_model_urls,
     fetch_instrument_catalog_prices,
     fetch_instrument_price_candidates,
@@ -78,17 +79,94 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn("mountPath: /app/data", render_config)
         self.assertIn("- key: CONTRACTS_DIR\n        value: /app/data/contracts", render_config)
+        self.assertIn(
+            "- key: EDITOR_TOKEN_SECRET\n        generateValue: true", render_config
+        )
 
     def test_responses_include_security_headers(self):
         client = create_app(database_url="").test_client()
 
-        response = client.get("/health")
+        response = client.get("/")
 
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["X-Frame-Options"], "SAMEORIGIN")
         self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
         self.assertIn("microphone=(self)", response.headers["Permissions-Policy"])
+        content_security_policy = response.headers["Content-Security-Policy"]
+        self.assertIn("object-src 'none'", content_security_policy)
+        self.assertIn("base-uri 'self'", content_security_policy)
+        self.assertIn("frame-ancestors 'self'", content_security_policy)
+        page = response.get_data(as_text=True)
+        nonce = page.split('nonce="', 1)[1].split('"', 1)[0]
+        self.assertIn(f"script-src 'self' 'nonce-{nonce}'", content_security_policy)
+        self.assertNotIn("script-src 'self' 'unsafe-inline'", content_security_policy)
+        self.assertIn(f"style-src 'self' 'nonce-{nonce}'", content_security_policy)
+        self.assertIn("style-src-attr 'none'", content_security_policy)
+        self.assertNotIn("style-src 'self' 'unsafe-inline'", content_security_policy)
+        self.assertNotIn("'unsafe-inline'", content_security_policy)
+        self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
         self.assertNotIn("Strict-Transport-Security", response.headers)
+
+    def test_application_form_print_action_avoids_inline_event_handler(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/lesson/application-form.html")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertNotIn('onclick="', page)
+        self.assertIn('id="printApplicationForm"', page)
+        self.assertIn('nonce="', page)
+
+    def test_inline_scripts_use_matching_nonce_on_all_feature_pages(self):
+        client = create_app(database_url="").test_client()
+        paths = (
+            "/",
+            "/contract-generator/",
+            "/download-guide/",
+            "/legal/",
+            "/legal/copyright-policy.html",
+            "/legal/privacy-policy.html",
+            "/lesson/",
+            "/lesson/application-form.html",
+            "/music%20App/",
+            "/music%20App/index.html",
+            "/pdf/",
+            "/pdf/index.html",
+            "/products/",
+            "/schedule/",
+            "/video/",
+            "/video/index.html",
+        )
+
+        for path in paths:
+            with self.subTest(path=path):
+                response = client.get(path)
+                self.assertEqual(response.status_code, 200)
+                page = response.get_data(as_text=True)
+                policy = response.headers["Content-Security-Policy"]
+                nonce = policy.split("'nonce-", 1)[1].split("'", 1)[0]
+                for script in page.split("<script")[1:]:
+                    opening_tag = script.split(">", 1)[0]
+                    if "src=" not in opening_tag:
+                        self.assertIn(f'nonce="{nonce}"', opening_tag)
+                for style in page.split("<style")[1:]:
+                    opening_tag = style.split(">", 1)[0]
+                    self.assertIn(f'nonce="{nonce}"', opening_tag)
+                self.assertNotIn(" style=", page)
+
+    def test_copyright_policy_explains_reporting_and_response_process(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/legal/copyright-policy.html")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn("著作権・知的財産権ポリシー", page)
+        self.assertIn("侵害が疑われる掲載箇所のURL", page)
+        self.assertIn("一時的な非公開", page)
+        self.assertIn("虚偽の申告", page)
+        self.assertIn("subject=著作権侵害の申告", page)
 
     def test_editor_auth_rate_limited_after_repeated_failures(self):
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
@@ -110,6 +188,67 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(recovered.status_code, 200)
         self.assertTrue(recovered.json["authenticated"])
+
+    def test_editor_auth_rate_limit_cannot_be_bypassed_with_forwarded_ips(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
+            client = create_app(database_url="").test_client()
+            last_response = None
+            for index in range(101):
+                last_response = client.post(
+                    "/api/editor",
+                    json={"editor_password": "wrong-password"},
+                    headers={"X-Forwarded-For": f"198.51.100.{index % 250}"},
+                )
+            recovered = client.post(
+                "/api/editor",
+                json={"editor_password": "editor-secret"},
+                headers={"X-Forwarded-For": "198.51.100.250"},
+            )
+
+        self.assertEqual(last_response.status_code, 429)
+        self.assertIn("認証試行", last_response.json["error"])
+        self.assertEqual(recovered.status_code, 200)
+        self.assertTrue(recovered.json["authenticated"])
+
+    def test_editor_auth_database_limit_is_shared_between_app_instances(self):
+        failure_count = 0
+
+        def shared_failure_limit(database_url, client_address):
+            nonlocal failure_count
+            self.assertEqual(database_url, "postgresql://example/database")
+            failure_count += 1
+            return failure_count > 100
+
+        with patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False
+        ), patch("app.initialize_database"), patch(
+            "app.database_editor_auth_failure_is_limited",
+            side_effect=shared_failure_limit,
+        ):
+            clients = (
+                create_app(database_url="postgresql://example/database").test_client(),
+                create_app(database_url="postgresql://example/database").test_client(),
+            )
+            responses = [
+                clients[index % 2].post(
+                    "/api/editor",
+                    json={"editor_password": "wrong-password"},
+                    headers={"X-Forwarded-For": f"198.51.100.{index}"},
+                )
+                for index in range(101)
+            ]
+
+        self.assertEqual(responses[99].status_code, 401)
+        self.assertEqual(responses[100].status_code, 429)
+
+    def test_editor_auth_database_bucket_does_not_store_plain_ip_address(self):
+        client_address = "198.51.100.24"
+
+        bucket = editor_auth_client_bucket(client_address)
+
+        self.assertTrue(bucket.startswith("client:"))
+        self.assertNotIn(client_address, bucket)
+        self.assertEqual(len(bucket), len("client:") + 64)
 
     def test_legacy_onrender_host_redirects_get_to_canonical_site(self):
         with patch.dict(
@@ -822,6 +961,34 @@ class UpdatesTest(unittest.TestCase):
             "イベント企画・プロデュースのみ",
         )
 
+    def test_consultation_rate_limit_prevents_excessive_apps_script_calls(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "consultationId": "C-001"},
+        ) as send_request:
+            client = create_app(database_url="").test_client()
+            responses = [
+                client.post("/api/consultation", json=payload) for _ in range(4)
+            ]
+
+        self.assertTrue(all(response.status_code == 201 for response in responses[:3]))
+        self.assertEqual(responses[3].status_code, 429)
+        self.assertEqual(send_request.call_count, 3)
+
     def test_contract_route_distance_api_rejects_when_google_fails(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
         with patch.dict(
@@ -913,6 +1080,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
         self.assertIn('id="contractLogout" type="button">戻る（ログアウト）</button>', page)
         self.assertNotIn('id="contractLogout" type="button" data-history-back', page)
+        self.assertIn("if (response.status === 401 && editorToken)", page)
+        self.assertIn("expireEditorSession();", page)
         self.assertIn("window.location.replace('../#web');", page)
         self.assertIn('id="contractStoragePath"', page)
         self.assertIn("const initialContractValues = JSON.parse(JSON.stringify(contractValues));", page)
@@ -1805,11 +1974,28 @@ class UpdatesTest(unittest.TestCase):
         schedule_page = client.get("/schedule/").get_data(as_text=True)
 
         self.assertIn('id="updates-editor-logout" type="button" data-history-back', index_page)
-        self.assertIn("let updatesEditorKey = '';", index_page)
+        self.assertIn("let updatesEditorToken = '';", index_page)
+        self.assertIn("'X-Editor-Token': updatesEditorToken", index_page)
+        self.assertIn("JSON.stringify({ editor_password: password })", index_page)
+        self.assertNotIn("'X-Editor-Password': updatesEditorKey", index_page)
         self.assertNotIn("updatesEditorPassword', password", index_page)
         self.assertIn("updatesEditorLogin.reset();", index_page)
         self.assertIn('id="admin-logout" type="button" data-history-back', schedule_page)
+        self.assertIn("if (response.status === 401 && adminToken)", schedule_page)
+        self.assertIn('endAdminSession("管理者セッションの有効期限が切れました。再ログインしてください。");', schedule_page)
         self.assertIn('passwordInput.value = "";', schedule_page)
+
+    def test_pdf_admin_uses_short_lived_token_instead_of_retaining_password(self):
+        page = create_app(database_url="").test_client().get(
+            "/pdf/"
+        ).get_data(as_text=True)
+
+        self.assertIn("let adminToken = '';", page)
+        self.assertIn("JSON.stringify({ editor_password: password })", page)
+        self.assertIn("'X-Editor-Token': adminToken", page)
+        self.assertIn("if (response.status === 401 && adminToken)", page)
+        self.assertNotIn("let adminPassword = '';", page)
+        self.assertNotIn("'X-Editor-Password': adminPassword", page)
 
     def test_all_back_links_use_shared_previous_page_navigation(self):
         client = create_app(database_url="").test_client()
@@ -1954,6 +2140,7 @@ class UpdatesTest(unittest.TestCase):
             contract_path = Path(temporary_directory) / "transport" / f'{saved.json["contract_id"]}.json'
             self.assertTrue(contract_path.is_file())
             self.assertEqual(listed.status_code, 200)
+            self.assertEqual(listed.headers["Cache-Control"], "no-store")
             self.assertEqual(listed.json["storage_path"], str(Path(temporary_directory).resolve()))
             self.assertEqual(len(listed.json["contracts"]), 1)
             self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
@@ -2051,6 +2238,30 @@ class UpdatesTest(unittest.TestCase):
                     self.assertEqual(response.mimetype, "text/html")
 
         self.assertEqual(client.get("/data/").status_code, 404)
+
+    def test_data_route_exposes_only_public_media(self):
+        data_directory = Path(__file__).parents[1] / "data"
+        contracts_directory = data_directory / "contracts"
+        contracts_directory.mkdir(exist_ok=True)
+        contract_path = contracts_directory / "security-test-contract.json"
+        contract_path.write_text(
+            '{"customer_name":"confidential"}\n', encoding="utf-8"
+        )
+        try:
+            client = create_app(database_url="").test_client()
+
+            contract_response = client.get(
+                "/data/contracts/security-test-contract.json"
+            )
+            internal_store_response = client.get("/data/store.json")
+            media_response = client.get("/data/media/lesson-header-photo.jpg")
+        finally:
+            contract_path.unlink(missing_ok=True)
+
+        self.assertEqual(contract_response.status_code, 404)
+        self.assertEqual(internal_store_response.status_code, 404)
+        self.assertEqual(media_response.status_code, 200)
+        self.assertEqual(media_response.mimetype, "image/jpeg")
 
     def test_admin_password_reset_quotes_special_characters(self):
         reset_script = (Path(__file__).parents[1] / "reset-admin-password.sh").read_text(
@@ -2587,6 +2798,8 @@ class UpdatesTest(unittest.TestCase):
             )
 
             self.assertEqual(login.status_code, 200)
+            self.assertEqual(login.headers["Cache-Control"], "no-store")
+            self.assertEqual(login.headers["Pragma"], "no-cache")
             self.assertTrue(login.json["editor_token"])
             listed = client.get(
                 "/api/contracts",
@@ -2595,6 +2808,65 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json["contracts"], [])
+
+    def test_editor_token_expires_after_one_hour(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            client = create_app(database_url="").test_client()
+            with patch("itsdangerous.timed.time.time", return_value=1_700_000_000):
+                login = client.post(
+                    "/api/editor",
+                    json={"editor_password": "correct-password"},
+                )
+            token = login.json["editor_token"]
+
+            with patch(
+                "itsdangerous.timed.time.time", return_value=1_700_003_540
+            ):
+                still_valid = client.get(
+                    "/api/editor", headers={"X-Editor-Token": token}
+                )
+            with patch(
+                "itsdangerous.timed.time.time", return_value=1_700_003_660
+            ):
+                expired = client.get(
+                    "/api/editor", headers={"X-Editor-Token": token}
+                )
+
+        self.assertEqual(still_valid.status_code, 200)
+        self.assertEqual(expired.status_code, 401)
+        self.assertIn("有効期限", expired.json["error"])
+
+    def test_editor_token_uses_separate_secret_and_password_rotation_invalidates_it(self):
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "EDITOR_TOKEN_SECRET": "t" * 48,
+            },
+        ):
+            client = create_app(database_url="").test_client()
+            login = client.post(
+                "/api/editor", json={"editor_password": "correct-password"}
+            )
+            token = login.json["editor_token"]
+            os.environ["EDITOR_PASSWORD"] = "rotated-password"
+            old_token = client.get(
+                "/api/editor", headers={"X-Editor-Token": token}
+            )
+
+        self.assertEqual(login.status_code, 200)
+        self.assertEqual(old_token.status_code, 401)
+
+    def test_editor_authentication_failure_is_not_cached(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = create_app(database_url="").test_client().post(
+                "/api/editor",
+                json={"editor_password": "wrong-password"},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["Pragma"], "no-cache")
 
     def test_update_editor_requires_iso_calendar_date(self):
         valid_payload = {
@@ -2692,23 +2964,60 @@ class UpdatesTest(unittest.TestCase):
     def test_lesson_reservation_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-reservations")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-reservations",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, POST, OPTIONS")
         self.assertEqual(
             response.headers["Access-Control-Allow-Headers"],
             "Content-Type, X-Editor-Password",
         )
 
+    def test_lesson_reservation_cors_rejects_untrusted_origin(self):
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            client = create_app().test_client()
+            response = client.options(
+                "/api/lesson-reservations",
+                headers={"Origin": "https://attacker.example"},
+            )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("Access-Control-Allow-Origin", response.headers)
+
     def test_lesson_slot_statuses_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-slot-statuses")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-slot-statuses",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
 
     def test_products_page_only_shows_store_admin_controls(self):
@@ -2782,7 +3091,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="admin-login-form"', page)
         self.assertIn('id="admin-logout"', page)
         self.assertIn('adminLogout.addEventListener("click"', page)
-        self.assertIn('adminStatus.textContent = "ログアウトしました。"', page)
+        self.assertIn('endAdminSession("ログアウトしました。");', page)
         self.assertIn("reservationList.replaceChildren()", page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
@@ -2796,7 +3105,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const loginForm = event.currentTarget", page)
         self.assertIn("loginForm.hidden = true", page)
         self.assertNotIn("event.currentTarget.hidden = true", page)
-        self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
+        self.assertIn("if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました", page)
         self.assertIn('id="reservation-retry"', page)
         self.assertIn('id="reservation-save-all"', page)
         self.assertIn('id="pending-reservation-archive"', page)
@@ -3038,6 +3347,7 @@ class UpdatesTest(unittest.TestCase):
             response = client.get("/api/lesson-reservations", headers=headers)
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(len(response.json["reservations"]), 1)
         self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
@@ -3368,10 +3678,21 @@ class UpdatesTest(unittest.TestCase):
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-reservations/R-20260810-001")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-reservations/R-20260810-001",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(
             response.headers["Access-Control-Allow-Methods"], "PUT, DELETE, OPTIONS"
         )
@@ -3397,6 +3718,7 @@ class UpdatesTest(unittest.TestCase):
             {
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
@@ -3406,10 +3728,17 @@ class UpdatesTest(unittest.TestCase):
                 "autoReplySent": True,
                 "adminNotificationSent": True,
             }
-            response = client.post("/api/lesson-reservations", json=payload)
+            response = client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
         self.assertEqual(response.json["status"], "確認中")
         self.assertEqual(response.json["duration_minutes"], 30)
@@ -3617,6 +3946,36 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(response.json["duplicate"])
         self.assertFalse(response.json["auto_reply_sent"])
 
+    def test_lesson_reservation_rate_limit_prevents_excessive_apps_script_calls(self):
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "初心者です。",
+        }
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "reservationId": "R-001"},
+        ) as send_reservation:
+            client = create_app(database_url="").test_client()
+            responses = [
+                client.post("/api/lesson-reservations", json=payload)
+                for _ in range(21)
+            ]
+
+        self.assertTrue(all(response.status_code == 201 for response in responses[:20]))
+        self.assertEqual(responses[20].status_code, 429)
+        self.assertEqual(send_reservation.call_count, 20)
+
     def test_lesson_reservation_conflict_is_reported(self):
         client = create_app().test_client()
         payload = {
@@ -3709,6 +4068,7 @@ class UpdatesTest(unittest.TestCase):
             {
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
@@ -3716,10 +4076,16 @@ class UpdatesTest(unittest.TestCase):
                 "slots": [{"date": "2026-08-20", "time": "09:00", "status": "予約済"}],
                 "confirmedCounts": {"2026-08-20": 1},
             }
-            response = client.get("/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20")
+            response = client.get(
+                "/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(len(response.json["slots"]), 1)
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
         self.assertEqual(response.json["confirmed_counts"], {"2026-08-20": 1})
@@ -4478,7 +4844,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("position: sticky", header_css)
         self.assertIn('class="nav-menu" id="navMenu"', page)
         self.assertIn('class="hamburger" id="hamburgerBtn"', page)
+        self.assertIn('aria-expanded="false" aria-controls="navMenu"', page)
         self.assertIn("navMenu.classList.toggle('active')", page)
+        self.assertIn("hamburgerBtn.setAttribute('aria-expanded', String(isOpen))", page)
+        self.assertIn("isOpen ? 'メニューを閉じる' : 'メニューを開く'", page)
         header_nav = page.split('<ul class="nav-menu" id="navMenu">', 1)[1].split("</ul>", 1)[0]
         footer_nav = page.split('<div class="footer-links">', 1)[1].split("</div>", 1)[0]
         for navigation in (header_nav, footer_nav):

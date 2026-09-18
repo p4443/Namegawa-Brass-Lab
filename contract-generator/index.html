@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex,nofollow">
   <title>契約書作成 | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --primary: #1a56db;
       --primary-dark: #1e40af;
@@ -431,6 +431,8 @@
     .individual-contract-table th { border-right: 1.5px solid #222222; }
     .individual-contract-table td:last-child { border-right: 1.5px solid #222222; }
     .individual-contract-table tr:last-child > * { border-bottom: 0; }
+    .individual-label-column { width: 30%; }
+    .individual-value-column { width: 70%; }
     .document th { width: 30%; background: #f1f5f9; }
     .document td { white-space: pre-wrap; }
 
@@ -482,6 +484,11 @@
     .cargo-valuation-table th:nth-child(5) { width: 15%; }
     .cargo-valuation-table th:nth-child(6) { width: 35%; }
     .cargo-valuation-table .number { text-align: right; white-space: nowrap; }
+    .cargo-name-column { width: 19%; }
+    .cargo-quantity-column { width: 7%; }
+    .cargo-condition-column { width: 9%; }
+    .cargo-value-column { width: 15%; }
+    .cargo-notes-column { width: 35%; }
     .cargo-declaration { margin-top: 14px; padding: 10px 12px; border: 1px solid #222222; }
     .estimate-preview-editor {
       display: grid;
@@ -783,7 +790,7 @@
   </dialog>
 
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     if (window.location.protocol === 'file:') {
       window.location.replace('https://namegawa-brass-lab.com/contract-generator/');
     }
@@ -1668,7 +1675,7 @@
     }
 
     function contractTable(rows) {
-      return `<table class="individual-contract-table"><colgroup><col style="width:30%"><col style="width:70%"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
+      return `<table class="individual-contract-table"><colgroup><col class="individual-label-column"><col class="individual-value-column"></colgroup><tbody>${rows.map(row => `<tr><th scope="row">${row[0]}</th><td>${escapeHtml(row[1])}</td></tr>`).join('')}</tbody></table>`;
     }
 
     function estimateNumber(value) {
@@ -2223,7 +2230,7 @@
           <p><strong>輸送案件：</strong>${escapeHtml(values.transport_name)}　<strong>申告者：</strong>${safeClient}</p>
           <p>下記は運送委託および保険手続の基礎となる申告内容です。品名、数量、状態、評価額、ケース・付属品および製造番号等を、引渡し前に現物と照合してください。</p>
           <table class="cargo-valuation-table">
-            <colgroup><col style="width:19%"><col style="width:7%"><col style="width:9%"><col style="width:15%"><col style="width:15%"><col style="width:35%"></colgroup>
+            <colgroup><col class="cargo-name-column"><col class="cargo-quantity-column"><col class="cargo-condition-column"><col class="cargo-value-column"><col class="cargo-value-column"><col class="cargo-notes-column"></colgroup>
             <thead><tr><th>品名・機材名</th><th>数量</th><th>状態</th><th class="number">単価・評価額</th><th class="number">行評価額</th><th>備考</th></tr></thead>
             <tbody>${values.cargo_items.map(item => `<tr><td>${escapeHtml(item.category)}｜${escapeHtml(item.description)}${item.maker_model ? `<br>${escapeHtml(item.maker_model)}` : ''}</td><td>${escapeHtml(item.quantity)}</td><td>${escapeHtml(item.condition)}</td><td class="number">${formatEstimateYen(estimateNumber(item.unit_value))}円</td><td class="number">${formatEstimateYen(estimateNumber(item.total_value))}円</td><td>${escapeHtml(item.notes)}<br>容積：${escapeHtml(item.volume_points)}pt／個</td></tr>`).join('')}</tbody>
             <tfoot><tr><th colspan="4">申告総評価額</th><td class="number" data-cargo-total="valuation"><strong>${formatEstimateYen(cargoValuation)}円</strong></td><td>総容積 ${formatEstimateYen(cargoVolume)}pt</td></tr></tfoot>
@@ -2440,11 +2447,23 @@
       return { 'Content-Type': 'application/json', 'X-Editor-Token': editorToken };
     }
 
+    function expireEditorSession() {
+      editorToken = '';
+      generator.hidden = true;
+      loginScreen.hidden = false;
+      resetContractEditor();
+      passwordInput.value = '';
+      loginStatus.textContent = '管理者セッションの有効期限が切れました。再ログインしてください。';
+      passwordInput.focus();
+    }
+
     async function readApiError(response, fallback) {
       try {
         const result = await response.json();
+        if (response.status === 401 && editorToken) expireEditorSession();
         return result.error || fallback;
       } catch {
+        if (response.status === 401 && editorToken) expireEditorSession();
         return fallback;
       }
     }

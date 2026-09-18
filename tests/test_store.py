@@ -702,6 +702,26 @@ class StoreTest(unittest.TestCase):
             },
         )
 
+    def test_checkout_rate_limit_prevents_excessive_stripe_sessions(self):
+        self.enable_store()
+        stripe = self.stripe_module()
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            responses = [
+                self.client.post(
+                    "/api/store/checkout",
+                    json={
+                        "checkout_request_id": (
+                            f"00000000-0000-4000-8000-{index:012d}"
+                        )
+                    },
+                )
+                for index in range(11)
+            ]
+
+        self.assertTrue(all(response.status_code == 201 for response in responses[:10]))
+        self.assertEqual(responses[10].status_code, 429)
+        self.assertEqual(stripe.checkout.Session.create.call_count, 10)
+
     def test_checkout_is_blocked_without_valid_invoice_registration_number(self):
         self.enable_store()
         stripe = self.stripe_module()
@@ -816,7 +836,9 @@ class StoreTest(unittest.TestCase):
 
     def test_download_link_uses_forwarded_https_scheme(self):
         stripe = self.stripe_module(payment_status="paid")
-        with patch.dict(sys.modules, {"stripe": stripe}):
+        with patch.dict(
+            os.environ, {"PUBLIC_SITE_URL": ""}, clear=False
+        ), patch.dict(sys.modules, {"stripe": stripe}):
             response = self.client.post(
                 "/api/store/download-link",
                 json={"session_id": "cs_test_paid"},
@@ -830,6 +852,27 @@ class StoreTest(unittest.TestCase):
         download_url = urlparse(response.get_json()["download_url"])
         self.assertEqual(download_url.scheme, "https")
         self.assertEqual(download_url.netloc, "namegawa-brass-lab.onrender.com")
+
+    def test_download_link_ignores_spoofed_host_when_public_site_is_configured(self):
+        stripe = self.stripe_module(payment_status="paid")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ), patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/download-link",
+                json={"session_id": "cs_test_paid"},
+                headers={
+                    "X-Forwarded-Host": "attacker.example",
+                    "X-Forwarded-Proto": "https",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        download_url = urlparse(response.get_json()["download_url"])
+        self.assertEqual(download_url.scheme, "https")
+        self.assertEqual(download_url.netloc, "namegawa-brass-lab.com")
 
     def test_purchase_recovery_creates_download_link(self):
         stripe = self.stripe_module(payment_status="paid")
@@ -1006,6 +1049,24 @@ class StoreTest(unittest.TestCase):
             "/api/store/product",
             headers={"Origin": "https://attacker.example"},
         )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Access-Control-Allow-Origin", response.headers)
+
+    def test_store_cors_does_not_trust_spoofed_forwarded_host(self):
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = self.client.get(
+                "/api/store/product",
+                headers={
+                    "Origin": "https://attacker.example",
+                    "X-Forwarded-Host": "attacker.example",
+                    "X-Forwarded-Proto": "https",
+                },
+            )
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn("Access-Control-Allow-Origin", response.headers)

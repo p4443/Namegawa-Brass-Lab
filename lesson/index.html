@@ -7,7 +7,7 @@
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <meta name="description" content="kazooささきトランペット教室。初心者から経験者まで、一人ひとりに合わせたトランペットレッスンをご案内します。">
   <title>kazooささきトランペット教室 | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --navy: #1a56db;
       --blue: #1e40af;
@@ -1590,12 +1590,13 @@
       <nav class="footer-links" aria-label="フッターナビゲーション">
         <a href="/lesson/application-form.html">受講申込書</a>
         <a href="/legal/privacy-policy.html">トランペット教室プライバシーポリシー</a>
+        <a href="/legal/copyright-policy.html">著作権・侵害申告</a>
       </nav>
       <p class="copyright">© なめがわブラス・ラボ</p>
     </div>
   </footer>
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
       const detail = document.getElementById(toggle.getAttribute("aria-controls"));
       if (!detail) return;

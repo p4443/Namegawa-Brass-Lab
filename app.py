@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import secrets
 import tempfile
 import threading
 import time
@@ -23,7 +24,7 @@ from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
+from flask import Flask, g, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
 from itsdangerous import BadData, BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -66,7 +67,14 @@ STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
 STORE_RECOVERY_LIMIT = 5
 STORE_RECOVERY_WINDOW_SECONDS = 15 * 60
 EDITOR_AUTH_FAILURE_LIMIT = 20
+EDITOR_AUTH_GLOBAL_FAILURE_LIMIT = 100
 EDITOR_AUTH_FAILURE_WINDOW_SECONDS = 10 * 60
+EDITOR_SESSION_MAX_AGE_SECONDS = 60 * 60
+PUBLIC_ACTION_LIMITS = {
+    "checkout": (10, 100, 10 * 60),
+    "consultation": (3, 50, 15 * 60),
+    "reservation": (20, 100, 15 * 60),
+}
 MAX_REQUEST_BYTES = 25 * 1024 * 1024
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 INVOICE_REGISTRATION_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
@@ -1142,6 +1150,156 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                 )
                 """
             )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS editor_auth_failures (
+                    bucket TEXT PRIMARY KEY,
+                    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    failure_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public_action_limits (
+                    bucket TEXT PRIMARY KEY,
+                    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    request_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+
+def editor_auth_client_bucket(client_address):
+    address_digest = hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+    return f"client:{address_digest}"
+
+
+def editor_session_signing_key(editor_password):
+    token_secret = os.environ.get("EDITOR_TOKEN_SECRET", "").strip()
+    if not token_secret:
+        return editor_password
+    if len(token_secret) < 32:
+        raise RuntimeError("EDITOR_TOKEN_SECRET must contain at least 32 characters")
+    return hmac.new(
+        token_secret.encode("utf-8"),
+        editor_password.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+
+
+def increment_database_editor_auth_failure(cursor, bucket):
+    cursor.execute(
+        """
+        INSERT INTO editor_auth_failures (
+            bucket, window_started_at, failure_count, updated_at
+        )
+        VALUES (%s, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (bucket) DO UPDATE SET
+            window_started_at = CASE
+                WHEN editor_auth_failures.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN CURRENT_TIMESTAMP
+                ELSE editor_auth_failures.window_started_at
+            END,
+            failure_count = CASE
+                WHEN editor_auth_failures.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN 1
+                ELSE editor_auth_failures.failure_count + 1
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING failure_count
+        """,
+        (
+            bucket,
+            EDITOR_AUTH_FAILURE_WINDOW_SECONDS,
+            EDITOR_AUTH_FAILURE_WINDOW_SECONDS,
+        ),
+    )
+    return cursor.fetchone()[0]
+
+
+def database_editor_auth_failure_is_limited(database_url, client_address):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM editor_auth_failures
+                WHERE updated_at < CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                """,
+                (EDITOR_AUTH_FAILURE_WINDOW_SECONDS,),
+            )
+            global_count = increment_database_editor_auth_failure(cursor, "global")
+            if global_count > EDITOR_AUTH_GLOBAL_FAILURE_LIMIT:
+                return True
+            client_count = increment_database_editor_auth_failure(
+                cursor, editor_auth_client_bucket(client_address)
+            )
+            return client_count > EDITOR_AUTH_FAILURE_LIMIT
+
+
+def clear_database_editor_auth_failures(database_url, client_address):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM editor_auth_failures WHERE bucket = %s",
+                (editor_auth_client_bucket(client_address),),
+            )
+
+
+def increment_database_public_action(cursor, bucket, window_seconds):
+    cursor.execute(
+        """
+        INSERT INTO public_action_limits (
+            bucket, window_started_at, request_count, updated_at
+        )
+        VALUES (%s, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (bucket) DO UPDATE SET
+            window_started_at = CASE
+                WHEN public_action_limits.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN CURRENT_TIMESTAMP
+                ELSE public_action_limits.window_started_at
+            END,
+            request_count = CASE
+                WHEN public_action_limits.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN 1
+                ELSE public_action_limits.request_count + 1
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING request_count
+        """,
+        (bucket, window_seconds, window_seconds),
+    )
+    return cursor.fetchone()[0]
+
+
+def database_public_action_is_limited(
+    database_url, action, client_address, client_limit, global_limit, window_seconds
+):
+    address_digest = hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM public_action_limits
+                WHERE updated_at < CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                """,
+                (max(limits[2] for limits in PUBLIC_ACTION_LIMITS.values()),),
+            )
+            global_count = increment_database_public_action(
+                cursor, f"{action}:global", window_seconds
+            )
+            if global_count > global_limit:
+                return True
+            client_count = increment_database_public_action(
+                cursor, f"{action}:client:{address_digest}", window_seconds
+            )
+            return client_count > client_limit
 
 
 def load_store_settings(path=STORE_FILE, product_id=PRODUCT_ID, default_enabled=False):
@@ -2347,6 +2505,7 @@ def create_app(
 
     @app.before_request
     def redirect_legacy_host():
+        g.csp_nonce = secrets.token_urlsafe(24)
         if request.method not in {"GET", "HEAD"}:
             return None
         site_url = public_site_url()
@@ -2363,9 +2522,41 @@ def create_app(
 
     @app.after_request
     def apply_security_headers(response):
+        sensitive_api_response = (
+            request.path == "/api/editor"
+            or request.path == "/api/store/health"
+            or request.path == "/api/lesson-admin-health"
+            or request.path == "/api/lesson-slot-statuses/admin"
+            or request.path.startswith("/api/contracts")
+            or request.path.startswith("/api/lesson-reservations")
+        )
+        if sensitive_api_response:
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'self'; "
+            "form-action 'self'; "
+            f"script-src 'self' 'nonce-{g.csp_nonce}'; "
+            f"style-src 'self' 'nonce-{g.csp_nonce}'; "
+            "style-src-attr 'none'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            "media-src 'self' blob: data:; "
+            "worker-src 'self' blob:; "
+            "connect-src 'self' https://namegawa-brass-lab.com "
+            "https://*.onrender.com https://*.vercel.app; "
+            "frame-src 'self' https://www.google.com https://*.onrender.com "
+            "https://*.vercel.app",
+        )
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         response.headers.setdefault(
             "Permissions-Policy", "camera=(), microphone=(self), geolocation=()"
         )
@@ -2374,6 +2565,10 @@ def create_app(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )
         return response
+
+    @app.context_processor
+    def inject_csp_nonce():
+        return {"csp_nonce": g.csp_nonce}
 
     configured_database_url = (
         os.environ.get("DATABASE_URL", "") if database_url is None else database_url
@@ -2391,6 +2586,8 @@ def create_app(
     recovery_attempt_lock = threading.Lock()
     editor_auth_failures = {}
     editor_auth_failure_lock = threading.Lock()
+    public_action_counts = {}
+    public_action_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -2399,7 +2596,7 @@ def create_app(
         methods="POST, OPTIONS",
         headers="Content-Type",
     ):
-        response.headers["Access-Control-Allow-Origin"] = "*"
+        allow_trusted_origin(response)
         response.headers["Access-Control-Allow-Methods"] = methods
         response.headers["Access-Control-Allow-Headers"] = headers
         response.headers["Access-Control-Max-Age"] = "600"
@@ -2411,14 +2608,7 @@ def create_app(
         return with_lesson_reservation_cors(response)
 
     def with_store_cors(response, methods="GET, POST, PUT, OPTIONS"):
-        request_origin = request.headers.get("Origin", "").rstrip("/")
-        allowed_origins = {
-            public_site_origin(),
-            request.url_root.rstrip("/"),
-        }
-        if request_origin and request_origin in allowed_origins:
-            response.headers["Access-Control-Allow-Origin"] = request_origin
-            response.headers.add("Vary", "Origin")
+        allow_trusted_origin(response)
         response.headers["Access-Control-Allow-Methods"] = methods
         response.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, X-Editor-Password, Stripe-Signature"
@@ -2499,6 +2689,21 @@ def create_app(
             return ""
         parsed = urlparse(site_url)
         return f"{parsed.scheme}://{parsed.netloc}"
+
+    def allow_trusted_origin(response):
+        request_origin = request.headers.get("Origin", "").rstrip("/")
+        configured_origin = public_site_origin()
+        allowed_origins = (
+            {configured_origin}
+            if configured_origin
+            else {request.url_root.rstrip("/")}
+        )
+        if request_origin and request_origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers.add("Vary", "Origin")
+
+    def public_base_url():
+        return public_site_url() or request.url_root.rstrip("/")
 
     def invoice_registration_number():
         value = os.environ.get(
@@ -2772,18 +2977,65 @@ def create_app(
             return count <= STORE_RECOVERY_LIMIT
 
     def editor_auth_failure_is_limited(client_address):
+        if configured_database_url:
+            return database_editor_auth_failure_is_limited(
+                configured_database_url, client_address
+            )
         now = time.monotonic()
         with editor_auth_failure_lock:
-            window_started_at, count = editor_auth_failures.get(client_address, (now, 0))
+            global_key = ("global",)
+            window_started_at, count = editor_auth_failures.get(global_key, (now, 0))
+            if now - window_started_at >= EDITOR_AUTH_FAILURE_WINDOW_SECONDS:
+                editor_auth_failures.clear()
+                window_started_at, count = now, 0
+            count += 1
+            editor_auth_failures[global_key] = (window_started_at, count)
+            if count > EDITOR_AUTH_GLOBAL_FAILURE_LIMIT:
+                return True
+
+            client_key = ("client", client_address)
+            window_started_at, count = editor_auth_failures.get(client_key, (now, 0))
             if now - window_started_at >= EDITOR_AUTH_FAILURE_WINDOW_SECONDS:
                 window_started_at, count = now, 0
             count += 1
-            editor_auth_failures[client_address] = (window_started_at, count)
+            editor_auth_failures[client_key] = (window_started_at, count)
             return count > EDITOR_AUTH_FAILURE_LIMIT
 
     def clear_editor_auth_failures(client_address):
+        if configured_database_url:
+            clear_database_editor_auth_failures(
+                configured_database_url, client_address
+            )
+            return
         with editor_auth_failure_lock:
-            editor_auth_failures.pop(client_address, None)
+            editor_auth_failures.pop(("client", client_address), None)
+
+    def public_action_is_limited(action):
+        client_limit, global_limit, window_seconds = PUBLIC_ACTION_LIMITS[action]
+        client_address = request.remote_addr or "unknown"
+        if configured_database_url:
+            return database_public_action_is_limited(
+                configured_database_url,
+                action,
+                client_address,
+                client_limit,
+                global_limit,
+                window_seconds,
+            )
+        now = time.monotonic()
+        with public_action_lock:
+            counts = []
+            for bucket, limit in (
+                ((action, "global"), global_limit),
+                ((action, "client", client_address), client_limit),
+            ):
+                window_started_at, count = public_action_counts.get(bucket, (now, 0))
+                if now - window_started_at >= window_seconds:
+                    window_started_at, count = now, 0
+                count += 1
+                public_action_counts[bucket] = (window_started_at, count)
+                counts.append(count > limit)
+            return any(counts)
 
     def product_archive_is_valid():
         path = Path(product_file)
@@ -2948,8 +3200,9 @@ def create_app(
         if configured_password and supplied_token:
             try:
                 token_payload = URLSafeTimedSerializer(
-                    configured_password, salt="editor-session"
-                ).loads(supplied_token, max_age=8 * 60 * 60)
+                    editor_session_signing_key(configured_password),
+                    salt="editor-session",
+                ).loads(supplied_token, max_age=EDITOR_SESSION_MAX_AGE_SECONDS)
                 if isinstance(token_payload, dict) and token_payload.get("scope") == "editor":
                     return None
             except (BadData, SignatureExpired):
@@ -3307,6 +3560,7 @@ def create_app(
         return jsonify({"deleted": True, "deleted_count": deleted_count, "filename": filename})
 
     @app.get("/pdf/")
+    @app.get("/pdf/index.html")
     def event_pdf_index():
         return render_template(
             "pdf/index.html",
@@ -3338,6 +3592,10 @@ def create_app(
     @app.get("/legal/privacy-policy.html")
     def privacy_policy():
         return render_template("legal/privacy-policy.html")
+
+    @app.get("/legal/copyright-policy.html")
+    def copyright_policy():
+        return render_template("legal/copyright-policy.html")
 
     @app.get("/schedule/")
     def schedule():
@@ -3460,6 +3718,11 @@ def create_app(
             parsed_request_id = None
         if parsed_request_id is None or parsed_request_id.version != 4:
             return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+        if public_action_is_limited("checkout"):
+            return store_json(
+                {"error": "決済画面の開始回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
 
         site_url = configuration["site_url"]
         try:
@@ -3612,6 +3875,11 @@ def create_app(
             parsed_request_id = None
         if parsed_request_id is None or parsed_request_id.version != 4:
             return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+        if public_action_is_limited("checkout"):
+            return store_json(
+                {"error": "決済画面の開始回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
         try:
             checkout = stripe_module().checkout.Session.create(
                 mode="payment",
@@ -3681,7 +3949,7 @@ def create_app(
         return store_json(
             {
                 "download_url": (
-                    f"{request.url_root.rstrip('/')}/api/store/trumpet-transpose-lab/download/{token}"
+                    f"{public_base_url()}/api/store/trumpet-transpose-lab/download/{token}"
                 ),
                 "expires_in": 86400,
             }
@@ -3772,7 +4040,7 @@ def create_app(
             return store_json({"error": "支払いの完了を確認できません。"}, 403)
 
         token = serializer.dumps({"product_id": PRODUCT_ID, "session_id": session_id})
-        download_url = f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+        download_url = f"{public_base_url()}/api/store/download/{token}"
         return store_json({"download_url": download_url, "expires_in": 86400})
 
     @app.route("/api/store/recover-download", methods=["POST", "OPTIONS"])
@@ -3833,7 +4101,7 @@ def create_app(
                         {"product_id": PRODUCT_ID, "session_id": session_id}
                     )
                     download_url = (
-                        f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+                        f"{public_base_url()}/api/store/download/{token}"
                     )
                     return store_json(
                         {
@@ -3946,6 +4214,11 @@ def create_app(
                 },
                 503,
             )
+        if public_action_is_limited("reservation"):
+            return lesson_reservation_json(
+                {"error": "予約の送信回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
         except LessonReservationDeliveryError as exc:
@@ -4032,6 +4305,11 @@ def create_app(
                     "error": "現在、Webフォームを利用できません。メールまたは電話でお問い合わせください。"
                 },
                 503,
+            )
+        if public_action_is_limited("consultation"):
+            return lesson_reservation_json(
+                {"error": "送信回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
             )
         try:
             result = send_lesson_reservation(
@@ -4731,7 +5009,8 @@ def create_app(
         if request.method == "POST":
             configured_password = os.environ.get("EDITOR_PASSWORD", "")
             result["editor_token"] = URLSafeTimedSerializer(
-                configured_password, salt="editor-session"
+                editor_session_signing_key(configured_password),
+                salt="editor-session",
             ).dumps({"scope": "editor"})
         return with_lesson_reservation_cors(
             jsonify(result),
@@ -4801,13 +5080,21 @@ def create_app(
                 return jsonify({"error": "対象の情報が見つかりません。"}), 404
         return jsonify({"deleted": True})
 
-    @app.get("/<any(data,pdf,video):directory>/<path:filename>")
+    @app.get("/video/index.html")
+    def video_index_file():
+        return render_template("video/index.html")
+
+    @app.get("/data/media/<path:filename>")
+    def public_media_file(filename):
+        return send_from_directory(BASE_DIR / "data" / "media", filename)
+
+    @app.get("/<any(pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):
         return send_from_directory(BASE_DIR / directory, filename)
 
-    @app.get("/<any(pdf,video):directory>/")
+    @app.get("/<any(video):directory>/")
     def public_index(directory):
-        return send_from_directory(BASE_DIR / directory, "index.html")
+        return render_template(f"{directory}/index.html")
 
     @app.get("/music%20App/<path:filename>")
     @app.get("/music App/<path:filename>")
@@ -4816,8 +5103,10 @@ def create_app(
 
     @app.get("/music%20App/")
     @app.get("/music App/")
+    @app.get("/music%20App/index.html")
+    @app.get("/music App/index.html")
     def music_app_index():
-        return send_from_directory(BASE_DIR / "music App", "index.html")
+        return render_template("music App/index.html")
 
     return app
 

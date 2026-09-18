@@ -6,7 +6,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>受講申込書 | kazooささきトランペット教室</title>
-<style>
+<style nonce="{{ csp_nonce }}">
   @page { size: A4 portrait; margin: 10mm 12mm; background-color: #ffffff; }
   *, *::before, *::after { box-sizing: border-box; }
   body { max-width: 1000px; margin: 0 auto; padding: 32px 20px; font-family: "Helvetica Neue", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif; color: #222222; background: #ffffff; font-size: 0.86rem; line-height: 1.45; }
@@ -23,6 +23,12 @@
   table.form-table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
   table.form-table th, table.form-table td { border: 1px solid #a0aec0; padding: 5px 7px; font-size: 0.78rem; }
   table.form-table th { background-color: #edf2f7; color: #2d3748; font-weight: 600; text-align: left; width: 17%; }
+  .form-table .name-label, .form-table .date-label { width: 16%; }
+  .form-table .name-field { width: 44%; }
+  .form-table .date-field { width: 24%; }
+  .student-name-field { font-size: 9.5pt; font-weight: bold; }
+  .minor-note { color: #718096; font-size: 6pt; font-weight: normal; }
+  .goals-field { height: 28px; color: #718096; font-size: 6.8pt; }
   .checkbox-group { display: inline-block; margin-right: 10px; }
   .checkbox-box { display: inline-block; width: 10px; height: 10px; border: 1px solid #4a5568; margin-right: 2px; vertical-align: middle; }
   .terms-container { background-color: #f7fafc; border: 1px solid #cbd5e0; padding: 6px 8px; font-size: 0.72rem; line-height: 1.35; color: #333333; border-radius: 2px; }
@@ -35,11 +41,22 @@
   table.sign-table { width: 100%; border-collapse: collapse; }
   table.sign-table td { padding: 2px; font-size: 0.75rem; vertical-align: middle; }
   .sign-line { border-bottom: 1px solid #4a5568; display: inline-block; height: 14px; }
+  .sign-date { width: 25%; }
+  .sign-student { width: 40%; }
+  .sign-guardian { width: 35%; }
+  .student-sign-line { width: 145px; }
+  .guardian-sign-line { width: 110px; }
   .office-box { margin-top: 6px; border: 1px dashed #718096; background-color: #fafafa; padding: 3px 5px; font-size: 0.72rem; }
   .office-title { font-weight: bold; color: #4a5568; margin-bottom: 2px; }
   table.office-table { width: 100%; border-collapse: collapse; }
   table.office-table th, table.office-table td { border: 1px solid #cbd5e0; padding: 2px 4px; font-size: 0.7rem; text-align: center; }
   table.office-table th { background-color: #edf2f7; font-weight: normal; }
+  .office-date { width: 12%; }
+  .office-start { width: 14%; }
+  .office-course { width: 18%; }
+  .office-fee, .office-payment { width: 16%; }
+  .office-notes { width: 24%; }
+  .office-entry-row { height: 20px; }
   @media (max-width: 700px) { body { min-width: 700px; } .print-actions { justify-content: flex-start; } }
   @media print { body { max-width: none; min-width: 0; margin: 0; padding: 0; font-size: 8pt; line-height: 1.3; } .print-actions { display: none; } .section-title { padding: 2px 6px; margin: 4px 0 3px; } table.form-table th, table.form-table td { padding: 2.5px 5px; font-size: 7.8pt; } }
 </style>
@@ -47,7 +64,7 @@
 <body>
 <div class="print-actions">
   <a href="./" data-history-back>教室ページへ戻る</a>
-  <button type="button" onclick="window.print()">印刷する</button>
+  <button id="printApplicationForm" type="button">印刷する</button>
 </div>
 <table class="header-table">
   <tr>
@@ -64,14 +81,14 @@
 </table>
 <div class="section-title">2. 受講者・保護者 基本情報</div>
 <table class="form-table">
-  <tr><th style="width:16%;">ふりがな</th><td style="width:44%;"></td><th style="width:16%;">生年月日・年齢</th><td style="width:24%;">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日生（&nbsp;&nbsp;&nbsp;&nbsp;歳）</td></tr>
-  <tr><th>受講者氏名</th><td style="font-size:9.5pt; font-weight:bold;"></td><th>ご職業・学年</th><td>（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;）</td></tr>
-  <tr><th>保護者氏名<br><span style="font-size:6pt; font-weight:normal; color:#718096;">※未成年の場合</span></th><td></td><th>続柄</th><td>（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;）</td></tr>
+  <tr><th class="name-label">ふりがな</th><td class="name-field"></td><th class="date-label">生年月日・年齢</th><td class="date-field">年&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;日生（&nbsp;&nbsp;&nbsp;&nbsp;歳）</td></tr>
+  <tr><th>受講者氏名</th><td class="student-name-field"></td><th>ご職業・学年</th><td>（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;）</td></tr>
+  <tr><th>保護者氏名<br><span class="minor-note">※未成年の場合</span></th><td></td><th>続柄</th><td>（&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;）</td></tr>
   <tr><th>ご住所</th><td colspan="3">〒&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<br>&nbsp;</td></tr>
   <tr><th>電話番号</th><td>（携帯）<br>（自宅）</td><th>メールアドレス</th><td></td></tr>
   <tr><th>楽器所有状況</th><td colspan="3"><span class="checkbox-group"><span class="checkbox-box"></span> 所有（メーカー/型番：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;）</span><span class="checkbox-group"><span class="checkbox-box"></span> 学校・楽団等の備品</span><span class="checkbox-group"><span class="checkbox-box"></span> 未所有（購入相談希望）</span></td></tr>
   <tr><th>音楽・楽器経験</th><td colspan="3"><span class="checkbox-group"><span class="checkbox-box"></span> 初めて</span><span class="checkbox-group"><span class="checkbox-box"></span> 経験あり（楽器：&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; / 経験：約&nbsp;&nbsp;&nbsp;&nbsp;年）</span><span class="checkbox-group"><span class="checkbox-box"></span> ブランクあり（約&nbsp;&nbsp;&nbsp;&nbsp;年）</span></td></tr>
-  <tr><th>目標・ご要望</th><td colspan="3" style="height: 28px; color:#718096; font-size:6.8pt;">（例：高音の出し方を学びたい、吹奏楽部の曲を見てほしい、アプリを使った練習法を知りたい等）</td></tr>
+  <tr><th>目標・ご要望</th><td class="goals-field" colspan="3">（例：高音の出し方を学びたい、吹奏楽部の曲を見てほしい、アプリを使った練習法を知りたい等）</td></tr>
 </table>
 <div class="section-title">3. 受講規約および個人情報取り扱いの確認</div>
 <div class="terms-container">
@@ -82,12 +99,15 @@
 </div>
 <div class="agreement-box">
   <div class="agreement-text">私（および保護者）は、上記の受講規約およびプライバシーポリシーの内容を確認・承諾の上、申し込みます。</div>
-  <table class="sign-table"><tr><td style="width:25%;">署名日： 202&nbsp;&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</td><td style="width:40%;">受講者署名： <span class="sign-line" style="width:145px;"></span></td><td style="width:35%;">保護者署名（未成年の場合）： <span class="sign-line" style="width:110px;"></span></td></tr></table>
+  <table class="sign-table"><tr><td class="sign-date">署名日： 202&nbsp;&nbsp;&nbsp;&nbsp;年&nbsp;&nbsp;&nbsp;&nbsp;月&nbsp;&nbsp;&nbsp;&nbsp;日</td><td class="sign-student">受講者署名： <span class="sign-line student-sign-line"></span></td><td class="sign-guardian">保護者署名（未成年の場合）： <span class="sign-line guardian-sign-line"></span></td></tr></table>
 </div>
 <div class="office-box">
   <div class="office-title">【教室管理欄】（※受講生記入不要）</div>
-  <table class="office-table"><tr><th style="width:12%;">受付日</th><th style="width:14%;">受講開始月</th><th style="width:18%;">コース/回数</th><th style="width:16%;">受講料/月謝</th><th style="width:16%;">支払方法</th><th style="width:24%;">備考・初回レッスン日時</th></tr><tr style="height:20px;"><td>&nbsp;</td><td>&nbsp;年&nbsp;&nbsp;&nbsp;月〜</td><td>&nbsp;</td><td>¥&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-</td><td>現金 / 振込 / その他</td><td>&nbsp;</td></tr></table>
+  <table class="office-table"><tr><th class="office-date">受付日</th><th class="office-start">受講開始月</th><th class="office-course">コース/回数</th><th class="office-fee">受講料/月謝</th><th class="office-payment">支払方法</th><th class="office-notes">備考・初回レッスン日時</th></tr><tr class="office-entry-row"><td>&nbsp;</td><td>&nbsp;年&nbsp;&nbsp;&nbsp;月〜</td><td>&nbsp;</td><td>¥&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;-</td><td>現金 / 振込 / その他</td><td>&nbsp;</td></tr></table>
 </div>
 <script src="../back-navigation.js"></script>
+<script nonce="{{ csp_nonce }}">
+  document.getElementById("printApplicationForm").addEventListener("click", () => window.print());
+</script>
 </body>
 </html>

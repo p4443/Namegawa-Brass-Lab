@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" sizes="64x64" href="/assets/branding/favicon.png?v=gold-addressbar-20260910">
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const isGitHubPages = location.hostname === 'p4443.github.io'
       && location.pathname.startsWith('/Namegawa-Brass-Lab');
     const isLiveServer = ['localhost', '127.0.0.1'].includes(location.hostname)
@@ -17,7 +17,7 @@
     }
   </script>
   <title>なめがわブラス・ラボ | トランペット奏者・佐々木久和</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     /* ----------------------------------
        CSS RESET & VARIABLES
     ---------------------------------- */
@@ -107,6 +107,11 @@
       background-color: #d97706;
       transform: translateY(-2px);
     }
+
+    .hero-contact-button { padding: 14px 36px; font-size: 1.1rem; }
+    .service-button { margin-top: 15px; }
+    .contact-button { padding: 15px 40px; font-size: 1.1rem; }
+    .contact-details { margin: 20px 0 0; font-size: 0.9rem; }
 
     .section-title {
       text-align: center;
@@ -1492,6 +1497,9 @@
       margin-bottom: 40px;
     }
 
+    .footer-brand-title { margin-bottom: 10px; color: #ffffff; }
+    .footer-representative { font-size: 0.9rem; }
+
     .footer-links {
       display: flex;
       gap: 25px;
@@ -1825,7 +1833,7 @@
           </ul>
         </nav>
         <a href="#contact" class="btn btn-primary header-cta">お問い合わせ</a>
-        <button class="hamburger" id="hamburgerBtn" aria-label="メニューを開く">
+        <button class="hamburger" id="hamburgerBtn" type="button" aria-label="メニューを開く" aria-expanded="false" aria-controls="navMenu">
           <span></span>
           <span></span>
           <span></span>
@@ -1840,7 +1848,7 @@
       <div class="hero-content">
         <h1>音楽とITで、滑川町から<span class="mobile-break"></span>未来の可能性を広げる。</h1>
         <p>「kazooささきトランペット教室」をはじめ、部活動の地域連携、子どもの居場所づくり、イベント企画・輸送、WEB制作・自社アプリ開発まで。「なめがわブラス・ラボ」は地域に寄り添い、新しい挑戦を応援します。</p>
-        <a href="#contact" class="btn btn-accent" style="font-size: 1.1rem; padding: 14px 36px;">無料体験・ご相談はこちら</a>
+        <a href="#contact" class="btn btn-accent hero-contact-button">無料体験・ご相談はこちら</a>
       </div>
       <div class="hero-visual">
         <video class="hero-video" autoplay muted loop playsinline preload="metadata">
@@ -1996,7 +2004,7 @@
               <li>独自アプリで楽しく身につく新しいレッスン</li>
             </ul>
           </div>
-          <a href="lesson/" class="btn btn-primary" style="margin-top:15px;">教室の詳細・体験申込</a>
+          <a href="lesson/" class="btn btn-primary service-button">教室の詳細・体験申込</a>
         </div>
 
         <div class="service-card" id="club-support">
@@ -2008,7 +2016,7 @@
               <li>地域の実情に合わせた継続可能な音楽活動をサポート</li>
             </ul>
           </div>
-          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">地域連携のご相談</a>
+          <a href="#contact" class="btn btn-primary service-button">地域連携のご相談</a>
         </div>
 
         <div class="service-card" id="child-network">
@@ -2020,7 +2028,7 @@
               <li>子どもと地域をつなぐ活動・情報発信に協力</li>
             </ul>
           </div>
-          <a href="#contact" class="btn btn-primary" style="margin-top:15px;">居場所づくりのご相談</a>
+          <a href="#contact" class="btn btn-primary service-button">居場所づくりのご相談</a>
         </div>
 
         <div class="service-card service-card-events" id="events">
@@ -2039,8 +2047,8 @@
               <img src="data/media/event-preschool-performance.png" alt="保育園で子どもたちが演奏を鑑賞している様子" loading="lazy">
             </figure>
           </div>
-          <a href="pdf/" class="btn btn-primary" style="margin-top:15px;">イベント企画PDFを見る</a>
-          <a href="#event-consultation" class="btn btn-primary" style="margin-top:15px;">企画・輸送のご相談</a>
+          <a href="pdf/" class="btn btn-primary service-button">イベント企画PDFを見る</a>
+          <a href="#event-consultation" class="btn btn-primary service-button">企画・輸送のご相談</a>
         </div>
 
         <div class="service-card" id="web">
@@ -2052,7 +2060,7 @@
               <li>Webマーケティングなど</li>
             </ul>
           </div>
-          <a href="products/" class="btn btn-primary" style="margin-top:15px;">アプリ・商品を見る</a>
+          <a href="products/" class="btn btn-primary service-button">アプリ・商品を見る</a>
         </div>
       </div>
     </div>
@@ -2212,8 +2220,8 @@
     <div class="container">
       <h2>まずはお気軽にお問い合わせください</h2>
       <p>トランペット体験レッスン、地域連携、イベント企画・輸送、Web制作・アプリ開発のご相談を受け付けています。</p>
-      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener" class="btn btn-accent" style="font-size: 1.1rem; padding: 15px 40px;">お問い合わせフォームへ</a>
-      <p style="margin: 20px 0 0; font-size: 0.9rem;">メール：<a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a> ／ 電話：<a href="tel:+819057690830">090-5769-0830</a>（10:00〜18:00）</p>
+      <a href="https://forms.gle/RdkPrai2wiSV3Hah9" target="_blank" rel="noopener" class="btn btn-accent contact-button">お問い合わせフォームへ</a>
+      <p class="contact-details">メール：<a href="mailto:zuomuj924@gmail.com">zuomuj924@gmail.com</a> ／ 電話：<a href="tel:+819057690830">090-5769-0830</a>（10:00〜18:00）</p>
     </div>
   </section>
 
@@ -2222,8 +2230,8 @@
     <div class="container">
       <div class="footer-content">
         <div>
-          <h3 style="color:#fff; margin-bottom: 10px;">なめがわブラス・ラボ</h3>
-          <p style="font-size: 0.9rem;">代表：佐々木久和</p>
+          <h3 class="footer-brand-title">なめがわブラス・ラボ</h3>
+          <p class="footer-representative">代表：佐々木久和</p>
           <address class="footer-address">
             <span>〒355-0815</span>
             <span>埼玉県比企郡滑川町月の輪5丁目1-3</span>
@@ -2238,6 +2246,7 @@
           <a href="#access">アクセス</a>
           <a href="legal/#tokusho">特定商取引法に基づく表記</a>
           <a href="legal/privacy-policy.html">プライバシーポリシー</a>
+          <a href="legal/copyright-policy.html">著作権・侵害申告</a>
         </div>
       </div>
       <div class="copyright">
@@ -2248,17 +2257,21 @@
 
   <script src="back-navigation.js"></script>
   <!-- JavaScript for Hamburger Menu -->
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const navMenu = document.getElementById('navMenu');
 
     hamburgerBtn.addEventListener('click', () => {
-      navMenu.classList.toggle('active');
+      const isOpen = navMenu.classList.toggle('active');
+      hamburgerBtn.setAttribute('aria-expanded', String(isOpen));
+      hamburgerBtn.setAttribute('aria-label', isOpen ? 'メニューを閉じる' : 'メニューを開く');
     });
 
     document.querySelectorAll('.nav-menu a').forEach(link => {
       link.addEventListener('click', () => {
         navMenu.classList.remove('active');
+        hamburgerBtn.setAttribute('aria-expanded', 'false');
+        hamburgerBtn.setAttribute('aria-label', 'メニューを開く');
       });
     });
 
@@ -2281,7 +2294,7 @@
     const updatesEditorMediaUrl = document.getElementById('updates-editor-media-url');
     const updatesEditorSave = document.getElementById('updates-editor-save');
     const updatesEditorCancel = document.getElementById('updates-editor-cancel');
-    let updatesEditorKey = '';
+    let updatesEditorToken = '';
     const renderUpdatesApi = 'https://namegawa-brass-lab.com/api/updates';
     const updatesApiCandidates = location.hostname.endsWith('github.io') || location.protocol === 'file:'
       ? [renderUpdatesApi]
@@ -2430,7 +2443,9 @@
     async function readUpdatesError(response, fallback) {
       try {
         const result = await response.json();
-        return result.error || fallback;
+        const message = result.error || fallback;
+        if (response.status === 401 && updatesEditorToken) endUpdatesEditorSession(message);
+        return message;
       } catch {
         return fallback;
       }
@@ -2439,8 +2454,21 @@
     function editorHeaders() {
       return {
         'Content-Type': 'application/json',
-        'X-Editor-Password': updatesEditorKey
+        'X-Editor-Token': updatesEditorToken
       };
+    }
+
+    function endUpdatesEditorSession(message = '') {
+      updatesEditorToken = '';
+      updatesEditorLogin.hidden = false;
+      updatesEditorLogin.reset();
+      updatesEditorForm.hidden = true;
+      updatesEditorLogout.hidden = true;
+      document.querySelectorAll('.update-admin-actions').forEach(actions => {
+        actions.hidden = true;
+      });
+      resetUpdatesEditorForm();
+      setUpdatesEditorStatus(message, message ? 'error' : '');
     }
 
     function todayInJapan() {
@@ -2511,14 +2539,7 @@
       updatesEditor.hidden = !updatesEditor.hidden;
       updatesAdminToggle.setAttribute('aria-expanded', String(!updatesEditor.hidden));
       if (updatesEditor.hidden) {
-        updatesEditorKey = '';
-        updatesEditorLogin.hidden = false;
-        updatesEditorForm.hidden = true;
-        updatesEditorLogout.hidden = true;
-        updatesEditorLogin.reset();
-        document.querySelectorAll('.update-admin-actions').forEach(actions => {
-          actions.hidden = true;
-        });
+        endUpdatesEditorSession();
         return;
       }
       updatesEditorLogin.hidden = false;
@@ -2532,14 +2553,19 @@
       const password = updatesEditorPassword.value;
       try {
         const response = await fetch('/api/editor', {
-          headers: { 'X-Editor-Password': password }
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editor_password: password })
         });
         if (!response.ok) {
           setUpdatesEditorStatus(await readUpdatesError(response, 'ログインできませんでした。'), 'error');
           updatesEditorPassword.select();
           return;
         }
-        updatesEditorKey = password;
+        const result = await response.json();
+        updatesEditorToken = result.editor_token || '';
+        if (!updatesEditorToken) throw new Error('管理者トークンを取得できませんでした。');
+        updatesEditorPassword.value = '';
         setUpdatesEditorStatus('編集できます。');
         showAuthenticatedEditor();
       } catch {
@@ -2586,15 +2612,7 @@
     updatesEditorCancel?.addEventListener('click', resetUpdatesEditorForm);
 
     updatesEditorLogout?.addEventListener('click', () => {
-      updatesEditorKey = '';
-      updatesEditorLogin.hidden = false;
-      updatesEditorLogin.reset();
-      updatesEditorForm.hidden = true;
-      updatesEditorLogout.hidden = true;
-      document.querySelectorAll('.update-admin-actions').forEach(actions => {
-        actions.hidden = true;
-      });
-      setUpdatesEditorStatus('');
+      endUpdatesEditorSession();
       updatesEditor.hidden = true;
       updatesAdminToggle.setAttribute('aria-expanded', 'false');
       updatesAdminToggle.focus();

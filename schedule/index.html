@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="kazooささきトランペット教室のレッスン空き状況と予約スケジュールです。">
   <title>レッスンスケジュール | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --navy: #0b2545;
       --blue: #176b87;
@@ -264,7 +264,7 @@
     </section>
   </main>
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const renderBase = "https://namegawa-brass-lab.com";
     const apiCandidates = (path) => {
       const localHost = ["localhost", "127.0.0.1"].includes(location.hostname);
@@ -332,6 +332,9 @@
           const response = await fetch(endpoint, { ...fetchOptions, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
+          if (response.status === 401 && adminToken) {
+            endAdminSession("管理者セッションの有効期限が切れました。再ログインしてください。");
+          }
           const errorDetail = result.delivery_error || result.detail;
           const errorMessage = result.error || "サーバーに接続できません。";
           const responseError = new Error(errorDetail ? `${errorMessage} (${errorDetail})` : errorMessage);
@@ -662,7 +665,7 @@
     }
     document.getElementById("admin-previous-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() - 1); renderAdminSlotCalendar(); });
     document.getElementById("admin-next-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() + 1); renderAdminSlotCalendar(); });
-    adminLogout.addEventListener("click", () => {
+    function endAdminSession(message) {
       adminToken = "";
       changedReservationIds.clear();
       reservationEditors.clear();
@@ -675,8 +678,11 @@
       const passwordInput = document.getElementById("admin-password");
       loginForm.hidden = false;
       loginForm.reset();
-      adminStatus.textContent = "ログアウトしました。";
+      adminStatus.textContent = message;
       passwordInput.focus();
+    }
+    adminLogout.addEventListener("click", () => {
+      endAdminSession("ログアウトしました。");
     });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
@@ -750,7 +756,9 @@
     reservationRetry.addEventListener("click", async () => {
       adminStatus.textContent = "予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
-      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
+      catch (error) {
+        if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${error.message}`;
+      }
     });
     async function updateReservation(reservation, statusSelect, timeInput, durationInput, refresh = true) {
       adminStatus.textContent = "更新しています…";
@@ -882,7 +890,9 @@
       catch (error) { adminToken = ""; adminStatus.textContent = error.message; return; }
       passwordInput.value = ""; dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
-      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
+      catch (error) {
+        if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${error.message}`;
+      }
     });
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";
