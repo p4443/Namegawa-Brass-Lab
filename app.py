@@ -54,11 +54,12 @@ FLOW_HARMONY_PRODUCT_ID = "trumpet-transpose-lab"
 FLOW_HARMONY_LEGACY_PRODUCT_ID = "flow-harmony"
 FLOW_HARMONY_PRODUCT_NAME = "Trumpet Transpose Lab オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
-FLOW_HARMONY_SALES_ENABLED = True
+FLOW_HARMONY_SALES_ENABLED = False
 BEISIA_WORK_RECORDS_PRODUCT_ID = "beisia-work-records"
 BEISIA_WORK_RECORDS_PRODUCT_NAME = "自在稼働記録"
 FLEX_MEDIA_PRODUCT_ID = "flex-media"
 FLEX_MEDIA_PRODUCT_NAME = "Flex Media"
+FLEX_MEDIA_SALES_ENABLED = False
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -2630,6 +2631,7 @@ def create_app(
     def get_store_settings(product_id=PRODUCT_ID):
         default_enabled = (
             product_id == FLEX_MEDIA_PRODUCT_ID
+            and FLEX_MEDIA_SALES_ENABLED
             or product_id == FLOW_HARMONY_PRODUCT_ID
             and FLOW_HARMONY_SALES_ENABLED
         )
@@ -3280,28 +3282,6 @@ def create_app(
     def download_guide():
         return render_template("download-guide/index.html")
 
-    @app.get("/trumpet-transpose-lab/")
-    def trumpet_transpose_lab():
-        response = make_response(render_template("trumpet-transpose-lab/index.html"))
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        return response
-
-    @app.get("/trumpet-transpose-lab/<path:asset>")
-    def trumpet_transpose_lab_asset(asset):
-        if asset not in {
-            "styles.css",
-            "app.mjs",
-            "recorder-worklet.js",
-            "transcription-core.mjs",
-        }:
-            return app.response_class(status=404)
-        return send_from_directory(BASE_DIR / "trumpet-transpose-lab", asset)
-
-    @app.get("/flow-harmony/")
-    def flow_harmony_legacy_redirect():
-        query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""
-        return redirect(f"/trumpet-transpose-lab/{query}", code=308)
-
     @app.get("/contract-generator/")
     def contract_generator():
         response = make_response(render_template("contract-generator/index.html"))
@@ -3781,19 +3761,18 @@ def create_app(
                 payload.get("enabled"), bool
             ):
                 return store_json({"error": "販売状態を指定してください。"}, 400)
+            if payload["enabled"]:
+                return store_json({"error": "この商品の販売は終了しました。"}, 409)
             set_store_enabled(payload["enabled"], FLOW_HARMONY_PRODUCT_ID)
 
-        settings = get_store_settings(FLOW_HARMONY_PRODUCT_ID)
         configuration = flow_harmony_configuration()
         return store_json(
             {
                 "product_id": FLOW_HARMONY_PRODUCT_ID,
                 "name": FLOW_HARMONY_PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": settings["enabled"],
-                "checkout_available": settings["enabled"]
-                and configuration["ready"]
-                and flow_harmony_price_is_ready(configuration),
+                "enabled": False,
+                "checkout_available": False,
             }
         )
 
@@ -3840,14 +3819,15 @@ def create_app(
                 payload.get("enabled"), bool
             ):
                 return store_json({"error": "販売状態を指定してください。"}, 400)
+            if payload["enabled"]:
+                return store_json({"error": "この商品の販売は終了しました。"}, 409)
             set_store_enabled(payload["enabled"], FLEX_MEDIA_PRODUCT_ID)
 
-        settings = get_store_settings(FLEX_MEDIA_PRODUCT_ID)
         return store_json(
             {
                 "product_id": FLEX_MEDIA_PRODUCT_ID,
                 "name": FLEX_MEDIA_PRODUCT_NAME,
-                "enabled": settings["enabled"],
+                "enabled": False,
             }
         )
 
@@ -3858,6 +3838,8 @@ def create_app(
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
+        if not FLOW_HARMONY_SALES_ENABLED:
+            return store_json({"error": "この商品の販売は終了しました。"}, 503)
         if not get_store_settings(FLOW_HARMONY_PRODUCT_ID)["enabled"]:
             return store_json({"error": "現在公開を停止しています。"}, 503)
         configuration = flow_harmony_configuration()

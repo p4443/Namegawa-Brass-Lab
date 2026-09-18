@@ -225,7 +225,7 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(enabled.status_code, 200)
         self.assertTrue(enabled.get_json()["enabled"])
         self.assertFalse(self.client.get("/api/store/product").get_json()["enabled"])
-        self.assertTrue(
+        self.assertFalse(
             self.client.get("/api/store/trumpet-transpose-lab/product").get_json()["enabled"]
         )
 
@@ -249,7 +249,8 @@ class StoreTest(unittest.TestCase):
         self.assertIn("特定商取引法に基づく表記", html)
         self.assertIn("返金・キャンセル方針", html)
         self.assertIn("500円（税込）", html)
-        self.assertIn("1,000円（税込）", html)
+        self.assertNotIn("Trumpet Transpose Lab", html)
+        self.assertNotIn("1,000円（税込）", html)
         self.assertIn("月額料金、自動更新、継続課金はありません", html)
         self.assertIn("購入時点のバージョンを期間の定めなく利用", html)
         self.assertIn("新バージョン、OS・ブラウザの仕様変更への対応は購入代金に含まれず", html)
@@ -264,7 +265,7 @@ class StoreTest(unittest.TestCase):
         self.assertIn("display: none;", html)
         self.assertEqual(
             html.count("月額料金・自動更新なし。購入時点版を期限なく利用可能"),
-            2,
+            1,
         )
 
     def test_download_guide_explains_one_time_purchase_terms(self):
@@ -277,66 +278,30 @@ class StoreTest(unittest.TestCase):
         self.assertIn("ZIPファイルはご自身で保管・バックアップ", html)
         self.assertIn('href="../legal/#license"', html)
 
-    def test_trumpet_transpose_lab_free_version_is_available(self):
+    def test_trumpet_transpose_lab_is_not_publicly_available(self):
         response = self.client.get("/trumpet-transpose-lab/")
-        html = response.get_data(as_text=True)
         app_response = self.client.get("/trumpet-transpose-lab/app.mjs")
-        app_javascript = app_response.get_data(as_text=True)
-        app_response.close()
-
-        self.assertEqual(response.status_code, 200)
-        self.assertIn("Trumpet Transpose Lab", html)
-        self.assertIn('id="capture"', html)
-        self.assertIn('id="score"', html)
-        self.assertIn('id="edit"', html)
-        self.assertIn('id="noteDuration"', html)
-        self.assertIn('id="wavExport"', html)
-        self.assertIn('id="midiExport"', html)
-        self.assertIn('id="xmlExport"', html)
-        self.assertEqual(app_response.status_code, 200)
-        self.assertIn("location.protocol !== 'file:'", app_javascript)
-        self.assertIn("button.disabled = isFreeMode", app_javascript)
-        self.assertIn("無料Web版では保存できません。", app_javascript)
-        self.assertIn("transcribeMonophonic", app_javascript)
-        self.assertIn("trumpet-transpose-lab-v2.mid", app_javascript)
-        self.assertIn("trumpet-transpose-lab-v2.musicxml", app_javascript)
-        self.assertIn("function scorePitchPosition", app_javascript)
-        self.assertIn("function inferredKeySignature", app_javascript)
-        self.assertIn("const signaturePositions", app_javascript)
-        self.assertIn("runSilentCountIn", app_javascript)
-        self.assertNotIn("playMetronomeClick", app_javascript)
-        self.assertNotIn("indexedDB", app_javascript)
-        self.assertNotIn('id="bluetoothBtn"', html)
-        self.assertNotIn('id="chordDisplay"', html)
-        self.assertNotIn('id="manualHarmonyPanel"', html)
-        self.assertNotIn("Counterline", app_javascript)
-        self.assertNotIn('<score-part id="P2">', app_javascript)
-        self.assertEqual(response.headers["Cache-Control"], "no-store, no-cache, must-revalidate, max-age=0")
         legacy = self.client.get("/flow-harmony/?mode=free")
-        self.assertEqual(legacy.status_code, 308)
-        self.assertEqual(legacy.headers["Location"], "/trumpet-transpose-lab/?mode=free")
-        self.assertEqual(self.client.get("/trumpet-transpose-lab/index.html").status_code, 404)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(app_response.status_code, 404)
+        self.assertEqual(legacy.status_code, 404)
 
-    def test_products_offers_free_and_offline_flow_harmony(self):
+    def test_products_does_not_offer_flow_harmony(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('../trumpet-transpose-lab/?mode=free', html)
-        self.assertIn('id="flow-purchase-button" type="button" disabled>販売状況を確認中', html)
-        self.assertIn("録音したフレーズを自動採譜し、音高・音価・タイミングを編集", html)
-        self.assertNotIn("allow=\"microphone; autoplay; bluetooth\"", html)
-        self.assertIn("無料Web版は録音・採譜・編集に対応（データ保存不可）", html)
-        self.assertIn('requestStore("trumpet-transpose-lab/checkout"', html)
+        self.assertNotIn("Trumpet Transpose Lab", html)
+        self.assertNotIn("trumpet-transpose-lab", html)
 
     def test_products_separates_free_web_and_one_time_zip_apps(self):
         response = self.client.get("/products/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(html.count('<span class="product-label">無料Web版</span>'), 2)
-        self.assertEqual(html.count("<h3>買い切りアプリ版（ZIP）</h3>"), 2)
-        self.assertEqual(html.count("追加料金なしの1回払い"), 2)
+        self.assertEqual(html.count('<span class="product-label">無料Web版</span>'), 1)
+        self.assertEqual(html.count("<h3>買い切りアプリ版（ZIP）</h3>"), 1)
+        self.assertEqual(html.count("追加料金なしの1回払い"), 1)
 
     def test_products_stack_vertically_on_smartphones(self):
         response = self.client.get("/products/")
@@ -351,14 +316,13 @@ class StoreTest(unittest.TestCase):
         self.assertIn("scroll-snap-type: none;", html)
         self.assertIn(".product-feature { width: 100%; min-width: 0;", html)
 
-    def test_lesson_page_links_to_free_flow_harmony(self):
+    def test_lesson_page_does_not_link_to_flow_harmony(self):
         response = self.client.get("/lesson/")
         html = response.get_data(as_text=True)
 
         self.assertEqual(response.status_code, 200)
-        self.assertIn('../trumpet-transpose-lab/?mode=free', html)
-        self.assertIn("Trumpet Transpose Lab", html)
-        self.assertIn("無料で体験", html)
+        self.assertNotIn("trumpet-transpose-lab", html)
+        self.assertNotIn("Trumpet Transpose Lab", html)
 
     def test_flow_harmony_product_uses_one_thousand_yen_price(self):
         with patch.dict(os.environ, {"STRIPE_FLOW_HARMONY_PRICE_ID": ""}):
@@ -387,27 +351,9 @@ class StoreTest(unittest.TestCase):
                 json={"checkout_request_id": checkout_request_id},
             )
 
-        self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.get_json()["checkout_url"], "https://checkout.example/session")
-        stripe.checkout.Session.create.assert_called_once()
-        checkout_arguments = stripe.checkout.Session.create.call_args.kwargs
-        self.assertEqual(checkout_arguments["line_items"], [{"price": "price_flow_harmony", "quantity": 1}])
-        self.assertEqual(checkout_arguments["metadata"]["product_id"], "trumpet-transpose-lab")
-        self.assertEqual(checkout_arguments["metadata"]["price_yen"], "1000")
-        self.assertEqual(checkout_arguments["locale"], "ja")
-        self.assertEqual(checkout_arguments["customer_creation"], "always")
-        self.assertEqual(checkout_arguments["managed_payments"], {"enabled": False})
-        invoice_data = checkout_arguments["invoice_creation"]["invoice_data"]
-        self.assertTrue(checkout_arguments["invoice_creation"]["enabled"])
-        self.assertEqual(
-            invoice_data["custom_fields"],
-            [
-                {
-                    "name": "適格請求書発行事業者登録番号",
-                    "value": "T1234567890123",
-                }
-            ],
-        )
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.get_json()["error"], "この商品の販売は終了しました。")
+        stripe.checkout.Session.create.assert_not_called()
 
     def test_paid_flow_harmony_session_downloads_personalized_archive(self):
         stripe = self.stripe_module(amount_total=1000)
@@ -482,7 +428,7 @@ class StoreTest(unittest.TestCase):
         products_html = products_response.get_data(as_text=True)
 
         self.assertEqual(products_response.status_code, 200)
-        self.assertEqual(products_html.count('href="../download-guide/"'), 2)
+        self.assertEqual(products_html.count('href="../download-guide/"'), 1)
 
         guide_response = self.client.get("/download-guide/")
         guide_html = guide_response.get_data(as_text=True)

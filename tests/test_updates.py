@@ -36,23 +36,16 @@ from app import (
 
 
 class UpdatesTest(unittest.TestCase):
-    def test_products_page_links_to_flex_media(self):
+    def test_products_page_does_not_link_to_flex_media(self):
         products_html = (
             Path(__file__).resolve().parents[1] / "products" / "index.html"
         ).read_text(encoding="utf-8")
 
-        self.assertIn('id="flex-media"', products_html)
-        self.assertIn("https://kiru-media-editor.onrender.com/", products_html)
-        self.assertIn("500円", products_html)
-        self.assertIn("1ファイル最大1GB", products_html)
-        self.assertIn("音楽・メディアアプリ", products_html)
-        self.assertIn('id="flex-media-sales-form"', products_html)
-        self.assertIn('id="flex-media-sales-enabled"', products_html)
-        self.assertIn('id="flex-media-store-status"', products_html)
-        self.assertIn('requestStore("flex-media/product", options)', products_html)
-        self.assertNotIn('class="app-window flex-media-window"', products_html)
+        self.assertNotIn("Flex Media", products_html)
+        self.assertNotIn("flex-media", products_html)
+        self.assertNotIn("kiru-media-editor.onrender.com", products_html)
 
-    def test_flex_media_sales_setting_can_be_updated_by_admin(self):
+    def test_flex_media_sales_cannot_be_reenabled(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ, {"EDITOR_PASSWORD": "test-password"}
         ):
@@ -61,18 +54,16 @@ class UpdatesTest(unittest.TestCase):
 
             initial_response = client.get("/api/store/flex-media/product")
             self.assertEqual(initial_response.status_code, 200)
-            self.assertTrue(initial_response.get_json()["enabled"])
+            self.assertFalse(initial_response.get_json()["enabled"])
 
             update_response = client.put(
                 "/api/store/flex-media/product",
-                json={"enabled": False},
+                json={"enabled": True},
                 headers={"X-Editor-Password": "test-password"},
             )
-            self.assertEqual(update_response.status_code, 200)
-            self.assertFalse(update_response.get_json()["enabled"])
-
-            saved_settings = json.loads(store_file.read_text(encoding="utf-8"))
-            self.assertFalse(saved_settings["products"]["flex-media"]["enabled"])
+            self.assertEqual(update_response.status_code, 409)
+            self.assertEqual(update_response.get_json()["error"], "この商品の販売は終了しました。")
+            self.assertFalse(store_file.exists())
 
     def test_render_persists_contracts_on_mounted_disk(self):
         render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text(encoding="utf-8")

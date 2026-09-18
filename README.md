@@ -54,16 +54,16 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 ## 練習アプリのStripe販売
 
-練習アプリのWeb版は無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。各アプリの販売状態は、商品ごとの「管理者用：販売設定」から`EDITOR_PASSWORD`を使って個別に切り替えます。メトロノームの初期値はOFF、Trumpet Transpose Labの未設定時の初期値はONです。
+トランペット練習メトロノームのWeb版は無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。未設定時の初期値はOFFです。
 
-Trumpet Transpose Labは無料Web版で全機能を公開し、オフライン版のみ1,000円で販売します。商品ページは設定と商品ZIPの検証が通った場合だけ購入ボタンを有効にします。既存環境との互換性のため、Renderでは次の環境変数名を継続利用します。
+Trumpet Transpose LabとFlex Mediaは公開・新規販売を終了しています。Trumpet Transpose Labの既購入者向けダウンロード検証を維持するため、既存環境では次の環境変数名を継続利用します。
 
 ```text
 STRIPE_FLOW_HARMONY_PRICE_ID=price_...
 FLOW_HARMONY_PRICE_YEN=1000
 ```
 
-デプロイ後は`/trumpet-transpose-lab/`がHTTP 200で表示され、`/products/`の無料版リンクと埋め込みが動作することを確認します。旧`/flow-harmony/`は新URLへリダイレクトされます。オフライン版の購入ボタンはStripeのPriceを既存ストアと同じテスト・本番モードへ揃えた場合だけ有効になります。
+デプロイ後は`/trumpet-transpose-lab/`と旧`/flow-harmony/`がHTTP 404、移調アプリのCheckoutがHTTP 503を返し、`/products/`と`/lesson/`に両商品の導線がないことを確認します。既購入者向けダウンロードAPIは引き続きStripeの購入記録を検証します。
 
 ### 管理者向け・説明付き設定ウィザード
 
@@ -78,7 +78,7 @@ cd /Users/kazuuu/hp
 
 - 「開発者」→「APIキー」: `sk_test_`または`sk_live_`から始まる秘密鍵
 - 「商品カタログ」: 500円・JPY・1回払いの`price_`から始まるPrice ID
-- 「商品カタログ」: Trumpet Transpose Lab用の1,000円・JPY・1回払いの別のPrice ID
+- 「商品カタログ」: 既購入者検証用のTrumpet Transpose Lab Price ID
 - 「開発者」→「Webhook」: `/api/store/webhook`送信先の`whsec_`から始まる署名シークレット
 
 初回はウィザードの「1: テストモード」を選択してください。入力形式が正しくない場合や、本番・テストの鍵を取り違えた場合は保存前に停止します。ローカルの`.env`へ保存した後、同じ変数名をRender DashboardのEnvironmentにも登録してください。秘密値そのものはREADME、HTML、Git、チャットへ貼り付けないでください。
@@ -100,7 +100,7 @@ FLOW_HARMONY_PRICE_YEN=1000
 PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 ```
 
-`INVOICE_REGISTRATION_NUMBER`には`T`と13桁の数字からなる登録番号を指定します。未設定時は契約書で公開している登録番号を使用します。メトロノームとTrumpet Transpose LabのCheckoutは日本語表示になり、決済後に作成されるStripeの請求書へこの登録番号と税込表記を記載します。明示的に設定した番号が形式不正の場合は、登録番号のない請求書を発行しないよう購入を停止します。
+`INVOICE_REGISTRATION_NUMBER`には`T`と13桁の数字からなる登録番号を指定します。未設定時は契約書で公開している登録番号を使用します。メトロノームのCheckoutは日本語表示になり、決済後に作成されるStripeの請求書へこの登録番号と税込表記を記載します。明示的に設定した番号が形式不正の場合は、登録番号のない請求書を発行しないよう購入を停止します。
 
 `PUBLIC_SITE_URL`には購入ページを配信するHTTPSの公開ベースURLを指定し、末尾の`/`、`/lesson/`、クエリ、フラグメントは付けないでください。GitHub Pagesのプロジェクトサイトでは、例として`https://user.github.io/repository`のようにリポジトリ名まで含めます。Stripeの秘密鍵・Webhook secret・Price IDはすべて同じテストモードまたは本番モードの値を組み合わせます。
 
@@ -129,12 +129,13 @@ curl -sS 'https://公開APIのドメイン/api/store/health' \
 	-H 'X-Editor-Password: 編集用パスワード' | python -m json.tool
 ```
 
-テストモードでは`ready: true`かつ`production_ready: false`が正常です。互換用の診断キー`checks.flow_harmony_configuration`、`checks.flow_harmony_product_archive`、`checks.flow_harmony_stripe_price`もすべて`true`になることを確認します。テスト用カードで2商品をそれぞれ決済し、Trumpet Transpose Labでは`trumpet-transpose-lab-offline.zip`をダウンロードできることを確認してください。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけ販売を開始します。
+テストモードでは`ready: true`かつ`production_ready: false`が正常です。互換用の診断キー`checks.flow_harmony_configuration`、`checks.flow_harmony_product_archive`、`checks.flow_harmony_stripe_price`は、既購入者向けダウンロード検証のために維持します。その後RenderとStripe Webhookを本番値へ切り替えて再デプロイし、診断APIが`stripe_mode: live`かつ`production_ready: true`になった場合だけメトロノームの販売を開始します。
 
 販売ON前の確認項目:
 
 - Stripe DashboardのPriceが有効・一回払い・500円・JPYである
-- Trumpet Transpose LabのPriceが有効・一回払い・1,000円・JPYで、メトロノームとは別のPrice IDである
+- Trumpet Transpose LabとFlex Mediaが商品ページおよびレッスンページに表示されない
+- Trumpet Transpose Labの新規CheckoutがHTTP 503を返す
 - Webhookの送信先が`https://公開APIのドメイン/api/store/webhook`で、署名検証付きのテスト送信がHTTP 200になる
 - 診断APIが`production_ready: true`を返す
 - テストモードで正常決済、キャンセル、未払い、再ダウンロードを確認済みである

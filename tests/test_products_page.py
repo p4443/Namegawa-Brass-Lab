@@ -43,7 +43,7 @@ class ProductsPageTests(unittest.TestCase):
         hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
         hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"
 
-        self.assertIn("音楽・メディア・運送の現場を", hero)
+        self.assertIn("音楽・運送の現場を", hero)
         self.assertIn("メトロノーム", hero)
         self.assertIn("自在稼働記録", hero)
         self.assertIn("../data/media/products-operations-hero.png", hero)
@@ -57,8 +57,8 @@ class ProductsPageTests(unittest.TestCase):
         source_html = source.decode("utf-8")
 
         self.assertIn("Trumpet Transpose Lab V2", source_html)
-        self.assertIn("Trumpet Transpose Lab V2", self.html)
-        self.assertIn("version=2", self.html)
+        self.assertNotIn("Trumpet Transpose Lab", self.html)
+        self.assertNotIn("trumpet-transpose-lab", self.html)
 
         with ZipFile(root / "private" / "products" / "trumpet-transpose-lab.zip") as archive:
             archive_html = archive.read("index.html").decode("utf-8")
