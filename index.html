@@ -388,6 +388,28 @@
       background: #ffffff;
     }
 
+    .update-document-preview {
+      display: grid;
+      width: 100%;
+      height: 140px;
+      padding: 20px;
+      align-content: center;
+      gap: 6px;
+      color: #ffffff;
+      background: #1e3a5f;
+      text-align: center;
+    }
+
+    .update-document-type {
+      font-weight: 700;
+    }
+
+    .update-document-host {
+      color: #bfdbfe;
+      font-size: 0.76rem;
+      overflow-wrap: anywhere;
+    }
+
     .update-media-open {
       position: absolute;
       right: 8px;
@@ -1725,6 +1747,7 @@
 
       .updates-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
       }
 
       .update-card {
@@ -1738,8 +1761,16 @@
       }
 
       .update-media-preview {
-        height: 180px;
-        min-height: 180px;
+        height: 160px;
+        min-height: 160px;
+      }
+
+      .update-document-preview {
+        height: 140px;
+      }
+
+      .update-card-body {
+        padding: 16px;
       }
 
       .update-admin-actions {
@@ -2302,6 +2333,31 @@
       ? [renderUpdatesApi]
       : ['/api/updates', renderUpdatesApi];
 
+    function isDirectPdfUrl(mediaUrl) {
+      try {
+        return new URL(mediaUrl, location.href).pathname.toLowerCase().endsWith('.pdf');
+      } catch {
+        return false;
+      }
+    }
+
+    function externalDocumentPreview(mediaUrl) {
+      const preview = document.createElement('div');
+      preview.className = 'update-document-preview';
+      const type = document.createElement('span');
+      type.className = 'update-document-type';
+      type.textContent = '外部資料';
+      const host = document.createElement('span');
+      host.className = 'update-document-host';
+      try {
+        host.textContent = new URL(mediaUrl, location.href).hostname.replace(/^www\./, '');
+      } catch {
+        host.textContent = '添付リンク';
+      }
+      preview.append(type, host);
+      return preview;
+    }
+
     function updateMedia(update) {
       const media = document.createElement('div');
       media.className = 'update-media';
@@ -2328,13 +2384,17 @@
         preview.src = update.media_url;
         preview.alt = `${update.content}の添付画像`;
         preview.loading = 'lazy';
-      } else {
+      } else if (isDirectPdfUrl(update.media_url)) {
         preview = document.createElement('iframe');
         preview.src = `${update.media_url}#view=FitH&toolbar=0`;
         preview.title = `${update.content}の添付資料`;
         preview.loading = 'lazy';
+      } else {
+        preview = externalDocumentPreview(update.media_url);
       }
-      preview.className = 'update-media-preview';
+      if (!preview.classList.contains('update-document-preview')) {
+        preview.className = 'update-media-preview';
+      }
 
       const openLink = document.createElement('a');
       openLink.className = 'update-media-open';
