@@ -369,47 +369,44 @@
       width: 100%;
       min-height: 140px;
       place-items: center;
+      position: relative;
       overflow: hidden;
       border-right: 1px solid var(--border-color);
       color: #ffffff;
       background: #0f172a;
     }
 
-    .update-media-link {
-      display: grid;
+    .update-media-preview {
+      width: 100%;
+      height: 140px;
+      min-height: 140px;
+      border: 0;
+      object-fit: cover;
+    }
+
+    iframe.update-media-preview {
+      background: #ffffff;
+    }
+
+    .update-media-open {
+      position: absolute;
+      right: 8px;
+      bottom: 8px;
+      padding: 5px 8px;
+      border-radius: 4px;
+      color: #ffffff;
+      background: rgba(15, 23, 42, 0.9);
+      font-size: 0.72rem;
+      font-weight: 700;
+    }
+
+    .update-media-logo {
       width: 100%;
       height: 100%;
-      place-items: center;
-      padding: 20px;
-      color: #ffffff;
-      background: var(--primary-color);
-      font-weight: bold;
-      text-align: center;
-    }
-
-    .update-video-link {
-      align-content: center;
-      gap: 8px;
-      background: #0f172a;
-    }
-
-    .update-video-icon {
-      display: grid;
-      width: 48px;
-      height: 48px;
-      margin: 0 auto;
-      place-items: center;
-      border: 2px solid #ffffff;
-      border-radius: 50%;
-      font-size: 1.1rem;
-      line-height: 1;
-    }
-
-    .update-media-placeholder {
-      color: #bfdbfe;
-      font-size: 0.82rem;
-      font-weight: bold;
-      letter-spacing: 0.08em;
+      max-height: 140px;
+      padding: 18px;
+      object-fit: contain;
+      background: #ffffff;
     }
 
     .update-card-body {
@@ -1740,6 +1737,11 @@
         border-bottom: 1px solid var(--border-color);
       }
 
+      .update-media-preview {
+        height: 180px;
+        min-height: 180px;
+      }
+
       .update-admin-actions {
         grid-column: 1;
       }
@@ -2304,30 +2306,44 @@
       const media = document.createElement('div');
       media.className = 'update-media';
       if (!update.media_type || !update.media_url) {
-        const placeholder = document.createElement('span');
-        placeholder.className = 'update-media-placeholder';
-        placeholder.textContent = 'NAMEGAWA BRASS LAB';
-        media.appendChild(placeholder);
+        const logo = document.createElement('img');
+        logo.className = 'update-media-logo';
+        logo.src = '/assets/branding/site-logo.png';
+        logo.alt = 'なめがわブラス・ラボ';
+        logo.loading = 'lazy';
+        media.appendChild(logo);
         return media;
       }
 
-      const link = document.createElement('a');
-      link.className = `update-media-link${update.media_type === 'image' ? ' update-image-link' : ''}${update.media_type === 'video' ? ' update-video-link' : ''}`;
-      link.href = update.media_url;
-      link.target = '_blank';
-      link.rel = 'noopener';
+      let preview;
       if (update.media_type === 'video') {
-        const icon = document.createElement('span');
-        icon.className = 'update-video-icon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.textContent = '▶';
-        link.append(icon, document.createTextNode('YouTubeで見る'));
-        link.setAttribute('aria-label', `${update.content}をYouTubeで見る`);
+        preview = document.createElement('iframe');
+        preview.src = update.youtube_embed_url || update.media_url;
+        preview.title = `${update.content}の動画`;
+        preview.loading = 'lazy';
+        preview.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        preview.allowFullscreen = true;
+      } else if (update.media_type === 'image') {
+        preview = document.createElement('img');
+        preview.src = update.media_url;
+        preview.alt = `${update.content}の添付画像`;
+        preview.loading = 'lazy';
       } else {
-        link.textContent = update.media_type === 'image' ? '写真を見る' : '資料を見る';
-        link.setAttribute('aria-label', `${update.content}の${update.media_type === 'image' ? '写真' : '資料'}を見る`);
+        preview = document.createElement('iframe');
+        preview.src = `${update.media_url}#view=FitH&toolbar=0`;
+        preview.title = `${update.content}の添付資料`;
+        preview.loading = 'lazy';
       }
-      media.appendChild(link);
+      preview.className = 'update-media-preview';
+
+      const openLink = document.createElement('a');
+      openLink.className = 'update-media-open';
+      openLink.href = update.media_url;
+      openLink.target = '_blank';
+      openLink.rel = 'noopener';
+      openLink.textContent = '別画面で開く';
+      openLink.setAttribute('aria-label', `${update.content}の添付データを別画面で開く`);
+      media.append(preview, openLink);
       return media;
     }
 
