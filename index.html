@@ -2339,13 +2339,21 @@
       }
     }
 
+    function isAdobeDocumentUrl(mediaUrl) {
+      try {
+        return new URL(mediaUrl, location.href).hostname === 'acrobat.adobe.com';
+      } catch {
+        return false;
+      }
+    }
+
     function embeddedDocumentUrl(update) {
       if (isDirectPdfUrl(update.media_url)) {
         return `${update.media_url}#view=FitH&toolbar=0`;
       }
       try {
         const hostname = new URL(update.media_url, location.href).hostname;
-        if (['acrobat.adobe.com', 'forms.gle', 'docs.google.com'].includes(hostname)) {
+        if (['forms.gle', 'docs.google.com'].includes(hostname)) {
           return `/api/updates/${encodeURIComponent(update.index)}/media`;
         }
       } catch {
@@ -2407,6 +2415,11 @@
         preview = document.createElement('img');
         preview.src = update.media_url;
         preview.alt = `${update.content}の添付画像`;
+        preview.loading = 'lazy';
+      } else if (isAdobeDocumentUrl(update.media_url)) {
+        preview = document.createElement('img');
+        preview.src = `/api/updates/${encodeURIComponent(update.index)}/media`;
+        preview.alt = `${update.content}の添付資料1ページ目`;
         preview.loading = 'lazy';
       } else if (documentUrl) {
         preview = document.createElement('iframe');

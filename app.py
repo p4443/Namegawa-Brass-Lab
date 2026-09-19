@@ -91,7 +91,7 @@ YOUTUBE_PATTERN = re.compile(
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
-UPDATE_DOCUMENT_MAX_BYTES = 15 * 1024 * 1024
+UPDATE_PREVIEW_MAX_BYTES = 5 * 1024 * 1024
 ADOBE_DOCUMENT_HOSTS = {"acrobat.adobe.com"}
 GOOGLE_FORM_HOSTS = {"forms.gle", "docs.google.com"}
 LESSON_TYPES = {
@@ -1044,7 +1044,7 @@ class UpdateMediaRedirectHandler(urllib_request.HTTPRedirectHandler):
         return super().redirect_request(req, fp, code, msg, headers, redirect_url)
 
 
-def fetch_adobe_shared_pdf(media_url, opener=None):
+def fetch_adobe_shared_preview(media_url, opener=None):
     if update_media_hostname(media_url) not in ADOBE_DOCUMENT_HOSTS:
         raise ValueError("Adobe共有資料のURLではありません。")
     page_opener = opener or urllib_request.build_opener(
@@ -1059,31 +1059,28 @@ def fetch_adobe_shared_pdf(media_url, opener=None):
         raise ValueError("Adobe共有ページのサイズが上限を超えています。")
     page_text = unescape(page_body.decode("utf-8", errors="replace"))
     candidates = re.findall(r"https://[^\"'<>\s]+", page_text)
-    pdf_url = next(
+    preview_url = next(
         (
             candidate.replace("\\u0026", "&").replace("\\/", "/")
             for candidate in candidates
-            if "response-content-type=application%2Fpdf" in candidate
+            if ";page=0;" in candidate and "type=image%2Fjpeg" in candidate
         ),
         "",
     )
-    asset_host = update_media_hostname(pdf_url)
-    if not pdf_url or not any(
-        asset_host == suffix or asset_host.endswith(f".{suffix}")
-        for suffix in ("adobe.io", "acrocomcontent.com")
-    ):
-        raise ValueError("Adobe共有資料のPDFを確認できませんでした。")
+    asset_host = update_media_hostname(preview_url)
+    if not preview_url or asset_host != "cdn-sharing.adobecc.com":
+        raise ValueError("Adobe共有資料のプレビューを確認できませんでした。")
     asset_opener = urllib_request.build_opener(
         UpdateMediaRedirectHandler({asset_host})
     )
     asset_request = urllib_request.Request(
-        pdf_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+        preview_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
     )
     with asset_opener.open(asset_request, timeout=15) as response:
-        pdf_body = response.read(UPDATE_DOCUMENT_MAX_BYTES + 1)
-    if len(pdf_body) > UPDATE_DOCUMENT_MAX_BYTES or not pdf_body.startswith(b"%PDF-"):
-        raise ValueError("Adobe共有資料をPDFとして読み込めませんでした。")
-    return pdf_body
+        preview_body = response.read(UPDATE_PREVIEW_MAX_BYTES + 1)
+    if len(preview_body) > UPDATE_PREVIEW_MAX_BYTES or not preview_body.startswith(b"\xff\xd8\xff"):
+        raise ValueError("Adobe共有資料のプレビュー画像を読み込めませんでした。")
+    return preview_body
 
 
 def resolve_google_form_embed_url(media_url, opener=None):
@@ -3684,13 +3681,12 @@ def create_app(
         try:
             if hostname in ADOBE_DOCUMENT_HOSTS:
                 response = send_file(
-                    io.BytesIO(fetch_adobe_shared_pdf(media_url)),
-                    mimetype="application/pdf",
-                    download_name="update-document.pdf",
+                    io.BytesIO(fetch_adobe_shared_preview(media_url)),
+                    mimetype="image/jpeg",
+                    download_name="update-document-preview.jpg",
                     as_attachment=False,
                     max_age=300,
                 )
-                response.headers["Content-Disposition"] = "inline; filename=update-document.pdf"
                 return response
             if hostname in GOOGLE_FORM_HOSTS:
                 return redirect(resolve_google_form_embed_url(media_url), code=302)

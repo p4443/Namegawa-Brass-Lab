@@ -2713,7 +2713,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sort_date", response.json[0])
         self.assertIn("index", response.json[0])
 
-    def test_update_media_preview_serves_adobe_pdf_inline(self):
+    def test_update_media_preview_serves_adobe_first_page_image(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
             path.write_text(
@@ -2722,13 +2722,13 @@ class UpdatesTest(unittest.TestCase):
             )
             client = create_app(path).test_client()
 
-            with patch("app.fetch_adobe_shared_pdf", return_value=b"%PDF-preview"):
+            jpeg = b"\xff\xd8\xffpreview"
+            with patch("app.fetch_adobe_shared_preview", return_value=jpeg):
                 response = client.get("/api/updates/0/media")
 
             self.assertEqual(response.status_code, 200)
-            self.assertEqual(response.mimetype, "application/pdf")
-            self.assertEqual(response.data, b"%PDF-preview")
-            self.assertTrue(response.headers["Content-Disposition"].startswith("inline"))
+            self.assertEqual(response.mimetype, "image/jpeg")
+            self.assertEqual(response.data, jpeg)
 
     def test_update_media_preview_redirects_to_embedded_google_form(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -4944,6 +4944,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("document.createElement('iframe')", page)
         self.assertIn("function embeddedDocumentUrl(update)", page)
         self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
+        self.assertIn("function isAdobeDocumentUrl(mediaUrl)", page)
+        self.assertIn("の添付資料1ページ目", page)
         self.assertIn("function isGoogleFormUrl(mediaUrl)", page)
         self.assertIn("update-google-form-preview", page)
         self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?iframe\.update-google-form-preview\s*\{[^}]*height: 320px;")
