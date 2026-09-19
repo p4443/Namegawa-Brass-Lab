@@ -4946,6 +4946,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
         self.assertIn("function isAdobeDocumentUrl(mediaUrl)", page)
         self.assertIn("の添付資料1ページ目", page)
+        self.assertNotIn("preview.loading = 'lazy'", page)
+        self.assertNotIn("logo.loading = 'lazy'", page)
         self.assertIn("function isGoogleFormUrl(mediaUrl)", page)
         self.assertIn("update-google-form-preview", page)
         self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?iframe\.update-google-form-preview\s*\{[^}]*height: 320px;")

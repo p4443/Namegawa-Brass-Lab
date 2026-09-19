@@ -2397,7 +2397,6 @@
         logo.className = 'update-media-logo';
         logo.src = '/assets/branding/site-logo.png';
         logo.alt = 'なめがわブラス・ラボ';
-        logo.loading = 'lazy';
         media.appendChild(logo);
         return media;
       }
@@ -2408,24 +2407,20 @@
         preview = document.createElement('iframe');
         preview.src = update.youtube_embed_url || update.media_url;
         preview.title = `${update.content}の動画`;
-        preview.loading = 'lazy';
         preview.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
         preview.allowFullscreen = true;
       } else if (update.media_type === 'image') {
         preview = document.createElement('img');
         preview.src = update.media_url;
         preview.alt = `${update.content}の添付画像`;
-        preview.loading = 'lazy';
       } else if (isAdobeDocumentUrl(update.media_url)) {
         preview = document.createElement('img');
         preview.src = `/api/updates/${encodeURIComponent(update.index)}/media`;
         preview.alt = `${update.content}の添付資料1ページ目`;
-        preview.loading = 'lazy';
       } else if (documentUrl) {
         preview = document.createElement('iframe');
         preview.src = documentUrl;
         preview.title = `${update.content}の添付資料`;
-        preview.loading = 'lazy';
       } else {
         preview = externalDocumentPreview(update.media_url);
       }
