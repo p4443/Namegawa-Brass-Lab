@@ -2713,6 +2713,39 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sort_date", response.json[0])
         self.assertIn("index", response.json[0])
 
+    def test_update_media_preview_serves_adobe_pdf_inline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text(
+                "2026-09-10 | 活動情報 | 資料 [pdf:https://acrobat.adobe.com/id/example]\n",
+                encoding="utf-8",
+            )
+            client = create_app(path).test_client()
+
+            with patch("app.fetch_adobe_shared_pdf", return_value=b"%PDF-preview"):
+                response = client.get("/api/updates/0/media")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "application/pdf")
+            self.assertEqual(response.data, b"%PDF-preview")
+            self.assertTrue(response.headers["Content-Disposition"].startswith("inline"))
+
+    def test_update_media_preview_redirects_to_embedded_google_form(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text(
+                "2026-09-05 | ご協力 | フォーム [pdf:https://forms.gle/example]\n",
+                encoding="utf-8",
+            )
+            client = create_app(path).test_client()
+            embed_url = "https://docs.google.com/forms/d/e/example/viewform?embedded=true"
+
+            with patch("app.resolve_google_form_embed_url", return_value=embed_url):
+                response = client.get("/api/updates/0/media")
+
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.headers["Location"], embed_url)
+
     def test_editor_api_requires_password_for_all_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
@@ -4909,13 +4942,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const updatesApiCandidates", page)
         self.assertIn("document.createElement('img')", page)
         self.assertIn("document.createElement('iframe')", page)
-        self.assertIn("#view=FitH&toolbar=0", page)
+        self.assertIn("function embeddedDocumentUrl(update)", page)
         self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
+        self.assertIn("function isGoogleFormUrl(mediaUrl)", page)
+        self.assertIn("update-google-form-preview", page)
+        self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?iframe\.update-google-form-preview\s*\{[^}]*height: 320px;")
         self.assertIn("function externalDocumentPreview(mediaUrl)", page)
         self.assertIn("update-document-preview", page)
         self.assertIn("type.textContent = '外部資料'", page)
         self.assertIn("update-media-preview", page)
-        self.assertIn("update-media-open", page)
+        self.assertNotIn("update-media-open", page)
+        self.assertNotIn("別画面で開く", page)
         self.assertIn("update.youtube_embed_url", page)
         self.assertIn("/assets/branding/site-logo.png", page)
         self.assertIn("update-media-logo", page)

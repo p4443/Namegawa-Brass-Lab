@@ -15,11 +15,12 @@ from base64 import b64decode
 from binascii import Error as Base64Error
 from calendar import monthrange
 from datetime import date, datetime, timedelta
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
@@ -90,6 +91,9 @@ YOUTUBE_PATTERN = re.compile(
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
+UPDATE_DOCUMENT_MAX_BYTES = 15 * 1024 * 1024
+ADOBE_DOCUMENT_HOSTS = {"acrobat.adobe.com"}
+GOOGLE_FORM_HOSTS = {"forms.gle", "docs.google.com"}
 LESSON_TYPES = {
     "体験レッスン",
     "無料体験レッスン",
@@ -1022,6 +1026,83 @@ def normalize_media_url(raw_url):
     if "/" not in media_url:
         return f"data/media/{media_url}"
     return media_url
+
+
+def update_media_hostname(media_url):
+    return (urlparse(str(media_url).strip()).hostname or "").lower().rstrip(".")
+
+
+class UpdateMediaRedirectHandler(urllib_request.HTTPRedirectHandler):
+    def __init__(self, allowed_hosts):
+        super().__init__()
+        self.allowed_hosts = allowed_hosts
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirect_url = urljoin(req.full_url, newurl)
+        if update_media_hostname(redirect_url) not in self.allowed_hosts:
+            raise urllib_error.URLError("Unexpected update media redirect")
+        return super().redirect_request(req, fp, code, msg, headers, redirect_url)
+
+
+def fetch_adobe_shared_pdf(media_url, opener=None):
+    if update_media_hostname(media_url) not in ADOBE_DOCUMENT_HOSTS:
+        raise ValueError("Adobe共有資料のURLではありません。")
+    page_opener = opener or urllib_request.build_opener(
+        UpdateMediaRedirectHandler(ADOBE_DOCUMENT_HOSTS)
+    )
+    page_request = urllib_request.Request(
+        media_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with page_opener.open(page_request, timeout=10) as response:
+        page_body = response.read(2 * 1024 * 1024 + 1)
+    if len(page_body) > 2 * 1024 * 1024:
+        raise ValueError("Adobe共有ページのサイズが上限を超えています。")
+    page_text = unescape(page_body.decode("utf-8", errors="replace"))
+    candidates = re.findall(r"https://[^\"'<>\s]+", page_text)
+    pdf_url = next(
+        (
+            candidate.replace("\\u0026", "&").replace("\\/", "/")
+            for candidate in candidates
+            if "response-content-type=application%2Fpdf" in candidate
+        ),
+        "",
+    )
+    asset_host = update_media_hostname(pdf_url)
+    if not pdf_url or not any(
+        asset_host == suffix or asset_host.endswith(f".{suffix}")
+        for suffix in ("adobe.io", "acrocomcontent.com")
+    ):
+        raise ValueError("Adobe共有資料のPDFを確認できませんでした。")
+    asset_opener = urllib_request.build_opener(
+        UpdateMediaRedirectHandler({asset_host})
+    )
+    asset_request = urllib_request.Request(
+        pdf_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with asset_opener.open(asset_request, timeout=15) as response:
+        pdf_body = response.read(UPDATE_DOCUMENT_MAX_BYTES + 1)
+    if len(pdf_body) > UPDATE_DOCUMENT_MAX_BYTES or not pdf_body.startswith(b"%PDF-"):
+        raise ValueError("Adobe共有資料をPDFとして読み込めませんでした。")
+    return pdf_body
+
+
+def resolve_google_form_embed_url(media_url, opener=None):
+    if update_media_hostname(media_url) not in GOOGLE_FORM_HOSTS:
+        raise ValueError("GoogleフォームのURLではありません。")
+    form_opener = opener or urllib_request.build_opener(
+        UpdateMediaRedirectHandler(GOOGLE_FORM_HOSTS)
+    )
+    form_request = urllib_request.Request(
+        media_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with form_opener.open(form_request, timeout=10) as response:
+        final_url = response.geturl()
+    parsed = urlparse(final_url)
+    if parsed.hostname != "docs.google.com" or not parsed.path.startswith("/forms/"):
+        raise ValueError("Googleフォームの埋め込み先を確認できませんでした。")
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["embedded"] = "true"
+    return parsed._replace(query=urlencode(query)).geturl()
 
 
 def parse_update_line(line, index):
@@ -2554,8 +2635,8 @@ def create_app(
             "worker-src 'self' blob:; "
             "connect-src 'self' https://namegawa-brass-lab.com "
             "https://*.onrender.com https://*.vercel.app; "
-            "frame-src 'self' https://www.google.com https://*.onrender.com "
-            "https://*.vercel.app",
+            "frame-src 'self' https://www.google.com https://www.youtube.com "
+            "https://docs.google.com https://*.onrender.com https://*.vercel.app",
         )
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         response.headers.setdefault(
@@ -3589,6 +3670,34 @@ def create_app(
         response.headers["Cache-Control"] = "no-store"
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
+
+    @app.get("/api/updates/<int:update_index>/media")
+    def update_media_preview(update_index):
+        update = next(
+            (item for item in get_updates() if item.get("index") == update_index),
+            None,
+        )
+        if not update or update.get("media_type") != "pdf":
+            return jsonify({"error": "対象の資料が見つかりません。"}), 404
+        media_url = str(update.get("media_url", "")).strip()
+        hostname = update_media_hostname(media_url)
+        try:
+            if hostname in ADOBE_DOCUMENT_HOSTS:
+                response = send_file(
+                    io.BytesIO(fetch_adobe_shared_pdf(media_url)),
+                    mimetype="application/pdf",
+                    download_name="update-document.pdf",
+                    as_attachment=False,
+                    max_age=300,
+                )
+                response.headers["Content-Disposition"] = "inline; filename=update-document.pdf"
+                return response
+            if hostname in GOOGLE_FORM_HOSTS:
+                return redirect(resolve_google_form_embed_url(media_url), code=302)
+        except (ValueError, OSError, urllib_error.URLError):
+            app.logger.exception("Failed to prepare update media preview")
+            return jsonify({"error": "資料を表示できませんでした。"}), 502
+        return jsonify({"error": "この資料形式は埋め込み表示に対応していません。"}), 400
 
     @app.route("/api/store/product", methods=["GET", "PUT", "OPTIONS"])
     def store_product():

@@ -388,6 +388,11 @@
       background: #ffffff;
     }
 
+    iframe.update-google-form-preview {
+      height: 280px;
+      min-height: 280px;
+    }
+
     .update-document-preview {
       display: grid;
       width: 100%;
@@ -408,18 +413,6 @@
       color: #bfdbfe;
       font-size: 0.76rem;
       overflow-wrap: anywhere;
-    }
-
-    .update-media-open {
-      position: absolute;
-      right: 8px;
-      bottom: 8px;
-      padding: 5px 8px;
-      border-radius: 4px;
-      color: #ffffff;
-      background: rgba(15, 23, 42, 0.9);
-      font-size: 0.72rem;
-      font-weight: 700;
     }
 
     .update-media-logo {
@@ -1769,6 +1762,11 @@
         height: 140px;
       }
 
+      iframe.update-google-form-preview {
+        height: 320px;
+        min-height: 320px;
+      }
+
       .update-card-body {
         padding: 16px;
       }
@@ -2341,6 +2339,31 @@
       }
     }
 
+    function embeddedDocumentUrl(update) {
+      if (isDirectPdfUrl(update.media_url)) {
+        return `${update.media_url}#view=FitH&toolbar=0`;
+      }
+      try {
+        const hostname = new URL(update.media_url, location.href).hostname;
+        if (['acrobat.adobe.com', 'forms.gle', 'docs.google.com'].includes(hostname)) {
+          return `/api/updates/${encodeURIComponent(update.index)}/media`;
+        }
+      } catch {
+        return '';
+      }
+      return '';
+    }
+
+    function isGoogleFormUrl(mediaUrl) {
+      try {
+        return ['forms.gle', 'docs.google.com'].includes(
+          new URL(mediaUrl, location.href).hostname
+        );
+      } catch {
+        return false;
+      }
+    }
+
     function externalDocumentPreview(mediaUrl) {
       const preview = document.createElement('div');
       preview.className = 'update-document-preview';
@@ -2372,6 +2395,7 @@
       }
 
       let preview;
+      const documentUrl = update.media_type === 'pdf' ? embeddedDocumentUrl(update) : '';
       if (update.media_type === 'video') {
         preview = document.createElement('iframe');
         preview.src = update.youtube_embed_url || update.media_url;
@@ -2384,9 +2408,9 @@
         preview.src = update.media_url;
         preview.alt = `${update.content}の添付画像`;
         preview.loading = 'lazy';
-      } else if (isDirectPdfUrl(update.media_url)) {
+      } else if (documentUrl) {
         preview = document.createElement('iframe');
-        preview.src = `${update.media_url}#view=FitH&toolbar=0`;
+        preview.src = documentUrl;
         preview.title = `${update.content}の添付資料`;
         preview.loading = 'lazy';
       } else {
@@ -2394,16 +2418,12 @@
       }
       if (!preview.classList.contains('update-document-preview')) {
         preview.className = 'update-media-preview';
+        if (isGoogleFormUrl(update.media_url)) {
+          preview.classList.add('update-google-form-preview');
+        }
       }
 
-      const openLink = document.createElement('a');
-      openLink.className = 'update-media-open';
-      openLink.href = update.media_url;
-      openLink.target = '_blank';
-      openLink.rel = 'noopener';
-      openLink.textContent = '別画面で開く';
-      openLink.setAttribute('aria-label', `${update.content}の添付データを別画面で開く`);
-      media.append(preview, openLink);
+      media.appendChild(preview);
       return media;
     }
 
