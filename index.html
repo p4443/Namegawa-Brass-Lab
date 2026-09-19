@@ -384,6 +384,32 @@
       object-fit: cover;
     }
 
+    .update-pdf-preview {
+      object-fit: contain;
+      background: #ffffff;
+    }
+
+    .update-media-open {
+      position: absolute;
+      right: 12px;
+      bottom: 12px;
+      z-index: 1;
+      padding: 8px 12px;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #0f172a;
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.28);
+    }
+
+    .update-media-open:hover,
+    .update-media-open:focus-visible {
+      color: #ffffff;
+      background: var(--primary-color);
+    }
+
     iframe.update-media-preview {
       background: #ffffff;
     }
@@ -2348,9 +2374,6 @@
     }
 
     function embeddedDocumentUrl(update) {
-      if (isDirectPdfUrl(update.media_url)) {
-        return `${update.media_url}#view=FitH&toolbar=0`;
-      }
       try {
         const hostname = new URL(update.media_url, location.href).hostname;
         if (['forms.gle', 'docs.google.com'].includes(hostname)) {
@@ -2372,12 +2395,12 @@
       }
     }
 
-    function externalDocumentPreview(mediaUrl) {
+    function externalDocumentPreview(mediaUrl, label = '外部資料') {
       const preview = document.createElement('div');
       preview.className = 'update-document-preview';
       const type = document.createElement('span');
       type.className = 'update-document-type';
-      type.textContent = '外部資料';
+      type.textContent = label;
       const host = document.createElement('span');
       host.className = 'update-document-host';
       try {
@@ -2403,6 +2426,7 @@
 
       let preview;
       const documentUrl = update.media_type === 'pdf' ? embeddedDocumentUrl(update) : '';
+      const hasPdfLink = update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url);
       if (update.media_type === 'video') {
         preview = document.createElement('iframe');
         preview.src = update.youtube_embed_url || update.media_url;
@@ -2417,6 +2441,8 @@
         preview = document.createElement('img');
         preview.src = `/api/updates/${encodeURIComponent(update.index)}/media`;
         preview.alt = `${update.content}の添付資料1ページ目`;
+      } else if (isDirectPdfUrl(update.media_url)) {
+        preview = externalDocumentPreview(update.media_url, 'PDF資料');
       } else if (documentUrl) {
         preview = document.createElement('iframe');
         preview.src = documentUrl;
@@ -2426,12 +2452,24 @@
       }
       if (!preview.classList.contains('update-document-preview')) {
         preview.className = 'update-media-preview';
+        if (hasPdfLink) {
+          preview.classList.add('update-pdf-preview');
+        }
         if (isGoogleFormUrl(update.media_url)) {
           preview.classList.add('update-google-form-preview');
         }
       }
 
       media.appendChild(preview);
+      if (hasPdfLink) {
+        const openLink = document.createElement('a');
+        openLink.className = 'update-media-open';
+        openLink.href = update.media_url;
+        openLink.target = '_blank';
+        openLink.rel = 'noopener noreferrer';
+        openLink.textContent = 'PDFを開く';
+        media.appendChild(openLink);
+      }
       return media;
     }
 
