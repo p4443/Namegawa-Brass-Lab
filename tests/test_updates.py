@@ -4983,7 +4983,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("これまでの公演から、アンサンブル演奏をお届けします。", page)
         self.assertNotIn("これまでの公演から、選りすぐりの演奏をお届けします。", page)
         self.assertIn("第1回公演", page)
-        self.assertIn("演奏動画を準備しています", page)
+        self.assertIn("モーツァルト作曲", page)
+        self.assertIn("トルコ行進曲", page)
+        self.assertNotIn("演奏動画を準備しています", page)
         self.assertIn("第2回公演", page)
         self.assertIn("ロッシーニ作曲", page)
         self.assertIn("セビリアの理髪師", page)
@@ -4994,11 +4996,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("セビリアの太陽", page)
         self.assertIn("ヘンデル作曲", page)
         self.assertIn("アダージョとアレグロ", page)
-        self.assertEqual(page.count('class="archive-track"'), 4)
-        self.assertEqual(page.count('preload="none"'), 4)
-        self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 4)
-        self.assertEqual(page.count("disablePictureInPicture"), 4)
+        self.assertEqual(page.count('class="archive-track"'), 5)
+        self.assertEqual(page.count('preload="none"'), 5)
+        self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 5)
+        self.assertEqual(page.count("disablePictureInPicture"), 5)
         self.assertIn('addEventListener("contextmenu"', page)
+        self.assertIn('src="video/concert-1-turkish-march.mp4?v=20260922"', page)
         self.assertIn('src="video/concert-2-barber.mp4?v=20260922"', page)
         self.assertIn('src="video/concert-2-watching.mp4?v=20260922"', page)
         self.assertIn('src="video/concert-3-sun.mp4?v=20260922"', page)
@@ -5006,6 +5009,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("dropbox.com", page)
         video_dir = Path(__file__).resolve().parents[1] / "video"
         for filename in (
+            "concert-1-turkish-march.mp4",
             "concert-2-barber.mp4",
             "concert-2-watching.mp4",
             "concert-3-sun.mp4",
