@@ -651,6 +651,130 @@
       line-height: 1;
     }
 
+    .concert-archive {
+      padding: 72px 0 80px;
+      border-bottom: 1px solid var(--border-color);
+      background: linear-gradient(135deg, rgba(200, 30, 30, 0.06), transparent 42%), var(--bg-white);
+    }
+
+    .archive-heading {
+      display: grid;
+      max-width: 760px;
+      gap: 8px;
+      margin-bottom: 30px;
+    }
+
+    .archive-kicker {
+      color: #a61b1b;
+      font-size: 0.78rem;
+      font-weight: 900;
+      letter-spacing: 0.14em;
+    }
+
+    .archive-heading .section-title,
+    .archive-heading .section-desc {
+      margin-bottom: 0;
+      text-align: left;
+    }
+
+    .archive-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      align-items: start;
+      gap: 20px;
+    }
+
+    .archive-edition {
+      overflow: hidden;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      background: var(--bg-white);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .archive-edition-header {
+      display: flex;
+      min-height: 76px;
+      padding: 18px 20px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-bottom: 1px solid var(--border-color);
+      background: #172033;
+      color: #ffffff;
+    }
+
+    .archive-edition-header h3 {
+      margin: 0;
+      color: inherit;
+      font-size: 1.15rem;
+    }
+
+    .archive-edition-number {
+      color: #f4c95d;
+      font: 800 0.75rem/1.3 "Hiragino Sans", "Yu Gothic", sans-serif;
+    }
+
+    .archive-status {
+      padding: 5px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.42);
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+
+    .archive-tracks {
+      display: grid;
+    }
+
+    .archive-track {
+      padding: 18px;
+    }
+
+    .archive-track + .archive-track {
+      border-top: 1px solid var(--border-color);
+    }
+
+    .archive-track video {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      margin-bottom: 14px;
+      background: #080b10;
+      object-fit: contain;
+    }
+
+    .archive-track h4 {
+      margin: 0;
+      color: var(--text-main);
+      font-size: 1rem;
+      line-height: 1.5;
+    }
+
+    .archive-composer {
+      display: block;
+      margin-bottom: 3px;
+      color: #a61b1b;
+      font-size: 0.76rem;
+      font-weight: 900;
+    }
+
+    .archive-pending {
+      display: grid;
+      min-height: 220px;
+      padding: 28px;
+      place-content: center;
+      gap: 8px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .archive-pending strong {
+      color: var(--text-main);
+      font-size: 1.05rem;
+    }
+
     /* ----------------------------------
        PROFILE / GREETING SECTION
     ---------------------------------- */
@@ -1584,6 +1708,10 @@
         grid-template-columns: 1fr;
       }
 
+      .archive-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
       .app-frame {
         height: 820px;
       }
@@ -1626,6 +1754,18 @@
     }
 
     @media (max-width: 600px) {
+      .concert-archive {
+        padding: 56px 0 64px;
+      }
+
+      .archive-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .archive-heading {
+        margin-bottom: 24px;
+      }
+
       .services-heading {
         grid-template-columns: 1fr;
       }
@@ -1986,6 +2126,86 @@
       </aside>
     </div>
   </section>
+
+  <section class="concert-archive" aria-labelledby="concert-archive-title">
+    <div class="container">
+      <div class="archive-heading">
+        <span class="archive-kicker">CONCERT ARCHIVE</span>
+        <h2 class="section-title" id="concert-archive-title">トランペット音楽の魅力｜過去公演アーカイブ</h2>
+        <p class="section-desc">これまでの公演から、選りすぐりの演奏をお届けします。</p>
+      </div>
+      <div class="archive-grid">
+        <article class="archive-edition">
+          <header class="archive-edition-header">
+            <div>
+              <span class="archive-edition-number">THE 1ST CONCERT</span>
+              <h3>第1回公演</h3>
+            </div>
+            <span class="archive-status">掲載予定</span>
+          </header>
+          <div class="archive-pending">
+            <strong>演奏動画を準備しています</strong>
+            <span>公開までしばらくお待ちください。</span>
+          </div>
+        </article>
+
+        <article class="archive-edition">
+          <header class="archive-edition-header">
+            <div>
+              <span class="archive-edition-number">THE 2ND CONCERT</span>
+              <h3>第2回公演</h3>
+            </div>
+          </header>
+          <div class="archive-tracks">
+            <section class="archive-track">
+              <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" aria-label="ロッシーニ作曲 セビリアの理髪師の演奏動画">
+                <source src="video/concert-2-barber.mp4?v=20260922" type="video/mp4">
+                お使いのブラウザーは動画再生に対応していません。
+              </video>
+              <h4><span class="archive-composer">ロッシーニ作曲</span>セビリアの理髪師</h4>
+            </section>
+            <section class="archive-track">
+              <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" aria-label="ガーシュイン作曲 誰かが私を見つめてるの演奏動画">
+                <source src="video/concert-2-watching.mp4?v=20260922" type="video/mp4">
+                お使いのブラウザーは動画再生に対応していません。
+              </video>
+              <h4><span class="archive-composer">ガーシュイン作曲</span>誰かが私を見つめてる</h4>
+            </section>
+          </div>
+        </article>
+
+        <article class="archive-edition">
+          <header class="archive-edition-header">
+            <div>
+              <span class="archive-edition-number">THE 3RD CONCERT</span>
+              <h3>第3回公演</h3>
+            </div>
+          </header>
+          <div class="archive-tracks">
+            <section class="archive-track">
+              <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" aria-label="モーレン作曲 セビリアの太陽の演奏動画">
+                <source src="video/concert-3-sun.mp4?v=20260922" type="video/mp4">
+                お使いのブラウザーは動画再生に対応していません。
+              </video>
+              <h4><span class="archive-composer">モーレン作曲</span>セビリアの太陽</h4>
+            </section>
+            <section class="archive-track">
+              <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" aria-label="ヘンデル作曲 アダージョとアレグロの演奏動画">
+                <source src="video/concert-3-handel.mp4?v=20260922" type="video/mp4">
+                お使いのブラウザーは動画再生に対応していません。
+              </video>
+              <h4><span class="archive-composer">ヘンデル作曲</span>アダージョとアレグロ</h4>
+            </section>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+  <script nonce="{{ csp_nonce }}">
+    document.querySelectorAll(".archive-track video").forEach((archiveVideo) => {
+      archiveVideo.addEventListener("contextmenu", (event) => event.preventDefault());
+    });
+  </script>
 
   <!-- Profile & Greeting Section -->
   <section class="profile-section" id="profile">

@@ -95,6 +95,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("style-src-attr 'none'", content_security_policy)
         self.assertNotIn("style-src 'self' 'unsafe-inline'", content_security_policy)
         self.assertNotIn("'unsafe-inline'", content_security_policy)
+        self.assertIn("media-src 'self' blob: data:", content_security_policy)
+        self.assertNotIn("dropbox", content_security_policy)
         self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
         self.assertNotIn("Strict-Transport-Security", response.headers)
 
@@ -4977,6 +4979,40 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="youtube-channel-title">公式YouTubeチャンネル', page)
         self.assertIn('href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr"', page)
         self.assertIn('rel="noopener noreferrer"', page)
+        self.assertIn('id="concert-archive-title">トランペット音楽の魅力｜過去公演アーカイブ', page)
+        self.assertIn("第1回公演", page)
+        self.assertIn("演奏動画を準備しています", page)
+        self.assertIn("第2回公演", page)
+        self.assertIn("ロッシーニ作曲", page)
+        self.assertIn("セビリアの理髪師", page)
+        self.assertIn("ガーシュイン作曲", page)
+        self.assertIn("誰かが私を見つめてる", page)
+        self.assertIn("第3回公演", page)
+        self.assertIn("モーレン作曲", page)
+        self.assertIn("セビリアの太陽", page)
+        self.assertIn("ヘンデル作曲", page)
+        self.assertIn("アダージョとアレグロ", page)
+        self.assertEqual(page.count('class="archive-track"'), 4)
+        self.assertEqual(page.count('preload="none"'), 4)
+        self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 4)
+        self.assertEqual(page.count("disablePictureInPicture"), 4)
+        self.assertIn('addEventListener("contextmenu"', page)
+        self.assertIn('src="video/concert-2-barber.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-2-watching.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-3-sun.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-3-handel.mp4?v=20260922"', page)
+        self.assertNotIn("dropbox.com", page)
+        video_dir = Path(__file__).resolve().parents[1] / "video"
+        for filename in (
+            "concert-2-barber.mp4",
+            "concert-2-watching.mp4",
+            "concert-3-sun.mp4",
+            "concert-3-handel.mp4",
+        ):
+            with self.subTest(filename=filename):
+                video_path = video_dir / filename
+                self.assertTrue(video_path.is_file())
+                self.assertLess(video_path.stat().st_size, 50 * 1024 * 1024)
 
     def test_index_provides_compact_monthly_updates_window_and_editor(self):
         client = create_app().test_client()
