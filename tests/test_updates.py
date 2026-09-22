@@ -4980,6 +4980,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr"', page)
         self.assertIn('rel="noopener noreferrer"', page)
         self.assertIn('id="concert-archive-title">トランペット音楽の魅力｜過去公演アーカイブ', page)
+        self.assertIn("これまでの公演から、アンサンブル演奏をお届けします。", page)
+        self.assertNotIn("これまでの公演から、選りすぐりの演奏をお届けします。", page)
         self.assertIn("第1回公演", page)
         self.assertIn("演奏動画を準備しています", page)
         self.assertIn("第2回公演", page)
