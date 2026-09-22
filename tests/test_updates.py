@@ -4998,6 +4998,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("アダージョとアレグロ", page)
         self.assertEqual(page.count('class="archive-track"'), 5)
         self.assertEqual(page.count('preload="none"'), 5)
+        self.assertEqual(page.count('poster="video/concert-'), 5)
         self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 5)
         self.assertEqual(page.count("disablePictureInPicture"), 5)
         self.assertIn('addEventListener("contextmenu"', page)
@@ -5019,6 +5020,17 @@ class UpdatesTest(unittest.TestCase):
                 video_path = video_dir / filename
                 self.assertTrue(video_path.is_file())
                 self.assertLess(video_path.stat().st_size, 50 * 1024 * 1024)
+        for filename in (
+            "concert-1-turkish-march-poster.jpg",
+            "concert-2-barber-poster.jpg",
+            "concert-2-watching-poster.jpg",
+            "concert-3-sun-poster.jpg",
+            "concert-3-handel-poster.jpg",
+        ):
+            with self.subTest(filename=filename):
+                poster_path = video_dir / filename
+                self.assertTrue(poster_path.is_file())
+                self.assertLess(poster_path.stat().st_size, 100 * 1024)
 
     def test_index_provides_compact_monthly_updates_window_and_editor(self):
         client = create_app().test_client()
