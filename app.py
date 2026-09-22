@@ -20,7 +20,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
-from urllib.parse import parse_qsl, urlencode, urljoin, urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
@@ -91,6 +91,30 @@ YOUTUBE_PATTERN = re.compile(
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
+
+
+def normalize_video_cdn_base_url(value):
+    value = (value or "").strip().rstrip("/")
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        return ""
+    return value
+
+
+def video_asset_url(cdn_base_url, filename, version="", local_prefix=""):
+    encoded_filename = quote(filename)
+    base_url = cdn_base_url or local_prefix.rstrip("/")
+    asset_url = f"{base_url}/{encoded_filename}" if base_url else encoded_filename
+    return f"{asset_url}?v={quote(version)}" if version else asset_url
 UPDATE_PREVIEW_MAX_BYTES = 5 * 1024 * 1024
 ADOBE_DOCUMENT_HOSTS = {"acrobat.adobe.com"}
 GOOGLE_FORM_HOSTS = {"forms.gle", "docs.google.com"}
@@ -2581,6 +2605,13 @@ def create_app(
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+    video_cdn_base_url = normalize_video_cdn_base_url(
+        os.environ.get("VIDEO_CDN_BASE_URL")
+    )
+    video_cdn_origin = ""
+    if video_cdn_base_url:
+        parsed_video_cdn_url = urlparse(video_cdn_base_url)
+        video_cdn_origin = f"{parsed_video_cdn_url.scheme}://{parsed_video_cdn_url.netloc}"
 
     @app.before_request
     def redirect_legacy_host():
@@ -2628,7 +2659,7 @@ def create_app(
             "style-src-attr 'none'; "
             "img-src 'self' data: https:; "
             "font-src 'self' data:; "
-            "media-src 'self' blob: data:; "
+            f"media-src 'self' blob: data: {video_cdn_origin}; "
             "worker-src 'self' blob:; "
             "connect-src 'self' https://namegawa-brass-lab.com "
             "https://*.onrender.com https://*.vercel.app; "
@@ -2647,7 +2678,14 @@ def create_app(
 
     @app.context_processor
     def inject_csp_nonce():
-        return {"csp_nonce": g.csp_nonce}
+        return {
+            "csp_nonce": g.csp_nonce,
+            "video_asset_url": lambda filename, version="", local_prefix="": (
+                video_asset_url(
+                    video_cdn_base_url, filename, version, local_prefix
+                )
+            ),
+        }
 
     configured_database_url = (
         os.environ.get("DATABASE_URL", "") if database_url is None else database_url
@@ -3330,6 +3368,12 @@ def create_app(
     @app.get("/back-navigation.js")
     def back_navigation_script():
         return send_file(BASE_DIR / "back-navigation.js", mimetype="application/javascript")
+
+    @app.get("/media-playback-guard.js")
+    def media_playback_guard_script():
+        return send_file(
+            BASE_DIR / "media-playback-guard.js", mimetype="application/javascript"
+        )
 
     @app.get("/health")
     def health():
@@ -5177,6 +5221,21 @@ def create_app(
 
     @app.get("/<any(pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):
+        if directory == "video" and filename.lower().endswith(".mp4"):
+            if video_cdn_base_url:
+                target = video_asset_url(video_cdn_base_url, filename)
+                if request.query_string:
+                    target = f"{target}?{request.query_string.decode('ascii', 'ignore')}"
+                response = redirect(target, code=302)
+                response.headers["Cache-Control"] = "public, max-age=300"
+                return response
+            response = send_from_directory(BASE_DIR / directory, filename)
+            response.headers["Cache-Control"] = (
+                "public, max-age=31536000, immutable"
+                if request.args.get("v")
+                else "public, max-age=3600"
+            )
+            return response
         return send_from_directory(BASE_DIR / directory, filename)
 
     @app.get("/<any(video):directory>/")

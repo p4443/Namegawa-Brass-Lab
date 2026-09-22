@@ -677,6 +677,52 @@
       text-align: left;
     }
 
+    .archive-survey {
+      display: flex;
+      margin-bottom: 24px;
+      padding: 18px 20px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      border: 1px solid #d7b44a;
+      border-left: 4px solid #a61b1b;
+      border-radius: 8px;
+      background: #fff9e8;
+    }
+
+    .archive-survey-copy {
+      display: grid;
+      gap: 3px;
+    }
+
+    .archive-survey-copy strong {
+      color: var(--text-main);
+      font-size: 1rem;
+    }
+
+    .archive-survey-copy span {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+    }
+
+    .archive-survey-link {
+      display: inline-flex;
+      min-height: 42px;
+      padding: 10px 16px;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      border-radius: 6px;
+      color: #ffffff;
+      background: #a61b1b;
+      font-weight: 800;
+    }
+
+    .archive-survey-link:hover,
+    .archive-survey-link:focus-visible {
+      background: #7f1515;
+    }
+
     .archive-grid {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -1766,6 +1812,11 @@
         margin-bottom: 24px;
       }
 
+      .archive-survey {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
       .services-heading {
         grid-template-columns: 1fr;
       }
@@ -2048,8 +2099,8 @@
         <a href="#contact" class="btn btn-accent hero-contact-button">無料体験・ご相談はこちら</a>
       </div>
       <div class="hero-visual">
-        <video class="hero-video" autoplay muted loop playsinline preload="metadata">
-          <source src="video/intro.mp4" type="video/mp4">
+        <video class="hero-video" autoplay muted loop playsinline preload="metadata" data-background-video>
+          <source src="{{ video_asset_url('intro.mp4', local_prefix='video') }}" type="video/mp4">
         </video>
         <div class="hero-visual-label">演奏・指導・デジタル技術を、地域の力へ。</div>
       </div>
@@ -2134,6 +2185,13 @@
         <h2 class="section-title" id="concert-archive-title">トランペット音楽の魅力｜過去公演アーカイブ</h2>
         <p class="section-desc">これまでの公演から、アンサンブル演奏をお届けします。</p>
       </div>
+      <aside class="archive-survey" aria-labelledby="archive-survey-title">
+        <div class="archive-survey-copy">
+          <strong id="archive-survey-title">第4回公演アンケート</strong>
+          <span>今後の公演づくりのため、ご感想をお聞かせください。</span>
+        </div>
+        <a class="archive-survey-link" href="https://forms.gle/gaH8peRpiKPLaRkf6" target="_blank" rel="noopener noreferrer">アンケートに回答する</a>
+      </aside>
       <div class="archive-grid">
         <article class="archive-edition">
           <header class="archive-edition-header">
@@ -2145,14 +2203,14 @@
           <div class="archive-tracks">
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-1-turkish-march-poster.jpg?v=20260922-3" aria-label="モーツァルト作曲 トルコ行進曲の演奏動画">
-                <source src="video/concert-1-turkish-march.mp4?v=20260922-3" type="video/mp4">
+                <source src="{{ video_asset_url('concert-1-turkish-march.mp4', '20260922-3', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">モーツァルト作曲</span>トルコ行進曲</h4>
             </section>
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-1-klezmer-fantasy-poster.jpg?v=20260922" aria-label="ザウラー作曲 クレズマー・ファンタジーの演奏動画">
-                <source src="video/concert-1-klezmer-fantasy.mp4?v=20260922" type="video/mp4">
+                <source src="{{ video_asset_url('concert-1-klezmer-fantasy.mp4', '20260922', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">ザウラー作曲</span>クレズマー・ファンタジー</h4>
@@ -2170,14 +2228,14 @@
           <div class="archive-tracks">
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-2-barber-poster.jpg?v=20260922" aria-label="ロッシーニ作曲 セビリアの理髪師の演奏動画">
-                <source src="video/concert-2-barber.mp4?v=20260922" type="video/mp4">
+                <source src="{{ video_asset_url('concert-2-barber.mp4', '20260922', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">ロッシーニ作曲</span>セビリアの理髪師</h4>
             </section>
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-2-watching-poster.jpg?v=20260922" aria-label="ガーシュイン作曲 誰かが私を見つめてるの演奏動画">
-                <source src="video/concert-2-watching.mp4?v=20260922" type="video/mp4">
+                <source src="{{ video_asset_url('concert-2-watching.mp4', '20260922', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">ガーシュイン作曲</span>誰かが私を見つめてる</h4>
@@ -2195,14 +2253,14 @@
           <div class="archive-tracks">
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-3-sun-poster.jpg?v=20260922" aria-label="モーレン作曲 セビリアの太陽の演奏動画">
-                <source src="video/concert-3-sun.mp4?v=20260922" type="video/mp4">
+                <source src="{{ video_asset_url('concert-3-sun.mp4', '20260922', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">モーレン作曲</span>セビリアの太陽</h4>
             </section>
             <section class="archive-track">
               <video controls controlsList="nodownload noremoteplayback" disablePictureInPicture playsinline preload="none" poster="video/concert-3-handel-poster.jpg?v=20260922" aria-label="ヘンデル作曲 アダージョとアレグロの演奏動画">
-                <source src="video/concert-3-handel.mp4?v=20260922" type="video/mp4">
+                <source src="{{ video_asset_url('concert-3-handel.mp4', '20260922', 'video') }}" type="video/mp4">
                 お使いのブラウザーは動画再生に対応していません。
               </video>
               <h4><span class="archive-composer">ヘンデル作曲</span>アダージョとアレグロ</h4>
@@ -2544,6 +2602,7 @@
   </footer>
 
   <script src="back-navigation.js"></script>
+  <script src="media-playback-guard.js"></script>
   <!-- JavaScript for Hamburger Menu -->
   <script nonce="{{ csp_nonce }}">
     const hamburgerBtn = document.getElementById('hamburgerBtn');

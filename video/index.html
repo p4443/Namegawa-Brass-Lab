@@ -269,7 +269,7 @@
     <main class="player-stage">
       <div class="player-frame">
         <video controls controlsList="nodownload" playsinline preload="metadata" aria-label="滑川町ふれあいコンサートの動画">
-          <source src="generations.mp4?v=20260817" type="video/mp4">
+          <source src="{{ video_asset_url('generations.mp4', '20260817') }}" type="video/mp4">
           お使いのブラウザーは動画再生に対応していません。
         </video>
         <button class="play-button" type="button">▶ 音声をオンにして再生</button>
@@ -281,6 +281,7 @@
     </footer>
   </div>
   <script src="../back-navigation.js"></script>
+  <script src="../media-playback-guard.js"></script>
   <script nonce="{{ csp_nonce }}">
     const video = document.querySelector("video");
     const playButton = document.querySelector(".play-button");
@@ -293,7 +294,7 @@
       document.querySelector(".event-detail span:first-child").textContent = "2026年8月7日（金）";
       document.querySelector(".event-detail span:last-child").textContent = "滑川町立月の輪小学校（多目的室）にて";
       video.setAttribute("aria-label", "月の輪小学校 夏休み音楽教室の動画");
-      video.querySelector("source").src = "community-workshop.mp4?v=20260916-2";
+      video.querySelector("source").src = {{ video_asset_url('community-workshop.mp4', '20260916-2')|tojson }};
       video.load();
       document.querySelector(".credit-telop p").innerHTML = "（まるっと！8/24号　特集コーナーより抜粋）<strong>【制作：東松山ケーブルテレビ】</strong>";
     }

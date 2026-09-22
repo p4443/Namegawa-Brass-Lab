@@ -22,6 +22,30 @@ EDITOR_PASSWORD='自分で決めたパスワード' ./manage-site.sh start
 
 更新内容はホストの `data/updates.txt` に保存され、コンテナを作り直しても残ります。
 
+## 動画の集中アクセス対策
+
+公開環境ではMP4をオブジェクトストレージとCDNから配信し、同時視聴でRenderのWebプロセスを占有しない構成を推奨します。Cloudflare R2などへ`video/`内のMP4を同じファイル名で配置し、公開HTTPS URLのディレクトリをRenderのEnvironmentへ設定します。
+
+```text
+VIDEO_CDN_BASE_URL=https://media.example.com/videos
+```
+
+設定後はトップページと`/video/`がCDNを直接参照し、古いHTMLやブックマークからの`/video/*.mp4`アクセスもCDNへ転送されます。CDN側ではRangeリクエスト、`video/mp4`のContent-Type、長期キャッシュを有効にしてください。環境変数を設定しないローカル環境では従来どおりFlaskが配信し、バージョン付きURLには1年間のimmutableキャッシュを付与します。
+
+アップロード対象は次の9ファイルです。
+
+```text
+intro.mp4
+concert-1-turkish-march.mp4
+concert-1-klezmer-fantasy.mp4
+concert-2-barber.mp4
+concert-2-watching.mp4
+concert-3-sun.mp4
+concert-3-handel.mp4
+generations.mp4
+community-workshop.mp4
+```
+
 ## イベント企画PDFの管理
 
 `/pdf/` の「管理者モード」から `EDITOR_PASSWORD` でログインすると、PDF内に表示されるタイトルを指定して15MB以内のPDFを追加できます。公開URLには安全なASCIIファイル名が自動発行され、PDF本体と表示タイトルは `data/event-pdfs` に保存されます。Renderでは `/app/data` の永続ディスク、Docker Composeではホストの `data` ボリュームに保存されます。

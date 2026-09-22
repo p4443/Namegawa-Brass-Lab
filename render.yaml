@@ -43,3 +43,5 @@ services:
         value: "1000"
       - key: PUBLIC_SITE_URL
         sync: false
+      - key: VIDEO_CDN_BASE_URL
+        sync: false

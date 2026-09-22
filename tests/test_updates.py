@@ -24,6 +24,7 @@ from app import (
     normalize_media_url,
     normalize_route_query,
     normalize_slot_statuses,
+    normalize_video_cdn_base_url,
     parse_update_line,
     reservation_slot_times,
     send_lesson_reservation,
@@ -32,10 +33,80 @@ from app import (
     validate_lesson_reservation_update,
     validate_reservation_date,
     validate_update,
+    video_asset_url,
 )
 
 
 class UpdatesTest(unittest.TestCase):
+    def test_video_cdn_url_requires_https(self):
+        self.assertEqual(
+            normalize_video_cdn_base_url("https://cdn.example.com/videos/"),
+            "https://cdn.example.com/videos",
+        )
+        self.assertEqual(normalize_video_cdn_base_url("http://cdn.example.com"), "")
+        self.assertEqual(
+            video_asset_url(
+                "https://cdn.example.com/videos", "sample video.mp4", "v1"
+            ),
+            "https://cdn.example.com/videos/sample%20video.mp4?v=v1",
+        )
+
+    def test_video_pages_use_cdn_and_legacy_urls_redirect(self):
+        with patch.dict(
+            os.environ,
+            {"VIDEO_CDN_BASE_URL": "https://cdn.example.com/videos"},
+        ):
+            client = create_app(database_url="").test_client()
+            home_response = client.get("/")
+            video_response = client.get("/video/")
+            legacy_response = client.get(
+                "/video/generations.mp4?v=20260817", follow_redirects=False
+            )
+
+        home_page = home_response.get_data(as_text=True)
+        video_page = video_response.get_data(as_text=True)
+        self.assertIn(
+            'src="https://cdn.example.com/videos/intro.mp4"', home_page
+        )
+        self.assertEqual(home_page.count("https://cdn.example.com/videos/"), 7)
+        self.assertIn(
+            'src="https://cdn.example.com/videos/generations.mp4?v=20260817"',
+            video_page,
+        )
+        self.assertIn(
+            "https://cdn.example.com/videos/community-workshop.mp4?v=20260916-2",
+            video_page,
+        )
+        self.assertIn(
+            "media-src 'self' blob: data: https://cdn.example.com;",
+            home_response.headers["Content-Security-Policy"],
+        )
+        self.assertEqual(legacy_response.status_code, 302)
+        self.assertEqual(
+            legacy_response.headers["Location"],
+            "https://cdn.example.com/videos/generations.mp4?v=20260817",
+        )
+        self.assertEqual(
+            legacy_response.headers["Cache-Control"], "public, max-age=300"
+        )
+
+    def test_local_versioned_video_uses_immutable_cache(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("VIDEO_CDN_BASE_URL", None)
+            client = create_app(database_url="").test_client()
+            response = client.get(
+                "/video/intro.mp4?v=test", headers={"Range": "bytes=0-9"}
+            )
+
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.headers["Content-Type"], "video/mp4")
+        self.assertEqual(response.headers["Accept-Ranges"], "bytes")
+        self.assertEqual(
+            response.headers["Cache-Control"],
+            "public, max-age=31536000, immutable",
+        )
+        self.assertEqual(len(response.data), 10)
+
     def test_products_page_does_not_link_to_flex_media(self):
         products_html = (
             Path(__file__).resolve().parents[1] / "products" / "index.html"
@@ -4924,6 +4995,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn('src="video/intro.mp4"', page)
+        self.assertIn('data-background-video', page)
+        self.assertIn('src="media-playback-guard.js"', page)
         self.assertIn('src="data/media/profile-photo.jpg"', page)
         self.assertIn('alt="トランペットを持つ佐々木久和"', page)
         hero_label_css = page.split(".hero-visual-label {", 1)[1].split("}", 1)[0]
@@ -4998,12 +5071,22 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("セビリアの太陽", page)
         self.assertIn("ヘンデル作曲", page)
         self.assertIn("アダージョとアレグロ", page)
+        self.assertIn('id="archive-survey-title">第4回公演アンケート', page)
+        self.assertIn(
+            'href="https://forms.gle/gaH8peRpiKPLaRkf6"', page
+        )
+        self.assertIn(
+            'class="archive-survey-link" href="https://forms.gle/gaH8peRpiKPLaRkf6" target="_blank" rel="noopener noreferrer"',
+            page,
+        )
+        self.assertIn("アンケートに回答する", page)
         self.assertEqual(page.count('class="archive-track"'), 6)
         self.assertEqual(page.count('preload="none"'), 6)
         self.assertEqual(page.count('poster="video/concert-'), 6)
         self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 6)
         self.assertEqual(page.count("disablePictureInPicture"), 6)
         self.assertIn('addEventListener("contextmenu"', page)
+        self.assertIn('src="media-playback-guard.js"', page)
         self.assertIn('src="video/concert-1-turkish-march.mp4?v=20260922-3"', page)
         self.assertIn('src="video/concert-1-klezmer-fantasy.mp4?v=20260922"', page)
         self.assertIn('src="video/concert-2-barber.mp4?v=20260922"', page)
@@ -5139,6 +5222,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("（まるっと！8/24号　特集コーナーより抜粋）", video_page)
         self.assertIn("【制作：東松山ケーブルテレビ】", video_page)
         self.assertRegex(video_page, r"\.credit-telop strong\s*\{[^}]*display: block;")
+        self.assertIn('src="../media-playback-guard.js"', video_page)
+
+    def test_media_playback_guard_is_served_and_coordinates_tabs(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/media-playback-guard.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/javascript")
+        script = response.get_data(as_text=True)
+        self.assertIn('video:not([data-background-video])', script)
+        self.assertIn('new BroadcastChannel(channelName)', script)
+        self.assertIn("window.addEventListener('storage'", script)
+        self.assertIn("video.addEventListener('playing'", script)
+        self.assertIn('video.pause()', script)
 
     def test_index_presents_five_reorganized_services(self):
         client = create_app().test_client()
