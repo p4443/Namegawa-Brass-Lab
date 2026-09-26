@@ -42,11 +42,18 @@ export async function POST(request: Request) {
   const supabase = createAdminClient();
   const { data: booking, error } = await supabase
     .from("lesson_bookings")
-    .select("guardian_line_user_id, lesson_type, starts_at")
+    .select("guardian_line_user_id, lesson_type, starts_at, status")
     .eq("official_reservation_id", reservationId)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Booking lookup failed" }, { status: 502 });
   if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
+  if (booking.status === "確定") return NextResponse.json({ ok: true, duplicate: true });
+
+  const { error: updateError } = await supabase
+    .from("lesson_bookings")
+    .update({ status: "確定", updated_at: new Date().toISOString() })
+    .eq("official_reservation_id", reservationId);
+  if (updateError) return NextResponse.json({ error: "Booking update failed" }, { status: 502 });
 
   const sent = await pushLineTextMessage(
     booking.guardian_line_user_id,
