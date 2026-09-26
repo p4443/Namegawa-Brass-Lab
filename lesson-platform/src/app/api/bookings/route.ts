@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
-import { serverConfigReady } from "@/lib/env";
+import { getServerEnv, serverConfigReady } from "@/lib/env";
 import { pushLineTextMessage } from "@/lib/line-messaging";
 import { sessionCookieName, verifyPortalSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase";
@@ -145,9 +145,10 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
       headers: {
         "Content-Type": "application/json",
+        "X-Portal-Authorization": `Bearer ${getServerEnv("OFFICIAL_BOOKING_WEBHOOK_SECRET")}`,
         ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ ...payload, portal_line_user_id: session.lineUserId }),
       signal: AbortSignal.timeout(90000),
     });
     const result = await response.json() as Record<string, unknown>;
@@ -158,22 +159,42 @@ export async function POST(request: NextRequest) {
 
     const reservationId = text(result.reservation_id);
     const durationMinutes = Number(result.duration_minutes) || 0;
+    const isDuplicate = result.duplicate === true;
     let lineNotificationSent: boolean | null = null;
-    if (reservationId && durationMinutes) {
+    if (reservationId && durationMinutes && !isDuplicate) {
       const startsAt = new Date(`${payload.preferred_date}T${payload.preferred_time}:00+09:00`);
       const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
-      const { error } = await createAdminClient().from("lesson_bookings").upsert({
-        official_reservation_id: reservationId,
-        cal_booking_id: null,
-        guardian_line_user_id: session.lineUserId,
-        lesson_type: payload.lesson_type,
-        starts_at: startsAt.toISOString(),
-        ends_at: endsAt.toISOString(),
-        status: "予約済み",
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "official_reservation_id" });
-      if (error) console.error("Failed to mirror official lesson booking", error.code);
-      if (!error) {
+      const supabase = createAdminClient();
+      const { data: existing, error: lookupError } = await supabase
+        .from("lesson_bookings")
+        .select("guardian_line_user_id")
+        .eq("official_reservation_id", reservationId)
+        .maybeSingle();
+      let mirrorErrorCode = lookupError?.code ?? null;
+      if (!lookupError && !existing) {
+        const result = await supabase.from("lesson_bookings").insert({
+          official_reservation_id: reservationId,
+          cal_booking_id: null,
+          guardian_line_user_id: session.lineUserId,
+          lesson_type: payload.lesson_type,
+          starts_at: startsAt.toISOString(),
+          ends_at: endsAt.toISOString(),
+          status: "予約済み",
+          updated_at: new Date().toISOString(),
+        });
+        mirrorErrorCode = result.error?.code ?? null;
+      } else if (!lookupError && existing?.guardian_line_user_id === null) {
+        const result = await supabase
+          .from("lesson_bookings")
+          .update({ guardian_line_user_id: session.lineUserId, updated_at: new Date().toISOString() })
+          .eq("official_reservation_id", reservationId)
+          .is("guardian_line_user_id", null);
+        mirrorErrorCode = result.error?.code ?? null;
+      } else if (existing?.guardian_line_user_id !== session.lineUserId) {
+        mirrorErrorCode = "BOOKING_ALREADY_LINKED";
+      }
+      if (mirrorErrorCode) console.error("Failed to mirror official lesson booking", mirrorErrorCode);
+      if (!mirrorErrorCode) {
         lineNotificationSent = await pushLineTextMessage(
           session.lineUserId,
           [
@@ -193,7 +214,7 @@ export async function POST(request: NextRequest) {
       status: text(result.status),
       duration_minutes: durationMinutes,
       auto_reply_sent: result.auto_reply_sent === true,
-      duplicate: result.duplicate === true,
+      duplicate: isDuplicate,
       line_notification_sent: lineNotificationSent,
     }, { status: 201 });
   } catch {

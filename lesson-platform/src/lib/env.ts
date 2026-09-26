@@ -2,6 +2,7 @@ const requiredServerVariables = [
   "SUPABASE_URL",
   "SUPABASE_SERVICE_ROLE_KEY",
   "PORTAL_SESSION_SECRET",
+  "OFFICIAL_BOOKING_WEBHOOK_SECRET",
 ] as const;
 
 export function serverConfigReady() {

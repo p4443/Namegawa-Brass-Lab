@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { CalendarDays, CircleCheck, Clock3, LogOut } from "lucide-react";
 
 import { logoutAction } from "@/app/actions";
+import { BookingClaim } from "@/components/booking-claim";
 import { BookingPanel } from "@/components/booking-panel";
 import { serverConfigReady } from "@/lib/env";
 import { sessionCookieName, verifyPortalSession } from "@/lib/session";
@@ -51,6 +52,7 @@ export default async function DashboardPage() {
           <div className="empty-state"><Clock3 aria-hidden="true" /><h3>予約中のレッスンはありません</h3><p>空き枠から次のレッスンを選べます。</p></div>
         )}
       </section>
+      <BookingClaim />
       <BookingPanel isLineAuthenticated />
     </main>
   );

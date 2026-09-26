@@ -199,6 +199,13 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .empty-state svg { color: var(--brass); }
 .empty-state h3 { margin: 12px 0 5px; }
 .empty-state p { margin: 0; color: var(--muted); }
+.booking-claim { margin-bottom: 42px; padding: 20px; border: 1px solid var(--line); background: var(--surface); }
+.booking-claim summary { display: flex; align-items: center; gap: 8px; color: var(--green); font-weight: 800; cursor: pointer; }
+.booking-claim form { display: grid; grid-template-columns: 1fr 1fr auto; align-items: end; gap: 14px; padding-top: 20px; }
+.booking-claim label { display: grid; gap: 7px; color: var(--ink); font-size: .8rem; font-weight: 800; }
+.booking-claim input { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid #b8c6c1; border-radius: 4px; }
+.booking-claim .booking-result { margin-top: 16px; }
+.claim-reservation-id { align-self: center; margin: 0; color: var(--muted); font-size: .85rem; }
 .dashboard .booking-section { grid-template-columns: 1fr; gap: 28px; width: 100%; padding-bottom: 0; }
 
 @media (max-width: 760px) {
@@ -237,6 +244,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   .dashboard-heading { align-items: flex-start; flex-direction: column; }
   .lesson-list li { grid-template-columns: auto 1fr; }
   .status { grid-column: 2; }
+  .booking-claim form { grid-template-columns: 1fr; }
   .dashboard .booking-section { padding-bottom: 0; }
 }
 

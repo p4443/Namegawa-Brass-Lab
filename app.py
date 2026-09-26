@@ -841,9 +841,7 @@ def compute_public_route(origin, destination, urlopen=None):
         "provider": "OpenStreetMap / OSRM",
     }
 LESSON_APPS_SCRIPT_VERSIONS = {
-    "2026-09-05-reservation-slot-range-v39",
-    "2026-09-12-reservation-delete-day-v40",
-    "2026-09-17-admin-notification-retry-v41",
+    "2026-09-26-booking-claim-v42",
 }
 
 
@@ -2562,16 +2560,22 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
     return result
 
 
-def notify_portal_booking_status(reservation_id, status):
+def portal_webhook_secret_is_valid(value):
+    expected = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    actual = str(value or "").removeprefix("Bearer ").strip()
+    return bool(expected and actual) and hmac.compare_digest(expected, actual)
+
+
+def notify_portal_booking_status(reservation_id, status, booking=None):
     webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
     webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
     if not webhook_url or not webhook_secret:
         return False
 
-    payload = json.dumps(
-        {"reservation_id": reservation_id, "status": status},
-        ensure_ascii=False,
-    ).encode("utf-8")
+    payload_values = {"reservation_id": reservation_id, "status": status}
+    if booking:
+        payload_values["booking"] = booking
+    payload = json.dumps(payload_values, ensure_ascii=False).encode("utf-8")
     webhook_request = urllib_request.Request(
         webhook_url,
         data=payload,
@@ -4352,6 +4356,13 @@ def create_app(
         if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
             return lesson_reservation_json({"saved": True}, 201)
         reservation_payload = request.get_json(silent=True)
+        portal_line_user_id = ""
+        if portal_webhook_secret_is_valid(request.headers.get("X-Portal-Authorization")):
+            portal_line_user_id = str(
+                (reservation_payload or {}).get("portal_line_user_id", "")
+            ).strip()
+            if len(portal_line_user_id) > 255:
+                portal_line_user_id = ""
         try:
             values = validate_lesson_reservation(reservation_payload)
         except ValueError as exc:
@@ -4429,19 +4440,68 @@ def create_app(
                 },
                 409,
             )
+        reservation_id = result.get("reservationId", "")
+        portal_notification_sent = False
+        if reservation_id:
+            portal_notification_sent = notify_portal_booking_status(
+                reservation_id,
+                result.get("status", "確認中"),
+                {
+                    "guardian_line_user_id": "" if result.get("duplicate") else portal_line_user_id,
+                    "duplicate": bool(result.get("duplicate", False)),
+                    "lesson_type": values["lesson_type"],
+                    "preferred_date": values["preferred_date"],
+                    "preferred_time": values["preferred_time"],
+                    "duration_minutes": values["duration_minutes"],
+                },
+            )
 
         return lesson_reservation_json(
             {
                 "saved": True,
-                "reservation_id": result.get("reservationId", ""),
+                "reservation_id": reservation_id,
                 "status": result.get("status", "確認中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
                 "admin_notification_sent": bool(result.get("adminNotificationSent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
+                "portal_notification_sent": portal_notification_sent,
             },
             201,
         )
+
+    @app.post("/api/lesson-reservations/claim-code")
+    def send_lesson_reservation_claim_code():
+        if not portal_webhook_secret_is_valid(request.headers.get("Authorization")):
+            return jsonify({"error": "Unauthorized"}), 401
+        payload = request.get_json(silent=True) or {}
+        try:
+            reservation_id = validate_reservation_id(payload.get("reservation_id", ""))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        email = str(payload.get("email", "")).strip().lower()
+        code = str(payload.get("code", "")).strip()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or not re.fullmatch(r"\d{6}", code):
+            return jsonify({"error": "入力内容を確認してください。"}), 400
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return jsonify({"error": "Claim delivery unavailable"}), 503
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": reservation_id, "email": email, "code": code},
+                action="send_claim_code",
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+            app.logger.exception("Failed to send lesson reservation claim code")
+            return jsonify({"error": "Claim delivery failed"}), 502
+        response_values = {"sent": result.get("sent") is True}
+        if response_values["sent"] and isinstance(result.get("booking"), dict):
+            response_values["booking"] = result["booking"]
+        return jsonify(response_values)
 
     @app.route("/api/consultation", methods=["POST", "OPTIONS"])
     def create_consultation():
@@ -4728,13 +4788,19 @@ def create_app(
                 values,
                 action="cancel",
             )
+            reservation_id = result.get("reservationId", values["reservation_id"])
+            portal_notification_sent = notify_portal_booking_status(
+                reservation_id,
+                "キャンセル",
+            )
             return lesson_reservation_json(
                 {
                     "cancelled": True,
-                    "reservation_id": result.get("reservationId", values["reservation_id"]),
+                    "reservation_id": reservation_id,
                     "released_count": parse_updated_count(result),
                     "already_cancelled": bool(result.get("alreadyCancelled", False)),
                     "cancellation_email_sent": result.get("cancellationEmailSent"),
+                    "portal_notification_sent": portal_notification_sent,
                 },
                 200,
             )
@@ -4776,7 +4842,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "resend_admin_notification", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "send_claim_code", "resend_admin_notification", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -5079,13 +5145,11 @@ def create_app(
                     headers="Content-Type, X-Editor-Password",
                 )
             portal_notification_sent = None
-            if (
-                result.get("status") == "確定"
-                and result.get("confirmationEmailSent") is not None
-            ):
+            requested_status = values.get("status")
+            if requested_status in {"確定", "キャンセル"} and result.get("status") == requested_status:
                 portal_notification_sent = notify_portal_booking_status(
                     valid_reservation_id,
-                    "確定",
+                    requested_status,
                 )
             response = jsonify(
                 {

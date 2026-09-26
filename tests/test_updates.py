@@ -2387,6 +2387,52 @@ class UpdatesTest(unittest.TestCase):
             {"reservation_id": "R-20260930-001", "status": "確定"},
         )
 
+    def test_portal_booking_creation_notification_includes_booking_details(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+        booking = {
+            "guardian_line_user_id": "",
+            "duplicate": False,
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-09-30",
+            "preferred_time": "09:00",
+            "duration_minutes": 30,
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            sent = notify_portal_booking_status("R-20260930-001", "確認中", booking)
+
+        self.assertTrue(sent)
+        self.assertEqual(
+            json.loads(urlopen.call_args.args[0].data.decode("utf-8")),
+            {"reservation_id": "R-20260930-001", "status": "確認中", "booking": booking},
+        )
+
+    def test_portal_webhook_sends_cancelled_line_notification(self):
+        source = (
+            Path(__file__).parents[1]
+            / "lesson-platform"
+            / "src"
+            / "app"
+            / "api"
+            / "webhooks"
+            / "official-booking"
+            / "route.ts"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            '(status !== "確定" && status !== "キャンセル")',
+            source,
+        )
+        self.assertIn("レッスン予約がキャンセルされました。", source)
+        self.assertIn("line_notified_status: status", source)
+
     def test_apps_script_request_retries_temporary_html_response(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
@@ -2573,7 +2619,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-17-admin-notification-retry-v41";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-26-booking-claim-v42";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -3333,11 +3379,7 @@ class UpdatesTest(unittest.TestCase):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
-        for version in (
-            "2026-09-05-reservation-slot-range-v39",
-            "2026-09-12-reservation-delete-day-v40",
-            "2026-09-17-admin-notification-retry-v41",
-        ):
+        for version in ("2026-09-26-booking-claim-v42",):
             with self.subTest(version=version), patch.dict(
                 os.environ,
                 {
@@ -3349,7 +3391,7 @@ class UpdatesTest(unittest.TestCase):
                 send_reservation.return_value = {
                     "ok": True,
                     "version": version,
-                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "resend_admin_notification", "upsert_slot_status_range"],
+                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "send_claim_code", "resend_admin_notification", "upsert_slot_status_range"],
                 }
                 response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -3662,7 +3704,9 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation:
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260820-001",
@@ -3678,8 +3722,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["released_count"], 4)
         self.assertFalse(response.json["already_cancelled"])
         self.assertTrue(response.json["cancellation_email_sent"])
+        self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "cancel")
         self.assertEqual(send_reservation.call_args.args[2]["email"], "user@example.com")
+        notify_portal.assert_called_once_with("R-20260820-001", "キャンセル")
 
     def test_user_cancellation_rejects_mismatched_email(self):
         client = create_app().test_client()
@@ -4070,6 +4116,92 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertTrue(response.json["duplicate"])
         self.assertFalse(response.json["auto_reply_sent"])
+
+    def test_lesson_reservation_only_accepts_signed_portal_line_id(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "",
+            "portal_line_user_id": "line-user-1",
+        }
+        reservation_result = {
+            "ok": True,
+            "reservationId": "R-20260820-001",
+            "status": "確認中",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value=reservation_result), patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            client.post("/api/lesson-reservations", json=payload)
+            unsigned_booking = notify_portal.call_args.args[2]
+            client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
+            )
+            signed_booking = notify_portal.call_args.args[2]
+            reservation_result["duplicate"] = True
+            client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
+            )
+            duplicate_booking = notify_portal.call_args.args[2]
+
+        self.assertEqual(unsigned_booking["guardian_line_user_id"], "")
+        self.assertEqual(signed_booking["guardian_line_user_id"], "line-user-1")
+        self.assertEqual(duplicate_booking["guardian_line_user_id"], "")
+
+    def test_lesson_reservation_claim_code_requires_portal_secret(self):
+        client = create_app().test_client()
+        payload = {
+            "reservation_id": "R-20260820-001",
+            "email": "taro@example.com",
+            "code": "123456",
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={
+            "ok": True,
+            "sent": True,
+            "booking": {
+                "lesson_type": "体験レッスン",
+                "preferred_date": "2026-08-20",
+                "preferred_time": "09:00",
+                "duration_minutes": 30,
+                "status": "予約済み",
+            },
+        }) as send_reservation:
+            unauthorized = client.post("/api/lesson-reservations/claim-code", json=payload)
+            authorized = client.post(
+                "/api/lesson-reservations/claim-code",
+                json=payload,
+                headers={"Authorization": "Bearer webhook-secret"},
+            )
+
+        self.assertEqual(unauthorized.status_code, 401)
+        self.assertEqual(authorized.status_code, 200)
+        self.assertTrue(authorized.json["sent"])
+        self.assertEqual(authorized.json["booking"]["lesson_type"], "体験レッスン")
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "send_claim_code")
 
     def test_lesson_reservation_rate_limit_prevents_excessive_apps_script_calls(self):
         payload = {
@@ -4475,6 +4607,36 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "update")
         notify_portal.assert_called_once_with("R-20260810-001", "確定")
+
+    def test_lesson_reservation_admin_cancel_notifies_portal(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260810-001",
+                "status": "キャンセル",
+                "updatedFields": ["status"],
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "キャンセル"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["portal_notification_sent"])
+        notify_portal.assert_called_once_with("R-20260810-001", "キャンセル")
 
     def test_lesson_reservation_manage_reports_slot_conflict(self):
         client = create_app().test_client()

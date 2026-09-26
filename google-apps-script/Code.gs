@@ -38,7 +38,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-17-admin-notification-retry-v41";
+var SCRIPT_VERSION = "2026-09-26-booking-claim-v42";
 var MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5;
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
@@ -75,7 +75,7 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "admin_notification_status", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "send_claim_code", "resend_admin_notification", "admin_notification_status", "upsert_slot_status_range"]
       });
     }
 
@@ -102,7 +102,7 @@ function doPost(event) {
       return adminActionResponse(generateTransportWorkbook(data), requestId);
     }
     var spreadsheet = getSpreadsheet();
-    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_day", "cancel", "resend_admin_notification"].indexOf(action) !== -1;
+    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_day", "cancel", "send_claim_code", "resend_admin_notification"].indexOf(action) !== -1;
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
@@ -227,6 +227,34 @@ function doPost(event) {
         adminNotificationSent: adminNotificationSent,
         duplicate: false
       });
+    }
+
+    if (action === "send_claim_code") {
+      var claimReservationId = String(data.reservation_id || "").trim();
+      var claimEmail = String(data.email || "").trim().toLowerCase();
+      var claimCode = String(data.code || "").trim();
+      var claimRow = findReservationRowById(sheet, claimReservationId);
+      var claimSent = false;
+      var claimBooking = null;
+      if (claimRow && /^\d{6}$/.test(claimCode)) {
+        var claimReservation = getReservationAtRow(sheet, claimRow);
+        if (
+          String(claimReservation.email || "").trim().toLowerCase() === claimEmail &&
+          claimReservation.status !== "キャンセル"
+        ) {
+          claimSent = sendReservationClaimCode(claimReservation, claimReservationId, claimCode);
+          if (claimSent) {
+            claimBooking = {
+              lesson_type: claimReservation.lessonType,
+              preferred_date: claimReservation.date,
+              preferred_time: claimReservation.time,
+              duration_minutes: claimReservation.durationMinutes,
+              status: claimReservation.status === "確定" ? "確定" : "予約済み"
+            };
+          }
+        }
+      }
+      return jsonResponse({ ok: true, sent: claimSent, booking: claimBooking });
     }
 
     if (action === "get_slot_statuses") {
@@ -1456,6 +1484,49 @@ function sendReservationAutoReply(data, reservationId) {
     return true;
   } catch (error) {
     Logger.log(error);
+    return false;
+  }
+}
+
+function sendReservationClaimCode(reservation, reservationId, code) {
+  var email = sanitizeMailHeader(reservation.email).trim();
+  if (!email || email.indexOf("@") <= 0) {
+    return false;
+  }
+
+  var name = sanitizeMailHeader(reservation.name).trim() || "お客様";
+  var body = [
+    name + " 様",
+    "",
+    "レッスン予約をLINEの予定確認へ追加するための確認コードです。",
+    "",
+    "受付番号: " + reservationId,
+    "確認コード: " + code,
+    "",
+    "このコードは10分間有効です。",
+    "心当たりがない場合は、このメールを破棄してください。"
+  ].join("\n");
+  var htmlBody = [
+    "<!doctype html>",
+    '<html><head><meta charset="UTF-8"></head><body>',
+    "<p>" + escapeHtml(name) + " 様</p>",
+    "<p>レッスン予約をLINEの予定確認へ追加するための確認コードです。</p>",
+    "<p>受付番号: " + escapeHtml(reservationId) + "<br>",
+    "確認コード: <strong>" + escapeHtml(code) + "</strong></p>",
+    "<p>このコードは10分間有効です。<br>",
+    "心当たりがない場合は、このメールを破棄してください。</p>",
+    "</body></html>"
+  ].join("");
+
+  try {
+    GmailApp.sendEmail(email, "【なめがわブラス・ラボ】予約確認コード", body, {
+      htmlBody: htmlBody,
+      name: "なめがわブラス・ラボ",
+      replyTo: ADMIN_NOTIFICATION_EMAIL
+    });
+    return true;
+  } catch (error) {
+    Logger.log("予約確認コードの送信に失敗しました。");
     return false;
   }
 }
