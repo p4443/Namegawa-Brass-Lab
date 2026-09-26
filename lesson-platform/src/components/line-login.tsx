@@ -58,7 +58,12 @@ export function LineLogin({ liffId }: { liffId?: string }) {
 
   return (
     <>
-      <Script src="https://static.line-scdn.net/liff/edge/2/sdk.js" strategy="afterInteractive" onReady={continueLoginIfNeeded} />
+      <Script
+        src="https://static.line-scdn.net/liff/edge/2/sdk.js"
+        strategy="afterInteractive"
+        onLoad={continueLoginIfNeeded}
+        onReady={continueLoginIfNeeded}
+      />
       <button className="line-button" type="button" onClick={login} disabled={busy}>
         <LogIn aria-hidden="true" size={20} />
         {busy ? "確認中..." : "LINEでログイン"}
