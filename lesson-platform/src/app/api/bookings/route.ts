@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 
 import { serverConfigReady } from "@/lib/env";
+import { pushLineTextMessage } from "@/lib/line-messaging";
 import { sessionCookieName, verifyPortalSession } from "@/lib/session";
 import { createAdminClient } from "@/lib/supabase";
 
@@ -148,6 +149,7 @@ export async function POST(request: NextRequest) {
 
     const reservationId = text(result.reservation_id);
     const durationMinutes = Number(result.duration_minutes) || 0;
+    let lineNotificationSent: boolean | null = null;
     if (reservationId && durationMinutes && serverConfigReady()) {
       const cookieStore = await cookies();
       const session = await verifyPortalSession(cookieStore.get(sessionCookieName)?.value);
@@ -165,6 +167,18 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
         }, { onConflict: "official_reservation_id" });
         if (error) console.error("Failed to mirror official lesson booking", error.code);
+        if (!error) {
+          lineNotificationSent = await pushLineTextMessage(
+            session.lineUserId,
+            [
+              "レッスン予約を受け付けました（確認中）。",
+              `受付番号: ${reservationId}`,
+              `希望日時: ${payload.preferred_date} ${payload.preferred_time}`,
+              `内容: ${payload.lesson_type}`,
+              "確定後に改めてお知らせします。予定はトーク画面下部メニューの「予定確認」から確認できます。",
+            ].join("\n"),
+          );
+        }
       }
     }
 
@@ -175,6 +189,7 @@ export async function POST(request: NextRequest) {
       duration_minutes: durationMinutes,
       auto_reply_sent: result.auto_reply_sent === true,
       duplicate: result.duplicate === true,
+      line_notification_sent: lineNotificationSent,
     }, { status: 201 });
   } catch {
     return NextResponse.json({

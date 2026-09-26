@@ -2562,6 +2562,33 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
     return result
 
 
+def notify_portal_booking_status(reservation_id, status):
+    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
+    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    if not webhook_url or not webhook_secret:
+        return False
+
+    payload = json.dumps(
+        {"reservation_id": reservation_id, "status": status},
+        ensure_ascii=False,
+    ).encode("utf-8")
+    webhook_request = urllib_request.Request(
+        webhook_url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {webhook_secret}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(webhook_request, timeout=15) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        return result.get("ok") is True
+    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+        return False
+
+
 def format_update(values):
     content = values["content"]
     if values["media_type"]:
@@ -5051,6 +5078,15 @@ def create_app(
                     methods="PUT, DELETE, OPTIONS",
                     headers="Content-Type, X-Editor-Password",
                 )
+            portal_notification_sent = None
+            if (
+                result.get("status") == "確定"
+                and result.get("confirmationEmailSent") is not None
+            ):
+                portal_notification_sent = notify_portal_booking_status(
+                    valid_reservation_id,
+                    "確定",
+                )
             response = jsonify(
                 {
                     "saved": True,
@@ -5058,6 +5094,7 @@ def create_app(
                     "status": result.get("status", values.get("status", "")),
                     "updated_fields": result.get("updatedFields", []),
                     "confirmation_email_sent": result.get("confirmationEmailSent"),
+                    "portal_notification_sent": portal_notification_sent,
                 }
             )
             return with_lesson_reservation_cors(

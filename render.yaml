@@ -43,5 +43,9 @@ services:
         value: "1000"
       - key: PUBLIC_SITE_URL
         sync: false
+      - key: PORTAL_BOOKING_WEBHOOK_URL
+        value: https://portal.namegawa-brass-lab.com/api/webhooks/official-booking
+      - key: PORTAL_BOOKING_WEBHOOK_SECRET
+        sync: false
       - key: VIDEO_CDN_BASE_URL
         sync: false
