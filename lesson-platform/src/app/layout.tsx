@@ -11,7 +11,7 @@ const mincho = BIZ_UDPMincho({ weight: ["400", "700"], subsets: ["latin"], varia
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://portal.namegawa-brass-lab.com"),
   title: { default: "kazooささきトランペット教室 | 埼玉県滑川町", template: "%s | kazooささきトランペット教室" },
-  description: "埼玉県滑川町・比企郡のkazooささきトランペット教室。LINEで空き枠確認、予約変更、出欠確認まで完結。初心者・学生・吹奏楽部を個別に支援します。",
+  description: "埼玉県滑川町・比企郡のkazooささきトランペット教室。LINEで空き枠確認、予約変更、次回予定の確認まで完結。初心者・学生・吹奏楽部を個別に支援します。",
   alternates: { canonical: "/" },
   openGraph: {
     type: "website",

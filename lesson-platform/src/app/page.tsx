@@ -23,7 +23,7 @@ export default function Home() {
         <div className="hero-copy">
           <p className="location"><MapPin aria-hidden="true" size={17} /> 埼玉県滑川町・比企郡</p>
           <h1>kazooささき<br />トランペット教室</h1>
-          <p className="hero-lead">音が変わる。練習の迷いも変わる。一人ひとりの吹き方と生活に合わせ、予約・変更・出欠確認までスマートフォンで完結します。</p>
+          <p className="hero-lead">音が変わる。練習の迷いも変わる。一人ひとりの吹き方と生活に合わせ、予約・変更・次回予定の確認までスマートフォンで完結します。</p>
           <div className="hero-actions">
             <a className="primary-button" href="#booking">30分無料体験を予約 <ArrowRight aria-hidden="true" size={19} /></a>
             <a className="secondary-button" href={legacyLessonUrl}>現在の教室案内</a>
@@ -41,7 +41,7 @@ export default function Home() {
       <section className="trust-strip" aria-label="サービスの特徴">
         <span><CalendarCheck aria-hidden="true" /> 24時間予約</span>
         <span><MessageCircle aria-hidden="true" /> LINEで確認</span>
-        <span><ShieldCheck aria-hidden="true" /> 予定と出欠を一元管理</span>
+        <span><ShieldCheck aria-hidden="true" /> 予約と予定を一元管理</span>
       </section>
 
       <section className="value-section" aria-labelledby="value-title">
@@ -52,7 +52,7 @@ export default function Home() {
         <div className="value-grid">
           <article><span>01</span><h3>地域の予定に合わせる</h3><p>学校、部活動、地域行事を踏まえて、無理なく続けられる時間を選べます。</p></article>
           <article><span>02</span><h3>LINEだけで迷わない</h3><p>保護者の方も新しいアプリを増やさず、予約と次回予定を確認できます。</p></article>
-          <article><span>03</span><h3>予定と出欠がすぐ分かる</h3><p>次回日時や予約状況をマイページに集約し、教室との行き違いを減らします。</p></article>
+          <article><span>03</span><h3>次回の予定がすぐ分かる</h3><p>次回日時や予約状況をマイページに集約し、教室との行き違いを減らします。</p></article>
         </div>
       </section>
 
@@ -79,7 +79,7 @@ export default function Home() {
         <div>
           <p className="kicker"><Sparkles aria-hidden="true" size={16} /> FOR FAMILIES</p>
           <h2 id="login-title">保護者の方も、LINEですぐ確認。</h2>
-          <p>予約履歴、次回日程、出欠状況をひとつの画面にまとめます。専用アプリのインストールは不要です。</p>
+          <p>予約履歴、次回日程、予約状況をひとつの画面にまとめます。専用アプリのインストールは不要です。</p>
         </div>
         <div className="login-control">
           <LineLogin liffId={process.env.NEXT_PUBLIC_LINE_LIFF_ID} />
