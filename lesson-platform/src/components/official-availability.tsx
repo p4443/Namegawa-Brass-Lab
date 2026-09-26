@@ -16,6 +16,12 @@ const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
   timeZone: "Asia/Tokyo",
 });
 
+function availabilityLabel(count: number) {
+  if (count === 0) return "受付終了";
+  if (count <= 2) return "残りわずか";
+  return "予約可";
+}
+
 export async function OfficialAvailability() {
   const days = await getOfficialLessonAvailability();
 
@@ -32,13 +38,13 @@ export async function OfficialAvailability() {
             <article key={day.date}>
               <div className="availability-date">
                 <time dateTime={day.date}>{dateFormatter.format(new Date(`${day.date}T00:00:00+09:00`))}</time>
-                <span>予約 {day.confirmedCount}件</span>
+                <span>{Object.values(day.availableCounts).some((count) => count > 0) ? "予約受付中" : "受付終了"}</span>
               </div>
               <dl>
                 {lessonTypes.map((lessonType) => (
                   <div key={lessonType}>
                     <dt>{shortLessonNames[lessonType]}</dt>
-                    <dd>{day.availableCounts[lessonType]}枠</dd>
+                    <dd>{availabilityLabel(day.availableCounts[lessonType])}</dd>
                   </div>
                 ))}
               </dl>
@@ -48,6 +54,7 @@ export async function OfficialAvailability() {
       ) : (
         <p className="availability-unavailable" role="status">現在、公式予約情報を取得できません。時間をおいて再度ご確認ください。</p>
       )}
+      <p className="availability-note">表示は予約できる開始時刻の選択肢をもとにした目安です。教室の生徒数や稼働率を示すものではなく、1件の予約で前後の候補も自動調整されます。</p>
     </section>
   );
 }

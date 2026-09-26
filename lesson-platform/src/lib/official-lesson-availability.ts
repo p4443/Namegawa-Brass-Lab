@@ -12,10 +12,6 @@ type CalendarResponse = {
   }>;
 };
 
-type SlotStatusResponse = {
-  confirmed_counts?: Record<string, number>;
-};
-
 async function fetchOfficial(url: URL) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
@@ -37,7 +33,6 @@ async function fetchOfficial(url: URL) {
 
 export type OfficialAvailabilityDay = {
   date: string;
-  confirmedCount: number;
   availableCounts: Record<LessonType, number>;
 };
 
@@ -62,29 +57,20 @@ export async function getOfficialLessonAvailability(): Promise<OfficialAvailabil
   const from = formatJapanDate(fromDate);
   const to = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(Math.min(day, lastDay)).padStart(2, "0")}`;
   const calendarUrl = new URL("/api/lesson-calendar", officialSiteUrl);
-  const statusesUrl = new URL("/api/lesson-slot-statuses", officialSiteUrl);
-
-  for (const url of [calendarUrl, statusesUrl]) {
-    url.searchParams.set("from", from);
-    url.searchParams.set("to", to);
-  }
+  calendarUrl.searchParams.set("from", from);
+  calendarUrl.searchParams.set("to", to);
 
   try {
     const calendarResponse = await fetchOfficial(calendarUrl);
     if (!calendarResponse) return null;
 
     const calendar = await calendarResponse.json() as CalendarResponse;
-    const statusesResponse = await fetchOfficial(statusesUrl);
-    if (!statusesResponse) return null;
-
-    const statuses = await statusesResponse.json() as SlotStatusResponse;
 
     return (calendar.days ?? []).flatMap((day) => {
       if (!day.date) return [];
 
       return [{
         date: day.date,
-        confirmedCount: Math.max(0, Number(statuses.confirmed_counts?.[day.date]) || 0),
         availableCounts: Object.fromEntries(
           lessonTypes.map((lessonType) => [
             lessonType,
