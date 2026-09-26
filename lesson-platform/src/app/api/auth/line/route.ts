@@ -27,7 +27,10 @@ export async function POST(request: Request) {
     },
     { onConflict: "line_user_id" },
   );
-  if (error) return NextResponse.json({ error: "ログイン情報を保存できませんでした。" }, { status: 502 });
+  if (error) {
+    console.error("Failed to save LINE guardian", error.code);
+    return NextResponse.json({ error: "ログイン情報を保存できませんでした。" }, { status: 502 });
+  }
 
   const response = NextResponse.json({ ok: true });
   response.cookies.set(sessionCookieName, await createPortalSession(profile), {
