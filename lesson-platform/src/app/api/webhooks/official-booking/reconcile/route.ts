@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { pushLineTextMessage } from "@/lib/line-messaging";
 import { createAdminClient } from "@/lib/supabase";
 
 export const maxDuration = 30;
@@ -34,8 +35,18 @@ function authorized(request: Request) {
   return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
 }
 
-function parseBooking(source: SourceBooking): [string, ReconciledBooking] | null {
+function formatLessonDate(value: string) {
+  return new Intl.DateTimeFormat("ja-JP", {
+    dateStyle: "long",
+    timeStyle: "short",
+    timeZone: "Asia/Tokyo",
+  }).format(new Date(value));
+}
+
+function parseBooking(source: SourceBooking): [string, ReconciledBooking | null] | null {
   const reservationId = typeof source.reservation_id === "string" ? source.reservation_id.trim() : "";
+  if (!/^R-\d{8}-\d{3,}$/.test(reservationId)) return null;
+
   const lessonType = typeof source.lesson_type === "string" ? source.lesson_type.trim() : "";
   const preferredDate = typeof source.preferred_date === "string" ? source.preferred_date.trim() : "";
   const preferredTime = typeof source.preferred_time === "string" ? source.preferred_time.trim() : "";
@@ -46,11 +57,11 @@ function parseBooking(source: SourceBooking): [string, ReconciledBooking] | null
       ? "予約済み"
       : null;
   const startsAt = new Date(`${preferredDate}T${preferredTime}:00+09:00`);
-  if (!/^R-\d{8}-\d{3,}$/.test(reservationId) || !status || !lessonTypes.has(lessonType)
+  if (!status || !lessonTypes.has(lessonType)
     || !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(preferredTime)
     || Number.isNaN(startsAt.getTime()) || !Number.isInteger(durationMinutes)
     || durationMinutes <= 0 || durationMinutes > 480) {
-    return null;
+    return [reservationId, null];
   }
   return [reservationId, {
     status,
@@ -71,20 +82,23 @@ export async function POST(request: Request) {
   if (parsed.some((booking) => booking === null)) {
     return NextResponse.json({ error: "Invalid booking details" }, { status: 400 });
   }
-  const officialBookings = new Map(parsed as [string, ReconciledBooking][]);
+  const officialBookings = new Map(parsed as [string, ReconciledBooking | null][]);
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("lesson_bookings")
-    .select("official_reservation_id")
+    .select("official_reservation_id, guardian_line_user_id, lesson_type, starts_at, status, line_notified_status")
     .gte("starts_at", new Date().toISOString());
   if (error) return NextResponse.json({ error: "Booking lookup failed" }, { status: 502 });
 
   let updated = 0;
   let cancelled = 0;
+  let notified = 0;
   for (const row of data ?? []) {
     const reservationId = typeof row.official_reservation_id === "string" ? row.official_reservation_id : "";
     if (!reservationId) continue;
+    const active = officialBookings.has(reservationId);
     const official = officialBookings.get(reservationId);
+    if (active && !official) continue;
     const values = official
       ? {
           status: official.status,
@@ -100,8 +114,30 @@ export async function POST(request: Request) {
       .eq("official_reservation_id", reservationId);
     if (updateError) return NextResponse.json({ error: "Booking reconciliation failed" }, { status: 502 });
     if (official) updated += 1;
-    else cancelled += 1;
+    else {
+      cancelled += 1;
+      if (row.guardian_line_user_id && row.line_notified_status !== "キャンセル") {
+        const sent = await pushLineTextMessage(
+          row.guardian_line_user_id,
+          [
+            "レッスン予約がキャンセルされました。",
+            `受付番号: ${reservationId}`,
+            `日時: ${formatLessonDate(row.starts_at)}`,
+            `内容: ${row.lesson_type}`,
+            "予定確認にも反映しました。",
+          ].join("\n"),
+        );
+        if (!sent) return NextResponse.json({ error: "LINE notification failed" }, { status: 502 });
+        const { error: notifiedError } = await supabase
+          .from("lesson_bookings")
+          .update({ line_notified_status: "キャンセル", updated_at: new Date().toISOString() })
+          .eq("official_reservation_id", reservationId)
+          .eq("status", "キャンセル");
+        if (notifiedError) return NextResponse.json({ error: "Notification status update failed" }, { status: 502 });
+        notified += 1;
+      }
+    }
   }
 
-  return NextResponse.json({ ok: true, updated, cancelled });
+  return NextResponse.json({ ok: true, updated, cancelled, notified });
 }

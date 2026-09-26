@@ -2470,6 +2470,25 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("レッスン予約がキャンセルされました。", source)
         self.assertIn("line_notified_status: status", source)
 
+    def test_portal_reconciliation_recovers_missed_cancellation_and_line_notification(self):
+        source = (
+            Path(__file__).parents[1]
+            / "lesson-platform"
+            / "src"
+            / "app"
+            / "api"
+            / "webhooks"
+            / "official-booking"
+            / "reconcile"
+            / "route.ts"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("officialBookings.has(reservationId)", source)
+        self.assertIn("if (active && !official) continue", source)
+        self.assertIn('status: "キャンセル"', source)
+        self.assertIn("レッスン予約がキャンセルされました。", source)
+        self.assertIn('line_notified_status: "キャンセル"', source)
+
     def test_apps_script_request_retries_temporary_html_response(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
