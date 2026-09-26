@@ -31,8 +31,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           </Link>
           <nav aria-label="メインナビゲーション">
             <a href="https://namegawa-brass-lab.com/lesson/">教室案内</a>
-            <Link href="/#price">料金</Link>
-            <Link href="/#booking">予約</Link>
+            <a href="/#price">料金</a>
+            <a href="/#booking">予約</a>
             <Link className="nav-login" href="/dashboard">マイページ</Link>
           </nav>
         </header>
