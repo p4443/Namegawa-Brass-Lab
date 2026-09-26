@@ -83,17 +83,21 @@ export function BookingPanel() {
         body: JSON.stringify(payload),
       });
       const body = await response.json();
-      if (!response.ok || body.saved !== true) throw new Error(body.error || "予約を確定できませんでした。");
+      if (!response.ok || body.saved !== true) throw new Error(body.error || "予約を受け付けられませんでした。");
+      const bookingStatus = body.status === "確定" ? "確定" : "確認中";
+      const receiptNotice = body.auto_reply_sent === true ? "受付メールを送信しました。" : "受付内容は公式予約台帳に登録されています。";
       setResult({
         state: "success",
-        message: `予約を受け付けました。受付番号は ${body.reservation_id} です。`,
+        message: `予約を受け付けました（${bookingStatus}）。受付番号は ${body.reservation_id} です。${receiptNotice}確定時にもメールでお知らせします。以後の予定はLINEメニューの「予定確認」から確認できます。`,
       });
       form.reset();
       setLessonType("");
       setDate("");
       setAvailableTimes([]);
+      setDurationMinutes(null);
+      setAvailabilityMessage("レッスン種別と希望日を選択してください。");
     } catch (error) {
-      setResult({ state: "error", message: error instanceof Error ? error.message : "予約を確定できませんでした。" });
+      setResult({ state: "error", message: error instanceof Error ? error.message : "予約を受け付けられませんでした。" });
     } finally {
       setSubmitting(false);
     }
@@ -128,7 +132,7 @@ export function BookingPanel() {
       <div className="booking-heading">
         <p className="kicker"><CalendarCheck aria-hidden="true" size={16} /> 公式予約台帳と連動</p>
         <h2 id="booking-title">レッスンを予約する</h2>
-        <p>空き枠の確認から予約確定まで、この画面で完了します。確定した枠は公式ホームページの予約台帳へ即時反映されます。</p>
+        <p>空き枠の確認から予約申込まで、この画面で完了します。受け付けた内容は確認中として公式予約台帳へ即時反映されます。</p>
       </div>
       <form className="booking-form" onSubmit={submitBooking}>
         <label>お名前<span>必須</span><input name="name" autoComplete="name" maxLength={80} required /></label>
@@ -152,7 +156,7 @@ export function BookingPanel() {
         <label className="booking-consent"><input name="privacy_agreed" type="checkbox" required /><span><a href="https://namegawa-brass-lab.com/legal/privacy-policy.html" target="_blank" rel="noreferrer">プライバシーポリシー</a>を確認し、個人情報の取り扱いに同意します。</span></label>
         <label className="booking-trap" aria-hidden="true">ウェブサイト<input name="website" tabIndex={-1} autoComplete="off" /></label>
         <div className="booking-submit">
-          <button className="primary-button" type="submit" disabled={submitting || !availableTimes.length}>{submitting ? "予約を送信中…" : "予約を確定する"}</button>
+          <button className="primary-button" type="submit" disabled={submitting || !availableTimes.length}>{submitting ? "予約を送信中…" : "予約を申し込む"}</button>
           <a className="application-link" href="https://namegawa-brass-lab.com/lesson/application-form.html" target="_blank" rel="noreferrer"><FileText aria-hidden="true" size={17} />受講申込書を表示・印刷</a>
         </div>
         {result && <p className="booking-result" data-state={result.state} role="status">{result.message}</p>}

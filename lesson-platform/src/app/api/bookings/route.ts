@@ -10,6 +10,8 @@ const lessonTypes = new Set(["体験レッスン", "小学生", "中学生", "�
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^\d{2}:\d{2}$/;
 
+export const maxDuration = 120;
+
 type BookingRequest = {
   name?: unknown;
   email?: unknown;
@@ -136,7 +138,7 @@ export async function POST(request: NextRequest) {
         ...(forwardedFor ? { "X-Forwarded-For": forwardedFor } : {}),
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(15000),
+      signal: AbortSignal.timeout(90000),
     });
     const result = await response.json() as Record<string, unknown>;
 
@@ -171,6 +173,8 @@ export async function POST(request: NextRequest) {
       reservation_id: reservationId,
       status: text(result.status),
       duration_minutes: durationMinutes,
+      auto_reply_sent: result.auto_reply_sent === true,
+      duplicate: result.duplicate === true,
     }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "予約の送信に失敗しました。時間をおいて再度お試しください。" }, { status: 502 });
