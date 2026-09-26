@@ -44,10 +44,11 @@ export async function POST(request: Request) {
     };
   } | null;
   const reservationId = typeof body?.reservation_id === "string" ? body.reservation_id.trim() : "";
+  const deleted = body?.status === "削除";
   const status = body?.status === "確定" || body?.status === "キャンセル"
     ? body.status
     : body?.status === "確認中" ? "予約済み" : "";
-  if (!/^R-\d{8}-\d{3,}$/.test(reservationId) || !status) {
+  if (!/^R-\d{8}-\d{3,}$/.test(reservationId) || (!status && !deleted)) {
     return NextResponse.json({ error: "Invalid booking status" }, { status: 400 });
   }
 
@@ -58,6 +59,16 @@ export async function POST(request: Request) {
     .eq("official_reservation_id", reservationId)
     .maybeSingle();
   if (error) return NextResponse.json({ error: "Booking lookup failed" }, { status: 502 });
+  if (deleted) {
+    if (!booking) return NextResponse.json({ ok: true, duplicate: true });
+    const { error: deleteError } = await supabase
+      .from("lesson_bookings")
+      .delete()
+      .eq("official_reservation_id", reservationId);
+    if (deleteError) return NextResponse.json({ error: "Booking deletion failed" }, { status: 502 });
+    return NextResponse.json({ ok: true, deleted: true });
+  }
+
   const source = body?.booking;
   if (!booking && source) {
     const lessonType = typeof source.lesson_type === "string" ? source.lesson_type.trim() : "";
@@ -89,19 +100,45 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, created: true });
   }
   if (!booking) return NextResponse.json({ error: "Booking not found" }, { status: 404 });
-  if (booking.status === status && booking.line_notified_status === status) {
+  if (!source && booking.status === status && booking.line_notified_status === status) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
 
-  if (booking.status !== status) {
-    const { error: updateError } = await supabase
-      .from("lesson_bookings")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("official_reservation_id", reservationId);
-    if (updateError) return NextResponse.json({ error: "Booking update failed" }, { status: 502 });
+  const updates: {
+    status: string;
+    updated_at: string;
+    lesson_type?: string;
+    starts_at?: string;
+    ends_at?: string;
+  } = { status, updated_at: new Date().toISOString() };
+  let notificationLessonType = booking.lesson_type;
+  let notificationStartsAt = booking.starts_at;
+  if (source) {
+    const lessonType = typeof source.lesson_type === "string" ? source.lesson_type.trim() : "";
+    const preferredDate = typeof source.preferred_date === "string" ? source.preferred_date.trim() : "";
+    const preferredTime = typeof source.preferred_time === "string" ? source.preferred_time.trim() : "";
+    const durationMinutes = Number(source.duration_minutes);
+    const startsAt = new Date(`${preferredDate}T${preferredTime}:00+09:00`);
+    if (!lessonTypes.has(lessonType) || !/^\d{4}-\d{2}-\d{2}$/.test(preferredDate)
+      || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(preferredTime) || Number.isNaN(startsAt.getTime())
+      || !Number.isInteger(durationMinutes) || durationMinutes <= 0 || durationMinutes > 480) {
+      return NextResponse.json({ error: "Invalid booking details" }, { status: 400 });
+    }
+    updates.lesson_type = lessonType;
+    updates.starts_at = startsAt.toISOString();
+    updates.ends_at = new Date(startsAt.getTime() + durationMinutes * 60_000).toISOString();
+    notificationLessonType = lessonType;
+    notificationStartsAt = updates.starts_at;
   }
 
-  if ((status !== "確定" && status !== "キャンセル") || !booking.guardian_line_user_id) {
+  const { error: updateError } = await supabase
+    .from("lesson_bookings")
+    .update(updates)
+    .eq("official_reservation_id", reservationId);
+  if (updateError) return NextResponse.json({ error: "Booking update failed" }, { status: 502 });
+
+  if ((status !== "確定" && status !== "キャンセル") || !booking.guardian_line_user_id
+    || booking.line_notified_status === status) {
     return NextResponse.json({ ok: true });
   }
 
@@ -109,15 +146,15 @@ export async function POST(request: Request) {
     ? [
         "レッスン予約がキャンセルされました。",
         `受付番号: ${reservationId}`,
-        `日時: ${formatLessonDate(booking.starts_at)}`,
-        `内容: ${booking.lesson_type}`,
+        `日時: ${formatLessonDate(notificationStartsAt)}`,
+        `内容: ${notificationLessonType}`,
         "予定確認にも反映しました。",
       ]
     : [
         "レッスン予約が確定しました。",
         `受付番号: ${reservationId}`,
-        `日時: ${formatLessonDate(booking.starts_at)}`,
-        `内容: ${booking.lesson_type}`,
+        `日時: ${formatLessonDate(notificationStartsAt)}`,
+        `内容: ${notificationLessonType}`,
         "詳細はトーク画面下部メニューの「予定確認」から確認できます。",
       ];
   const sent = await pushLineTextMessage(booking.guardian_line_user_id, message.join("\n"));

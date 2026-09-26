@@ -5076,7 +5076,17 @@ def create_app(
                     {"reservation_id": valid_reservation_id},
                     action="delete",
                 )
-                response = jsonify({"deleted": True, "reservation_id": result.get("reservationId", "")})
+                portal_notification_sent = notify_portal_booking_status(
+                    valid_reservation_id,
+                    "削除",
+                )
+                response = jsonify(
+                    {
+                        "deleted": True,
+                        "reservation_id": result.get("reservationId", ""),
+                        "portal_notification_sent": portal_notification_sent,
+                    }
+                )
                 return with_lesson_reservation_cors(
                     response,
                     methods="PUT, DELETE, OPTIONS",
@@ -5084,7 +5094,14 @@ def create_app(
                 )
 
             values = validate_lesson_reservation_update(request.get_json(silent=True))
-            if {"lesson_type", "preferred_date", "preferred_time"} & values.keys():
+            booking_detail_fields = {
+                "lesson_type",
+                "preferred_date",
+                "preferred_time",
+                "duration_minutes",
+            }
+            current_reservation = None
+            if booking_detail_fields & values.keys():
                 listing = send_lesson_reservation(
                     script_url,
                     script_secret,
@@ -5146,10 +5163,19 @@ def create_app(
                 )
             portal_notification_sent = None
             requested_status = values.get("status")
-            if requested_status in {"確定", "キャンセル"} and result.get("status") == requested_status:
+            portal_booking = None
+            if current_reservation is not None and booking_detail_fields & values.keys():
+                updated_reservation = {**current_reservation, **values}
+                portal_booking = {
+                    field: updated_reservation[field]
+                    for field in booking_detail_fields
+                }
+            portal_status = result.get("status") or requested_status
+            if portal_status and (requested_status is not None or portal_booking is not None):
                 portal_notification_sent = notify_portal_booking_status(
                     valid_reservation_id,
-                    requested_status,
+                    portal_status,
+                    portal_booking,
                 )
             response = jsonify(
                 {
@@ -5158,6 +5184,7 @@ def create_app(
                     "status": result.get("status", values.get("status", "")),
                     "updated_fields": result.get("updatedFields", []),
                     "confirmation_email_sent": result.get("confirmationEmailSent"),
+                    "cancellation_email_sent": result.get("cancellationEmailSent"),
                     "portal_notification_sent": portal_notification_sent,
                 }
             )

@@ -412,12 +412,24 @@ function doPost(event) {
           duration_minutes: nextDurationMinutes
         }, reservationId);
       }
+      var cancellationEmailSent = null;
+      if (nextStatus === "キャンセル" && currentReservation.status !== "キャンセル") {
+        cancellationEmailSent = sendReservationCancellation({
+          name: nextName,
+          email: nextEmail,
+          lesson_type: nextLessonType,
+          preferred_date: nextDate,
+          preferred_time: nextTime,
+          duration_minutes: nextDurationMinutes
+        }, reservationId);
+      }
       return adminActionResponse({
         ok: true,
         reservationId: reservationId,
         status: nextStatus,
         updatedFields: updatedFields,
-        confirmationEmailSent: confirmationEmailSent
+        confirmationEmailSent: confirmationEmailSent,
+        cancellationEmailSent: cancellationEmailSent
       }, requestId);
     }
 

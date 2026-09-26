@@ -24,6 +24,7 @@ export default async function DashboardPage() {
     .from("lesson_bookings")
     .select("id, starts_at, status, lesson_type")
     .eq("guardian_line_user_id", session.lineUserId)
+    .neq("status", "キャンセル")
     .gte("starts_at", new Date().toISOString())
     .order("starts_at", { ascending: true })
     .limit(10);
