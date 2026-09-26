@@ -128,9 +128,9 @@ export function BookingPanel({ isLineAuthenticated = false }: { isLineAuthentica
   }
 
   return (
-    <section className="booking-section" id="booking" aria-labelledby="booking-title">
+    <section className="booking-section" aria-labelledby="booking-title">
       <div className="booking-heading">
-        <p className="kicker"><CalendarCheck aria-hidden="true" size={16} /> 公式予約台帳と連動</p>
+        <p className="kicker" id="booking"><CalendarCheck aria-hidden="true" size={16} /> 公式予約台帳と連動</p>
         <h2 id="booking-title">レッスンを予約する</h2>
         <p>空き枠の確認から予約申込まで、この画面で完了します。受け付けた内容は確認中として公式予約台帳へ即時反映されます。</p>
       </div>

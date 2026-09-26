@@ -61,6 +61,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
   padding: 72px 0 90px;
 }
 .location, .kicker { display: flex; align-items: center; gap: 7px; margin: 0 0 18px; color: var(--coral); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
+#price, #booking { scroll-margin-top: 88px; }
 .hero h1 { max-width: 760px; margin: 0; font-family: var(--font-display), serif; font-size: clamp(2.6rem, 7vw, 5.8rem); font-weight: 700; line-height: 1.08; }
 .hero-lead { max-width: 650px; margin: 28px 0 0; color: var(--muted); font-size: 1.07rem; line-height: 1.9; }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 34px; }

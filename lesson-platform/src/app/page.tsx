@@ -62,9 +62,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="price-section" id="price" aria-labelledby="price-title">
+      <section className="price-section" aria-labelledby="price-title">
         <div className="section-heading">
-          <p className="kicker">LESSON FEE</p>
+          <p className="kicker" id="price">LESSON FEE</p>
           <h2 id="price-title">レッスン料金</h2>
           <p>年代に合わせた時間と回数で、一人ひとりを丁寧に指導します。</p>
         </div>
