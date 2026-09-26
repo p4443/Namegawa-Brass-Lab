@@ -21,7 +21,7 @@ async function fetchOfficial(url: URL) {
     try {
       const response = await fetch(url, {
         next: { revalidate: 300 },
-        signal: AbortSignal.timeout(10000),
+        signal: AbortSignal.timeout(15000),
       });
 
       if (response.ok) return response;
