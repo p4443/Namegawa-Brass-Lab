@@ -2593,6 +2593,41 @@ def notify_portal_booking_status(reservation_id, status, booking=None):
         return False
 
 
+def reconcile_portal_bookings(reservations):
+    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
+    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    if not webhook_url or not webhook_secret:
+        return False
+
+    bookings = [
+        {
+            "reservation_id": reservation.get("reservation_id"),
+            "status": reservation.get("status"),
+            "lesson_type": reservation.get("lesson_type"),
+            "preferred_date": reservation.get("preferred_date"),
+            "preferred_time": reservation.get("preferred_time"),
+            "duration_minutes": reservation.get("duration_minutes"),
+        }
+        for reservation in reservations
+        if isinstance(reservation, dict)
+    ]
+    webhook_request = urllib_request.Request(
+        f"{webhook_url.rstrip('/')}/reconcile",
+        data=json.dumps({"bookings": bookings}, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {webhook_secret}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(webhook_request, timeout=15) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        return result.get("ok") is True
+    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+        return False
+
+
 def format_update(values):
     content = values["content"]
     if values["media_type"]:
@@ -4582,7 +4617,13 @@ def create_app(
                 {},
                 action="list",
             )
-            response = jsonify({"reservations": result.get("reservations", [])})
+            reservations = result.get("reservations", [])
+            response = jsonify(
+                {
+                    "reservations": reservations,
+                    "portal_reconciled": reconcile_portal_bookings(reservations),
+                }
+            )
             return with_lesson_reservation_cors(
                 response,
                 methods="GET, OPTIONS",

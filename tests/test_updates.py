@@ -22,6 +22,7 @@ from app import (
     load_updates,
     lesson_calendar_days,
     notify_portal_booking_status,
+    reconcile_portal_bookings,
     normalize_media_url,
     normalize_route_query,
     normalize_slot_statuses,
@@ -2414,6 +2415,42 @@ class UpdatesTest(unittest.TestCase):
             {"reservation_id": "R-20260930-001", "status": "確認中", "booking": booking},
         )
 
+    def test_portal_booking_reconciliation_sends_only_required_fields(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+        reservation = {
+            "reservation_id": "R-20260930-001",
+            "status": "確定",
+            "name": "送信しない名前",
+            "email": "private@example.com",
+            "phone": "09000000000",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-09-30",
+            "preferred_time": "09:00",
+            "duration_minutes": 30,
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            reconciled = reconcile_portal_bookings([reservation])
+
+        self.assertTrue(reconciled)
+        webhook_request = urlopen.call_args.args[0]
+        self.assertEqual(
+            webhook_request.full_url,
+            "https://portal.example/api/webhooks/official-booking/reconcile",
+        )
+        payload = json.loads(webhook_request.data.decode("utf-8"))
+        self.assertEqual(payload["bookings"][0]["reservation_id"], "R-20260930-001")
+        self.assertNotIn("name", payload["bookings"][0])
+        self.assertNotIn("email", payload["bookings"][0])
+        self.assertNotIn("phone", payload["bookings"][0])
+
     def test_portal_webhook_sends_cancelled_line_notification(self):
         source = (
             Path(__file__).parents[1]
@@ -3501,7 +3538,9 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation:
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.reconcile_portal_bookings", return_value=True
+        ) as reconcile:
             send_reservation.return_value = {
                 "ok": True,
                 "reservations": [
@@ -3524,7 +3563,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(len(response.json["reservations"]), 1)
         self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
+        self.assertTrue(response.json["portal_reconciled"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
+        reconcile.assert_called_once_with(send_reservation.return_value["reservations"])
 
     def test_lesson_reservation_daily_deletion_requires_editor_password(self):
         client = create_app().test_client()
