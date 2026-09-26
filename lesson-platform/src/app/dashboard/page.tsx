@@ -51,7 +51,7 @@ export default async function DashboardPage() {
           <div className="empty-state"><Clock3 aria-hidden="true" /><h3>予約中のレッスンはありません</h3><p>空き枠から次のレッスンを選べます。</p></div>
         )}
       </section>
-      <BookingPanel />
+      <BookingPanel isLineAuthenticated />
     </main>
   );
 }

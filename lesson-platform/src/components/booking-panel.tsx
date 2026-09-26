@@ -31,7 +31,7 @@ function endTime(startTime: string, durationMinutes: number | null) {
   return `${String(Math.floor(total / 60)).padStart(2, "0")}:${String(total % 60).padStart(2, "0")}`;
 }
 
-export function BookingPanel() {
+export function BookingPanel({ isLineAuthenticated = false }: { isLineAuthenticated?: boolean }) {
   const [lessonType, setLessonType] = useState("");
   const [date, setDate] = useState("");
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
@@ -156,9 +156,10 @@ export function BookingPanel() {
         <label className="booking-consent"><input name="privacy_agreed" type="checkbox" required /><span><a href="https://namegawa-brass-lab.com/legal/privacy-policy.html" target="_blank" rel="noreferrer">プライバシーポリシー</a>を確認し、個人情報の取り扱いに同意します。</span></label>
         <label className="booking-trap" aria-hidden="true">ウェブサイト<input name="website" tabIndex={-1} autoComplete="off" /></label>
         <div className="booking-submit">
-          <button className="primary-button" type="submit" disabled={submitting || !availableTimes.length}>{submitting ? "予約を送信中…" : "予約を申し込む"}</button>
+          <button className="primary-button" type="submit" disabled={!isLineAuthenticated || submitting || !availableTimes.length}>{submitting ? "予約を送信中…" : isLineAuthenticated ? "予約を申し込む" : "LINEログイン後に予約"}</button>
           <a className="application-link" href="https://namegawa-brass-lab.com/lesson/application-form.html" target="_blank" rel="noreferrer"><FileText aria-hidden="true" size={17} />受講申込書を表示・印刷</a>
         </div>
+        {!isLineAuthenticated && <p className="booking-result" data-state="error">予約状況をLINEと同期するため、先に<a href="#login">LINEでログイン</a>してください。</p>}
         {result && <p className="booking-result" data-state={result.state} role="status">{result.message}</p>}
       </form>
       <details className="booking-cancel">

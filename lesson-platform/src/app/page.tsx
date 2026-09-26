@@ -1,12 +1,18 @@
 import { ArrowRight, CalendarCheck, MapPin, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
+import { cookies } from "next/headers";
 import Image from "next/image";
 
 import { BookingPanel } from "@/components/booking-panel";
 import { LineLogin } from "@/components/line-login";
 import { OfficialAvailability } from "@/components/official-availability";
-import { legacyLessonUrl } from "@/lib/env";
+import { legacyLessonUrl, serverConfigReady } from "@/lib/env";
+import { sessionCookieName, verifyPortalSession } from "@/lib/session";
 
-export default function Home() {
+export default async function Home() {
+  const cookieStore = await cookies();
+  const session = serverConfigReady()
+    ? await verifyPortalSession(cookieStore.get(sessionCookieName)?.value)
+    : null;
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "MusicSchool",
@@ -73,7 +79,7 @@ export default function Home() {
 
       <OfficialAvailability />
 
-      <BookingPanel />
+      <BookingPanel isLineAuthenticated={Boolean(session)} />
 
       <section className="login-section" id="login" aria-labelledby="login-title">
         <div>

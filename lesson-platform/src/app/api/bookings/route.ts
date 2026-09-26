@@ -129,6 +129,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "レッスン種別と希望日時を確認してください。" }, { status: 400 });
   }
 
+  if (!serverConfigReady()) {
+    return NextResponse.json({ error: "現在、LINE連携を利用できません。" }, { status: 503 });
+  }
+  const cookieStore = await cookies();
+  const session = await verifyPortalSession(cookieStore.get(sessionCookieName)?.value);
+  if (!session) {
+    return NextResponse.json({ error: "予約状況を同期するため、先にLINEでログインしてください。" }, { status: 401 });
+  }
+
   try {
     const forwardedFor = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
     const response = await fetch(officialUrl("/lesson-reservations"), {
@@ -150,35 +159,31 @@ export async function POST(request: NextRequest) {
     const reservationId = text(result.reservation_id);
     const durationMinutes = Number(result.duration_minutes) || 0;
     let lineNotificationSent: boolean | null = null;
-    if (reservationId && durationMinutes && serverConfigReady()) {
-      const cookieStore = await cookies();
-      const session = await verifyPortalSession(cookieStore.get(sessionCookieName)?.value);
-      if (session) {
-        const startsAt = new Date(`${payload.preferred_date}T${payload.preferred_time}:00+09:00`);
-        const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
-        const { error } = await createAdminClient().from("lesson_bookings").upsert({
-          official_reservation_id: reservationId,
-          cal_booking_id: null,
-          guardian_line_user_id: session.lineUserId,
-          lesson_type: payload.lesson_type,
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-          status: "予約済み",
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "official_reservation_id" });
-        if (error) console.error("Failed to mirror official lesson booking", error.code);
-        if (!error) {
-          lineNotificationSent = await pushLineTextMessage(
-            session.lineUserId,
-            [
-              "レッスン予約を受け付けました（確認中）。",
-              `受付番号: ${reservationId}`,
-              `希望日時: ${payload.preferred_date} ${payload.preferred_time}`,
-              `内容: ${payload.lesson_type}`,
-              "確定後に改めてお知らせします。予定はトーク画面下部メニューの「予定確認」から確認できます。",
-            ].join("\n"),
-          );
-        }
+    if (reservationId && durationMinutes) {
+      const startsAt = new Date(`${payload.preferred_date}T${payload.preferred_time}:00+09:00`);
+      const endsAt = new Date(startsAt.getTime() + durationMinutes * 60_000);
+      const { error } = await createAdminClient().from("lesson_bookings").upsert({
+        official_reservation_id: reservationId,
+        cal_booking_id: null,
+        guardian_line_user_id: session.lineUserId,
+        lesson_type: payload.lesson_type,
+        starts_at: startsAt.toISOString(),
+        ends_at: endsAt.toISOString(),
+        status: "予約済み",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "official_reservation_id" });
+      if (error) console.error("Failed to mirror official lesson booking", error.code);
+      if (!error) {
+        lineNotificationSent = await pushLineTextMessage(
+          session.lineUserId,
+          [
+            "レッスン予約を受け付けました（確認中）。",
+            `受付番号: ${reservationId}`,
+            `希望日時: ${payload.preferred_date} ${payload.preferred_time}`,
+            `内容: ${payload.lesson_type}`,
+            "確定後に改めてお知らせします。予定はトーク画面下部メニューの「予定確認」から確認できます。",
+          ].join("\n"),
+        );
       }
     }
 
