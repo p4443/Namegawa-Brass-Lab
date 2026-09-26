@@ -177,7 +177,9 @@ export async function POST(request: NextRequest) {
       duplicate: result.duplicate === true,
     }, { status: 201 });
   } catch {
-    return NextResponse.json({ error: "予約の送信に失敗しました。時間をおいて再度お試しください。" }, { status: 502 });
+    return NextResponse.json({
+      error: "予約結果を確認できませんでした。重複防止のため再送せず、受付メールまたはLINEメニューの「予定確認」をご確認ください。",
+    }, { status: 502 });
   }
 }
 
