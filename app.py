@@ -2534,7 +2534,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range", "list"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,

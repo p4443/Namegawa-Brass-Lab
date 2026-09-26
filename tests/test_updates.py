@@ -2744,7 +2744,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("確定した予約者一覧", page)
         self.assertIn("空き状況は15分を1枠として管理", page)
         self.assertIn("result.cancellation_email_sent === true", page)
-        self.assertIn("キャンセルメールを送信しました。", page)
+        self.assertIn("キャンセルメールの送信処理を受け付けました。", page)
         self.assertIn("result.cancellation_email_sent === false", page)
         self.assertIn("キャンセルメールを送信できませんでした。", page)
 
@@ -3566,6 +3566,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(response.json["portal_reconciled"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
         reconcile.assert_called_once_with(send_reservation.return_value["reservations"])
+
+    def test_lesson_reservation_list_retries_empty_apps_script_response(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = [b"", b'{"ok": true, "reservations": []}']
+
+        with patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            result = send_lesson_reservation(
+                "https://script.google.com/example",
+                "test-secret",
+                {},
+                action="list",
+            )
+
+        self.assertEqual(result["reservations"], [])
+        self.assertEqual(urlopen.call_count, 2)
 
     def test_lesson_reservation_daily_deletion_requires_editor_password(self):
         client = create_app().test_client()
