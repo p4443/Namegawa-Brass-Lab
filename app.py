@@ -2623,7 +2623,22 @@ def reconcile_portal_bookings(reservations):
     try:
         with urllib_request.urlopen(webhook_request, timeout=15) as response:
             result = json.loads(response.read().decode("utf-8"))
+            response_status = response.status
+        print(
+            "Portal booking reconciliation: "
+            f"status={response_status} ok={result.get('ok')} "
+            f"updated={result.get('updated')} cancelled={result.get('cancelled')} "
+            f"notified={result.get('notified')}",
+            flush=True,
+        )
         return result.get("ok") is True
+    except urllib_error.HTTPError as exc:
+        response_body = exc.read().decode("utf-8", errors="replace")[:500]
+        print(
+            f"Portal booking reconciliation failed: status={exc.code} body={response_body}",
+            flush=True,
+        )
+        return False
     except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
         return False
 
