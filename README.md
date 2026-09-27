@@ -43,7 +43,7 @@ concert-2-watching.mp4
 concert-3-sun.mp4
 concert-3-handel.mp4
 generations.mp4
-community-workshop.mp4
+community-workshop-edited.mp4
 ```
 
 ## イベント企画PDFの管理
