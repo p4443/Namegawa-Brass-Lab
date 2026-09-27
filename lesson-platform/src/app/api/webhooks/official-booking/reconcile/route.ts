@@ -1,4 +1,4 @@
-import { timingSafeEqual } from "node:crypto";
+import { createHash, timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
@@ -28,11 +28,26 @@ type ReconciledBooking = {
 function authorized(request: Request) {
   const expected = process.env.OFFICIAL_BOOKING_WEBHOOK_SECRET;
   const actual = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  if (!expected || !actual) return false;
+  if (!expected || !actual) {
+    console.warn("Official booking reconciliation authorization failed", {
+      expectedLength: expected?.length ?? 0,
+      actualLength: actual?.length ?? 0,
+    });
+    return false;
+  }
 
   const expectedBuffer = Buffer.from(expected);
   const actualBuffer = Buffer.from(actual);
-  return expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+  const matches = expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
+  if (!matches) {
+    console.warn("Official booking reconciliation authorization failed", {
+      expectedLength: expected.length,
+      actualLength: actual.length,
+      expectedFingerprint: createHash("sha256").update(expected).digest("hex").slice(0, 12),
+      actualFingerprint: createHash("sha256").update(actual).digest("hex").slice(0, 12),
+    });
+  }
+  return matches;
 }
 
 function formatLessonDate(value: string) {
