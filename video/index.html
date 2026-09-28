@@ -181,6 +181,14 @@
       font-size: 0.82em;
     }
 
+    .credit-editor {
+      display: block;
+      margin-top: 2px;
+      color: #626b72;
+      font-size: 0.68em;
+      font-weight: 600;
+    }
+
     @media (max-width: 600px) {
       .title-telop {
         padding: 18px 18px 20px;
@@ -251,6 +259,11 @@
         font-size: 0.78rem;
         line-height: 1.45;
       }
+
+      .credit-editor {
+        font-size: 0.68rem;
+        line-height: 1.4;
+      }
     }
   </style>
 </head>
@@ -296,7 +309,7 @@
       video.setAttribute("aria-label", "月の輪小学校 夏休み音楽教室の動画");
       video.querySelector("source").src = {{ video_asset_url('community-workshop-edited.mp4', '20260928-9')|tojson }};
       video.load();
-      document.querySelector(".credit-telop p").innerHTML = "（まるっと！8/24号　特集コーナーより抜粋）<strong>【制作：東松山ケーブルテレビ】</strong>";
+      document.querySelector(".credit-telop p").innerHTML = "（まるっと！8/24号　特集コーナー）<strong>【制作：東松山ケーブルテレビ】</strong><span class=\"credit-editor\">【抜粋編集：なめがわブラス・ラボ】</span>";
     }
 
     playButton.addEventListener("click", async () => {

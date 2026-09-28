@@ -5575,9 +5575,12 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("video.volume = 1", video_page)
         self.assertNotIn("playButton.hidden = true", video_page)
         self.assertIn("まるっと！2026年5月18日号", video_page)
-        self.assertIn("（まるっと！8/24号　特集コーナーより抜粋）", video_page)
+        self.assertIn("（まるっと！8/24号　特集コーナー）", video_page)
+        self.assertNotIn("特集コーナーより抜粋", video_page)
         self.assertIn("【制作：東松山ケーブルテレビ】", video_page)
+        self.assertIn("【抜粋編集：なめがわブラス・ラボ】", video_page)
         self.assertRegex(video_page, r"\.credit-telop strong\s*\{[^}]*display: block;")
+        self.assertRegex(video_page, r"\.credit-editor\s*\{[^}]*font-size: 0\.68em;")
         self.assertIn('src="../media-playback-guard.js"', video_page)
 
     def test_media_playback_guard_is_served_and_coordinates_tabs(self):
