@@ -2686,6 +2686,18 @@ def create_app(
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+    render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+    configured_site_url = os.environ.get("PUBLIC_SITE_URL", "").strip()
+    if render_hostname and configured_site_url:
+        canonical_hostname = (urlparse(configured_site_url).hostname or "").lower()
+        trusted_hosts = {"localhost", "127.0.0.1", render_hostname}
+        if canonical_hostname:
+            trusted_hosts.add(canonical_hostname)
+            if canonical_hostname.startswith("www."):
+                trusted_hosts.add(canonical_hostname.removeprefix("www."))
+            else:
+                trusted_hosts.add(f"www.{canonical_hostname}")
+        app.config["TRUSTED_HOSTS"] = sorted(trusted_hosts)
     video_cdn_base_url = normalize_video_cdn_base_url(
         os.environ.get("VIDEO_CDN_BASE_URL")
     )
@@ -2748,6 +2760,8 @@ def create_app(
             "https://docs.google.com https://*.onrender.com https://*.vercel.app",
         )
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
         response.headers.setdefault(
             "Permissions-Policy", "camera=(), microphone=(self), geolocation=()"
         )

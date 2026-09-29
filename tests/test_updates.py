@@ -11,6 +11,7 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from app import (
+    LESSON_RESERVATION_TIMEOUT_SECONDS,
     LessonReservationDeliveryError,
     compute_google_route,
     compute_public_route,
@@ -171,6 +172,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("media-src 'self' blob: data:", content_security_policy)
         self.assertNotIn("dropbox", content_security_policy)
         self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
+        self.assertEqual(response.headers["Cross-Origin-Resource-Policy"], "same-site")
+        self.assertEqual(response.headers["X-Permitted-Cross-Domain-Policies"], "none")
         self.assertNotIn("Strict-Transport-Security", response.headers)
 
     def test_application_form_print_action_avoids_inline_event_handler(self):
@@ -366,6 +369,37 @@ class UpdatesTest(unittest.TestCase):
             response = client.get("/health")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_untrusted_host_is_rejected_when_public_site_is_configured(self):
+        with patch.dict(
+            os.environ,
+            {
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
+                "RENDER_EXTERNAL_HOSTNAME": "namegawa-brass-lab.onrender.com",
+            },
+            clear=False,
+        ):
+            client = create_app(database_url="").test_client()
+
+            canonical = client.get(
+                "/health", base_url="https://namegawa-brass-lab.com"
+            )
+            render_host = client.get(
+                "/health", base_url="https://namegawa-brass-lab.onrender.com"
+            )
+            local = client.get("/health")
+            spoofed = client.get("/health", base_url="https://attacker.example")
+            forwarded_spoof = client.get(
+                "/health",
+                base_url="https://namegawa-brass-lab.com",
+                headers={"X-Forwarded-Host": "attacker.example"},
+            )
+
+        self.assertEqual(canonical.status_code, 200)
+        self.assertIn(render_host.status_code, {200, 301})
+        self.assertEqual(local.status_code, 200)
+        self.assertEqual(spoofed.status_code, 400)
+        self.assertEqual(forwarded_spoof.status_code, 400)
 
     def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
         query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
@@ -2348,6 +2382,11 @@ class UpdatesTest(unittest.TestCase):
     def test_apps_script_requests_allow_slow_write_operations(self):
         dockerfile = (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("--timeout 120", dockerfile)
+        self.assertIn("--limit-request-line 4094", dockerfile)
+        self.assertIn("--limit-request-fields 100", dockerfile)
+        self.assertIn("--limit-request-field_size 8190", dockerfile)
+        self.assertIn("--max-requests 2000", dockerfile)
+        self.assertIn("--max-requests-jitter 200", dockerfile)
 
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{"ok": true}'
@@ -2512,7 +2551,7 @@ class UpdatesTest(unittest.TestCase):
         second_payload = urlopen.call_args_list[1].args[0].data
         self.assertEqual(first_payload, second_payload)
 
-    def test_apps_script_read_request_does_not_extend_page_timeout(self):
+    def test_apps_script_read_request_uses_bounded_retry(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
 
@@ -2528,7 +2567,11 @@ class UpdatesTest(unittest.TestCase):
                     action="list",
                 )
 
-        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in urlopen.call_args_list],
+            [LESSON_RESERVATION_TIMEOUT_SECONDS, LESSON_RESERVATION_TIMEOUT_SECONDS],
+        )
 
     def test_apps_script_request_stops_after_second_invalid_response(self):
         html_response = MagicMock()

@@ -10,6 +10,14 @@ Flaskで配信するWebサイトです。`data/updates.txt`の解析、日付順
 
 メディア種別には`image`、`video`、`pdf`を指定できます。
 
+## 公開サイトのセキュリティ運用
+
+Render本番では`PUBLIC_SITE_URL`とRenderが提供する`RENDER_EXTERNAL_HOSTNAME`から許可Hostを組み立て、Hostヘッダー偽装をHTTP 400で拒否します。`PUBLIC_SITE_URL`は必ず実際の正規HTTPS URLに設定してください。CSP、HSTS、同一サイト資産制限、管理認証失敗制限、公開変更APIのレート制限、要求本文上限もアプリ側で適用します。
+
+Gunicornは要求行・ヘッダー数・ヘッダーサイズに上限を設け、2,000要求前後でワーカーを順次再生成します。外部掲載後に大量アクセスが見込まれる場合は、動画をCDNへ移し、RenderまたはDNS/CDN事業者側でもWAF・DDoS保護・アクセス通知を有効にしてください。アプリのレート制限だけを大規模攻撃への唯一の防御にしないでください。
+
+異常時はRenderのアクセスログで429、400、404、5xxの増加を確認し、秘密値の漏えいが疑われる場合は`EDITOR_PASSWORD`、`EDITOR_TOKEN_SECRET`、Webhook secret、Stripe secretを影響範囲に応じてローテーションします。正常性は`/health`と`healthcheck-prod.sh`で非破壊確認します。
+
 ## 起動
 
 編集用パスワードを設定して起動します。パスワードはHTMLやリポジトリには保存されません。
