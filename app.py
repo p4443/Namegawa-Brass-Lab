@@ -2725,6 +2725,23 @@ def create_app(
 
     @app.after_request
     def apply_security_headers(response):
+        if response.mimetype == "text/html" and not response.direct_passthrough:
+            page = response.get_data(as_text=True)
+            if "</head>" in page and 'data-media-protection="true"' not in page:
+                protection_style = (
+                    f'<style nonce="{g.csp_nonce}" data-media-protection="true">'
+                    "img,video,audio,canvas{-webkit-touch-callout:none;"
+                    "-webkit-user-drag:none}"
+                    "</style>"
+                )
+                page = page.replace("</head>", f"{protection_style}</head>", 1)
+            if "</body>" in page and "media-playback-guard.js" not in page:
+                protection_script = (
+                    f'<script nonce="{g.csp_nonce}" '
+                    'src="/media-playback-guard.js"></script>'
+                )
+                page = page.replace("</body>", f"{protection_script}</body>", 1)
+            response.set_data(page)
         sensitive_api_response = (
             request.path == "/api/editor"
             or request.path == "/api/store/health"

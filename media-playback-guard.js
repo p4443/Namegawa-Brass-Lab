@@ -1,4 +1,47 @@
 (() => {
+  const protectedMediaSelector = 'img, video, audio, canvas';
+
+  function protectedMediaFromTarget(target) {
+    return target instanceof Element ? target.closest(protectedMediaSelector) : null;
+  }
+
+  function protectMedia(media) {
+    media.setAttribute('draggable', 'false');
+    if (media instanceof HTMLMediaElement) {
+      if (media.controlsList) media.controlsList.add('nodownload');
+      media.setAttribute('controlsList', 'nodownload noremoteplayback');
+    }
+    if (media instanceof HTMLVideoElement) {
+      media.disablePictureInPicture = true;
+    }
+  }
+
+  function protectMediaWithin(root) {
+    if (root instanceof Element && root.matches(protectedMediaSelector)) {
+      protectMedia(root);
+    }
+    root.querySelectorAll?.(protectedMediaSelector).forEach(protectMedia);
+  }
+
+  protectMediaWithin(document);
+
+  document.addEventListener('contextmenu', (event) => {
+    if (protectedMediaFromTarget(event.target)) event.preventDefault();
+  });
+
+  document.addEventListener('dragstart', (event) => {
+    if (protectedMediaFromTarget(event.target)) event.preventDefault();
+  });
+
+  const mediaObserver = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (node instanceof Element) protectMediaWithin(node);
+      });
+    });
+  });
+  mediaObserver.observe(document.documentElement, { childList: true, subtree: true });
+
   const videos = [...document.querySelectorAll('video')];
   const primaryVideos = [...document.querySelectorAll('video:not([data-background-video])')];
   if (!primaryVideos.length) return;

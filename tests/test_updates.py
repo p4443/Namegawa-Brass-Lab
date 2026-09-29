@@ -223,6 +223,8 @@ class UpdatesTest(unittest.TestCase):
                     opening_tag = style.split(">", 1)[0]
                     self.assertIn(f'nonce="{nonce}"', opening_tag)
                 self.assertNotIn(" style=", page)
+                self.assertIn('data-media-protection="true"', page)
+                self.assertIn('media-playback-guard.js', page)
 
     def test_copyright_policy_explains_reporting_and_response_process(self):
         client = create_app(database_url="").test_client()
@@ -5639,6 +5641,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("window.addEventListener('storage'", script)
         self.assertIn("video.addEventListener('playing'", script)
         self.assertIn('video.pause()', script)
+        self.assertIn("document.addEventListener('contextmenu'", script)
+        self.assertIn("document.addEventListener('dragstart'", script)
+        self.assertIn("controlsList.add('nodownload')", script)
+        self.assertIn("media.disablePictureInPicture = true", script)
+        self.assertIn("new MutationObserver", script)
 
     def test_index_presents_five_reorganized_services(self):
         client = create_app().test_client()
