@@ -1259,6 +1259,19 @@ class StoreTest(unittest.TestCase):
             b"{}", "signed", "whsec_example"
         )
 
+    def test_webhook_rejects_invalid_signature(self):
+        stripe = self.stripe_module()
+        stripe.Webhook.construct_event.side_effect = ValueError("invalid signature")
+        with patch.dict(sys.modules, {"stripe": stripe}):
+            response = self.client.post(
+                "/api/store/webhook",
+                data=b"{}",
+                headers={"Stripe-Signature": "invalid"},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {"error": "Webhook署名を確認できません。"})
+
     def test_product_builder_atomically_creates_valid_archive(self):
         source_file = self.base_path / "source.html"
         output_file = self.base_path / "built-product.zip"

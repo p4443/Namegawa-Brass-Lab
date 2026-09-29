@@ -1,20 +1,27 @@
 # HTTPS ローカル開発用手順
 
-## 1. 証明書の確認
+## 1. 証明書の生成
 
-生成済みの証明書は以下です。
+リポジトリ直下で次を実行し、端末ごとの証明書を生成します。
+
+```bash
+./generate-local-cert.sh
+```
+
+次のファイルはGit管理されません。
 
 - certs/cert.pem
 - certs/key.pem
 
 ## 2. macOS で信頼する方法
 
-1. キーチェインアクセスを開く
-2. 「システム」キーチェインを選択
-3. 生成した certs/cert.pem をドラッグ＆ドロップ
-4. 追加後、証明書を開いて「常に信頼」に変更
+次のスクリプトを実行します。macOSの管理者パスワードが必要です。
+
+```bash
+./trust-local-cert.sh
+```
 
 ## 3. ブラウザで確認
 
-- HTTP: http://localhost:8080
-- HTTPS: https://localhost:8443
+- HTTP: <http://localhost:8080>
+- HTTPS: <https://localhost:8443>
