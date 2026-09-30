@@ -51,6 +51,8 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn("/tokushoho", card)
         self.assertIn("/terms", card)
         self.assertIn("/privacy", card)
+        self.assertIn("https://accident-claim-app.onrender.com/admin", card)
+        self.assertIn("管理者ログイン", card)
         self.assertNotIn("api/store", card)
 
     def test_hero_represents_music_work_and_daily_life(self):
