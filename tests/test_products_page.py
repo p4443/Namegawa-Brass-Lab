@@ -39,11 +39,26 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn(".transport-catalog .app-window { display: none; }", self.html)
         self.assertIn(".transport-catalog .store-actions { order: -1; }", self.html)
 
-    def test_hero_represents_music_and_one_transport_app(self):
+    def test_accident_claim_note_is_listed_as_a_single_plan_product(self):
+        card = self.html.split('id="accident-claim-note"', 1)[1].split("</article>", 1)[0]
+
+        self.assertIn("交通事故 支出・通院メモ＆損害整理ノート", card)
+        self.assertIn("https://accident-claim-app.onrender.com/", card)
+        self.assertIn("../data/media/accident-claim-note.png", card)
+        self.assertIn("500円", card)
+        self.assertIn("税込・買い切り", card)
+        self.assertIn("購入時のメールアドレスによる利用権の復旧", card)
+        self.assertIn("/tokushoho", card)
+        self.assertIn("/terms", card)
+        self.assertIn("/privacy", card)
+        self.assertNotIn("api/store", card)
+
+    def test_hero_represents_music_work_and_daily_life(self):
         hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
         hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"
 
-        self.assertIn("音楽・運送の現場を", hero)
+        self.assertIn("音楽・仕事・暮らしを", hero)
+        self.assertIn("日々の記録", hero)
         self.assertIn("メトロノーム", hero)
         self.assertIn("自在稼働記録", hero)
         self.assertIn("../data/media/products-operations-hero.png", hero)

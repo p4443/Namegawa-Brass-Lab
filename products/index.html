@@ -5,7 +5,7 @@
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・メディア編集・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
+  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・運送業務・生活記録向けアプリとデジタル商品の紹介・販売ページです。">
   <title>アプリ・商品 | なめがわブラス・ラボ</title>
   <style nonce="{{ csp_nonce }}">
     :root {
@@ -123,6 +123,7 @@
     .store-status { min-height: 1.5em; color: var(--text-muted); font-size: 0.8rem; }
 
     .service-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .service-plans-single { grid-template-columns: 1fr; }
     .service-plan { display: grid; align-content: start; gap: 10px; padding: 18px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); }
     .service-plan h3 { color: #0f172a; font-size: 1rem; }
     .service-plan p { color: var(--text-muted); font-size: 0.82rem; }
@@ -241,9 +242,9 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <p class="eyebrow">MUSIC &amp; TRANSPORT APPS</p>
-          <h1>音楽・運送の現場を<span class="mobile-title-break"></span>支えるアプリ。</h1>
-          <p class="hero-copy">楽器練習と配送現場の記録。異なる現場の手間を減らし、毎日の仕事と練習に集中できる道具を届けます。</p>
+          <p class="eyebrow">MUSIC, WORK &amp; DAILY LIFE APPS</p>
+          <h1>音楽・仕事・暮らしを<span class="mobile-title-break"></span>支えるアプリ。</h1>
+          <p class="hero-copy">楽器練習、配送現場、日々の記録。異なる場面の手間を減らし、大切なことに集中できる道具を届けます。</p>
         </div>
         <figure class="hero-visual">
           <img src="../data/media/products-operations-hero.png" alt="トランペット練習メトロノームと自在稼働記録の操作画面">
@@ -453,6 +454,60 @@
               </details>
             </div>
           </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="transport-catalog life-catalog" id="daily-life-products" aria-labelledby="daily-life-products-title">
+      <div class="container">
+        <h2 class="section-title" id="daily-life-products-title">生活・記録アプリ</h2>
+        <p class="section-desc">日々の出来事や支出を自分で整理し、必要な情報をまとめるためのWebアプリです</p>
+        <div class="transport-track">
+          <article class="product-feature" id="accident-claim-note">
+            <header class="product-heading">
+              <div>
+                <span class="product-label">生活支援Webアプリ</span>
+                <h2>交通事故 支出・通院メモ＆損害整理ノート</h2>
+                <p>交通事故に遭われたご本人が、支出・通院・休業の記録と参考試算を一つの画面で整理するための自己管理用アプリです。</p>
+              </div>
+              <a class="launch-link" href="https://accident-claim-app.onrender.com/" target="_blank" rel="noopener">アプリを開く</a>
+            </header>
+
+            <iframe class="app-window tenko-window" src="https://accident-claim-app.onrender.com/" title="交通事故 支出・通院メモ＆損害整理ノート" loading="lazy"></iframe>
+            <a class="mobile-app-preview" href="https://accident-claim-app.onrender.com/" target="_blank" rel="noopener" aria-label="交通事故 支出・通院メモ＆損害整理ノートを開く">
+              <img src="../data/media/accident-claim-note.png" alt="交通事故の支出・通院・休業記録をまとめる画面" width="1200" height="900" loading="lazy">
+            </a>
+
+            <div class="store-panel">
+              <div class="store-copy">
+                <h3>買い切りWebアプリ利用ライセンス</h3>
+                <p>入力内容は利用端末のブラウザー内に保存されます。購入すると帳票出力を期限なく利用でき、別端末では購入時のメールアドレスから利用権を復旧できます。</p>
+                <ul class="store-benefits">
+                  <li>事故の基本情報、物損・実費、怪我・通院、休業影響を順番に整理</li>
+                  <li>公表基準を用いた慰謝料・休業損害の参考試算</li>
+                  <li>A4帳票の印刷・PDF保存</li>
+                  <li>月額料金・自動更新なし。購入者本人が期限なく利用可能</li>
+                  <li>購入時のメールアドレスによる利用権の復旧</li>
+                </ul>
+                <nav class="store-legal" aria-label="損害整理ノートの購入に関する情報">
+                  <a href="https://accident-claim-app.onrender.com/tokushoho" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                  <a href="https://accident-claim-app.onrender.com/terms" target="_blank" rel="noopener">利用規約</a>
+                  <a href="https://accident-claim-app.onrender.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+                </nav>
+              </div>
+              <div class="store-actions">
+                <div class="service-plans service-plans-single" aria-label="損害整理ノートの料金プラン">
+                  <section class="service-plan">
+                    <h3>個人利用版</h3>
+                    <p>購入者本人が帳票出力を期限なく利用</p>
+                    <div class="service-price">500円 <small>税込・買い切り</small></div>
+                    <a class="service-purchase" href="https://accident-claim-app.onrender.com/">アプリで入力・購入へ</a>
+                  </section>
+                </div>
+                <p class="store-status" role="status">販売中です。</p>
+              </div>
+            </div>
           </article>
         </div>
       </div>
