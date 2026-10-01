@@ -302,8 +302,8 @@
       color: var(--muted);
       background: #f1f5f9;
     }
-    .cargo-row-remove, .estimate-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
-    .cargo-row-add, .estimate-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
+    .cargo-row-remove, .estimate-row-remove, .work-log-row-remove { float: right; border: 0; color: var(--danger); background: transparent; cursor: pointer; font: inherit; }
+    .cargo-row-add, .estimate-row-add, .work-log-row-add, .freight-calculator-button { width: 100%; margin-bottom: 14px; }
     .price-source-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
     .price-source-tools textarea { grid-column: 1 / -1; min-height: 74px; resize: vertical; }
     .price-source-count { grid-column: 1 / -1; color: var(--muted); font-weight: 400; text-align: right; }
@@ -902,7 +902,7 @@
           { description: '構築・テスト（QA）費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '本番公開前の検証環境構築、表示・動作・品質確認および不具合修正' },
           { description: 'データ移行・既存データ整形費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '提供データの取込み、形式変換、表記統一、レイアウト調整および修正' }
         ],
-        work_logs: Array.from({ length: 8 }, () => ({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' }))
+        work_logs: [{ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' }]
       },
       typeC: {
         deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
@@ -1309,9 +1309,9 @@
     }
 
     function renderWorkLogFields(values) {
-      return `<div class="estimate-edit-guide"><strong>制作作業日程記録（8日分・時給換算）</strong>成果物の見積金額とは別に、実作業の根拠を記録します。時間と時給から換算額を自動計算します。</div>${values.work_logs.map((log, index) => `
+      return `<div class="estimate-edit-guide"><strong>制作作業日程記録（時給換算）</strong>成果物の見積金額とは別に、実作業の根拠を記録します。必要な日数分の行を追加でき、時間と時給から換算額を自動計算します。</div>${values.work_logs.map((log, index) => `
         <section class="estimate-editor" data-work-log-row="${index}">
-          <h2>作業日 ${index + 1}</h2>
+          <h2>作業記録 ${index + 1}<button class="work-log-row-remove" data-remove-work-log-row="${index}" type="button" aria-label="作業記録${index + 1}を削除"${values.work_logs.length <= 1 ? ' disabled' : ''}>削除</button></h2>
           <div class="work-log-editor-grid">
             <label>日付<input data-work-log-key="work_date" type="date" value="${escapeHtml(log.work_date)}"></label>
             <label>作業内容<input data-work-log-key="description" type="text" maxlength="120" value="${escapeHtml(log.description)}"></label>
@@ -1319,7 +1319,7 @@
             <label>時給（円）<input data-work-log-key="hourly_rate" type="number" min="0" max="999999999" step="1" value="${escapeHtml(log.hourly_rate)}"></label>
             <label>換算額（円）<output data-work-log-amount>${formatEstimateYen(estimateNumber(log.amount))}</output></label>
           </div>
-        </section>`).join('')}`;
+        </section>`).join('')}<button class="secondary-button work-log-row-add" data-add-work-log-row type="button"${values.work_logs.length >= 100 ? ' disabled' : ''}>作業記録を追加</button>`;
     }
 
             function renderMusicSupportEstimateFields(values) {
@@ -1685,8 +1685,8 @@
     }
 
     function normalizeWebAppEstimateValues(values) {
-      const logs = Array.isArray(values.work_logs) ? values.work_logs.slice(0, 8) : [];
-      while (logs.length < 8) logs.push({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' });
+      const logs = Array.isArray(values.work_logs) ? values.work_logs.slice(0, 100) : [];
+      if (!logs.length) logs.push({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' });
       values.work_logs = logs.map(log => ({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0', ...log }));
       return values;
     }
@@ -2135,6 +2135,10 @@
       const values = contractValues.estimateC;
       const totals = calculateEstimateTotals('estimateC');
       const safeRepresentative = escapeHtml(clientRepresentative.value || 'ご担当者様：＿＿＿＿様');
+      const workLogPages = Array.from(
+        { length: Math.ceil(values.work_logs.length / 18) },
+        (_, index) => values.work_logs.slice(index * 18, (index + 1) * 18)
+      );
       preview.innerHTML = `
         <section class="contract-page estimate-page" data-page-number="1">
           <h1>御見積書</h1>
@@ -2167,15 +2171,15 @@
             <li><strong>9. 契約書との関係</strong>ご発注時は業務委託基本契約書および「個別契約書 C（WEB・アプリ）」を締結し、本見積書を個別契約の一部として取り扱います。文書間に差異がある場合は、後に成立した個別の合意を優先します。</li>
           </ul>
         </section>
-        <section class="contract-page estimate-page" data-page-number="3">
-          <h1>制作作業日程記録</h1>
+        ${workLogPages.map((logs, pageIndex) => `<section class="contract-page estimate-page" data-page-number="${pageIndex + 3}">
+          <h1>制作作業日程記録${workLogPages.length > 1 ? `（${pageIndex + 1}/${workLogPages.length}）` : ''}</h1>
           <p>成果物への対価とは別に、制作作業の実績を時給換算した記録です。</p>
           <table class="work-log-table">
             <thead><tr><th>作業日</th><th>作業内容</th><th class="number">時間</th><th class="number">時給（円）</th><th class="number">換算額（円）</th></tr></thead>
-            <tbody>${values.work_logs.map(log => `<tr><td>${escapeHtml(log.work_date || '未入力')}</td><td>${escapeHtml(log.description || '未入力')}</td><td class="number">${escapeHtml(log.hours || '0')}</td><td class="number">${formatEstimateYen(estimateNumber(log.hourly_rate))}</td><td class="number">${formatEstimateYen(estimateNumber(log.amount))}</td></tr>`).join('')}</tbody>
+            <tbody>${logs.map(log => `<tr><td>${escapeHtml(log.work_date || '未入力')}</td><td>${escapeHtml(log.description || '未入力')}</td><td class="number">${escapeHtml(log.hours || '0')}</td><td class="number">${formatEstimateYen(estimateNumber(log.hourly_rate))}</td><td class="number">${formatEstimateYen(estimateNumber(log.amount))}</td></tr>`).join('')}</tbody>
           </table>
-          <table class="estimate-summary"><tbody><tr><th>記録時間合計</th><td>${values.work_logs.reduce((total, log) => total + (Number(log.hours) || 0), 0).toLocaleString('ja-JP')}時間</td></tr><tr><th>時給換算額合計</th><td>${formatEstimateYen(values.work_logs.reduce((total, log) => total + estimateNumber(log.amount), 0))}円</td></tr></tbody></table>
-        </section>`;
+          ${pageIndex === workLogPages.length - 1 ? `<table class="estimate-summary"><tbody><tr><th>記録時間合計</th><td>${values.work_logs.reduce((total, log) => total + (Number(log.hours) || 0), 0).toLocaleString('ja-JP')}時間</td></tr><tr><th>時給換算額合計</th><td>${formatEstimateYen(values.work_logs.reduce((total, log) => total + estimateNumber(log.amount), 0))}円</td></tr></tbody></table>` : ''}
+        </section>`).join('')}`;
     }
 
     function renderMusicSupportEstimate(date, safeClient) {
@@ -3010,6 +3014,25 @@
         if (!items || items.length >= 10) return;
         editorRevision += 1;
         items.push({ description: '任意の指導・作業内容', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '' });
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      if (event.target.closest('[data-add-work-log-row]')) {
+        const logs = contractValues.estimateC.work_logs;
+        if (logs.length >= 100) return;
+        editorRevision += 1;
+        logs.push({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' });
+        renderDynamicFields();
+        renderPreview();
+        return;
+      }
+      const removeWorkLogButton = event.target.closest('[data-remove-work-log-row]');
+      if (removeWorkLogButton) {
+        const logs = contractValues.estimateC.work_logs;
+        if (logs.length <= 1) return;
+        editorRevision += 1;
+        logs.splice(Number(removeWorkLogButton.dataset.removeWorkLogRow), 1);
         renderDynamicFields();
         renderPreview();
         return;

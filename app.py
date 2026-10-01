@@ -1526,8 +1526,8 @@ def validate_contract(payload):
     for key in configuration["keys"]:
         if key == "work_logs":
             raw_logs = raw_values.get(key, [])
-            if not isinstance(raw_logs, list) or len(raw_logs) > 8:
-                raise ValueError("制作作業記録は8日分以内で入力してください。")
+            if not isinstance(raw_logs, list) or len(raw_logs) > 100:
+                raise ValueError("制作作業記録は100件以内で入力してください。")
             work_logs = []
             for raw_log in raw_logs:
                 if not isinstance(raw_log, dict):
