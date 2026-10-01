@@ -156,7 +156,7 @@
     .estimate-editor-grid textarea { min-height: 66px; resize: vertical; }
     .work-log-editor-grid { display: grid; grid-template-columns: 1fr 1.6fr 0.7fr 0.9fr 0.9fr; gap: 8px; }
     .work-log-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
-    .work-log-editor-grid input, .work-log-editor-grid output {
+    .work-log-editor-grid input, .work-log-editor-grid select, .work-log-editor-grid output {
       width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #ffffff;
     }
     .work-log-editor-grid output { color: var(--muted); background: #f1f5f9; }
@@ -1062,6 +1062,17 @@
       unit_price: ['10000', '30000', '40000', '50000', '90000', '100000'],
       amount: ['10000', '30000', '40000', '50000', '90000', '100000']
     };
+    const workLogDescriptionPresets = [
+      '要件定義・仕様整理',
+      'UI/UXデザイン',
+      'コーディング・機能実装',
+      '検証環境構築',
+      'テスト・QA・不具合修正',
+      'データ移行・整形・修正',
+      'コード監査・セキュリティ検証',
+      '納品準備・資料作成',
+      '打合せ・進行管理'
+    ];
     const transportEstimateItemTemplates = {
       freight: { description: '軽貨物 基本運送料', unit: '運行', details: '自社軽貨物の料金算定基準と案件条件に基づき算定' },
       loading: { description: '積卸し作業費', unit: '式', details: '当方が行う積込み・取卸し作業' },
@@ -1314,7 +1325,7 @@
           <h2>作業記録 ${index + 1}<button class="work-log-row-remove" data-remove-work-log-row="${index}" type="button" aria-label="作業記録${index + 1}を削除"${values.work_logs.length <= 1 ? ' disabled' : ''}>削除</button></h2>
           <div class="work-log-editor-grid">
             <label>日付<input data-work-log-key="work_date" type="date" value="${escapeHtml(log.work_date)}"></label>
-            <label>作業内容<input data-work-log-key="description" type="text" maxlength="120" value="${escapeHtml(log.description)}"></label>
+            <label>作業内容<select data-work-log-description-preset aria-label="作業内容の登録項目から選択"><option value="">登録項目から選択</option>${workLogDescriptionPresets.map(description => `<option value="${escapeHtml(description)}"${description === log.description ? ' selected' : ''}>${escapeHtml(description)}</option>`).join('')}<option value="custom">その他（自由入力）</option></select><input data-work-log-key="description" type="text" maxlength="120" value="${escapeHtml(log.description)}" aria-label="作業内容の自由入力"></label>
             <label>時間<input data-work-log-key="hours" type="number" min="0" max="999" step="0.25" value="${escapeHtml(log.hours)}"></label>
             <label>時給（円）<input data-work-log-key="hourly_rate" type="number" min="0" max="999999999" step="1" value="${escapeHtml(log.hourly_rate)}"></label>
             <label>換算額（円）<output data-work-log-amount>${formatEstimateYen(estimateNumber(log.amount))}</output></label>
@@ -2873,6 +2884,15 @@
       renderPreview();
     });
     dynamicFields.addEventListener('change', async event => {
+      if (event.target.matches('[data-work-log-description-preset]')) {
+        const row = event.target.closest('[data-work-log-row]');
+        const input = row?.querySelector('[data-work-log-key="description"]');
+        if (!input) return;
+        if (event.target.value !== 'custom') input.value = event.target.value;
+        if (event.target.value) input.dispatchEvent(new Event('input', { bubbles: true }));
+        if (event.target.value === 'custom') input.focus();
+        return;
+      }
       if (event.target.matches('[data-cargo-item-key="maker_model"]')) {
         const rowIndex = Number(event.target.closest('[data-cargo-row]')?.dataset.cargoRow);
         if (instrumentLookupReady(rowIndex)) await lookupInstrumentPriceWithFeedback(rowIndex);
