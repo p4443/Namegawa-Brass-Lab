@@ -10,6 +10,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app.py index.html back-navigation.js build_product.py ./
+COPY media-playback-guard.js ./
 COPY healthcheck-prod.sh ./
 COPY assets ./assets
 COPY data ./data
@@ -31,4 +32,4 @@ USER appuser
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --worker-class gthread --threads 4 --timeout 120 --access-logfile - app:app"]
+CMD ["sh", "-c", "exec gunicorn --bind 0.0.0.0:${PORT:-8000} --workers 2 --worker-class gthread --threads 4 --timeout 120 --limit-request-line 4094 --limit-request-fields 100 --limit-request-field_size 8190 --max-requests 2000 --max-requests-jitter 200 --access-logfile - app:app"]

@@ -7,7 +7,7 @@
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <meta name="description" content="kazooささきトランペット教室。初心者から経験者まで、一人ひとりに合わせたトランペットレッスンをご案内します。">
   <title>kazooささきトランペット教室 | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --navy: #1a56db;
       --blue: #1e40af;
@@ -1406,10 +1406,6 @@
             <strong>トランペット練習メトロノーム</strong>
             <span>呼吸・テンポ・連符をまとめて練習</span>
           </a>
-          <a class="lesson-app-card" href="../trumpet-transpose-lab/?mode=free" target="_blank" rel="noopener">
-            <strong>Trumpet Transpose Lab</strong>
-            <span>録音から採譜、音符編集、B♭譜の移調まで無料で体験</span>
-          </a>
         </div>
       </div>
     </section>
@@ -1590,12 +1586,13 @@
       <nav class="footer-links" aria-label="フッターナビゲーション">
         <a href="/lesson/application-form.html">受講申込書</a>
         <a href="/legal/privacy-policy.html">トランペット教室プライバシーポリシー</a>
+        <a href="/legal/copyright-policy.html">著作権・侵害申告</a>
       </nav>
       <p class="copyright">© なめがわブラス・ラボ</p>
     </div>
   </footer>
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
       const detail = document.getElementById(toggle.getAttribute("aria-controls"));
       if (!detail) return;

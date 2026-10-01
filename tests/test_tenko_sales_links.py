@@ -25,6 +25,11 @@ class TenkoSalesLinksTest(unittest.TestCase):
             self.page,
         )
 
+    def test_company_plan_displays_current_user_limit_and_price(self):
+        card = self.page.split('id="tennko-kakuninnbo"', 1)[1].split("</article>", 1)[0]
+        self.assertIn("会社管理者を含め最大20ユーザー", card)
+        self.assertIn("10,000円", card)
+
     def test_tenko_product_card_links_legal_information(self):
         for path in ("legal-notice", "terms", "privacy"):
             self.assertIn(

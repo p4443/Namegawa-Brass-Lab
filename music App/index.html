@@ -6,7 +6,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>トランペット練習メトロノーム（吸う・吐く／一定速度モード対応）</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --bg-color: #121218;
       --card-bg: #1e1e2a;
@@ -240,6 +240,7 @@
     }
 
     .tempo-grid label { font-size: 0.75rem; }
+    .tempo-target { grid-column: span 2; }
 
     .mode-card {
       display: flex;
@@ -629,7 +630,7 @@
         <label for="tempoStep">変化幅 (BPM)</label>
         <input type="number" id="tempoStep" value="4" min="1" max="20">
       </div>
-      <div style="grid-column: span 2;">
+      <div class="tempo-target">
         <label for="tempoTarget">目標限界BPM</label>
         <input type="number" id="tempoTarget" value="130" min="40" max="220">
       </div>
@@ -658,7 +659,7 @@
   </div>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   // ブレス練習パターンの全ステップ定義（計38ステップ）
   const breathPattern = [
     // 4拍 x2

@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: Namegawa-Brass-Lab-1
+    name: Namegawa-Brass-Lab
     runtime: docker
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -17,6 +17,8 @@ services:
         value: /app/data/contracts
       - key: EDITOR_PASSWORD
         sync: false
+      - key: EDITOR_TOKEN_SECRET
+        generateValue: true
       - key: GOOGLE_APPS_SCRIPT_URL
         sync: false
       - key: GOOGLE_APPS_SCRIPT_SECRET
@@ -40,4 +42,10 @@ services:
       - key: FLOW_HARMONY_PRICE_YEN
         value: "1000"
       - key: PUBLIC_SITE_URL
+        sync: false
+      - key: PORTAL_BOOKING_WEBHOOK_URL
+        value: https://portal.namegawa-brass-lab.com/api/webhooks/official-booking
+      - key: PORTAL_BOOKING_WEBHOOK_SECRET
+        sync: false
+      - key: VIDEO_CDN_BASE_URL
         sync: false

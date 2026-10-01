@@ -5,6 +5,7 @@ import io
 import json
 import os
 import re
+import secrets
 import tempfile
 import threading
 import time
@@ -14,16 +15,17 @@ from base64 import b64decode
 from binascii import Error as Base64Error
 from calendar import monthrange
 from datetime import date, datetime, timedelta
+from html import unescape
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
-from urllib.parse import urlencode, urljoin, urlparse
+from urllib.parse import parse_qsl, quote, urlencode, urljoin, urlparse
 from zipfile import ZIP_DEFLATED, BadZipFile, ZipFile, ZipInfo
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
+from flask import Flask, g, jsonify, make_response, redirect, render_template, request, send_file, send_from_directory
 from itsdangerous import BadData, BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -53,11 +55,12 @@ FLOW_HARMONY_PRODUCT_ID = "trumpet-transpose-lab"
 FLOW_HARMONY_LEGACY_PRODUCT_ID = "flow-harmony"
 FLOW_HARMONY_PRODUCT_NAME = "Trumpet Transpose Lab オフライン版"
 FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
-FLOW_HARMONY_SALES_ENABLED = True
+FLOW_HARMONY_SALES_ENABLED = False
 BEISIA_WORK_RECORDS_PRODUCT_ID = "beisia-work-records"
 BEISIA_WORK_RECORDS_PRODUCT_NAME = "自在稼働記録"
 FLEX_MEDIA_PRODUCT_ID = "flex-media"
 FLEX_MEDIA_PRODUCT_NAME = "Flex Media"
+FLEX_MEDIA_SALES_ENABLED = False
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -66,7 +69,14 @@ STORE_DOWNLOAD_WINDOW_SECONDS = 24 * 60 * 60
 STORE_RECOVERY_LIMIT = 5
 STORE_RECOVERY_WINDOW_SECONDS = 15 * 60
 EDITOR_AUTH_FAILURE_LIMIT = 20
+EDITOR_AUTH_GLOBAL_FAILURE_LIMIT = 100
 EDITOR_AUTH_FAILURE_WINDOW_SECONDS = 10 * 60
+EDITOR_SESSION_MAX_AGE_SECONDS = 60 * 60
+PUBLIC_ACTION_LIMITS = {
+    "checkout": (10, 100, 10 * 60),
+    "consultation": (3, 50, 15 * 60),
+    "reservation": (20, 100, 15 * 60),
+}
 MAX_REQUEST_BYTES = 25 * 1024 * 1024
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 INVOICE_REGISTRATION_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
@@ -81,6 +91,33 @@ YOUTUBE_PATTERN = re.compile(
 )
 MEDIA_TYPES = {"写真": "image", "動画": "video", "資料": "pdf"}
 ALLOWED_MEDIA_TYPES = {"", "image", "video", "pdf"}
+
+
+def normalize_video_cdn_base_url(value):
+    value = (value or "").strip().rstrip("/")
+    if not value:
+        return ""
+    parsed = urlparse(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.netloc
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        return ""
+    return value
+
+
+def video_asset_url(cdn_base_url, filename, version="", local_prefix=""):
+    encoded_filename = quote(filename)
+    base_url = cdn_base_url or local_prefix.rstrip("/")
+    asset_url = f"{base_url}/{encoded_filename}" if base_url else encoded_filename
+    return f"{asset_url}?v={quote(version)}" if version else asset_url
+UPDATE_PREVIEW_MAX_BYTES = 5 * 1024 * 1024
+ADOBE_DOCUMENT_HOSTS = {"acrobat.adobe.com"}
+GOOGLE_FORM_HOSTS = {"forms.gle", "docs.google.com"}
 LESSON_TYPES = {
     "体験レッスン",
     "無料体験レッスン",
@@ -805,8 +842,7 @@ def compute_public_route(origin, destination, urlopen=None):
         "provider": "OpenStreetMap / OSRM",
     }
 LESSON_APPS_SCRIPT_VERSIONS = {
-    "2026-09-05-reservation-slot-range-v39",
-    "2026-09-12-reservation-delete-day-v40",
+    "2026-09-26-booking-claim-v42",
 }
 
 
@@ -1015,6 +1051,80 @@ def normalize_media_url(raw_url):
     return media_url
 
 
+def update_media_hostname(media_url):
+    return (urlparse(str(media_url).strip()).hostname or "").lower().rstrip(".")
+
+
+class UpdateMediaRedirectHandler(urllib_request.HTTPRedirectHandler):
+    def __init__(self, allowed_hosts):
+        super().__init__()
+        self.allowed_hosts = allowed_hosts
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        redirect_url = urljoin(req.full_url, newurl)
+        if update_media_hostname(redirect_url) not in self.allowed_hosts:
+            raise urllib_error.URLError("Unexpected update media redirect")
+        return super().redirect_request(req, fp, code, msg, headers, redirect_url)
+
+
+def fetch_adobe_shared_preview(media_url, opener=None):
+    if update_media_hostname(media_url) not in ADOBE_DOCUMENT_HOSTS:
+        raise ValueError("Adobe共有資料のURLではありません。")
+    page_opener = opener or urllib_request.build_opener(
+        UpdateMediaRedirectHandler(ADOBE_DOCUMENT_HOSTS)
+    )
+    page_request = urllib_request.Request(
+        media_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with page_opener.open(page_request, timeout=10) as response:
+        page_body = response.read(2 * 1024 * 1024 + 1)
+    if len(page_body) > 2 * 1024 * 1024:
+        raise ValueError("Adobe共有ページのサイズが上限を超えています。")
+    page_text = unescape(page_body.decode("utf-8", errors="replace"))
+    candidates = re.findall(r"https://[^\"'<>\s]+", page_text)
+    preview_url = next(
+        (
+            candidate.replace("\\u0026", "&").replace("\\/", "/")
+            for candidate in candidates
+            if ";page=0;" in candidate and "type=image%2Fjpeg" in candidate
+        ),
+        "",
+    )
+    asset_host = update_media_hostname(preview_url)
+    if not preview_url or asset_host != "cdn-sharing.adobecc.com":
+        raise ValueError("Adobe共有資料のプレビューを確認できませんでした。")
+    asset_opener = urllib_request.build_opener(
+        UpdateMediaRedirectHandler({asset_host})
+    )
+    asset_request = urllib_request.Request(
+        preview_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with asset_opener.open(asset_request, timeout=15) as response:
+        preview_body = response.read(UPDATE_PREVIEW_MAX_BYTES + 1)
+    if len(preview_body) > UPDATE_PREVIEW_MAX_BYTES or not preview_body.startswith(b"\xff\xd8\xff"):
+        raise ValueError("Adobe共有資料のプレビュー画像を読み込めませんでした。")
+    return preview_body
+
+
+def resolve_google_form_embed_url(media_url, opener=None):
+    if update_media_hostname(media_url) not in GOOGLE_FORM_HOSTS:
+        raise ValueError("GoogleフォームのURLではありません。")
+    form_opener = opener or urllib_request.build_opener(
+        UpdateMediaRedirectHandler(GOOGLE_FORM_HOSTS)
+    )
+    form_request = urllib_request.Request(
+        media_url, headers={"User-Agent": "NamegawaBrassLab-MediaPreview/1.0"}
+    )
+    with form_opener.open(form_request, timeout=10) as response:
+        final_url = response.geturl()
+    parsed = urlparse(final_url)
+    if parsed.hostname != "docs.google.com" or not parsed.path.startswith("/forms/"):
+        raise ValueError("Googleフォームの埋め込み先を確認できませんでした。")
+    query = dict(parse_qsl(parsed.query, keep_blank_values=True))
+    query["embedded"] = "true"
+    return parsed._replace(query=urlencode(query)).geturl()
+
+
 def parse_update_line(line, index):
     parts = line.split("|")
     date = parts[0].strip() if parts else ""
@@ -1142,6 +1252,156 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                 )
                 """
             )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS editor_auth_failures (
+                    bucket TEXT PRIMARY KEY,
+                    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    failure_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS public_action_limits (
+                    bucket TEXT PRIMARY KEY,
+                    window_started_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    request_count INTEGER NOT NULL DEFAULT 0,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+
+
+def editor_auth_client_bucket(client_address):
+    address_digest = hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+    return f"client:{address_digest}"
+
+
+def editor_session_signing_key(editor_password):
+    token_secret = os.environ.get("EDITOR_TOKEN_SECRET", "").strip()
+    if not token_secret:
+        return editor_password
+    if len(token_secret) < 32:
+        raise RuntimeError("EDITOR_TOKEN_SECRET must contain at least 32 characters")
+    return hmac.new(
+        token_secret.encode("utf-8"),
+        editor_password.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+
+
+def increment_database_editor_auth_failure(cursor, bucket):
+    cursor.execute(
+        """
+        INSERT INTO editor_auth_failures (
+            bucket, window_started_at, failure_count, updated_at
+        )
+        VALUES (%s, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (bucket) DO UPDATE SET
+            window_started_at = CASE
+                WHEN editor_auth_failures.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN CURRENT_TIMESTAMP
+                ELSE editor_auth_failures.window_started_at
+            END,
+            failure_count = CASE
+                WHEN editor_auth_failures.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN 1
+                ELSE editor_auth_failures.failure_count + 1
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING failure_count
+        """,
+        (
+            bucket,
+            EDITOR_AUTH_FAILURE_WINDOW_SECONDS,
+            EDITOR_AUTH_FAILURE_WINDOW_SECONDS,
+        ),
+    )
+    return cursor.fetchone()[0]
+
+
+def database_editor_auth_failure_is_limited(database_url, client_address):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM editor_auth_failures
+                WHERE updated_at < CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                """,
+                (EDITOR_AUTH_FAILURE_WINDOW_SECONDS,),
+            )
+            global_count = increment_database_editor_auth_failure(cursor, "global")
+            if global_count > EDITOR_AUTH_GLOBAL_FAILURE_LIMIT:
+                return True
+            client_count = increment_database_editor_auth_failure(
+                cursor, editor_auth_client_bucket(client_address)
+            )
+            return client_count > EDITOR_AUTH_FAILURE_LIMIT
+
+
+def clear_database_editor_auth_failures(database_url, client_address):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM editor_auth_failures WHERE bucket = %s",
+                (editor_auth_client_bucket(client_address),),
+            )
+
+
+def increment_database_public_action(cursor, bucket, window_seconds):
+    cursor.execute(
+        """
+        INSERT INTO public_action_limits (
+            bucket, window_started_at, request_count, updated_at
+        )
+        VALUES (%s, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP)
+        ON CONFLICT (bucket) DO UPDATE SET
+            window_started_at = CASE
+                WHEN public_action_limits.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN CURRENT_TIMESTAMP
+                ELSE public_action_limits.window_started_at
+            END,
+            request_count = CASE
+                WHEN public_action_limits.window_started_at <=
+                    CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                THEN 1
+                ELSE public_action_limits.request_count + 1
+            END,
+            updated_at = CURRENT_TIMESTAMP
+        RETURNING request_count
+        """,
+        (bucket, window_seconds, window_seconds),
+    )
+    return cursor.fetchone()[0]
+
+
+def database_public_action_is_limited(
+    database_url, action, client_address, client_limit, global_limit, window_seconds
+):
+    address_digest = hashlib.sha256(client_address.encode("utf-8")).hexdigest()
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                DELETE FROM public_action_limits
+                WHERE updated_at < CURRENT_TIMESTAMP - (%s * INTERVAL '1 second')
+                """,
+                (max(limits[2] for limits in PUBLIC_ACTION_LIMITS.values()),),
+            )
+            global_count = increment_database_public_action(
+                cursor, f"{action}:global", window_seconds
+            )
+            if global_count > global_limit:
+                return True
+            client_count = increment_database_public_action(
+                cursor, f"{action}:client:{address_digest}", window_seconds
+            )
+            return client_count > client_limit
 
 
 def load_store_settings(path=STORE_FILE, product_id=PRODUCT_ID, default_enabled=False):
@@ -2311,7 +2571,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "upsert_slot_status_range"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range", "list"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -2335,6 +2595,89 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         error_code = result.get("error", "Apps Script rejected the reservation")
         raise LessonReservationDeliveryError(error_code)
     return result
+
+
+def portal_webhook_secret_is_valid(value):
+    expected = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    actual = str(value or "").removeprefix("Bearer ").strip()
+    return bool(expected and actual) and hmac.compare_digest(expected, actual)
+
+
+def notify_portal_booking_status(reservation_id, status, booking=None):
+    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
+    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    if not webhook_url or not webhook_secret:
+        return False
+
+    payload_values = {"reservation_id": reservation_id, "status": status}
+    if booking:
+        payload_values["booking"] = booking
+    payload = json.dumps(payload_values, ensure_ascii=False).encode("utf-8")
+    webhook_request = urllib_request.Request(
+        webhook_url,
+        data=payload,
+        headers={
+            "Authorization": f"Bearer {webhook_secret}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(webhook_request, timeout=15) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        return result.get("ok") is True
+    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+        return False
+
+
+def reconcile_portal_bookings(reservations):
+    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
+    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
+    if not webhook_url or not webhook_secret:
+        return False
+
+    bookings = [
+        {
+            "reservation_id": reservation.get("reservation_id"),
+            "status": reservation.get("status"),
+            "lesson_type": reservation.get("lesson_type"),
+            "preferred_date": reservation.get("preferred_date"),
+            "preferred_time": reservation.get("preferred_time"),
+            "duration_minutes": reservation.get("duration_minutes"),
+        }
+        for reservation in reservations
+        if isinstance(reservation, dict)
+    ]
+    webhook_request = urllib_request.Request(
+        f"{webhook_url.rstrip('/')}/reconcile",
+        data=json.dumps({"bookings": bookings}, ensure_ascii=False).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {webhook_secret}",
+            "Content-Type": "application/json; charset=utf-8",
+        },
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(webhook_request, timeout=15) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            response_status = response.status
+        print(
+            "Portal booking reconciliation: "
+            f"status={response_status} ok={result.get('ok')} "
+            f"updated={result.get('updated')} cancelled={result.get('cancelled')} "
+            f"notified={result.get('notified')}",
+            flush=True,
+        )
+        return result.get("ok") is True
+    except urllib_error.HTTPError as exc:
+        response_body = exc.read().decode("utf-8", errors="replace")[:500]
+        print(
+            f"Portal booking reconciliation failed: status={exc.code} body={response_body}",
+            flush=True,
+        )
+        return False
+    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+        return False
 
 
 def format_update(values):
@@ -2380,9 +2723,29 @@ def create_app(
     app = Flask(__name__, template_folder=".", static_folder=None)
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
     app.config["MAX_CONTENT_LENGTH"] = MAX_REQUEST_BYTES
+    render_hostname = os.environ.get("RENDER_EXTERNAL_HOSTNAME", "").strip().lower()
+    configured_site_url = os.environ.get("PUBLIC_SITE_URL", "").strip()
+    if render_hostname and configured_site_url:
+        canonical_hostname = (urlparse(configured_site_url).hostname or "").lower()
+        trusted_hosts = {"localhost", "127.0.0.1", render_hostname}
+        if canonical_hostname:
+            trusted_hosts.add(canonical_hostname)
+            if canonical_hostname.startswith("www."):
+                trusted_hosts.add(canonical_hostname.removeprefix("www."))
+            else:
+                trusted_hosts.add(f"www.{canonical_hostname}")
+        app.config["TRUSTED_HOSTS"] = sorted(trusted_hosts)
+    video_cdn_base_url = normalize_video_cdn_base_url(
+        os.environ.get("VIDEO_CDN_BASE_URL")
+    )
+    video_cdn_origin = ""
+    if video_cdn_base_url:
+        parsed_video_cdn_url = urlparse(video_cdn_base_url)
+        video_cdn_origin = f"{parsed_video_cdn_url.scheme}://{parsed_video_cdn_url.netloc}"
 
     @app.before_request
     def redirect_legacy_host():
+        g.csp_nonce = secrets.token_urlsafe(24)
         if request.method not in {"GET", "HEAD"}:
             return None
         site_url = public_site_url()
@@ -2399,9 +2762,60 @@ def create_app(
 
     @app.after_request
     def apply_security_headers(response):
+        if response.mimetype == "text/html" and not response.direct_passthrough:
+            page = response.get_data(as_text=True)
+            if "</head>" in page and 'data-media-protection="true"' not in page:
+                protection_style = (
+                    f'<style nonce="{g.csp_nonce}" data-media-protection="true">'
+                    "img,video,audio,canvas{-webkit-touch-callout:none;"
+                    "-webkit-user-drag:none}"
+                    "</style>"
+                )
+                page = page.replace("</head>", f"{protection_style}</head>", 1)
+            if "</body>" in page and "media-playback-guard.js" not in page:
+                protection_script = (
+                    f'<script nonce="{g.csp_nonce}" '
+                    'src="/media-playback-guard.js"></script>'
+                )
+                page = page.replace("</body>", f"{protection_script}</body>", 1)
+            response.set_data(page)
+        sensitive_api_response = (
+            request.path == "/api/editor"
+            or request.path == "/api/store/health"
+            or request.path == "/api/lesson-admin-health"
+            or request.path == "/api/lesson-slot-statuses/admin"
+            or request.path.startswith("/api/contracts")
+            or request.path.startswith("/api/lesson-reservations")
+        )
+        if sensitive_api_response:
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'self'; "
+            "form-action 'self'; "
+            f"script-src 'self' 'nonce-{g.csp_nonce}'; "
+            f"style-src 'self' 'nonce-{g.csp_nonce}'; "
+            "style-src-attr 'none'; "
+            "img-src 'self' data: https:; "
+            "font-src 'self' data:; "
+            f"media-src 'self' blob: data: {video_cdn_origin}; "
+            "worker-src 'self' blob:; "
+            "connect-src 'self' https://namegawa-brass-lab.com "
+            "https://*.onrender.com https://*.vercel.app; "
+            "frame-src 'self' https://www.google.com https://www.youtube.com "
+            "https://docs.google.com https://*.onrender.com https://*.vercel.app",
+        )
+        response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+        response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
+        response.headers.setdefault("X-Permitted-Cross-Domain-Policies", "none")
         response.headers.setdefault(
             "Permissions-Policy", "camera=(), microphone=(self), geolocation=()"
         )
@@ -2410,6 +2824,17 @@ def create_app(
                 "Strict-Transport-Security", "max-age=31536000; includeSubDomains"
             )
         return response
+
+    @app.context_processor
+    def inject_csp_nonce():
+        return {
+            "csp_nonce": g.csp_nonce,
+            "video_asset_url": lambda filename, version="", local_prefix="": (
+                video_asset_url(
+                    video_cdn_base_url, filename, version, local_prefix
+                )
+            ),
+        }
 
     configured_database_url = (
         os.environ.get("DATABASE_URL", "") if database_url is None else database_url
@@ -2427,6 +2852,8 @@ def create_app(
     recovery_attempt_lock = threading.Lock()
     editor_auth_failures = {}
     editor_auth_failure_lock = threading.Lock()
+    public_action_counts = {}
+    public_action_lock = threading.Lock()
     if configured_database_url:
         initialize_database(configured_database_url, updates_file)
 
@@ -2435,7 +2862,7 @@ def create_app(
         methods="POST, OPTIONS",
         headers="Content-Type",
     ):
-        response.headers["Access-Control-Allow-Origin"] = "*"
+        allow_trusted_origin(response)
         response.headers["Access-Control-Allow-Methods"] = methods
         response.headers["Access-Control-Allow-Headers"] = headers
         response.headers["Access-Control-Max-Age"] = "600"
@@ -2447,14 +2874,7 @@ def create_app(
         return with_lesson_reservation_cors(response)
 
     def with_store_cors(response, methods="GET, POST, PUT, OPTIONS"):
-        request_origin = request.headers.get("Origin", "").rstrip("/")
-        allowed_origins = {
-            public_site_origin(),
-            request.url_root.rstrip("/"),
-        }
-        if request_origin and request_origin in allowed_origins:
-            response.headers["Access-Control-Allow-Origin"] = request_origin
-            response.headers.add("Vary", "Origin")
+        allow_trusted_origin(response)
         response.headers["Access-Control-Allow-Methods"] = methods
         response.headers["Access-Control-Allow-Headers"] = (
             "Content-Type, X-Editor-Password, Stripe-Signature"
@@ -2476,6 +2896,7 @@ def create_app(
     def get_store_settings(product_id=PRODUCT_ID):
         default_enabled = (
             product_id == FLEX_MEDIA_PRODUCT_ID
+            and FLEX_MEDIA_SALES_ENABLED
             or product_id == FLOW_HARMONY_PRODUCT_ID
             and FLOW_HARMONY_SALES_ENABLED
         )
@@ -2535,6 +2956,21 @@ def create_app(
             return ""
         parsed = urlparse(site_url)
         return f"{parsed.scheme}://{parsed.netloc}"
+
+    def allow_trusted_origin(response):
+        request_origin = request.headers.get("Origin", "").rstrip("/")
+        configured_origin = public_site_origin()
+        allowed_origins = (
+            {configured_origin}
+            if configured_origin
+            else {request.url_root.rstrip("/")}
+        )
+        if request_origin and request_origin in allowed_origins:
+            response.headers["Access-Control-Allow-Origin"] = request_origin
+            response.headers.add("Vary", "Origin")
+
+    def public_base_url():
+        return public_site_url() or request.url_root.rstrip("/")
 
     def invoice_registration_number():
         value = os.environ.get(
@@ -2808,18 +3244,65 @@ def create_app(
             return count <= STORE_RECOVERY_LIMIT
 
     def editor_auth_failure_is_limited(client_address):
+        if configured_database_url:
+            return database_editor_auth_failure_is_limited(
+                configured_database_url, client_address
+            )
         now = time.monotonic()
         with editor_auth_failure_lock:
-            window_started_at, count = editor_auth_failures.get(client_address, (now, 0))
+            global_key = ("global",)
+            window_started_at, count = editor_auth_failures.get(global_key, (now, 0))
+            if now - window_started_at >= EDITOR_AUTH_FAILURE_WINDOW_SECONDS:
+                editor_auth_failures.clear()
+                window_started_at, count = now, 0
+            count += 1
+            editor_auth_failures[global_key] = (window_started_at, count)
+            if count > EDITOR_AUTH_GLOBAL_FAILURE_LIMIT:
+                return True
+
+            client_key = ("client", client_address)
+            window_started_at, count = editor_auth_failures.get(client_key, (now, 0))
             if now - window_started_at >= EDITOR_AUTH_FAILURE_WINDOW_SECONDS:
                 window_started_at, count = now, 0
             count += 1
-            editor_auth_failures[client_address] = (window_started_at, count)
+            editor_auth_failures[client_key] = (window_started_at, count)
             return count > EDITOR_AUTH_FAILURE_LIMIT
 
     def clear_editor_auth_failures(client_address):
+        if configured_database_url:
+            clear_database_editor_auth_failures(
+                configured_database_url, client_address
+            )
+            return
         with editor_auth_failure_lock:
-            editor_auth_failures.pop(client_address, None)
+            editor_auth_failures.pop(("client", client_address), None)
+
+    def public_action_is_limited(action):
+        client_limit, global_limit, window_seconds = PUBLIC_ACTION_LIMITS[action]
+        client_address = request.remote_addr or "unknown"
+        if configured_database_url:
+            return database_public_action_is_limited(
+                configured_database_url,
+                action,
+                client_address,
+                client_limit,
+                global_limit,
+                window_seconds,
+            )
+        now = time.monotonic()
+        with public_action_lock:
+            counts = []
+            for bucket, limit in (
+                ((action, "global"), global_limit),
+                ((action, "client", client_address), client_limit),
+            ):
+                window_started_at, count = public_action_counts.get(bucket, (now, 0))
+                if now - window_started_at >= window_seconds:
+                    window_started_at, count = now, 0
+                count += 1
+                public_action_counts[bucket] = (window_started_at, count)
+                counts.append(count > limit)
+            return any(counts)
 
     def product_archive_is_valid():
         path = Path(product_file)
@@ -2984,8 +3467,9 @@ def create_app(
         if configured_password and supplied_token:
             try:
                 token_payload = URLSafeTimedSerializer(
-                    configured_password, salt="editor-session"
-                ).loads(supplied_token, max_age=8 * 60 * 60)
+                    editor_session_signing_key(configured_password),
+                    salt="editor-session",
+                ).loads(supplied_token, max_age=EDITOR_SESSION_MAX_AGE_SECONDS)
                 if isinstance(token_payload, dict) and token_payload.get("scope") == "editor":
                     return None
             except (BadData, SignatureExpired):
@@ -3034,6 +3518,12 @@ def create_app(
     def back_navigation_script():
         return send_file(BASE_DIR / "back-navigation.js", mimetype="application/javascript")
 
+    @app.get("/media-playback-guard.js")
+    def media_playback_guard_script():
+        return send_file(
+            BASE_DIR / "media-playback-guard.js", mimetype="application/javascript"
+        )
+
     @app.get("/health")
     def health():
         response = jsonify({"status": "ok"})
@@ -3062,28 +3552,6 @@ def create_app(
     @app.get("/download-guide/")
     def download_guide():
         return render_template("download-guide/index.html")
-
-    @app.get("/trumpet-transpose-lab/")
-    def trumpet_transpose_lab():
-        response = make_response(render_template("trumpet-transpose-lab/index.html"))
-        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
-        return response
-
-    @app.get("/trumpet-transpose-lab/<path:asset>")
-    def trumpet_transpose_lab_asset(asset):
-        if asset not in {
-            "styles.css",
-            "app.mjs",
-            "recorder-worklet.js",
-            "transcription-core.mjs",
-        }:
-            return app.response_class(status=404)
-        return send_from_directory(BASE_DIR / "trumpet-transpose-lab", asset)
-
-    @app.get("/flow-harmony/")
-    def flow_harmony_legacy_redirect():
-        query = f"?{request.query_string.decode('utf-8')}" if request.query_string else ""
-        return redirect(f"/trumpet-transpose-lab/{query}", code=308)
 
     @app.get("/contract-generator/")
     def contract_generator():
@@ -3343,6 +3811,7 @@ def create_app(
         return jsonify({"deleted": True, "deleted_count": deleted_count, "filename": filename})
 
     @app.get("/pdf/")
+    @app.get("/pdf/index.html")
     def event_pdf_index():
         return render_template(
             "pdf/index.html",
@@ -3375,6 +3844,10 @@ def create_app(
     def privacy_policy():
         return render_template("legal/privacy-policy.html")
 
+    @app.get("/legal/copyright-policy.html")
+    def copyright_policy():
+        return render_template("legal/copyright-policy.html")
+
     @app.get("/schedule/")
     def schedule():
         response = make_response(render_template("schedule/index.html"))
@@ -3387,6 +3860,33 @@ def create_app(
         response.headers["Cache-Control"] = "no-store"
         response.headers["Access-Control-Allow-Origin"] = "*"
         return response
+
+    @app.get("/api/updates/<int:update_index>/media")
+    def update_media_preview(update_index):
+        update = next(
+            (item for item in get_updates() if item.get("index") == update_index),
+            None,
+        )
+        if not update or update.get("media_type") != "pdf":
+            return jsonify({"error": "対象の資料が見つかりません。"}), 404
+        media_url = str(update.get("media_url", "")).strip()
+        hostname = update_media_hostname(media_url)
+        try:
+            if hostname in ADOBE_DOCUMENT_HOSTS:
+                response = send_file(
+                    io.BytesIO(fetch_adobe_shared_preview(media_url)),
+                    mimetype="image/jpeg",
+                    download_name="update-document-preview.jpg",
+                    as_attachment=False,
+                    max_age=300,
+                )
+                return response
+            if hostname in GOOGLE_FORM_HOSTS:
+                return redirect(resolve_google_form_embed_url(media_url), code=302)
+        except (ValueError, OSError, urllib_error.URLError):
+            app.logger.exception("Failed to prepare update media preview")
+            return jsonify({"error": "資料を表示できませんでした。"}), 502
+        return jsonify({"error": "この資料形式は埋め込み表示に対応していません。"}), 400
 
     @app.route("/api/store/product", methods=["GET", "PUT", "OPTIONS"])
     def store_product():
@@ -3496,6 +3996,11 @@ def create_app(
             parsed_request_id = None
         if parsed_request_id is None or parsed_request_id.version != 4:
             return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+        if public_action_is_limited("checkout"):
+            return store_json(
+                {"error": "決済画面の開始回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
 
         site_url = configuration["site_url"]
         try:
@@ -3554,19 +4059,18 @@ def create_app(
                 payload.get("enabled"), bool
             ):
                 return store_json({"error": "販売状態を指定してください。"}, 400)
+            if payload["enabled"]:
+                return store_json({"error": "この商品の販売は終了しました。"}, 409)
             set_store_enabled(payload["enabled"], FLOW_HARMONY_PRODUCT_ID)
 
-        settings = get_store_settings(FLOW_HARMONY_PRODUCT_ID)
         configuration = flow_harmony_configuration()
         return store_json(
             {
                 "product_id": FLOW_HARMONY_PRODUCT_ID,
                 "name": FLOW_HARMONY_PRODUCT_NAME,
                 "price_yen": configuration["price_yen"],
-                "enabled": settings["enabled"],
-                "checkout_available": settings["enabled"]
-                and configuration["ready"]
-                and flow_harmony_price_is_ready(configuration),
+                "enabled": False,
+                "checkout_available": False,
             }
         )
 
@@ -3613,14 +4117,15 @@ def create_app(
                 payload.get("enabled"), bool
             ):
                 return store_json({"error": "販売状態を指定してください。"}, 400)
+            if payload["enabled"]:
+                return store_json({"error": "この商品の販売は終了しました。"}, 409)
             set_store_enabled(payload["enabled"], FLEX_MEDIA_PRODUCT_ID)
 
-        settings = get_store_settings(FLEX_MEDIA_PRODUCT_ID)
         return store_json(
             {
                 "product_id": FLEX_MEDIA_PRODUCT_ID,
                 "name": FLEX_MEDIA_PRODUCT_NAME,
-                "enabled": settings["enabled"],
+                "enabled": False,
             }
         )
 
@@ -3631,6 +4136,8 @@ def create_app(
     def create_flow_harmony_checkout():
         if request.method == "OPTIONS":
             return with_store_cors(app.response_class(status=204))
+        if not FLOW_HARMONY_SALES_ENABLED:
+            return store_json({"error": "この商品の販売は終了しました。"}, 503)
         if not get_store_settings(FLOW_HARMONY_PRODUCT_ID)["enabled"]:
             return store_json({"error": "現在公開を停止しています。"}, 503)
         configuration = flow_harmony_configuration()
@@ -3648,6 +4155,11 @@ def create_app(
             parsed_request_id = None
         if parsed_request_id is None or parsed_request_id.version != 4:
             return store_json({"error": "決済リクエストが正しくありません。"}, 400)
+        if public_action_is_limited("checkout"):
+            return store_json(
+                {"error": "決済画面の開始回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
         try:
             checkout = stripe_module().checkout.Session.create(
                 mode="payment",
@@ -3717,7 +4229,7 @@ def create_app(
         return store_json(
             {
                 "download_url": (
-                    f"{request.url_root.rstrip('/')}/api/store/trumpet-transpose-lab/download/{token}"
+                    f"{public_base_url()}/api/store/trumpet-transpose-lab/download/{token}"
                 ),
                 "expires_in": 86400,
             }
@@ -3808,7 +4320,7 @@ def create_app(
             return store_json({"error": "支払いの完了を確認できません。"}, 403)
 
         token = serializer.dumps({"product_id": PRODUCT_ID, "session_id": session_id})
-        download_url = f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+        download_url = f"{public_base_url()}/api/store/download/{token}"
         return store_json({"download_url": download_url, "expires_in": 86400})
 
     @app.route("/api/store/recover-download", methods=["POST", "OPTIONS"])
@@ -3869,7 +4381,7 @@ def create_app(
                         {"product_id": PRODUCT_ID, "session_id": session_id}
                     )
                     download_url = (
-                        f"{request.url_root.rstrip('/')}/api/store/download/{token}"
+                        f"{public_base_url()}/api/store/download/{token}"
                     )
                     return store_json(
                         {
@@ -3962,6 +4474,13 @@ def create_app(
         if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
             return lesson_reservation_json({"saved": True}, 201)
         reservation_payload = request.get_json(silent=True)
+        portal_line_user_id = ""
+        if portal_webhook_secret_is_valid(request.headers.get("X-Portal-Authorization")):
+            portal_line_user_id = str(
+                (reservation_payload or {}).get("portal_line_user_id", "")
+            ).strip()
+            if len(portal_line_user_id) > 255:
+                portal_line_user_id = ""
         try:
             values = validate_lesson_reservation(reservation_payload)
         except ValueError as exc:
@@ -3981,6 +4500,11 @@ def create_app(
                     "missing_settings": missing_settings,
                 },
                 503,
+            )
+        if public_action_is_limited("reservation"):
+            return lesson_reservation_json(
+                {"error": "予約の送信回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
             )
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
@@ -4034,19 +4558,68 @@ def create_app(
                 },
                 409,
             )
+        reservation_id = result.get("reservationId", "")
+        portal_notification_sent = False
+        if reservation_id:
+            portal_notification_sent = notify_portal_booking_status(
+                reservation_id,
+                result.get("status", "確認中"),
+                {
+                    "guardian_line_user_id": "" if result.get("duplicate") else portal_line_user_id,
+                    "duplicate": bool(result.get("duplicate", False)),
+                    "lesson_type": values["lesson_type"],
+                    "preferred_date": values["preferred_date"],
+                    "preferred_time": values["preferred_time"],
+                    "duration_minutes": values["duration_minutes"],
+                },
+            )
 
         return lesson_reservation_json(
             {
                 "saved": True,
-                "reservation_id": result.get("reservationId", ""),
+                "reservation_id": reservation_id,
                 "status": result.get("status", "確認中"),
                 "auto_reply_sent": bool(result.get("autoReplySent", False)),
                 "admin_notification_sent": bool(result.get("adminNotificationSent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
+                "portal_notification_sent": portal_notification_sent,
             },
             201,
         )
+
+    @app.post("/api/lesson-reservations/claim-code")
+    def send_lesson_reservation_claim_code():
+        if not portal_webhook_secret_is_valid(request.headers.get("Authorization")):
+            return jsonify({"error": "Unauthorized"}), 401
+        payload = request.get_json(silent=True) or {}
+        try:
+            reservation_id = validate_reservation_id(payload.get("reservation_id", ""))
+        except ValueError as exc:
+            return jsonify({"error": str(exc)}), 400
+        email = str(payload.get("email", "")).strip().lower()
+        code = str(payload.get("code", "")).strip()
+        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or not re.fullmatch(r"\d{6}", code):
+            return jsonify({"error": "入力内容を確認してください。"}), 400
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return jsonify({"error": "Claim delivery unavailable"}), 503
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": reservation_id, "email": email, "code": code},
+                action="send_claim_code",
+            )
+        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+            app.logger.exception("Failed to send lesson reservation claim code")
+            return jsonify({"error": "Claim delivery failed"}), 502
+        response_values = {"sent": result.get("sent") is True}
+        if response_values["sent"] and isinstance(result.get("booking"), dict):
+            response_values["booking"] = result["booking"]
+        return jsonify(response_values)
 
     @app.route("/api/consultation", methods=["POST", "OPTIONS"])
     def create_consultation():
@@ -4068,6 +4641,11 @@ def create_app(
                     "error": "現在、Webフォームを利用できません。メールまたは電話でお問い合わせください。"
                 },
                 503,
+            )
+        if public_action_is_limited("consultation"):
+            return lesson_reservation_json(
+                {"error": "送信回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
             )
         try:
             result = send_lesson_reservation(
@@ -4122,7 +4700,13 @@ def create_app(
                 {},
                 action="list",
             )
-            response = jsonify({"reservations": result.get("reservations", [])})
+            reservations = result.get("reservations", [])
+            response = jsonify(
+                {
+                    "reservations": reservations,
+                    "portal_reconciled": reconcile_portal_bookings(reservations),
+                }
+            )
             return with_lesson_reservation_cors(
                 response,
                 methods="GET, OPTIONS",
@@ -4151,6 +4735,65 @@ def create_app(
                 {"error": "現在、予約一覧を取得できません。"},
                 503,
             )
+
+    @app.route(
+        "/api/lesson-reservations/<reservation_id>/resend-admin-notification",
+        methods=["POST", "OPTIONS"],
+    )
+    def resend_lesson_reservation_admin_notification(reservation_id):
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+        try:
+            valid_reservation_id = validate_reservation_id(reservation_id)
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、管理者通知を再送できません。"}, 503
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": valid_reservation_id},
+                action="resend_admin_notification",
+            )
+        except (
+            LessonReservationDeliveryError,
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            urllib_error.URLError,
+        ):
+            app.logger.exception("Failed to resend reservation admin notification")
+            return lesson_reservation_json(
+                {"error": "管理者通知を再送できませんでした。"}, 502
+            )
+
+        return lesson_reservation_json(
+            {
+                "sent": bool(result.get("adminNotificationSent", False)),
+                "reservation_id": result.get("reservationId", valid_reservation_id),
+            },
+            200,
+        )
 
     @app.route("/api/lesson-reservations/day/<reservation_date>", methods=["DELETE", "OPTIONS"])
     def delete_lesson_reservations_for_day(reservation_date):
@@ -4269,13 +4912,19 @@ def create_app(
                 values,
                 action="cancel",
             )
+            reservation_id = result.get("reservationId", values["reservation_id"])
+            portal_notification_sent = notify_portal_booking_status(
+                reservation_id,
+                "キャンセル",
+            )
             return lesson_reservation_json(
                 {
                     "cancelled": True,
-                    "reservation_id": result.get("reservationId", values["reservation_id"]),
+                    "reservation_id": reservation_id,
                     "released_count": parse_updated_count(result),
                     "already_cancelled": bool(result.get("alreadyCancelled", False)),
                     "cancellation_email_sent": result.get("cancellationEmailSent"),
+                    "portal_notification_sent": portal_notification_sent,
                 },
                 200,
             )
@@ -4317,7 +4966,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "send_claim_code", "resend_admin_notification", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -4551,7 +5200,17 @@ def create_app(
                     {"reservation_id": valid_reservation_id},
                     action="delete",
                 )
-                response = jsonify({"deleted": True, "reservation_id": result.get("reservationId", "")})
+                portal_notification_sent = notify_portal_booking_status(
+                    valid_reservation_id,
+                    "削除",
+                )
+                response = jsonify(
+                    {
+                        "deleted": True,
+                        "reservation_id": result.get("reservationId", ""),
+                        "portal_notification_sent": portal_notification_sent,
+                    }
+                )
                 return with_lesson_reservation_cors(
                     response,
                     methods="PUT, DELETE, OPTIONS",
@@ -4559,7 +5218,14 @@ def create_app(
                 )
 
             values = validate_lesson_reservation_update(request.get_json(silent=True))
-            if {"lesson_type", "preferred_date", "preferred_time"} & values.keys():
+            booking_detail_fields = {
+                "lesson_type",
+                "preferred_date",
+                "preferred_time",
+                "duration_minutes",
+            }
+            current_reservation = None
+            if booking_detail_fields & values.keys():
                 listing = send_lesson_reservation(
                     script_url,
                     script_secret,
@@ -4619,6 +5285,22 @@ def create_app(
                     methods="PUT, DELETE, OPTIONS",
                     headers="Content-Type, X-Editor-Password",
                 )
+            portal_notification_sent = None
+            requested_status = values.get("status")
+            portal_booking = None
+            if current_reservation is not None and booking_detail_fields & values.keys():
+                updated_reservation = {**current_reservation, **values}
+                portal_booking = {
+                    field: updated_reservation[field]
+                    for field in booking_detail_fields
+                }
+            portal_status = result.get("status") or requested_status
+            if portal_status and (requested_status is not None or portal_booking is not None):
+                portal_notification_sent = notify_portal_booking_status(
+                    valid_reservation_id,
+                    portal_status,
+                    portal_booking,
+                )
             response = jsonify(
                 {
                     "saved": True,
@@ -4626,6 +5308,8 @@ def create_app(
                     "status": result.get("status", values.get("status", "")),
                     "updated_fields": result.get("updatedFields", []),
                     "confirmation_email_sent": result.get("confirmationEmailSent"),
+                    "cancellation_email_sent": result.get("cancellationEmailSent"),
+                    "portal_notification_sent": portal_notification_sent,
                 }
             )
             return with_lesson_reservation_cors(
@@ -4708,7 +5392,8 @@ def create_app(
         if request.method == "POST":
             configured_password = os.environ.get("EDITOR_PASSWORD", "")
             result["editor_token"] = URLSafeTimedSerializer(
-                configured_password, salt="editor-session"
+                editor_session_signing_key(configured_password),
+                salt="editor-session",
             ).dumps({"scope": "editor"})
         return with_lesson_reservation_cors(
             jsonify(result),
@@ -4778,13 +5463,36 @@ def create_app(
                 return jsonify({"error": "対象の情報が見つかりません。"}), 404
         return jsonify({"deleted": True})
 
-    @app.get("/<any(data,pdf,video):directory>/<path:filename>")
+    @app.get("/video/index.html")
+    def video_index_file():
+        return render_template("video/index.html")
+
+    @app.get("/data/media/<path:filename>")
+    def public_media_file(filename):
+        return send_from_directory(BASE_DIR / "data" / "media", filename)
+
+    @app.get("/<any(pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):
+        if directory == "video" and filename.lower().endswith(".mp4"):
+            if video_cdn_base_url:
+                target = video_asset_url(video_cdn_base_url, filename)
+                if request.query_string:
+                    target = f"{target}?{request.query_string.decode('ascii', 'ignore')}"
+                response = redirect(target, code=302)
+                response.headers["Cache-Control"] = "public, max-age=300"
+                return response
+            response = send_from_directory(BASE_DIR / directory, filename)
+            response.headers["Cache-Control"] = (
+                "public, max-age=31536000, immutable"
+                if request.args.get("v")
+                else "public, max-age=3600"
+            )
+            return response
         return send_from_directory(BASE_DIR / directory, filename)
 
-    @app.get("/<any(pdf,video):directory>/")
+    @app.get("/<any(video):directory>/")
     def public_index(directory):
-        return send_from_directory(BASE_DIR / directory, "index.html")
+        return render_template(f"{directory}/index.html")
 
     @app.get("/music%20App/<path:filename>")
     @app.get("/music App/<path:filename>")
@@ -4793,8 +5501,10 @@ def create_app(
 
     @app.get("/music%20App/")
     @app.get("/music App/")
+    @app.get("/music%20App/index.html")
+    @app.get("/music App/index.html")
     def music_app_index():
-        return send_from_directory(BASE_DIR / "music App", "index.html")
+        return render_template("music App/index.html")
 
     return app
 

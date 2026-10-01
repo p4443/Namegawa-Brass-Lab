@@ -7,6 +7,8 @@ __pycache__/
 logs/
 logs/.env
 .env
+.tmp/
+certs/*.pem
 data/store.json
 data/.store.json.lock
 private/products/*.zip

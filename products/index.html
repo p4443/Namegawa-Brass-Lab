@@ -5,9 +5,9 @@
   <link rel="shortcut icon" href="/favicon.ico?v=gold-addressbar-20260910">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・メディア編集・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
+  <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・運送業務・生活記録向けアプリとデジタル商品の紹介・販売ページです。">
   <title>アプリ・商品 | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --primary-color: #1a56db;
       --primary-hover: #1e40af;
@@ -102,7 +102,6 @@
     .launch-link:hover { color: #ffffff; background: var(--primary-color); }
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
-    .transpose-lab-window { height: 1500px; }
     .tenko-window { height: 680px; background: #f2f5f1; }
     .mobile-app-preview { display: none; }
 
@@ -124,6 +123,7 @@
     .store-status { min-height: 1.5em; color: var(--text-muted); font-size: 0.8rem; }
 
     .service-plans { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .service-plans-single { grid-template-columns: 1fr; }
     .service-plan { display: grid; align-content: start; gap: 10px; padding: 18px; border: 1px solid var(--border-color); border-radius: 8px; background: var(--bg-white); }
     .service-plan h3 { color: #0f172a; font-size: 1rem; }
     .service-plan p { color: var(--text-muted); font-size: 0.82rem; }
@@ -131,7 +131,7 @@
     .service-price small { color: var(--text-muted); font-size: 0.72rem; font-weight: 600; }
     .service-purchase { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; margin-top: auto; padding: 10px 14px; border-radius: 8px; color: #ffffff; background: var(--primary-color); font-size: 0.88rem; font-weight: 800; text-align: center; }
     .service-purchase:hover, .service-purchase:focus-visible { background: var(--primary-hover); }
-    .service-purchase[aria-disabled="true"], .flex-media-purchase-link[aria-disabled="true"] { pointer-events: none; opacity: 0.6; }
+    .service-purchase[aria-disabled="true"] { pointer-events: none; opacity: 0.6; }
 
     .purchase-recovery, .sales-admin { margin-top: 14px; padding-top: 16px; border-top: 1px solid var(--border-color); }
     .purchase-recovery h3, .sales-admin summary { color: var(--text-main); font-size: 0.84rem; font-weight: 800; }
@@ -141,6 +141,8 @@
     .sales-toggle { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; font-weight: 700; }
     .store-legal { display: flex; gap: 6px 14px; flex-wrap: wrap; margin-top: 14px; color: var(--text-muted); font-size: 0.74rem; }
     .store-legal a:hover { color: var(--primary-color); }
+    .store-admin-login { justify-self: center; color: var(--text-muted); font-size: 0.76rem; text-decoration: underline; }
+    .store-admin-login:hover, .store-admin-login:focus-visible { color: var(--primary-color); }
 
     .future-products { padding: 80px 0; }
     .future-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
@@ -164,7 +166,6 @@
       .upcoming-app-meta { padding: 18px 0 0; border-top: 1px solid var(--border-color); border-left: 0; text-align: left; }
       .product-heading { align-items: flex-start; flex-direction: column; }
       .app-window { height: 760px; }
-      .transpose-lab-window { height: 1800px; }
       .tenko-window { height: 680px; }
     }
 
@@ -243,9 +244,9 @@
     <section class="hero">
       <div class="container hero-grid">
         <div>
-          <p class="eyebrow">MUSIC, MEDIA &amp; TRANSPORT APPS</p>
-          <h1>音楽・メディア・運送の現場を<span class="mobile-title-break"></span>支えるアプリ。</h1>
-          <p class="hero-copy">楽器練習、音声・動画編集、配送現場の記録。異なる現場の手間を減らし、毎日の仕事と創作、練習に集中できる道具を届けます。</p>
+          <p class="eyebrow">MUSIC, WORK &amp; DAILY LIFE APPS</p>
+          <h1>音楽・仕事・暮らしを<span class="mobile-title-break"></span>支えるアプリ。</h1>
+          <p class="hero-copy">楽器練習、配送現場、日々の記録。異なる場面の手間を減らし、大切なことに集中できる道具を届けます。</p>
         </div>
         <figure class="hero-visual">
           <img src="../data/media/products-operations-hero.png" alt="トランペット練習メトロノームと自在稼働記録の操作画面">
@@ -257,7 +258,7 @@
       <div class="container">
         <div class="catalog-heading">
           <div>
-            <h2 class="section-title" id="music-products-title">音楽・メディアアプリ</h2>
+            <h2 class="section-title" id="music-products-title">音楽アプリ</h2>
             <p class="section-desc"><span class="desktop-scroll-copy">アプリは右へスクロール</span><span class="mobile-scroll-copy">アプリは下へスクロール</span>して選べます</p>
           </div>
           <div class="carousel-controls" aria-label="音楽アプリ商品のスクロール操作">
@@ -267,52 +268,6 @@
         </div>
 
         <div class="music-product-track" id="music-product-track" aria-labelledby="music-products-title" tabindex="0">
-          <article class="product-feature" id="trumpet-transpose-lab">
-          <header class="product-heading">
-            <div>
-              <span class="product-label">無料Web版</span>
-              <h2>Trumpet Transpose Lab V2</h2>
-              <p>録音したフレーズを自動採譜し、音高・音価・タイミングを編集。無料Web版では録音・採譜・移調を試せて、買い切り版ではWAV・MIDI・MusicXML保存も利用できます。</p>
-            </div>
-            <a class="launch-link" href="../trumpet-transpose-lab/?mode=free&amp;version=2" target="_blank" rel="noopener">V2 無料Web版を開く</a>
-          </header>
-
-          <iframe class="app-window transpose-lab-window" src="../trumpet-transpose-lab/?mode=free&amp;version=2" title="Trumpet Transpose Lab V2" loading="lazy" allow="microphone; autoplay"></iframe>
-
-          <div class="store-panel">
-            <div class="store-copy">
-              <h3>買い切りアプリ版（ZIP）</h3>
-              <p>追加料金なしの1回払いで、インターネット接続なしでも利用できるZIPファイルを購入できます。</p>
-              <ul class="store-benefits">
-                <li>無料Web版は録音・採譜・編集に対応（データ保存不可）</li>
-                <li>月額料金・自動更新なし。購入時点版を期限なく利用可能</li>
-                <li>購入者本人の所有端末で利用可能</li>
-                <li>決済確認後、24時間有効のリンクを発行</li>
-              </ul>
-              <a class="download-guide-link" href="../download-guide/">ダウンロード・使い方ガイドを見る →</a>
-              <nav class="store-legal" aria-label="Trumpet Transpose Lab購入に関する情報">
-                <a href="../legal/#tokusho">特定商取引法に基づく表記</a>
-                <a href="../legal/#license">利用ライセンス</a>
-                <a href="../legal/#refund">返金方針</a>
-                <a href="../legal/#contact">購入に関するお問い合わせ</a>
-              </nav>
-            </div>
-            <div class="store-actions">
-              <button class="store-button" id="flow-purchase-button" type="button" disabled>販売状況を確認中</button>
-              <a class="download-link" id="flow-download-link" href="#" hidden>オフライン版をダウンロード</a>
-              <p class="store-status" id="flow-store-status" role="status" aria-live="polite"></p>
-              <details class="sales-admin">
-                <summary>管理者用：販売設定</summary>
-                <form class="sales-controls" id="flow-sales-form" novalidate>
-                  <input id="flow-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
-                  <label class="sales-toggle"><input id="flow-sales-enabled" type="checkbox">販売ON</label>
-                  <button class="sales-save" id="flow-sales-save" type="submit">設定を保存</button>
-                </form>
-              </details>
-            </div>
-          </div>
-          </article>
-
           <article class="product-feature" id="metronome">
           <header class="product-heading">
             <div>
@@ -369,54 +324,6 @@
             </div>
           </div>
           </article>
-
-          <article class="product-feature" id="flex-media">
-          <header class="product-heading">
-            <div>
-              <span class="product-label">音声・動画編集Webアプリ</span>
-              <h2>Flex Media</h2>
-              <p>動画・音声ファイルへ「最初の5秒をカット」など、ことばで指示するだけで変換と編集をまとめて行えます。</p>
-            </div>
-            <a class="launch-link flex-media-purchase-link" href="https://kiru-media-editor.onrender.com/" target="_blank" rel="noopener">Flex Mediaを開く</a>
-          </header>
-
-          <div class="store-panel">
-            <div class="store-copy">
-              <h3>買い切りWebアプリ利用ライセンス</h3>
-              <p>1回500円の決済で、期限や回数の制限なく音声・動画の変換と編集を利用できます。</p>
-              <ul class="store-benefits">
-                <li>MP3・MP4は同じ形式のまま編集</li>
-                <li>MOV・MKV・WAV・AIFFなどは扱いやすい形式へ自動変換</li>
-                <li>1ファイル最大1GB、最長20分の処理に対応</li>
-                <li>アップロードした素材は処理後に一時領域から削除</li>
-                <li>適格請求書をオンラインで表示可能</li>
-              </ul>
-              <nav class="store-legal" aria-label="Flex Mediaの購入に関する情報">
-                <a href="https://kiru-media-editor.onrender.com/static/legal-notice.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
-                <a href="https://kiru-media-editor.onrender.com/static/terms.html" target="_blank" rel="noopener">利用規約</a>
-                <a href="https://kiru-media-editor.onrender.com/static/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
-              </nav>
-            </div>
-            <div class="store-actions">
-              <section class="service-plan" aria-label="Flex Mediaの料金">
-                <h3>音声・動画変換編集</h3>
-                <p>購入者本人が、対応する音声・動画ファイルを繰り返し処理できます。</p>
-                <div class="service-price">500円 <small>税込・買い切り</small></div>
-                <a class="service-purchase flex-media-purchase-link" href="https://kiru-media-editor.onrender.com/" target="_blank" rel="noopener">変換・編集をはじめる</a>
-              </section>
-              <p class="store-status" id="flex-media-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
-              <details class="sales-admin">
-                <summary>管理者用：販売設定</summary>
-                <form class="sales-controls" id="flex-media-sales-form" novalidate>
-                  <input id="flex-media-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
-                  <label class="sales-toggle"><input id="flex-media-sales-enabled" type="checkbox">販売ON</label>
-                  <button class="sales-save" id="flex-media-sales-save" type="submit">設定を保存</button>
-                </form>
-              </details>
-            </div>
-          </div>
-          </article>
-
         </div>
       </div>
     </section>
@@ -553,6 +460,61 @@
       </div>
     </section>
 
+    <section class="transport-catalog life-catalog" id="daily-life-products" aria-labelledby="daily-life-products-title">
+      <div class="container">
+        <h2 class="section-title" id="daily-life-products-title">生活・記録アプリ</h2>
+        <p class="section-desc">日々の出来事や支出を自分で整理し、必要な情報をまとめるためのWebアプリです</p>
+        <div class="transport-track">
+          <article class="product-feature" id="accident-claim-note">
+            <header class="product-heading">
+              <div>
+                <span class="product-label">生活支援Webアプリ</span>
+                <h2>交通事故 支出・通院メモ＆損害整理ノート</h2>
+                <p>交通事故に遭われたご本人が、支出・通院・休業の記録と参考試算を一つの画面で整理するための自己管理用アプリです。</p>
+              </div>
+              <a class="launch-link" href="https://accident-claim-app.onrender.com/" target="_blank" rel="noopener">アプリを開く</a>
+            </header>
+
+            <iframe class="app-window tenko-window" src="https://accident-claim-app.onrender.com/" title="交通事故 支出・通院メモ＆損害整理ノート" loading="lazy"></iframe>
+            <a class="mobile-app-preview" href="https://accident-claim-app.onrender.com/" target="_blank" rel="noopener" aria-label="交通事故 支出・通院メモ＆損害整理ノートを開く">
+              <img src="../data/media/accident-claim-note.png" alt="交通事故の支出・通院・休業記録をまとめる画面" width="1200" height="900" loading="lazy">
+            </a>
+
+            <div class="store-panel">
+              <div class="store-copy">
+                <h3>買い切りWebアプリ利用ライセンス</h3>
+                <p>入力内容は利用端末のブラウザー内に保存されます。購入すると帳票出力を期限なく利用でき、別端末では購入時のメールアドレスから利用権を復旧できます。</p>
+                <ul class="store-benefits">
+                  <li>事故の基本情報、物損・実費、怪我・通院、休業影響を順番に整理</li>
+                  <li>公表基準を用いた慰謝料・休業損害の参考試算</li>
+                  <li>A4帳票の印刷・PDF保存</li>
+                  <li>月額料金・自動更新なし。購入者本人が期限なく利用可能</li>
+                  <li>購入時のメールアドレスによる利用権の復旧</li>
+                </ul>
+                <nav class="store-legal" aria-label="損害整理ノートの購入に関する情報">
+                  <a href="https://accident-claim-app.onrender.com/tokushoho" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                  <a href="https://accident-claim-app.onrender.com/terms" target="_blank" rel="noopener">利用規約</a>
+                  <a href="https://accident-claim-app.onrender.com/privacy" target="_blank" rel="noopener">プライバシーポリシー</a>
+                </nav>
+              </div>
+              <div class="store-actions">
+                <div class="service-plans service-plans-single" aria-label="損害整理ノートの料金プラン">
+                  <section class="service-plan">
+                    <h3>個人利用版</h3>
+                    <p>購入者本人が帳票出力を期限なく利用</p>
+                    <div class="service-price">500円 <small>税込・買い切り</small></div>
+                    <a class="service-purchase" href="https://accident-claim-app.onrender.com/">アプリで入力・購入へ</a>
+                  </section>
+                </div>
+                <p class="store-status" role="status">販売中です。</p>
+                <a class="store-admin-login" href="https://accident-claim-app.onrender.com/admin" target="_blank" rel="noopener">管理者ログイン</a>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
     <section class="future-products" aria-labelledby="future-title">
       <div class="container">
         <h2 class="section-title" id="future-title">これからの商品</h2>
@@ -575,31 +537,10 @@
     </section>
   </main>
 
-  <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
+  <footer><a href="../legal/privacy-policy.html">プライバシーポリシー</a><a href="../legal/copyright-policy.html">著作権・侵害申告</a>© 2026 なめがわブラス・ラボ. All rights reserved.</footer>
 
   <script src="../back-navigation.js"></script>
-  <script>
-    const transposeLabWindow = document.querySelector(".transpose-lab-window");
-    const resizeTransposeLabWindow = () => {
-      const frameDocument = transposeLabWindow?.contentDocument;
-      if (!frameDocument) return;
-      transposeLabWindow.style.height = "1px";
-      const contentHeight = Math.max(
-        frameDocument.documentElement.scrollHeight,
-        frameDocument.body.scrollHeight,
-      );
-      if (contentHeight > 0) transposeLabWindow.style.height = `${contentHeight}px`;
-    };
-
-    transposeLabWindow?.addEventListener("load", () => {
-      resizeTransposeLabWindow();
-      const frameDocument = transposeLabWindow.contentDocument;
-      if (frameDocument && "ResizeObserver" in window) {
-        new ResizeObserver(resizeTransposeLabWindow).observe(frameDocument.body);
-      }
-    });
-    window.addEventListener("resize", resizeTransposeLabWindow);
-
+  <script nonce="{{ csp_nonce }}">
     document.querySelectorAll(".music-product-track").forEach((track) => {
       const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
       const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
@@ -640,13 +581,6 @@
     const appSalesPassword = document.getElementById("app-sales-password");
     const appSalesEnabled = document.getElementById("app-sales-enabled");
     const appSalesSave = document.getElementById("app-sales-save");
-    const flowPurchaseButton = document.getElementById("flow-purchase-button");
-    const flowDownloadLink = document.getElementById("flow-download-link");
-    const flowStoreStatus = document.getElementById("flow-store-status");
-    const flowSalesForm = document.getElementById("flow-sales-form");
-    const flowSalesPassword = document.getElementById("flow-sales-password");
-    const flowSalesEnabled = document.getElementById("flow-sales-enabled");
-    const flowSalesSave = document.getElementById("flow-sales-save");
     const tenkoSalesApi = "https://tennko-kakuninnbo.onrender.com/api/sales/status";
     const tenkoPurchaseLinks = document.querySelectorAll(".tenko-purchase-link");
     const tenkoStoreStatus = document.getElementById("tenko-store-status");
@@ -660,12 +594,6 @@
     const beisiaSalesPassword = document.getElementById("beisia-sales-password");
     const beisiaSalesEnabled = document.getElementById("beisia-sales-enabled");
     const beisiaSalesSave = document.getElementById("beisia-sales-save");
-    const flexMediaPurchaseLinks = document.querySelectorAll(".flex-media-purchase-link");
-    const flexMediaStoreStatus = document.getElementById("flex-media-store-status");
-    const flexMediaSalesForm = document.getElementById("flex-media-sales-form");
-    const flexMediaSalesPassword = document.getElementById("flex-media-sales-password");
-    const flexMediaSalesEnabled = document.getElementById("flex-media-sales-enabled");
-    const flexMediaSalesSave = document.getElementById("flex-media-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -715,10 +643,6 @@
       return result;
     }
 
-    async function requestFlexMediaSales(options = {}) {
-      return requestStore("flex-media/product", options);
-    }
-
     function renderTenkoSales(result) {
       const enabled = result.sales_enabled === true;
       tenkoSalesEnabled.checked = enabled;
@@ -764,30 +688,6 @@
           link.tabIndex = -1;
         });
         beisiaStoreStatus.textContent = error.message;
-      }
-    }
-
-    function renderFlexMediaSales(product) {
-      const enabled = product.enabled === true;
-      flexMediaSalesEnabled.checked = enabled;
-      flexMediaPurchaseLinks.forEach((link) => {
-        link.setAttribute("aria-disabled", String(!enabled));
-        link.tabIndex = enabled ? 0 : -1;
-      });
-      flexMediaStoreStatus.textContent = enabled
-        ? "Flex Mediaを販売中です。"
-        : "現在、Flex Mediaの販売を停止しています。";
-    }
-
-    async function loadFlexMediaSales() {
-      try {
-        renderFlexMediaSales(await requestFlexMediaSales());
-      } catch (error) {
-        flexMediaPurchaseLinks.forEach((link) => {
-          link.setAttribute("aria-disabled", "true");
-          link.tabIndex = -1;
-        });
-        flexMediaStoreStatus.textContent = error.message;
       }
     }
 
@@ -1014,74 +914,6 @@
       }
     }
 
-    function renderFlowProduct(product) {
-      flowSalesEnabled.checked = product.enabled;
-      flowPurchaseButton.disabled = !product.checkout_available;
-      flowPurchaseButton.textContent = product.enabled
-        ? (product.checkout_available
-          ? `${Number(product.price_yen).toLocaleString("ja-JP")}円でオフライン版を購入`
-          : `${Number(product.price_yen).toLocaleString("ja-JP")}円 オフライン版 販売準備中`)
-        : "オフライン版 販売停止中";
-      flowStoreStatus.textContent = product.enabled && product.checkout_available
-        ? "Web版は無料です。オフライン利用を希望する方のみ購入できます。"
-        : "無料Web版では録音・採譜・編集を利用できます。データ保存は買い切り版に対応しています。";
-    }
-
-    async function loadFlowProduct() {
-      try {
-        renderFlowProduct(await requestStore("trumpet-transpose-lab/product"));
-      } catch (error) {
-        flowPurchaseButton.textContent = "オフライン版 販売準備中";
-        flowStoreStatus.textContent = error.message;
-      }
-    }
-
-    flowPurchaseButton.addEventListener("click", async () => {
-      flowPurchaseButton.disabled = true;
-      flowStoreStatus.textContent = "安全な決済画面を準備しています…";
-      try {
-        const result = await requestStore("trumpet-transpose-lab/checkout", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ checkout_request_id: createCheckoutRequestId() }),
-        });
-        location.href = result.checkout_url;
-      } catch (error) {
-        flowStoreStatus.textContent = error.message;
-        await loadFlowProduct();
-      }
-    });
-
-    flowSalesForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const password = flowSalesPassword.value;
-      if (!password) {
-        flowStoreStatus.textContent = "編集用パスワードを入力してください。";
-        flowSalesPassword.focus();
-        return;
-      }
-      const requestedState = flowSalesEnabled.checked;
-      flowSalesEnabled.disabled = true;
-      flowSalesSave.disabled = true;
-      flowStoreStatus.textContent = "販売設定を更新しています…";
-      try {
-        const product = await requestStore("trumpet-transpose-lab/product", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json", "X-Editor-Password": password },
-          body: JSON.stringify({ enabled: requestedState }),
-        });
-        renderFlowProduct(product);
-        flowSalesPassword.value = "";
-        flowStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
-      } catch (error) {
-        flowSalesEnabled.checked = !requestedState;
-        flowStoreStatus.textContent = error.message;
-      } finally {
-        flowSalesEnabled.disabled = false;
-        flowSalesSave.disabled = false;
-      }
-    });
-
     tenkoSalesForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const password = tenkoSalesPassword.value;
@@ -1147,77 +979,9 @@
       }
     });
 
-    flexMediaSalesForm.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const password = flexMediaSalesPassword.value;
-      if (!password) {
-        flexMediaStoreStatus.textContent = "編集用パスワードを入力してください。";
-        flexMediaSalesPassword.focus();
-        return;
-      }
-      const requestedState = flexMediaSalesEnabled.checked;
-      flexMediaSalesEnabled.disabled = true;
-      flexMediaSalesSave.disabled = true;
-      flexMediaStoreStatus.textContent = "販売設定を更新しています…";
-      try {
-        const product = await requestFlexMediaSales({
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Editor-Password": password,
-          },
-          body: JSON.stringify({ enabled: requestedState }),
-        });
-        renderFlexMediaSales(product);
-        flexMediaSalesPassword.value = "";
-        flexMediaStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
-      } catch (error) {
-        flexMediaSalesEnabled.checked = !requestedState;
-        flexMediaStoreStatus.textContent = error.message;
-      } finally {
-        flexMediaSalesEnabled.disabled = false;
-        flexMediaSalesSave.disabled = false;
-      }
-    });
-
-    async function provideFlowDownload(sessionId) {
-      const result = await requestStore("trumpet-transpose-lab/download-link", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId }),
-      });
-      flowDownloadLink.href = result.download_url;
-      flowDownloadLink.hidden = false;
-      flowPurchaseButton.hidden = true;
-      flowStoreStatus.textContent = "お支払いを確認しました。リンクは24時間有効です。";
-    }
-
-    async function applyFlowPurchaseResult() {
-      const parameters = new URLSearchParams(location.search);
-      if (parameters.get("flow_purchase") === "cancelled") {
-        flowStoreStatus.textContent = "決済はキャンセルされました。Web版は無料で利用できます。";
-        return;
-      }
-      const sessionId = parameters.get("flow_session_id") || "";
-      if (parameters.get("flow_purchase") !== "success" || !sessionId.startsWith("cs_")) return;
-      flowStoreStatus.textContent = "お支払いを確認しています…";
-      for (let attempt = 1; attempt <= 5; attempt += 1) {
-        try {
-          await provideFlowDownload(sessionId);
-          history.replaceState(null, "", `${location.pathname}#trumpet-transpose-lab`);
-          return;
-        } catch (error) {
-          if (attempt === 5) flowStoreStatus.textContent = error.message;
-          else await new Promise((resolve) => setTimeout(resolve, 1500));
-        }
-      }
-    }
-
     loadStoreProduct().then(applyPurchaseResult);
-    loadFlowProduct().then(applyFlowPurchaseResult);
     loadTenkoSales();
     loadBeisiaSales();
-    loadFlexMediaSales();
   </script>
 </body>
 </html>

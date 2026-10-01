@@ -11,18 +11,23 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urljoin, urlparse
 
 from app import (
+    LESSON_RESERVATION_TIMEOUT_SECONDS,
     LessonReservationDeliveryError,
     compute_google_route,
     compute_public_route,
     create_app,
+    editor_auth_client_bucket,
     discover_instrument_model_urls,
     fetch_instrument_catalog_prices,
     fetch_instrument_price_candidates,
     load_updates,
     lesson_calendar_days,
+    notify_portal_booking_status,
+    reconcile_portal_bookings,
     normalize_media_url,
     normalize_route_query,
     normalize_slot_statuses,
+    normalize_video_cdn_base_url,
     parse_update_line,
     reservation_slot_times,
     send_lesson_reservation,
@@ -31,27 +36,90 @@ from app import (
     validate_lesson_reservation_update,
     validate_reservation_date,
     validate_update,
+    video_asset_url,
 )
 
 
 class UpdatesTest(unittest.TestCase):
-    def test_products_page_links_to_flex_media(self):
+    def test_video_cdn_url_requires_https(self):
+        self.assertEqual(
+            normalize_video_cdn_base_url("https://cdn.example.com/videos/"),
+            "https://cdn.example.com/videos",
+        )
+        self.assertEqual(normalize_video_cdn_base_url("http://cdn.example.com"), "")
+        self.assertEqual(
+            video_asset_url(
+                "https://cdn.example.com/videos", "sample video.mp4", "v1"
+            ),
+            "https://cdn.example.com/videos/sample%20video.mp4?v=v1",
+        )
+
+    def test_video_pages_use_cdn_and_legacy_urls_redirect(self):
+        with patch.dict(
+            os.environ,
+            {"VIDEO_CDN_BASE_URL": "https://cdn.example.com/videos"},
+        ):
+            client = create_app(database_url="").test_client()
+            home_response = client.get("/")
+            video_response = client.get("/video/")
+            legacy_response = client.get(
+                "/video/generations.mp4?v=20260817", follow_redirects=False
+            )
+
+        home_page = home_response.get_data(as_text=True)
+        video_page = video_response.get_data(as_text=True)
+        self.assertIn(
+            'src="https://cdn.example.com/videos/intro.mp4"', home_page
+        )
+        self.assertEqual(home_page.count("https://cdn.example.com/videos/"), 7)
+        self.assertIn(
+            'src="https://cdn.example.com/videos/generations.mp4?v=20260817"',
+            video_page,
+        )
+        self.assertIn(
+            "https://cdn.example.com/videos/community-workshop-edited.mp4?v=20260928-9",
+            video_page,
+        )
+        self.assertIn(
+            "media-src 'self' blob: data: https://cdn.example.com;",
+            home_response.headers["Content-Security-Policy"],
+        )
+        self.assertEqual(legacy_response.status_code, 302)
+        self.assertEqual(
+            legacy_response.headers["Location"],
+            "https://cdn.example.com/videos/generations.mp4?v=20260817",
+        )
+        self.assertEqual(
+            legacy_response.headers["Cache-Control"], "public, max-age=300"
+        )
+
+    def test_local_versioned_video_uses_immutable_cache(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("VIDEO_CDN_BASE_URL", None)
+            client = create_app(database_url="").test_client()
+            response = client.get(
+                "/video/intro.mp4?v=test", headers={"Range": "bytes=0-9"}
+            )
+
+        self.assertEqual(response.status_code, 206)
+        self.assertEqual(response.headers["Content-Type"], "video/mp4")
+        self.assertEqual(response.headers["Accept-Ranges"], "bytes")
+        self.assertEqual(
+            response.headers["Cache-Control"],
+            "public, max-age=31536000, immutable",
+        )
+        self.assertEqual(len(response.data), 10)
+
+    def test_products_page_does_not_link_to_flex_media(self):
         products_html = (
             Path(__file__).resolve().parents[1] / "products" / "index.html"
         ).read_text(encoding="utf-8")
 
-        self.assertIn('id="flex-media"', products_html)
-        self.assertIn("https://kiru-media-editor.onrender.com/", products_html)
-        self.assertIn("500円", products_html)
-        self.assertIn("1ファイル最大1GB", products_html)
-        self.assertIn("音楽・メディアアプリ", products_html)
-        self.assertIn('id="flex-media-sales-form"', products_html)
-        self.assertIn('id="flex-media-sales-enabled"', products_html)
-        self.assertIn('id="flex-media-store-status"', products_html)
-        self.assertIn('requestStore("flex-media/product", options)', products_html)
-        self.assertNotIn('class="app-window flex-media-window"', products_html)
+        self.assertNotIn("Flex Media", products_html)
+        self.assertNotIn("flex-media", products_html)
+        self.assertNotIn("kiru-media-editor.onrender.com", products_html)
 
-    def test_flex_media_sales_setting_can_be_updated_by_admin(self):
+    def test_flex_media_sales_cannot_be_reenabled(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
             os.environ, {"EDITOR_PASSWORD": "test-password"}
         ):
@@ -60,35 +128,116 @@ class UpdatesTest(unittest.TestCase):
 
             initial_response = client.get("/api/store/flex-media/product")
             self.assertEqual(initial_response.status_code, 200)
-            self.assertTrue(initial_response.get_json()["enabled"])
+            self.assertFalse(initial_response.get_json()["enabled"])
 
             update_response = client.put(
                 "/api/store/flex-media/product",
-                json={"enabled": False},
+                json={"enabled": True},
                 headers={"X-Editor-Password": "test-password"},
             )
-            self.assertEqual(update_response.status_code, 200)
-            self.assertFalse(update_response.get_json()["enabled"])
-
-            saved_settings = json.loads(store_file.read_text(encoding="utf-8"))
-            self.assertFalse(saved_settings["products"]["flex-media"]["enabled"])
+            self.assertEqual(update_response.status_code, 409)
+            self.assertEqual(update_response.get_json()["error"], "この商品の販売は終了しました。")
+            self.assertFalse(store_file.exists())
 
     def test_render_persists_contracts_on_mounted_disk(self):
         render_config = (Path(__file__).resolve().parents[1] / "render.yaml").read_text(encoding="utf-8")
 
         self.assertIn("mountPath: /app/data", render_config)
         self.assertIn("- key: CONTRACTS_DIR\n        value: /app/data/contracts", render_config)
+        self.assertIn(
+            "- key: EDITOR_TOKEN_SECRET\n        generateValue: true", render_config
+        )
 
     def test_responses_include_security_headers(self):
         client = create_app(database_url="").test_client()
 
-        response = client.get("/health")
+        response = client.get("/")
 
         self.assertEqual(response.headers["X-Content-Type-Options"], "nosniff")
         self.assertEqual(response.headers["X-Frame-Options"], "SAMEORIGIN")
         self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
         self.assertIn("microphone=(self)", response.headers["Permissions-Policy"])
+        content_security_policy = response.headers["Content-Security-Policy"]
+        self.assertIn("object-src 'none'", content_security_policy)
+        self.assertIn("base-uri 'self'", content_security_policy)
+        self.assertIn("frame-ancestors 'self'", content_security_policy)
+        page = response.get_data(as_text=True)
+        nonce = page.split('nonce="', 1)[1].split('"', 1)[0]
+        self.assertIn(f"script-src 'self' 'nonce-{nonce}'", content_security_policy)
+        self.assertNotIn("script-src 'self' 'unsafe-inline'", content_security_policy)
+        self.assertIn(f"style-src 'self' 'nonce-{nonce}'", content_security_policy)
+        self.assertIn("style-src-attr 'none'", content_security_policy)
+        self.assertNotIn("style-src 'self' 'unsafe-inline'", content_security_policy)
+        self.assertNotIn("'unsafe-inline'", content_security_policy)
+        self.assertIn("media-src 'self' blob: data:", content_security_policy)
+        self.assertNotIn("dropbox", content_security_policy)
+        self.assertEqual(response.headers["Cross-Origin-Opener-Policy"], "same-origin")
+        self.assertEqual(response.headers["Cross-Origin-Resource-Policy"], "same-site")
+        self.assertEqual(response.headers["X-Permitted-Cross-Domain-Policies"], "none")
         self.assertNotIn("Strict-Transport-Security", response.headers)
+
+    def test_application_form_print_action_avoids_inline_event_handler(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/lesson/application-form.html")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertNotIn('onclick="', page)
+        self.assertIn('id="printApplicationForm"', page)
+        self.assertIn('nonce="', page)
+
+    def test_inline_scripts_use_matching_nonce_on_all_feature_pages(self):
+        client = create_app(database_url="").test_client()
+        paths = (
+            "/",
+            "/contract-generator/",
+            "/download-guide/",
+            "/legal/",
+            "/legal/copyright-policy.html",
+            "/legal/privacy-policy.html",
+            "/lesson/",
+            "/lesson/application-form.html",
+            "/music%20App/",
+            "/music%20App/index.html",
+            "/pdf/",
+            "/pdf/index.html",
+            "/products/",
+            "/schedule/",
+            "/video/",
+            "/video/index.html",
+        )
+
+        for path in paths:
+            with self.subTest(path=path):
+                response = client.get(path)
+                self.assertEqual(response.status_code, 200)
+                page = response.get_data(as_text=True)
+                policy = response.headers["Content-Security-Policy"]
+                nonce = policy.split("'nonce-", 1)[1].split("'", 1)[0]
+                for script in page.split("<script")[1:]:
+                    opening_tag = script.split(">", 1)[0]
+                    if "src=" not in opening_tag:
+                        self.assertIn(f'nonce="{nonce}"', opening_tag)
+                for style in page.split("<style")[1:]:
+                    opening_tag = style.split(">", 1)[0]
+                    self.assertIn(f'nonce="{nonce}"', opening_tag)
+                self.assertNotIn(" style=", page)
+                self.assertIn('data-media-protection="true"', page)
+                self.assertIn('media-playback-guard.js', page)
+
+    def test_copyright_policy_explains_reporting_and_response_process(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/legal/copyright-policy.html")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn("著作権・知的財産権ポリシー", page)
+        self.assertIn("侵害が疑われる掲載箇所のURL", page)
+        self.assertIn("一時的な非公開", page)
+        self.assertIn("虚偽の申告", page)
+        self.assertIn("subject=著作権侵害の申告", page)
 
     def test_editor_auth_rate_limited_after_repeated_failures(self):
         with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
@@ -110,6 +259,67 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(recovered.status_code, 200)
         self.assertTrue(recovered.json["authenticated"])
+
+    def test_editor_auth_rate_limit_cannot_be_bypassed_with_forwarded_ips(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False):
+            client = create_app(database_url="").test_client()
+            last_response = None
+            for index in range(101):
+                last_response = client.post(
+                    "/api/editor",
+                    json={"editor_password": "wrong-password"},
+                    headers={"X-Forwarded-For": f"198.51.100.{index % 250}"},
+                )
+            recovered = client.post(
+                "/api/editor",
+                json={"editor_password": "editor-secret"},
+                headers={"X-Forwarded-For": "198.51.100.250"},
+            )
+
+        self.assertEqual(last_response.status_code, 429)
+        self.assertIn("認証試行", last_response.json["error"])
+        self.assertEqual(recovered.status_code, 200)
+        self.assertTrue(recovered.json["authenticated"])
+
+    def test_editor_auth_database_limit_is_shared_between_app_instances(self):
+        failure_count = 0
+
+        def shared_failure_limit(database_url, client_address):
+            nonlocal failure_count
+            self.assertEqual(database_url, "postgresql://example/database")
+            failure_count += 1
+            return failure_count > 100
+
+        with patch.dict(
+            os.environ, {"EDITOR_PASSWORD": "editor-secret"}, clear=False
+        ), patch("app.initialize_database"), patch(
+            "app.database_editor_auth_failure_is_limited",
+            side_effect=shared_failure_limit,
+        ):
+            clients = (
+                create_app(database_url="postgresql://example/database").test_client(),
+                create_app(database_url="postgresql://example/database").test_client(),
+            )
+            responses = [
+                clients[index % 2].post(
+                    "/api/editor",
+                    json={"editor_password": "wrong-password"},
+                    headers={"X-Forwarded-For": f"198.51.100.{index}"},
+                )
+                for index in range(101)
+            ]
+
+        self.assertEqual(responses[99].status_code, 401)
+        self.assertEqual(responses[100].status_code, 429)
+
+    def test_editor_auth_database_bucket_does_not_store_plain_ip_address(self):
+        client_address = "198.51.100.24"
+
+        bucket = editor_auth_client_bucket(client_address)
+
+        self.assertTrue(bucket.startswith("client:"))
+        self.assertNotIn(client_address, bucket)
+        self.assertEqual(len(bucket), len("client:") + 64)
 
     def test_legacy_onrender_host_redirects_get_to_canonical_site(self):
         with patch.dict(
@@ -161,6 +371,37 @@ class UpdatesTest(unittest.TestCase):
             response = client.get("/health")
 
         self.assertEqual(response.status_code, 200)
+
+    def test_untrusted_host_is_rejected_when_public_site_is_configured(self):
+        with patch.dict(
+            os.environ,
+            {
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
+                "RENDER_EXTERNAL_HOSTNAME": "namegawa-brass-lab.onrender.com",
+            },
+            clear=False,
+        ):
+            client = create_app(database_url="").test_client()
+
+            canonical = client.get(
+                "/health", base_url="https://namegawa-brass-lab.com"
+            )
+            render_host = client.get(
+                "/health", base_url="https://namegawa-brass-lab.onrender.com"
+            )
+            local = client.get("/health")
+            spoofed = client.get("/health", base_url="https://attacker.example")
+            forwarded_spoof = client.get(
+                "/health",
+                base_url="https://namegawa-brass-lab.com",
+                headers={"X-Forwarded-Host": "attacker.example"},
+            )
+
+        self.assertEqual(canonical.status_code, 200)
+        self.assertIn(render_host.status_code, {200, 301})
+        self.assertEqual(local.status_code, 200)
+        self.assertEqual(spoofed.status_code, 400)
+        self.assertEqual(forwarded_spoof.status_code, 400)
 
     def test_route_query_accepts_google_maps_style_text_and_rejects_null(self):
         query = "〒355-0813 埼玉県比企郡滑川町月輪 店舗名"
@@ -822,6 +1063,34 @@ class UpdatesTest(unittest.TestCase):
             "イベント企画・プロデュースのみ",
         )
 
+    def test_consultation_rate_limit_prevents_excessive_apps_script_calls(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "consultationId": "C-001"},
+        ) as send_request:
+            client = create_app(database_url="").test_client()
+            responses = [
+                client.post("/api/consultation", json=payload) for _ in range(4)
+            ]
+
+        self.assertTrue(all(response.status_code == 201 for response in responses[:3]))
+        self.assertEqual(responses[3].status_code, 429)
+        self.assertEqual(send_request.call_count, 3)
+
     def test_contract_route_distance_api_rejects_when_google_fails(self):
         payload = {"origin": "東京駅", "destination": "東京タワー"}
         with patch.dict(
@@ -913,6 +1182,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sessionStorage.getItem('updatesEditorPassword')", page)
         self.assertIn('id="contractLogout" type="button">戻る（ログアウト）</button>', page)
         self.assertNotIn('id="contractLogout" type="button" data-history-back', page)
+        self.assertIn("if (response.status === 401 && editorToken)", page)
+        self.assertIn("expireEditorSession();", page)
         self.assertIn("window.location.replace('../#web');", page)
         self.assertIn('id="contractStoragePath"', page)
         self.assertIn("const initialContractValues = JSON.parse(JSON.stringify(contractValues));", page)
@@ -1827,11 +2098,28 @@ class UpdatesTest(unittest.TestCase):
         schedule_page = client.get("/schedule/").get_data(as_text=True)
 
         self.assertIn('id="updates-editor-logout" type="button" data-history-back', index_page)
-        self.assertIn("let updatesEditorKey = '';", index_page)
+        self.assertIn("let updatesEditorToken = '';", index_page)
+        self.assertIn("'X-Editor-Token': updatesEditorToken", index_page)
+        self.assertIn("JSON.stringify({ editor_password: password })", index_page)
+        self.assertNotIn("'X-Editor-Password': updatesEditorKey", index_page)
         self.assertNotIn("updatesEditorPassword', password", index_page)
         self.assertIn("updatesEditorLogin.reset();", index_page)
         self.assertIn('id="admin-logout" type="button" data-history-back', schedule_page)
+        self.assertIn("if (response.status === 401 && adminToken)", schedule_page)
+        self.assertIn('endAdminSession("管理者セッションの有効期限が切れました。再ログインしてください。");', schedule_page)
         self.assertIn('passwordInput.value = "";', schedule_page)
+
+    def test_pdf_admin_uses_short_lived_token_instead_of_retaining_password(self):
+        page = create_app(database_url="").test_client().get(
+            "/pdf/"
+        ).get_data(as_text=True)
+
+        self.assertIn("let adminToken = '';", page)
+        self.assertIn("JSON.stringify({ editor_password: password })", page)
+        self.assertIn("'X-Editor-Token': adminToken", page)
+        self.assertIn("if (response.status === 401 && adminToken)", page)
+        self.assertNotIn("let adminPassword = '';", page)
+        self.assertNotIn("'X-Editor-Password': adminPassword", page)
 
     def test_all_back_links_use_shared_previous_page_navigation(self):
         client = create_app(database_url="").test_client()
@@ -1976,6 +2264,7 @@ class UpdatesTest(unittest.TestCase):
             contract_path = Path(temporary_directory) / "transport" / f'{saved.json["contract_id"]}.json'
             self.assertTrue(contract_path.is_file())
             self.assertEqual(listed.status_code, 200)
+            self.assertEqual(listed.headers["Cache-Control"], "no-store")
             self.assertEqual(listed.json["storage_path"], str(Path(temporary_directory).resolve()))
             self.assertEqual(len(listed.json["contracts"]), 1)
             self.assertEqual(listed.json["contracts"][0]["department"], "楽器輸送")
@@ -2074,6 +2363,30 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(client.get("/data/").status_code, 404)
 
+    def test_data_route_exposes_only_public_media(self):
+        data_directory = Path(__file__).parents[1] / "data"
+        contracts_directory = data_directory / "contracts"
+        contracts_directory.mkdir(exist_ok=True)
+        contract_path = contracts_directory / "security-test-contract.json"
+        contract_path.write_text(
+            '{"customer_name":"confidential"}\n', encoding="utf-8"
+        )
+        try:
+            client = create_app(database_url="").test_client()
+
+            contract_response = client.get(
+                "/data/contracts/security-test-contract.json"
+            )
+            internal_store_response = client.get("/data/store.json")
+            media_response = client.get("/data/media/lesson-header-photo.jpg")
+        finally:
+            contract_path.unlink(missing_ok=True)
+
+        self.assertEqual(contract_response.status_code, 404)
+        self.assertEqual(internal_store_response.status_code, 404)
+        self.assertEqual(media_response.status_code, 200)
+        self.assertEqual(media_response.mimetype, "image/jpeg")
+
     def test_admin_password_reset_quotes_special_characters(self):
         reset_script = (Path(__file__).parents[1] / "reset-admin-password.sh").read_text(
             encoding="utf-8"
@@ -2093,6 +2406,11 @@ class UpdatesTest(unittest.TestCase):
     def test_apps_script_requests_allow_slow_write_operations(self):
         dockerfile = (Path(__file__).parents[1] / "Dockerfile").read_text(encoding="utf-8")
         self.assertIn("--timeout 120", dockerfile)
+        self.assertIn("--limit-request-line 4094", dockerfile)
+        self.assertIn("--limit-request-fields 100", dockerfile)
+        self.assertIn("--limit-request-field_size 8190", dockerfile)
+        self.assertIn("--max-requests 2000", dockerfile)
+        self.assertIn("--max-requests-jitter 200", dockerfile)
 
         response = MagicMock()
         response.__enter__.return_value.read.return_value = b'{"ok": true}'
@@ -2107,6 +2425,132 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertTrue(result["ok"])
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 40)
+
+    def test_portal_booking_status_notification_is_signed(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+
+        with patch.dict(
+            os.environ,
+            {
+                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            sent = notify_portal_booking_status("R-20260930-001", "確定")
+
+        self.assertTrue(sent)
+        webhook_request = urlopen.call_args.args[0]
+        self.assertEqual(
+            webhook_request.full_url,
+            "https://portal.example/api/webhooks/official-booking",
+        )
+        self.assertEqual(webhook_request.get_header("Authorization"), "Bearer webhook-secret")
+        self.assertEqual(
+            json.loads(webhook_request.data.decode("utf-8")),
+            {"reservation_id": "R-20260930-001", "status": "確定"},
+        )
+
+    def test_portal_booking_creation_notification_includes_booking_details(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+        booking = {
+            "guardian_line_user_id": "",
+            "duplicate": False,
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-09-30",
+            "preferred_time": "09:00",
+            "duration_minutes": 30,
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            sent = notify_portal_booking_status("R-20260930-001", "確認中", booking)
+
+        self.assertTrue(sent)
+        self.assertEqual(
+            json.loads(urlopen.call_args.args[0].data.decode("utf-8")),
+            {"reservation_id": "R-20260930-001", "status": "確認中", "booking": booking},
+        )
+
+    def test_portal_booking_reconciliation_sends_only_required_fields(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = b'{"ok": true}'
+        reservation = {
+            "reservation_id": "R-20260930-001",
+            "status": "確定",
+            "name": "送信しない名前",
+            "email": "private@example.com",
+            "phone": "09000000000",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-09-30",
+            "preferred_time": "09:00",
+            "duration_minutes": 30,
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            reconciled = reconcile_portal_bookings([reservation])
+
+        self.assertTrue(reconciled)
+        webhook_request = urlopen.call_args.args[0]
+        self.assertEqual(
+            webhook_request.full_url,
+            "https://portal.example/api/webhooks/official-booking/reconcile",
+        )
+        payload = json.loads(webhook_request.data.decode("utf-8"))
+        self.assertEqual(payload["bookings"][0]["reservation_id"], "R-20260930-001")
+        self.assertNotIn("name", payload["bookings"][0])
+        self.assertNotIn("email", payload["bookings"][0])
+        self.assertNotIn("phone", payload["bookings"][0])
+
+    def test_portal_webhook_sends_cancelled_line_notification(self):
+        source = (
+            Path(__file__).parents[1]
+            / "lesson-platform"
+            / "src"
+            / "app"
+            / "api"
+            / "webhooks"
+            / "official-booking"
+            / "route.ts"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            '(status !== "確定" && status !== "キャンセル")',
+            source,
+        )
+        self.assertIn("レッスン予約がキャンセルされました。", source)
+        self.assertIn("line_notified_status: status", source)
+
+    def test_portal_reconciliation_recovers_missed_cancellation_and_line_notification(self):
+        source = (
+            Path(__file__).parents[1]
+            / "lesson-platform"
+            / "src"
+            / "app"
+            / "api"
+            / "webhooks"
+            / "official-booking"
+            / "reconcile"
+            / "route.ts"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn("officialBookings.has(reservationId)", source)
+        self.assertIn("if (active && !official) continue", source)
+        self.assertIn('status: "キャンセル"', source)
+        self.assertIn("レッスン予約がキャンセルされました。", source)
+        self.assertIn('line_notified_status: "キャンセル"', source)
 
     def test_apps_script_request_retries_temporary_html_response(self):
         html_response = MagicMock()
@@ -2131,7 +2575,7 @@ class UpdatesTest(unittest.TestCase):
         second_payload = urlopen.call_args_list[1].args[0].data
         self.assertEqual(first_payload, second_payload)
 
-    def test_apps_script_read_request_does_not_extend_page_timeout(self):
+    def test_apps_script_read_request_uses_bounded_retry(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
 
@@ -2147,7 +2591,11 @@ class UpdatesTest(unittest.TestCase):
                     action="list",
                 )
 
-        self.assertEqual(urlopen.call_count, 1)
+        self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(
+            [call.kwargs["timeout"] for call in urlopen.call_args_list],
+            [LESSON_RESERVATION_TIMEOUT_SECONDS, LESSON_RESERVATION_TIMEOUT_SECONDS],
+        )
 
     def test_apps_script_request_stops_after_second_invalid_response(self):
         html_response = MagicMock()
@@ -2294,7 +2742,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-12-reservation-delete-day-v40";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-09-26-booking-claim-v42";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -2365,6 +2813,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("name: nextName", update_action)
         self.assertIn("email: nextEmail", update_action)
         self.assertIn("confirmationEmailSent: confirmationEmailSent", update_action)
+        self.assertIn('nextStatus === "キャンセル" && currentReservation.status !== "キャンセル"', update_action)
+        self.assertIn("sendReservationCancellation({", update_action)
+        self.assertIn("cancellationEmailSent: cancellationEmailSent", update_action)
         self.assertIn("レッスン予約確定のお知らせ", confirmation_function)
         self.assertIn("確定日:", confirmation_function)
         self.assertIn("確定時間:", confirmation_function)
@@ -2378,6 +2829,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn('["受付","調整中","確認中","確定","キャンセル"]', page)
         self.assertIn("確定した予約者一覧", page)
         self.assertIn("空き状況は15分を1枠として管理", page)
+        self.assertIn("result.cancellation_email_sent === true", page)
+        self.assertIn("キャンセルメールの送信処理を受け付けました。", page)
+        self.assertIn("result.cancellation_email_sent === false", page)
+        self.assertIn("キャンセルメールを送信できませんでした。", page)
 
         for removed_status in ("受付", "調整中"):
             with self.assertRaisesRegex(ValueError, "確認中・確定・キャンセル"):
@@ -2533,6 +2988,39 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sort_date", response.json[0])
         self.assertIn("index", response.json[0])
 
+    def test_update_media_preview_serves_adobe_first_page_image(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text(
+                "2026-09-10 | 活動情報 | 資料 [pdf:https://acrobat.adobe.com/id/example]\n",
+                encoding="utf-8",
+            )
+            client = create_app(path).test_client()
+
+            jpeg = b"\xff\xd8\xffpreview"
+            with patch("app.fetch_adobe_shared_preview", return_value=jpeg):
+                response = client.get("/api/updates/0/media")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.mimetype, "image/jpeg")
+            self.assertEqual(response.data, jpeg)
+
+    def test_update_media_preview_redirects_to_embedded_google_form(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "updates.txt"
+            path.write_text(
+                "2026-09-05 | ご協力 | フォーム [pdf:https://forms.gle/example]\n",
+                encoding="utf-8",
+            )
+            client = create_app(path).test_client()
+            embed_url = "https://docs.google.com/forms/d/e/example/viewform?embedded=true"
+
+            with patch("app.resolve_google_form_embed_url", return_value=embed_url):
+                response = client.get("/api/updates/0/media")
+
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.headers["Location"], embed_url)
+
     def test_editor_api_requires_password_for_all_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
@@ -2609,6 +3097,8 @@ class UpdatesTest(unittest.TestCase):
             )
 
             self.assertEqual(login.status_code, 200)
+            self.assertEqual(login.headers["Cache-Control"], "no-store")
+            self.assertEqual(login.headers["Pragma"], "no-cache")
             self.assertTrue(login.json["editor_token"])
             listed = client.get(
                 "/api/contracts",
@@ -2617,6 +3107,65 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.json["contracts"], [])
+
+    def test_editor_token_expires_after_one_hour(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            client = create_app(database_url="").test_client()
+            with patch("itsdangerous.timed.time.time", return_value=1_700_000_000):
+                login = client.post(
+                    "/api/editor",
+                    json={"editor_password": "correct-password"},
+                )
+            token = login.json["editor_token"]
+
+            with patch(
+                "itsdangerous.timed.time.time", return_value=1_700_003_540
+            ):
+                still_valid = client.get(
+                    "/api/editor", headers={"X-Editor-Token": token}
+                )
+            with patch(
+                "itsdangerous.timed.time.time", return_value=1_700_003_660
+            ):
+                expired = client.get(
+                    "/api/editor", headers={"X-Editor-Token": token}
+                )
+
+        self.assertEqual(still_valid.status_code, 200)
+        self.assertEqual(expired.status_code, 401)
+        self.assertIn("有効期限", expired.json["error"])
+
+    def test_editor_token_uses_separate_secret_and_password_rotation_invalidates_it(self):
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "EDITOR_TOKEN_SECRET": "t" * 48,
+            },
+        ):
+            client = create_app(database_url="").test_client()
+            login = client.post(
+                "/api/editor", json={"editor_password": "correct-password"}
+            )
+            token = login.json["editor_token"]
+            os.environ["EDITOR_PASSWORD"] = "rotated-password"
+            old_token = client.get(
+                "/api/editor", headers={"X-Editor-Token": token}
+            )
+
+        self.assertEqual(login.status_code, 200)
+        self.assertEqual(old_token.status_code, 401)
+
+    def test_editor_authentication_failure_is_not_cached(self):
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = create_app(database_url="").test_client().post(
+                "/api/editor",
+                json={"editor_password": "wrong-password"},
+            )
+
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
+        self.assertEqual(response.headers["Pragma"], "no-cache")
 
     def test_update_editor_requires_iso_calendar_date(self):
         valid_payload = {
@@ -2714,23 +3263,60 @@ class UpdatesTest(unittest.TestCase):
     def test_lesson_reservation_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-reservations")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-reservations",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, POST, OPTIONS")
         self.assertEqual(
             response.headers["Access-Control-Allow-Headers"],
             "Content-Type, X-Editor-Password",
         )
 
+    def test_lesson_reservation_cors_rejects_untrusted_origin(self):
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            client = create_app().test_client()
+            response = client.options(
+                "/api/lesson-reservations",
+                headers={"Origin": "https://attacker.example"},
+            )
+
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn("Access-Control-Allow-Origin", response.headers)
+
     def test_lesson_slot_statuses_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-slot-statuses")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-slot-statuses",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.headers["Access-Control-Allow-Methods"], "GET, OPTIONS")
 
     def test_products_page_only_shows_store_admin_controls(self):
@@ -2804,7 +3390,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="admin-login-form"', page)
         self.assertIn('id="admin-logout"', page)
         self.assertIn('adminLogout.addEventListener("click"', page)
-        self.assertIn('adminStatus.textContent = "ログアウトしました。"', page)
+        self.assertIn('endAdminSession("ログアウトしました。");', page)
         self.assertIn("reservationList.replaceChildren()", page)
         self.assertIn("api/lesson-slot-statuses", page)
         self.assertIn("api/lesson-reservations", page)
@@ -2818,7 +3404,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("const loginForm = event.currentTarget", page)
         self.assertIn("loginForm.hidden = true", page)
         self.assertNotIn("event.currentTarget.hidden = true", page)
-        self.assertIn("ログイン済みです。予約一覧の通信に失敗しました", page)
+        self.assertIn("if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました", page)
         self.assertIn('id="reservation-retry"', page)
         self.assertIn('id="reservation-save-all"', page)
         self.assertIn('id="pending-reservation-archive"', page)
@@ -2863,7 +3449,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('available ? `空き ${available}` : "満席"', page)
         self.assertIn('` / 予約済 ${confirmed}件`', page)
         self.assertIn("result.confirmed_counts || {}", page)
-        self.assertIn('date > lastDate ? "受付準備中" : "休み"', page)
+        self.assertIn('blocked.length === 1 && blocked[0] === "お休み"', page)
+        self.assertIn('date > lastDate || !hasCalendarData ? "受付準備中"', page)
+        self.assertIn('isClosedDay(value) ? "休み" : "満席"', page)
+        self.assertIn('isClosedDay(value) ? "この日はお休みです" : "予約可能な時間はありません"', page)
         self.assertIn('"中学生": 45', page)
         self.assertIn("occupiedTimes(time, durationMinutes)", page)
         self.assertIn("controller.abort(), timeoutMs", page)
@@ -2878,7 +3467,6 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('reservation.status !== "キャンセル"', page)
         self.assertIn("setInterval(() =>", page)
         self.assertIn("}, 30000);", page)
-        self.assertIn('date > lastDate ? "受付準備中" : "休み"', page)
         self.assertIn("空き状況を確認しています。表示後に予約時間を選択できます。", page)
         self.assertNotIn("timesByDay", page)
         self.assertNotIn("makeRange", page)
@@ -2921,10 +3509,7 @@ class UpdatesTest(unittest.TestCase):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
-        for version in (
-            "2026-09-05-reservation-slot-range-v39",
-            "2026-09-12-reservation-delete-day-v40",
-        ):
+        for version in ("2026-09-26-booking-claim-v42",):
             with self.subTest(version=version), patch.dict(
                 os.environ,
                 {
@@ -2936,7 +3521,7 @@ class UpdatesTest(unittest.TestCase):
                 send_reservation.return_value = {
                     "ok": True,
                     "version": version,
-                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "upsert_slot_status_range"],
+                    "capabilities": ["consultation", "generate_transport_sheet", "list", "update", "delete", "cancel", "send_claim_code", "resend_admin_notification", "upsert_slot_status_range"],
                 }
                 response = client.get("/api/lesson-admin-health", headers=headers)
 
@@ -3039,7 +3624,9 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation:
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.reconcile_portal_bookings", return_value=True
+        ) as reconcile:
             send_reservation.return_value = {
                 "ok": True,
                 "reservations": [
@@ -3059,9 +3646,27 @@ class UpdatesTest(unittest.TestCase):
             response = client.get("/api/lesson-reservations", headers=headers)
 
         self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(len(response.json["reservations"]), 1)
         self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
+        self.assertTrue(response.json["portal_reconciled"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
+        reconcile.assert_called_once_with(send_reservation.return_value["reservations"])
+
+    def test_lesson_reservation_list_retries_empty_apps_script_response(self):
+        response = MagicMock()
+        response.__enter__.return_value.read.side_effect = [b"", b'{"ok": true, "reservations": []}']
+
+        with patch("app.urllib_request.urlopen", return_value=response) as urlopen:
+            result = send_lesson_reservation(
+                "https://script.google.com/example",
+                "test-secret",
+                {},
+                action="list",
+            )
+
+        self.assertEqual(result["reservations"], [])
+        self.assertEqual(urlopen.call_count, 2)
 
     def test_lesson_reservation_daily_deletion_requires_editor_password(self):
         client = create_app().test_client()
@@ -3248,7 +3853,9 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation:
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260820-001",
@@ -3264,8 +3871,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["released_count"], 4)
         self.assertFalse(response.json["already_cancelled"])
         self.assertTrue(response.json["cancellation_email_sent"])
+        self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "cancel")
         self.assertEqual(send_reservation.call_args.args[2]["email"], "user@example.com")
+        notify_portal.assert_called_once_with("R-20260820-001", "キャンセル")
 
     def test_user_cancellation_rejects_mismatched_email(self):
         client = create_app().test_client()
@@ -3321,18 +3930,89 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertIn("findReservationRowById(sheet, notificationReservationId)", resend_action)
         self.assertIn('notificationReservation.status === "キャンセル"', resend_action)
-        self.assertIn("sendReservationAdminNotification({", resend_action)
+        self.assertIn("sendAndRecordReservationAdminNotification(sheet, notificationRow, {", resend_action)
         self.assertIn('"ADMIN_NOTIFICATION_FAILED: " + lastAdminNotificationError', resend_action)
         self.assertNotIn("setValue(", resend_action)
         self.assertIn('"resend_admin_notification"', script)
 
+        self.assertIn('"管理者通知"', script)
+        self.assertIn('"再送待ち"', script)
+        self.assertIn('"要手動再送"', script)
+        self.assertIn("function retryPendingAdminNotifications()", script)
+        self.assertIn("MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5", script)
+        self.assertIn('admin_notification_status: String(row[11]', script)
+
+    def test_admin_can_resend_reservation_notification(self):
+        client = create_app().test_client()
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260924-001",
+                "adminNotificationSent": True,
+            }
+            response = client.post(
+                "/api/lesson-reservations/R-20260924-001/resend-admin-notification",
+                headers={"X-Editor-Password": "correct-password"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["sent"])
+        self.assertEqual(response.json["reservation_id"], "R-20260924-001")
+        send_reservation.assert_called_once_with(
+            "https://script.google.com/example",
+            "test-secret",
+            {"reservation_id": "R-20260924-001"},
+            action="resend_admin_notification",
+        )
+
+    def test_resend_reservation_notification_requires_editor_authentication(self):
+        client = create_app().test_client()
+
+        with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+            response = client.post(
+                "/api/lesson-reservations/R-20260924-001/resend-admin-notification"
+            )
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_schedule_admin_can_resend_reservation_notification(self):
+        page = (Path(__file__).parents[1] / "schedule" / "index.html").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("管理者メールを再送", page)
+        self.assertIn("resendAdminNotification(reservation.reservation_id", page)
+        self.assertIn(
+            "`/api/lesson-reservations/${reservationId}/resend-admin-notification`",
+            page,
+        )
+
     def test_lesson_reservation_manage_options_supports_cors_preflight(self):
         client = create_app().test_client()
 
-        response = client.options("/api/lesson-reservations/R-20260810-001")
+        with patch.dict(
+            os.environ,
+            {"PUBLIC_SITE_URL": "https://namegawa-brass-lab.com"},
+            clear=False,
+        ):
+            response = client.options(
+                "/api/lesson-reservations/R-20260810-001",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 204)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(
             response.headers["Access-Control-Allow-Methods"], "PUT, DELETE, OPTIONS"
         )
@@ -3358,6 +4038,7 @@ class UpdatesTest(unittest.TestCase):
             {
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
@@ -3367,10 +4048,17 @@ class UpdatesTest(unittest.TestCase):
                 "autoReplySent": True,
                 "adminNotificationSent": True,
             }
-            response = client.post("/api/lesson-reservations", json=payload)
+            response = client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 201)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(response.json["reservation_id"], "R-20260820-001")
         self.assertEqual(response.json["status"], "確認中")
         self.assertEqual(response.json["duration_minutes"], 30)
@@ -3578,6 +4266,122 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(response.json["duplicate"])
         self.assertFalse(response.json["auto_reply_sent"])
 
+    def test_lesson_reservation_only_accepts_signed_portal_line_id(self):
+        client = create_app().test_client()
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "",
+            "portal_line_user_id": "line-user-1",
+        }
+        reservation_result = {
+            "ok": True,
+            "reservationId": "R-20260820-001",
+            "status": "確認中",
+        }
+
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value=reservation_result), patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            client.post("/api/lesson-reservations", json=payload)
+            unsigned_booking = notify_portal.call_args.args[2]
+            client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
+            )
+            signed_booking = notify_portal.call_args.args[2]
+            reservation_result["duplicate"] = True
+            client.post(
+                "/api/lesson-reservations",
+                json=payload,
+                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
+            )
+            duplicate_booking = notify_portal.call_args.args[2]
+
+        self.assertEqual(unsigned_booking["guardian_line_user_id"], "")
+        self.assertEqual(signed_booking["guardian_line_user_id"], "line-user-1")
+        self.assertEqual(duplicate_booking["guardian_line_user_id"], "")
+
+    def test_lesson_reservation_claim_code_requires_portal_secret(self):
+        client = create_app().test_client()
+        payload = {
+            "reservation_id": "R-20260820-001",
+            "email": "taro@example.com",
+            "code": "123456",
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={
+            "ok": True,
+            "sent": True,
+            "booking": {
+                "lesson_type": "体験レッスン",
+                "preferred_date": "2026-08-20",
+                "preferred_time": "09:00",
+                "duration_minutes": 30,
+                "status": "予約済み",
+            },
+        }) as send_reservation:
+            unauthorized = client.post("/api/lesson-reservations/claim-code", json=payload)
+            authorized = client.post(
+                "/api/lesson-reservations/claim-code",
+                json=payload,
+                headers={"Authorization": "Bearer webhook-secret"},
+            )
+
+        self.assertEqual(unauthorized.status_code, 401)
+        self.assertEqual(authorized.status_code, 200)
+        self.assertTrue(authorized.json["sent"])
+        self.assertEqual(authorized.json["booking"]["lesson_type"], "体験レッスン")
+        self.assertEqual(send_reservation.call_args.kwargs["action"], "send_claim_code")
+
+    def test_lesson_reservation_rate_limit_prevents_excessive_apps_script_calls(self):
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "初心者です。",
+        }
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "reservationId": "R-001"},
+        ) as send_reservation:
+            client = create_app(database_url="").test_client()
+            responses = [
+                client.post("/api/lesson-reservations", json=payload)
+                for _ in range(21)
+            ]
+
+        self.assertTrue(all(response.status_code == 201 for response in responses[:20]))
+        self.assertEqual(responses[20].status_code, 429)
+        self.assertEqual(send_reservation.call_count, 20)
+
     def test_lesson_reservation_conflict_is_reported(self):
         client = create_app().test_client()
         payload = {
@@ -3670,6 +4474,7 @@ class UpdatesTest(unittest.TestCase):
             {
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "PUBLIC_SITE_URL": "https://namegawa-brass-lab.com",
             },
         ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
@@ -3677,10 +4482,16 @@ class UpdatesTest(unittest.TestCase):
                 "slots": [{"date": "2026-08-20", "time": "09:00", "status": "予約済"}],
                 "confirmedCounts": {"2026-08-20": 1},
             }
-            response = client.get("/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20")
+            response = client.get(
+                "/api/lesson-slot-statuses?from=2026-08-20&to=2026-08-20",
+                headers={"Origin": "https://namegawa-brass-lab.com"},
+            )
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.headers["Access-Control-Allow-Origin"], "*")
+        self.assertEqual(
+            response.headers["Access-Control-Allow-Origin"],
+            "https://namegawa-brass-lab.com",
+        )
         self.assertEqual(len(response.json["slots"]), 1)
         self.assertEqual(response.json["slots"][0]["status"], "予約済")
         self.assertEqual(response.json["confirmed_counts"], {"2026-08-20": 1})
@@ -3923,7 +4734,9 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation:
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status"
+        ) as notify_portal:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260810-001",
@@ -3931,6 +4744,7 @@ class UpdatesTest(unittest.TestCase):
                 "updatedFields": ["status"],
                 "confirmationEmailSent": True,
             }
+            notify_portal.return_value = True
             response = client.put(
                 "/api/lesson-reservations/R-20260810-001",
                 json={"status": "確定"},
@@ -3939,7 +4753,118 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["confirmation_email_sent"])
+        self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "update")
+        notify_portal.assert_called_once_with("R-20260810-001", "確定", None)
+
+    def test_lesson_reservation_admin_cancel_notifies_portal(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            send_reservation.return_value = {
+                "ok": True,
+                "reservationId": "R-20260810-001",
+                "status": "キャンセル",
+                "updatedFields": ["status"],
+                "cancellationEmailSent": True,
+            }
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"status": "キャンセル"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["cancellation_email_sent"])
+        self.assertTrue(response.json["portal_notification_sent"])
+        notify_portal.assert_called_once_with("R-20260810-001", "キャンセル", None)
+
+    def test_lesson_reservation_admin_delete_notifies_portal(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "reservationId": "R-20260810-001"},
+        ), patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            response = client.delete(
+                "/api/lesson-reservations/R-20260810-001",
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["deleted"])
+        self.assertTrue(response.json["portal_notification_sent"])
+        notify_portal.assert_called_once_with("R-20260810-001", "削除")
+
+    def test_lesson_reservation_detail_update_notifies_portal_with_merged_booking(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        current = {
+            "reservation_id": "R-20260810-001",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-10-01",
+            "preferred_time": "09:00",
+            "duration_minutes": 30,
+            "status": "確定",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation, patch(
+            "app.notify_portal_booking_status", return_value=True
+        ) as notify_portal:
+            send_reservation.side_effect = [
+                {"ok": True, "reservations": [current]},
+                {
+                    "ok": True,
+                    "reservationId": "R-20260810-001",
+                    "status": "確定",
+                    "updatedFields": ["preferred_date"],
+                },
+            ]
+            response = client.put(
+                "/api/lesson-reservations/R-20260810-001",
+                json={"preferred_date": "2026-10-08"},
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["portal_notification_sent"])
+        notify_portal.assert_called_once_with(
+            "R-20260810-001",
+            "確定",
+            {
+                "lesson_type": "体験レッスン",
+                "preferred_date": "2026-10-08",
+                "preferred_time": "09:00",
+                "duration_minutes": 30,
+            },
+        )
 
     def test_lesson_reservation_manage_reports_slot_conflict(self):
         client = create_app().test_client()
@@ -4439,7 +5364,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("position: sticky", header_css)
         self.assertIn('class="nav-menu" id="navMenu"', page)
         self.assertIn('class="hamburger" id="hamburgerBtn"', page)
+        self.assertIn('aria-expanded="false" aria-controls="navMenu"', page)
         self.assertIn("navMenu.classList.toggle('active')", page)
+        self.assertIn("hamburgerBtn.setAttribute('aria-expanded', String(isOpen))", page)
+        self.assertIn("isOpen ? 'メニューを閉じる' : 'メニューを開く'", page)
         header_nav = page.split('<ul class="nav-menu" id="navMenu">', 1)[1].split("</ul>", 1)[0]
         footer_nav = page.split('<div class="footer-links">', 1)[1].split("</div>", 1)[0]
         for navigation in (header_nav, footer_nav):
@@ -4490,6 +5418,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         self.assertIn('src="video/intro.mp4"', page)
+        self.assertIn('data-background-video', page)
+        self.assertIn('src="media-playback-guard.js"', page)
         self.assertIn('src="data/media/profile-photo.jpg"', page)
         self.assertIn('alt="トランペットを持つ佐々木久和"', page)
         hero_label_css = page.split(".hero-visual-label {", 1)[1].split("}", 1)[0]
@@ -4497,7 +5427,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("border-left:", hero_label_css)
         self.assertIn("埼玉県比企郡滑川町月の輪5丁目1-3", page)
 
-    def test_index_renders_update_media_as_reliable_external_links(self):
+    def test_index_renders_update_media_previews_inside_update_cards(self):
         client = create_app().test_client()
 
         response = client.get("/")
@@ -4508,10 +5438,34 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("{% for update in updates %}", page)
         self.assertIn("function createUpdateCard(update)", page)
         self.assertIn("const updatesApiCandidates", page)
-        self.assertIn("update-image-link", page)
-        self.assertIn("写真を見る", page)
-        self.assertIn("update-video-link", page)
-        self.assertIn("YouTubeで見る", page)
+        self.assertIn("document.createElement('img')", page)
+        self.assertIn("document.createElement('iframe')", page)
+        self.assertIn("function embeddedDocumentUrl(update)", page)
+        self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
+        self.assertIn("function isAdobeDocumentUrl(mediaUrl)", page)
+        self.assertIn("の添付資料1ページ目", page)
+        self.assertNotIn("preview.loading = 'lazy'", page)
+        self.assertNotIn("logo.loading = 'lazy'", page)
+        self.assertIn("function isGoogleFormUrl(mediaUrl)", page)
+        self.assertIn("update-google-form-preview", page)
+        self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?iframe\.update-google-form-preview\s*\{[^}]*height: 320px;")
+        self.assertIn("function externalDocumentPreview(mediaUrl, label = '外部資料')", page)
+        self.assertIn("update-document-preview", page)
+        self.assertIn("type.textContent = label", page)
+        self.assertIn("update-media-preview", page)
+        self.assertIn("update-pdf-preview", page)
+        self.assertIn("update-media-open", page)
+        self.assertIn("openLink.textContent = 'PDFを開く'", page)
+        self.assertIn("openLink.target = '_blank'", page)
+        self.assertIn("update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url)", page)
+        self.assertIn("externalDocumentPreview(update.media_url, 'PDF資料')", page)
+        self.assertIn("update.youtube_embed_url", page)
+        self.assertIn("/assets/branding/site-logo.png", page)
+        self.assertIn("update-media-logo", page)
+        self.assertNotIn("placeholder.textContent = 'NAMEGAWA BRASS LAB'", page)
+        self.assertNotIn("写真を見る", page)
+        self.assertNotIn("update-image-link", page)
+        self.assertNotIn("update-video-link", page)
         self.assertNotRegex(page, r'<img[^>]+src="data/media/updates/')
         self.assertNotIn('<iframe src="https://www.youtube.com/embed/', page)
         self.assertIn("content.textContent = card.dataset.updateContent", page)
@@ -4521,6 +5475,73 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="youtube-channel-title">公式YouTubeチャンネル', page)
         self.assertIn('href="https://youtube.com/@kazoo-ci8mf?si=NGFhv8QfwX7oMrYr"', page)
         self.assertIn('rel="noopener noreferrer"', page)
+        self.assertIn('id="concert-archive-title">トランペット音楽の魅力｜過去公演アーカイブ', page)
+        self.assertIn("これまでの公演から、アンサンブル演奏をお届けします。", page)
+        self.assertNotIn("これまでの公演から、選りすぐりの演奏をお届けします。", page)
+        self.assertIn("第1回公演", page)
+        self.assertIn("モーツァルト作曲", page)
+        self.assertIn("トルコ行進曲", page)
+        self.assertIn("ザウラー作曲", page)
+        self.assertIn("クレズマー・ファンタジー", page)
+        self.assertNotIn("演奏動画を準備しています", page)
+        self.assertIn("第2回公演", page)
+        self.assertIn("ロッシーニ作曲", page)
+        self.assertIn("セビリアの理髪師", page)
+        self.assertIn("ガーシュイン作曲", page)
+        self.assertIn("誰かが私を見つめてる", page)
+        self.assertIn("第3回公演", page)
+        self.assertIn("モーレン作曲", page)
+        self.assertIn("セビリアの太陽", page)
+        self.assertIn("ヘンデル作曲", page)
+        self.assertIn("アダージョとアレグロ", page)
+        self.assertIn('id="archive-survey-title">第4回公演アンケート', page)
+        self.assertIn(
+            'href="https://forms.gle/gaH8peRpiKPLaRkf6"', page
+        )
+        self.assertIn(
+            'class="archive-survey-link" href="https://forms.gle/gaH8peRpiKPLaRkf6" target="_blank" rel="noopener noreferrer"',
+            page,
+        )
+        self.assertIn("アンケートに回答する", page)
+        self.assertEqual(page.count('class="archive-track"'), 6)
+        self.assertEqual(page.count('preload="none"'), 6)
+        self.assertEqual(page.count('poster="video/concert-'), 6)
+        self.assertEqual(page.count('controlsList="nodownload noremoteplayback"'), 6)
+        self.assertEqual(page.count("disablePictureInPicture"), 6)
+        self.assertIn('addEventListener("contextmenu"', page)
+        self.assertIn('src="media-playback-guard.js"', page)
+        self.assertIn('src="video/concert-1-turkish-march.mp4?v=20260922-3"', page)
+        self.assertIn('src="video/concert-1-klezmer-fantasy.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-2-barber.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-2-watching.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-3-sun.mp4?v=20260922"', page)
+        self.assertIn('src="video/concert-3-handel.mp4?v=20260922"', page)
+        self.assertNotIn("dropbox.com", page)
+        video_dir = Path(__file__).resolve().parents[1] / "video"
+        for filename in (
+            "concert-1-turkish-march.mp4",
+            "concert-1-klezmer-fantasy.mp4",
+            "concert-2-barber.mp4",
+            "concert-2-watching.mp4",
+            "concert-3-sun.mp4",
+            "concert-3-handel.mp4",
+        ):
+            with self.subTest(filename=filename):
+                video_path = video_dir / filename
+                self.assertTrue(video_path.is_file())
+                self.assertLess(video_path.stat().st_size, 50 * 1024 * 1024)
+        for filename in (
+            "concert-1-turkish-march-poster.jpg",
+            "concert-1-klezmer-fantasy-poster.jpg",
+            "concert-2-barber-poster.jpg",
+            "concert-2-watching-poster.jpg",
+            "concert-3-sun-poster.jpg",
+            "concert-3-handel-poster.jpg",
+        ):
+            with self.subTest(filename=filename):
+                poster_path = video_dir / filename
+                self.assertTrue(poster_path.is_file())
+                self.assertLess(poster_path.stat().st_size, 100 * 1024)
 
     def test_index_provides_compact_monthly_updates_window_and_editor(self):
         client = create_app().test_client()
@@ -4547,7 +5568,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("scroll-margin-top: 94px", page)
         self.assertIn("grid-template-columns: minmax(240px, 36%) minmax(0, 1fr)", page)
         self.assertRegex(page, r"\.update-media\s*\{[^}]*min-height: 140px;")
+        self.assertRegex(page, r"\.update-media-preview\s*\{[^}]*height: 140px;")
         self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?\.update-media\s*\{[^}]*min-height: 104px;")
+        self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?\.update-media-preview\s*\{[^}]*height: 160px;")
         self.assertNotRegex(page, r"\.updates-section\s*\{\s*display: none;")
         self.assertIn('class="updates-nav-item"', page)
         self.assertIn('id="updates-admin-toggle"', page)
@@ -4605,22 +5628,46 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("2026年5月10日（日）", video_page)
         self.assertIn("滑川町コミュニティセンターにて", video_page)
         self.assertIn('src="generations.mp4?v=20260817"', video_page)
-        self.assertIn('community-workshop.mp4?v=20260916-2', video_page)
+        self.assertIn('community-workshop-edited.mp4?v=20260928-9', video_page)
         for video_number in (1, 2, 3):
             numbered_video_page = client.get(
                 f"/video/?v=20260817-{video_number}"
             ).get_data(as_text=True)
             self.assertIn('controlsList="nodownload"', numbered_video_page)
         self.assertIn("月の輪小学校 夏休み音楽教室", video_page)
-        self.assertIn("滑川町立月の輪小学校にて", video_page)
+        self.assertIn("滑川町立月の輪小学校（多目的室）にて", video_page)
         self.assertIn('class="play-button"', video_page)
         self.assertIn("video.currentTime = 0", video_page)
         self.assertIn("video.muted = false", video_page)
         self.assertIn("video.volume = 1", video_page)
         self.assertNotIn("playButton.hidden = true", video_page)
         self.assertIn("まるっと！2026年5月18日号", video_page)
+        self.assertIn("（まるっと！8/24号　特集コーナー）", video_page)
+        self.assertNotIn("特集コーナーより抜粋", video_page)
         self.assertIn("【制作：東松山ケーブルテレビ】", video_page)
+        self.assertIn("【抜粋編集：なめがわブラス・ラボ】", video_page)
         self.assertRegex(video_page, r"\.credit-telop strong\s*\{[^}]*display: block;")
+        self.assertRegex(video_page, r"\.credit-editor\s*\{[^}]*font-size: 0\.68em;")
+        self.assertIn('src="../media-playback-guard.js"', video_page)
+
+    def test_media_playback_guard_is_served_and_coordinates_tabs(self):
+        client = create_app(database_url="").test_client()
+
+        response = client.get("/media-playback-guard.js")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/javascript")
+        script = response.get_data(as_text=True)
+        self.assertIn('video:not([data-background-video])', script)
+        self.assertIn('new BroadcastChannel(channelName)', script)
+        self.assertIn("window.addEventListener('storage'", script)
+        self.assertIn("video.addEventListener('playing'", script)
+        self.assertIn('video.pause()', script)
+        self.assertIn("document.addEventListener('contextmenu'", script)
+        self.assertIn("document.addEventListener('dragstart'", script)
+        self.assertIn("controlsList.add('nodownload')", script)
+        self.assertIn("media.disablePictureInPicture = true", script)
+        self.assertIn("new MutationObserver", script)
 
     def test_index_presents_five_reorganized_services(self):
         client = create_app().test_client()

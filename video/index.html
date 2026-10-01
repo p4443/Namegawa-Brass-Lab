@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="滑川町ふれあいコンサートの交流動画です。">
   <title>滑川町ふれあいコンサート | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       color-scheme: dark;
       --ink: #070b0f;
@@ -181,6 +181,14 @@
       font-size: 0.82em;
     }
 
+    .credit-editor {
+      display: block;
+      margin-top: 2px;
+      color: #626b72;
+      font-size: 0.68em;
+      font-weight: 600;
+    }
+
     @media (max-width: 600px) {
       .title-telop {
         padding: 18px 18px 20px;
@@ -251,6 +259,11 @@
         font-size: 0.78rem;
         line-height: 1.45;
       }
+
+      .credit-editor {
+        font-size: 0.68rem;
+        line-height: 1.4;
+      }
     }
   </style>
 </head>
@@ -269,7 +282,7 @@
     <main class="player-stage">
       <div class="player-frame">
         <video controls controlsList="nodownload" playsinline preload="metadata" aria-label="滑川町ふれあいコンサートの動画">
-          <source src="generations.mp4?v=20260817" type="video/mp4">
+          <source src="{{ video_asset_url('generations.mp4', '20260817') }}" type="video/mp4">
           お使いのブラウザーは動画再生に対応していません。
         </video>
         <button class="play-button" type="button">▶ 音声をオンにして再生</button>
@@ -281,7 +294,8 @@
     </footer>
   </div>
   <script src="../back-navigation.js"></script>
-  <script>
+  <script src="../media-playback-guard.js"></script>
+  <script nonce="{{ csp_nonce }}">
     const video = document.querySelector("video");
     const playButton = document.querySelector(".play-button");
 
@@ -291,11 +305,11 @@
       document.querySelector(".event-label").textContent = "SUMMER MUSIC WORKSHOP";
       document.querySelector("h1").innerHTML = 'トランペットミニコンサート<span class="mobile-title-break"></span>＆自由研究';
       document.querySelector(".event-detail span:first-child").textContent = "2026年8月7日（金）";
-      document.querySelector(".event-detail span:last-child").textContent = "滑川町立月の輪小学校にて";
+      document.querySelector(".event-detail span:last-child").textContent = "滑川町立月の輪小学校（多目的室）にて";
       video.setAttribute("aria-label", "月の輪小学校 夏休み音楽教室の動画");
-      video.querySelector("source").src = "community-workshop.mp4?v=20260916-2";
+      video.querySelector("source").src = {{ video_asset_url('community-workshop-edited.mp4', '20260928-9')|tojson }};
       video.load();
-      document.querySelector(".credit-telop p").innerHTML = "夏休み音楽教室<strong>トランペットミニコンサート＆自由研究</strong>";
+      document.querySelector(".credit-telop p").innerHTML = "（まるっと！8/24号　特集コーナー）<strong>【制作：東松山ケーブルテレビ】</strong><span class=\"credit-editor\">【抜粋編集：なめがわブラス・ラボ】</span>";
     }
 
     playButton.addEventListener("click", async () => {

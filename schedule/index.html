@@ -7,7 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="kazooささきトランペット教室のレッスン空き状況と予約スケジュールです。">
   <title>レッスンスケジュール | なめがわブラス・ラボ</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       --navy: #0b2545;
       --blue: #176b87;
@@ -264,7 +264,7 @@
     </section>
   </main>
   <script src="../back-navigation.js"></script>
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const renderBase = "https://namegawa-brass-lab.com";
     const apiCandidates = (path) => {
       const localHost = ["localhost", "127.0.0.1"].includes(location.hostname);
@@ -306,6 +306,10 @@
       if (lessonType === "グループ・部活動指導") return ["要相談"];
       return day.lessons?.[lessonType]?.available_times || [];
     };
+    const isClosedDay = (value) => {
+      const blocked = calendarDays.get(value)?.blocked_statuses || [];
+      return blocked.length === 1 && blocked[0] === "お休み";
+    };
     const dateText = (date) => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
     const occupiedTimes = (startTime, durationMinutes) => {
       if (startTime === "要相談") return ["要相談"];
@@ -332,6 +336,9 @@
           const response = await fetch(endpoint, { ...fetchOptions, signal: controller.signal });
           const result = await response.json().catch(() => ({}));
           if (response.ok) return result;
+          if (response.status === 401 && adminToken) {
+            endAdminSession("管理者セッションの有効期限が切れました。再ログインしてください。");
+          }
           const errorDetail = result.delivery_error || result.detail;
           const errorMessage = result.error || "サーバーに接続できません。";
           const responseError = new Error(errorDetail ? `${errorMessage} (${errorDetail})` : errorMessage);
@@ -371,7 +378,7 @@
       }
       const times = availableTimesForLesson(scheduleLessonType.value, value);
       if (!times.length) {
-        const item = document.createElement("li"); item.className = "slot busy"; item.textContent = "受付時間外です"; slotList.append(item); return;
+        const item = document.createElement("li"); item.className = "slot busy"; item.textContent = isClosedDay(value) ? "この日はお休みです" : "予約可能な時間はありません"; slotList.append(item); return;
       }
       const durationMinutes = lessonDurations[scheduleLessonType.value];
       const availableTimes = [];
@@ -445,14 +452,15 @@
         const summary = document.createElement("span");
         summary.className = `day-summary${hasLessonType && scheduleReady ? (available ? "" : " busy") : " unknown"}`;
         const isPastDate = date < firstDate;
+        const hasCalendarData = calendarDays.has(value);
         summary.textContent = isPastDate
           ? "受付終了"
           : hasLessonType
           ? (scheduleReady
             ? (total
               ? `${available ? `空き ${available}` : "満席"}${confirmed ? ` / 予約済 ${confirmed}件` : ""}`
-              : (date > lastDate ? "受付準備中" : "休み"))
-            : (total ? "受付日" : (date > lastDate ? "受付準備中" : "休み")))
+              : (date > lastDate || !hasCalendarData ? "受付準備中" : (isClosedDay(value) ? "休み" : "満席")))
+            : (total ? "受付日" : (date > lastDate || !hasCalendarData ? "受付準備中" : (isClosedDay(value) ? "休み" : "満席"))))
           : "";
         button.append(number, summary); button.addEventListener("click", () => {
           renderSlots(value);
@@ -662,7 +670,7 @@
     }
     document.getElementById("admin-previous-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() - 1); renderAdminSlotCalendar(); });
     document.getElementById("admin-next-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() + 1); renderAdminSlotCalendar(); });
-    adminLogout.addEventListener("click", () => {
+    function endAdminSession(message) {
       adminToken = "";
       changedReservationIds.clear();
       reservationEditors.clear();
@@ -675,8 +683,11 @@
       const passwordInput = document.getElementById("admin-password");
       loginForm.hidden = false;
       loginForm.reset();
-      adminStatus.textContent = "ログアウトしました。";
+      adminStatus.textContent = message;
       passwordInput.focus();
+    }
+    adminLogout.addEventListener("click", () => {
+      endAdminSession("ログアウトしました。");
     });
     function renderReservations(reservations) {
       const activeReservations = reservations.filter((reservation) => reservation.status !== "キャンセル");
@@ -696,7 +707,10 @@
         when.querySelector(".reservation-date").textContent = `${reservation.preferred_date} ${reservation.preferred_time}`;
         const durationMinutes = reservation.duration_minutes || lessonDurations[reservation.lesson_type];
         const durationLabel = durationMinutes ? `（${durationMinutes}分）` : "（所要時間は要入力）";
-        when.querySelector(".reservation-meta").textContent = `${reservation.reservation_id} / ${reservation.lesson_type}${durationLabel}`;
+        const notificationLabel = reservation.admin_notification_status
+          ? ` / 管理者通知: ${reservation.admin_notification_status}`
+          : "";
+        when.querySelector(".reservation-meta").textContent = `${reservation.reservation_id} / ${reservation.lesson_type}${durationLabel}${notificationLabel}`;
         const person = document.createElement("div"); person.innerHTML = `<div class="reservation-name"></div><div class="reservation-contact"></div>`;
         person.querySelector(".reservation-name").textContent = reservation.name;
         person.querySelector(".reservation-contact").textContent = [reservation.email, reservation.phone, reservation.message].filter(Boolean).join(" / ");
@@ -717,6 +731,8 @@
         durationInput.addEventListener("change", markChanged);
         const save = document.createElement("button"); save.type = "button"; save.className = "button"; save.textContent = "更新";
         save.addEventListener("click", () => updateReservation(reservation, status, timeInput, durationInput));
+        const resendNotification = document.createElement("button"); resendNotification.type = "button"; resendNotification.className = "button"; resendNotification.textContent = "管理者メールを再送";
+        resendNotification.addEventListener("click", () => resendAdminNotification(reservation.reservation_id, resendNotification));
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "button danger"; remove.textContent = "削除";
         remove.addEventListener("click", () => deleteReservation(reservation.reservation_id));
         const cancel = document.createElement("button"); cancel.type = "button"; cancel.className = "button danger"; cancel.textContent = "予約をキャンセル";
@@ -727,7 +743,7 @@
           await updateReservation(reservation, status, timeInput, durationInput);
         });
         reservationEditors.set(reservation.reservation_id, { reservation, status, timeInput, durationInput });
-        actions.append(status, timeInput, durationInput, save, cancel, remove); item.append(when, person, actions);
+        actions.append(status, timeInput, durationInput, save, resendNotification, cancel, remove); item.append(when, person, actions);
         (reservation.status === "確定" ? confirmedReservationList : reservationList).append(item);
       });
       if (!pendingReservations.length) reservationList.textContent = "未確定の予約はありません。";
@@ -745,7 +761,9 @@
     reservationRetry.addEventListener("click", async () => {
       adminStatus.textContent = "予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "予約一覧を更新しました。"; }
-      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
+      catch (error) {
+        if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${error.message}`;
+      }
     });
     async function updateReservation(reservation, statusSelect, timeInput, durationInput, refresh = true) {
       adminStatus.textContent = "更新しています…";
@@ -765,7 +783,11 @@
       const updateMessage = timeInput.value
         ? `予約時間を「${timeInput.value}」、状態を「${statusSelect.value}」へ更新しました。`
         : `予約状態を「${statusSelect.value}」へ更新しました。`;
-      if (result.confirmation_email_sent === true) {
+      if (result.cancellation_email_sent === true) {
+        adminStatus.textContent = `${updateMessage} キャンセルメールの送信処理を受け付けました。届かない場合は迷惑メールも確認してください。`;
+      } else if (result.cancellation_email_sent === false) {
+        adminStatus.textContent = `${updateMessage} キャンセルメールを送信できませんでした。`;
+      } else if (result.confirmation_email_sent === true) {
         adminStatus.textContent = `${updateMessage} 確定メールを送信しました。`;
       } else if (result.confirmation_email_sent === false) {
         adminStatus.textContent = `${updateMessage} 確定メールを送信できませんでした。`;
@@ -783,6 +805,24 @@
       }
       return result;
     }
+    async function resendAdminNotification(reservationId, button) {
+      button.disabled = true;
+      adminStatus.textContent = `${reservationId} の管理者メールを再送しています…`;
+      try {
+        const result = await requestApi(`/api/lesson-reservations/${reservationId}/resend-admin-notification`, {
+          method: "POST",
+          headers: adminHeaders(),
+          timeoutMs: 120000,
+        });
+        adminStatus.textContent = result.sent
+          ? `${reservationId} の管理者メールを再送しました。`
+          : `${reservationId} の管理者メールを再送できませんでした。`;
+      } catch (error) {
+        adminStatus.textContent = error.message;
+      } finally {
+        button.disabled = false;
+      }
+    }
     reservationSaveAll.addEventListener("click", async () => {
       const editors = [...changedReservationIds]
         .map((id) => reservationEditors.get(id))
@@ -790,7 +830,8 @@
       if (!editors.length) return;
       reservationSaveAll.disabled = true;
       let updatedCount = 0;
-      let emailCount = 0;
+      let confirmationEmailCount = 0;
+      let cancellationEmailCount = 0;
       const failures = [];
       for (const editor of editors) {
         try {
@@ -803,7 +844,8 @@
             continue;
           }
           updatedCount += 1;
-          if (result.confirmation_email_sent === true) emailCount += 1;
+          if (result.confirmation_email_sent === true) confirmationEmailCount += 1;
+          if (result.cancellation_email_sent === true) cancellationEmailCount += 1;
         } catch (error) {
           failures.push(`${editor.reservation.reservation_id}: ${error.message}`);
         }
@@ -814,9 +856,12 @@
       reservationSaveAll.textContent = changedReservationIds.size
         ? `変更した予約をまとめて更新（${changedReservationIds.size}件）`
         : "変更した予約をまとめて更新";
-      const emailMessage = emailCount ? ` ${emailCount}件の確定メールを送信しました。` : "";
+      const emailMessage = [
+        confirmationEmailCount ? `${confirmationEmailCount}件の確定メールを送信しました。` : "",
+        cancellationEmailCount ? `${cancellationEmailCount}件のキャンセルメール送信処理を受け付けました。` : "",
+      ].filter(Boolean).join(" ");
       const failureMessage = failures.length ? ` 更新できなかった予約: ${failures.join(" / ")}` : "";
-      adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailMessage}${failureMessage}`;
+      adminStatus.textContent = `${updatedCount}件の予約を更新しました。${emailMessage ? ` ${emailMessage}` : ""}${failureMessage}`;
     });
     async function deleteReservation(id) {
       if (!window.confirm(`${id} を削除しますか？`)) return;
@@ -859,7 +904,9 @@
       catch (error) { adminToken = ""; adminStatus.textContent = error.message; return; }
       passwordInput.value = ""; dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
       try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
-      catch (error) { adminStatus.textContent = `ログイン済みです。予約一覧の通信に失敗しました: ${error.message}`; }
+      catch (error) {
+        if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${error.message}`;
+      }
     });
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";

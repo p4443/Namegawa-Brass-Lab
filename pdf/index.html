@@ -6,7 +6,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PDF資料一覧</title>
-  <style>
+  <style nonce="{{ csp_nonce }}">
     :root {
       color-scheme: light;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -127,7 +127,7 @@
     </div>
   </dialog>
 
-  <script>
+  <script nonce="{{ csp_nonce }}">
     const adminToggle = document.getElementById('adminToggle');
     const pdfAdmin = document.getElementById('pdfAdmin');
     const loginForm = document.getElementById('adminLoginForm');
@@ -141,7 +141,7 @@
     const deleteStepTwo = document.getElementById('deleteStepTwo');
     const deleteFilename = document.getElementById('deleteFilename');
     const deleteError = document.getElementById('deleteError');
-    let adminPassword = '';
+    let adminToken = '';
     let pendingDeleteItem = null;
 
     function setStatus(message, state = '') {
@@ -155,6 +155,22 @@
       adminLogout.hidden = !authenticated;
       document.querySelectorAll('.delete-pdf').forEach(button => { button.hidden = !authenticated; });
       if (authenticated) loginForm.reset();
+    }
+
+    function endAdminSession(message = '') {
+      adminToken = '';
+      passwordInput.value = '';
+      setAuthenticated(false);
+      setStatus(message, message ? 'error' : '');
+    }
+
+    async function readApiResult(response, fallback) {
+      const result = await response.json().catch(() => ({}));
+      if (response.status === 401 && adminToken) {
+        endAdminSession(result.error || '管理者セッションの有効期限が切れました。再ログインしてください。');
+      }
+      if (!response.ok) throw new Error(result.error || fallback);
+      return result;
     }
 
     function addDocument(document) {
@@ -189,9 +205,15 @@
       event.preventDefault();
       const password = passwordInput.value;
       try {
-        const response = await fetch('/api/editor', { headers: { 'X-Editor-Password': password } });
-        if (!response.ok) throw new Error('管理者パスワードが違います。');
-        adminPassword = password;
+        const response = await fetch('/api/editor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ editor_password: password })
+        });
+        const result = await readApiResult(response, 'ログインできませんでした。');
+        adminToken = result.editor_token || '';
+        if (!adminToken) throw new Error('管理者トークンを取得できませんでした。');
+        passwordInput.value = '';
         setAuthenticated(true);
         setStatus('PDFを追加・削除できます。', 'success');
       } catch (error) {
@@ -201,9 +223,7 @@
     });
 
     adminLogout.addEventListener('click', () => {
-      adminPassword = '';
-      setAuthenticated(false);
-      setStatus('');
+      endAdminSession();
       pdfAdmin.hidden = true;
       adminToggle.setAttribute('aria-expanded', 'false');
       adminToggle.focus();
@@ -215,11 +235,10 @@
       try {
         const response = await fetch('/api/event-pdfs', {
           method: 'POST',
-          headers: { 'X-Editor-Password': adminPassword },
+          headers: { 'X-Editor-Token': adminToken },
           body: new FormData(uploadForm)
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'PDFをアップロードできませんでした。');
+        const result = await readApiResult(response, 'PDFをアップロードできませんでした。');
         addDocument(result.document);
         uploadForm.reset();
         setStatus('PDFをアップロードしました。', 'success');
@@ -253,11 +272,10 @@
       try {
         const response = await fetch(`/api/event-pdfs/${encodeURIComponent(filename)}`, {
           method: 'DELETE',
-          headers: { 'Content-Type': 'application/json', 'X-Editor-Password': adminPassword },
+          headers: { 'Content-Type': 'application/json', 'X-Editor-Token': adminToken },
           body: JSON.stringify({ confirmation_filename: confirmationFilename })
         });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.error || 'PDFを削除できませんでした。');
+        await readApiResult(response, 'PDFを削除できませんでした。');
         pendingDeleteItem.remove();
         pendingDeleteItem = null;
         deleteDialog.close();
