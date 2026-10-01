@@ -1270,6 +1270,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('data-cargo-total="valuation"', page)
         self.assertIn("変更管理", page)
         self.assertIn("生成AI支援 アプリケーション実装費", page)
+        self.assertIn("構築・テスト（QA）費", page)
+        self.assertIn("データ移行・既存データ整形費", page)
+        self.assertIn("制作作業日程記録（8日分・時給換算）", page)
+        self.assertIn("function normalizeWebAppEstimateValues(values)", page)
         self.assertIn("検収完了後14日以内", page)
         self.assertIn("売り切り（買い切り）契約", page)
         self.assertIn('id="estimateProjectPresets"', page)
@@ -1315,6 +1319,15 @@ class UpdatesTest(unittest.TestCase):
                                 "details": "要件定義と設計",
                             }
                         ],
+                        "work_logs": [
+                            {
+                                "work_date": "2026-08-20",
+                                "description": "表示・動作テスト",
+                                "hours": "6.5",
+                                "hourly_rate": "3000",
+                                "amount": "1",
+                            }
+                        ],
                     },
                 },
             )
@@ -1327,6 +1340,9 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(response.json["department"], "WEB・アプリ")
             self.assertEqual(
                 response.json["values"]["estimate_items"][0]["amount"], "40000"
+            )
+            self.assertEqual(
+                response.json["values"]["work_logs"][0]["amount"], "19500"
             )
 
     def test_contract_api_saves_music_support_estimate(self):

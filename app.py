@@ -239,6 +239,7 @@ CONTRACT_TYPES = {
             "runtime_environment",
             "delivery_date",
             "estimate_items",
+            "work_logs",
         },
     },
     "typeC": {
@@ -1523,6 +1524,42 @@ def validate_contract(payload):
             raise ValueError("正式見積の発行準備に必要な自社軽貨物の積載条件・料金・楽器評価額を確認してください。積載上限を超える場合は品目の見直しまたは分割運行が必要です。")
     values = {}
     for key in configuration["keys"]:
+        if key == "work_logs":
+            raw_logs = raw_values.get(key, [])
+            if not isinstance(raw_logs, list) or len(raw_logs) > 8:
+                raise ValueError("制作作業記録は8日分以内で入力してください。")
+            work_logs = []
+            for raw_log in raw_logs:
+                if not isinstance(raw_log, dict):
+                    raise ValueError("制作作業記録を正しく入力してください。")
+                work_date = str(raw_log.get("work_date", "")).strip()
+                description = str(raw_log.get("description", "")).strip()
+                hours = str(raw_log.get("hours", "")).strip()
+                hourly_rate = str(raw_log.get("hourly_rate", "")).strip()
+                if not any((work_date, description, hours, hourly_rate)):
+                    work_logs.append({"work_date": "", "description": "", "hours": "", "hourly_rate": "", "amount": "0"})
+                    continue
+                try:
+                    datetime.strptime(work_date, "%Y-%m-%d")
+                except ValueError as exc:
+                    raise ValueError("制作作業日を正しく入力してください。") from exc
+                if (
+                    len(description) == 0
+                    or len(description) > 120
+                    or re.fullmatch(r"\d{1,3}(?:\.\d{1,2})?", hours) is None
+                    or re.fullmatch(r"\d{1,9}", hourly_rate) is None
+                ):
+                    raise ValueError("制作作業記録の日付・内容・時間・時給を確認してください。")
+                amount = round(float(hours) * int(hourly_rate))
+                work_logs.append({
+                    "work_date": work_date,
+                    "description": description,
+                    "hours": hours,
+                    "hourly_rate": hourly_rate,
+                    "amount": str(amount),
+                })
+            values[key] = work_logs
+            continue
         if key == "workflow_status":
             if transport_workflow_status not in {"draft", "quote_pending", "ready"}:
                 raise ValueError("輸送案件の進行状態を選択してください。")

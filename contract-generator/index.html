@@ -154,6 +154,12 @@
     .estimate-editor-grid .estimate-description,
     .estimate-editor-grid .estimate-details { grid-column: 1 / -1; }
     .estimate-editor-grid textarea { min-height: 66px; resize: vertical; }
+    .work-log-editor-grid { display: grid; grid-template-columns: 1fr 1.6fr 0.7fr 0.9fr 0.9fr; gap: 8px; }
+    .work-log-editor-grid label { display: grid; gap: 4px; font-size: 0.75rem; font-weight: 800; }
+    .work-log-editor-grid input, .work-log-editor-grid output {
+      width: 100%; min-width: 0; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #ffffff;
+    }
+    .work-log-editor-grid output { color: var(--muted); background: #f1f5f9; }
     .field input:focus, .field select:focus, .field textarea:focus { outline: 3px solid #bfdbfe; border-color: var(--primary); }
 
     .sidebar-note {
@@ -366,6 +372,8 @@
 
     @media (max-width: 520px) {
       .document-tools { grid-template-columns: 1fr; }
+      .work-log-editor-grid { grid-template-columns: 1fr 1fr; }
+      .work-log-editor-grid label:nth-child(2) { grid-column: 1 / -1; }
       .freight-dialog { width: calc(100% - 16px); max-height: calc(100vh - 16px); }
       .freight-dialog-body { max-height: calc(100vh - 16px); padding: 16px; }
       .rate-master-grid { grid-template-columns: 1fr; }
@@ -465,6 +473,13 @@
     .estimate-conditions { margin: 0; padding: 0; list-style: none; }
     .estimate-conditions li { margin-bottom: 11px; }
     .estimate-conditions strong { display: block; margin-bottom: 2px; font-size: 9.5pt; }
+    .work-log-table { table-layout: fixed; font-size: 8pt; }
+    .work-log-table th, .work-log-table td { padding: 6px; }
+    .work-log-table th:nth-child(1) { width: 14%; }
+    .work-log-table th:nth-child(2) { width: 38%; }
+    .work-log-table th:nth-child(3) { width: 10%; }
+    .work-log-table th:nth-child(4), .work-log-table th:nth-child(5) { width: 19%; }
+    .work-log-table .number { text-align: right; white-space: nowrap; }
     .document-links a, .document-url-missing { overflow-wrap: anywhere; }
     .cargo-editor-grid {
       display: grid;
@@ -883,8 +898,11 @@
           { description: '生成AI支援 アプリケーション実装費', quantity: '1', unit: '式', unit_price: '90000', amount: '90000', details: '生成AIを活用したフロントエンド・バックエンドの高速コード生成および機能実装' },
           { description: 'UI/UXデザイン・スタイリング費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'レスポンシブ対応、UIコンポーネント調整、操作性最適化' },
           { description: 'コード監査・セキュリティ検証費', quantity: '1', unit: '式', unit_price: '30000', amount: '30000', details: 'AI生成コードの人間による精査・リファクタリング、指定環境での動作・安全性検証' },
-          { description: 'パッケージング・納品諸経費', quantity: '1', unit: '式', unit_price: '10000', amount: '10000', details: '納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理' }
-        ]
+          { description: 'パッケージング・納品諸経費', quantity: '1', unit: '式', unit_price: '10000', amount: '10000', details: '納品用ZIPファイル作成、簡易操作ガイド整備、環境構築管理' },
+          { description: '構築・テスト（QA）費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '本番公開前の検証環境構築、表示・動作・品質確認および不具合修正' },
+          { description: 'データ移行・既存データ整形費', quantity: '1', unit: '式', unit_price: '0', amount: '0', details: '提供データの取込み、形式変換、表記統一、レイアウト調整および修正' }
+        ],
+        work_logs: Array.from({ length: 8 }, () => ({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' }))
       },
       typeC: {
         deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
@@ -1283,11 +1301,25 @@
         + field('ブラウザ・実行環境', 'runtime_environment', values.runtime_environment)
         + field('納期', 'delivery_date', values.delivery_date)
         + `<datalist id="estimateProjectPresets"><option value="生成AI活用型 Web・アプリケーション開発一式"><option value="コーポレートWebサイト制作一式"><option value="業務支援Webアプリケーション開発一式"><option value="既存Webサイト改修・機能追加一式"></datalist>
-          <datalist id="estimateItemPresets"><option value="要件定義・プロンプト設計費"><option value="生成AI支援 アプリケーション実装費"><option value="UI/UXデザイン・スタイリング費"><option value="コード監査・セキュリティ検証費"><option value="パッケージング・納品諸経費"><option value="追加機能開発費"><option value="データ移行費"></datalist>
+          <datalist id="estimateItemPresets"><option value="要件定義・プロンプト設計費"><option value="生成AI支援 アプリケーション実装費"><option value="UI/UXデザイン・スタイリング費"><option value="コード監査・セキュリティ検証費"><option value="パッケージング・納品諸経費"><option value="構築・テスト（QA）費"><option value="データ移行・既存データ整形費"><option value="追加機能開発費"></datalist>
           <datalist id="estimateQuantityPresets"><option value="1"><option value="2"><option value="3"><option value="5"><option value="10"></datalist>
           <datalist id="estimateUnitPresets"><option value="式"><option value="件"><option value="画面"><option value="時間"><option value="日"></datalist>
           <datalist id="estimatePricePresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>
-              <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>`;
+              <datalist id="estimateAmountPresets"><option value="10000"><option value="30000"><option value="40000"><option value="50000"><option value="90000"><option value="100000"></datalist>${items}<button class="secondary-button estimate-row-add" data-add-estimate-row type="button"${values.estimate_items.length >= 10 ? ' disabled' : ''}>明細行を追加</button>${renderWorkLogFields(values)}`;
+    }
+
+    function renderWorkLogFields(values) {
+      return `<div class="estimate-edit-guide"><strong>制作作業日程記録（8日分・時給換算）</strong>成果物の見積金額とは別に、実作業の根拠を記録します。時間と時給から換算額を自動計算します。</div>${values.work_logs.map((log, index) => `
+        <section class="estimate-editor" data-work-log-row="${index}">
+          <h2>作業日 ${index + 1}</h2>
+          <div class="work-log-editor-grid">
+            <label>日付<input data-work-log-key="work_date" type="date" value="${escapeHtml(log.work_date)}"></label>
+            <label>作業内容<input data-work-log-key="description" type="text" maxlength="120" value="${escapeHtml(log.description)}"></label>
+            <label>時間<input data-work-log-key="hours" type="number" min="0" max="999" step="0.25" value="${escapeHtml(log.hours)}"></label>
+            <label>時給（円）<input data-work-log-key="hourly_rate" type="number" min="0" max="999999999" step="1" value="${escapeHtml(log.hourly_rate)}"></label>
+            <label>換算額（円）<output data-work-log-amount>${formatEstimateYen(estimateNumber(log.amount))}</output></label>
+          </div>
+        </section>`).join('')}`;
     }
 
             function renderMusicSupportEstimateFields(values) {
@@ -1649,6 +1681,13 @@
           Object.assign(item, { role: migratedRole, ...transportEstimateItemTemplates[migratedRole] });
         }
       });
+      return values;
+    }
+
+    function normalizeWebAppEstimateValues(values) {
+      const logs = Array.isArray(values.work_logs) ? values.work_logs.slice(0, 8) : [];
+      while (logs.length < 8) logs.push({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' });
+      values.work_logs = logs.map(log => ({ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0', ...log }));
       return values;
     }
 
@@ -2127,6 +2166,15 @@
             <li><strong>8. 有効期限</strong>本見積書の発行日より30日間有効といたします。</li>
             <li><strong>9. 契約書との関係</strong>ご発注時は業務委託基本契約書および「個別契約書 C（WEB・アプリ）」を締結し、本見積書を個別契約の一部として取り扱います。文書間に差異がある場合は、後に成立した個別の合意を優先します。</li>
           </ul>
+        </section>
+        <section class="contract-page estimate-page" data-page-number="3">
+          <h1>制作作業日程記録</h1>
+          <p>成果物への対価とは別に、制作作業の実績を時給換算した記録です。</p>
+          <table class="work-log-table">
+            <thead><tr><th>作業日</th><th>作業内容</th><th class="number">時間</th><th class="number">時給（円）</th><th class="number">換算額（円）</th></tr></thead>
+            <tbody>${values.work_logs.map(log => `<tr><td>${escapeHtml(log.work_date || '未入力')}</td><td>${escapeHtml(log.description || '未入力')}</td><td class="number">${escapeHtml(log.hours || '0')}</td><td class="number">${formatEstimateYen(estimateNumber(log.hourly_rate))}</td><td class="number">${formatEstimateYen(estimateNumber(log.amount))}</td></tr>`).join('')}</tbody>
+          </table>
+          <table class="estimate-summary"><tbody><tr><th>記録時間合計</th><td>${values.work_logs.reduce((total, log) => total + (Number(log.hours) || 0), 0).toLocaleString('ja-JP')}時間</td></tr><tr><th>時給換算額合計</th><td>${formatEstimateYen(values.work_logs.reduce((total, log) => total + estimateNumber(log.amount), 0))}円</td></tr></tbody></table>
         </section>`;
     }
 
@@ -2527,6 +2575,7 @@
       if (contract.doc_type !== 'master') {
         contractValues[contract.doc_type] = { ...JSON.parse(JSON.stringify(initialContractValues[contract.doc_type])), ...contract.values };
         if (contract.doc_type === 'estimateB') normalizeTransportValues(contractValues.estimateB);
+        if (contract.doc_type === 'estimateC') normalizeWebAppEstimateValues(contractValues.estimateC);
       }
       renderDynamicFields();
       renderPreview();
@@ -2651,6 +2700,18 @@
     });
     dynamicFields.addEventListener('input', event => {
       editorRevision += 1;
+      const workLogKey = event.target.dataset.workLogKey;
+      if (workLogKey && docType.value === 'estimateC') {
+        const row = event.target.closest('[data-work-log-row]');
+        const log = contractValues.estimateC.work_logs[Number(row?.dataset.workLogRow)];
+        if (!log) return;
+        log[workLogKey] = event.target.value;
+        log.amount = String(Math.round((Number(log.hours) || 0) * estimateNumber(log.hourly_rate)));
+        const amountOutput = row.querySelector('[data-work-log-amount]');
+        if (amountOutput) amountOutput.textContent = formatEstimateYen(estimateNumber(log.amount));
+        renderPreview();
+        return;
+      }
       if (event.target.matches('[data-cargo-consent]')) {
         contractValues.estimateB.cargo_restrictions_agreed = event.target.checked;
         updateTransportWorkflowStatus();
