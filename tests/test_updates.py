@@ -5550,8 +5550,8 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        self.assertIn('id="updates-month"', page)
         self.assertIn('class="updates-window" id="updates-window"', page)
+        self.assertIn('class="updates-archive" id="updates-grid"', page)
         updates_window_css = page.split(".updates-window {", 1)[1].split("}", 1)[0]
         self.assertIn("max-width: 980px", updates_window_css)
         self.assertIn("height: 520px", updates_window_css)
@@ -5576,7 +5576,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('id="updates-admin-toggle"', page)
         self.assertIn('id="updates-editor-login"', page)
         self.assertIn('id="updates-editor-form"', page)
-        self.assertIn("filterUpdatesByMonth", page)
+        self.assertIn("function currentJapanMonth()", page)
+        self.assertIn("timeZone: 'Asia/Tokyo'", page)
+        self.assertIn("group.open = month === currentMonth", page)
+        self.assertIn("group.className = 'updates-month-group'", page)
         self.assertIn("/api/editor", page)
         self.assertIn("method: updateIndex ? 'PUT' : 'POST'", page)
         self.assertIn("method: 'DELETE'", page)
