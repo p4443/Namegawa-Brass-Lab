@@ -12,8 +12,8 @@ class TenkoSalesLinksTest(unittest.TestCase):
     def test_tenko_product_card_links_both_purchase_plans(self):
         self.assertIn('id="tennko-kakuninnbo"', self.page)
         self.assertIn(
-            'class="app-window tenko-window" '
-            'src="https://tennko-kakuninnbo.onrender.com/"',
+            'class="transport-app-preview" '
+            'href="https://tennko-kakuninnbo.onrender.com/"',
             self.page,
         )
         self.assertIn(

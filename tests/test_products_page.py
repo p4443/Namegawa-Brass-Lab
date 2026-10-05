@@ -33,10 +33,17 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn("日報、点呼、配送実績", future_products)
 
     def test_transport_apps_use_mobile_visual_previews(self):
-        self.assertIn('class="mobile-app-preview"', self.html)
+        self.assertIn('class="transport-app-preview"', self.html)
         self.assertIn("../data/media/tennko-record-entry.png", self.html)
         self.assertIn("../data/media/beisia-work-records-mobile.png", self.html)
-        self.assertIn(".transport-catalog .app-window { display: none; }", self.html)
+        self.assertNotIn(
+            '<iframe class="app-window tenko-window" src="https://tennko-kakuninnbo.onrender.com/"',
+            self.html,
+        )
+        self.assertNotIn(
+            '<iframe class="app-window tenko-window" src="https://beisia-work-records.vercel.app/"',
+            self.html,
+        )
         self.assertIn(".transport-catalog .store-actions { order: -1; }", self.html)
 
     def test_hero_represents_music_and_one_transport_app(self):

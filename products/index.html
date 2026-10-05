@@ -103,7 +103,22 @@
 
     .app-window { display: block; width: 100%; height: 720px; border: 0; background: #121218; }
     .tenko-window { height: 680px; background: #f2f5f1; }
-    .mobile-app-preview { display: none; }
+    .transport-app-preview {
+      position: relative;
+      display: block;
+      aspect-ratio: 16 / 10;
+      overflow: hidden;
+      border-bottom: 1px solid var(--border-color);
+      background: #e2e8f0;
+    }
+    .transport-app-preview::after {
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
+      content: "";
+      pointer-events: none;
+    }
+    .transport-app-preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -195,23 +210,6 @@
       .product-heading h2 { font-size: 1.2rem; line-height: 1.45; }
       .product-heading p { font-size: 0.84rem; line-height: 1.65; }
       .launch-link { width: 100%; text-align: center; }
-      .transport-catalog .app-window { display: none; }
-      .mobile-app-preview {
-        position: relative;
-        display: block;
-        aspect-ratio: 16 / 10;
-        overflow: hidden;
-        border-bottom: 1px solid var(--border-color);
-        background: #e2e8f0;
-      }
-      .mobile-app-preview::after {
-        position: absolute;
-        inset: 0;
-        box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.08);
-        content: "";
-        pointer-events: none;
-      }
-      .mobile-app-preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
       .transport-catalog .store-panel { gap: 24px; }
       .transport-catalog .store-actions { order: -1; }
       .transport-catalog .service-plans { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -340,8 +338,7 @@
             <a class="launch-link" href="https://tennko-kakuninnbo.onrender.com/" target="_blank" rel="noopener">ログイン画面を開く</a>
           </header>
 
-          <iframe class="app-window tenko-window" src="https://tennko-kakuninnbo.onrender.com/" title="点呼確認簿 ログイン画面" loading="lazy"></iframe>
-          <a class="mobile-app-preview" href="https://tennko-kakuninnbo.onrender.com/" target="_blank" rel="noopener" aria-label="点呼確認簿を開く">
+          <a class="transport-app-preview" href="https://tennko-kakuninnbo.onrender.com/" target="_blank" rel="noopener" aria-label="点呼確認簿を開く">
             <img src="../data/media/tennko-record-entry.png" alt="点呼確認簿の入力画面" width="2480" height="1200" loading="lazy">
           </a>
 
@@ -402,8 +399,7 @@
             <a class="launch-link" href="https://beisia-work-records.vercel.app/" target="_blank" rel="noopener">ログイン画面を開く</a>
           </header>
 
-          <iframe class="app-window tenko-window" src="https://beisia-work-records.vercel.app/" title="自在稼働記録 ログイン画面" loading="lazy"></iframe>
-          <a class="mobile-app-preview" href="https://beisia-work-records.vercel.app/" target="_blank" rel="noopener" aria-label="自在稼働記録を開く">
+          <a class="transport-app-preview" href="https://beisia-work-records.vercel.app/" target="_blank" rel="noopener" aria-label="自在稼働記録を開く">
             <img src="../data/media/beisia-work-records-mobile.png" alt="自在稼働記録の案件管理画面" width="780" height="1688" loading="lazy">
           </a>
 
