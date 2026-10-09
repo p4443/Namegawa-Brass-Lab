@@ -920,6 +920,59 @@
       font-size: 0.98rem;
     }
 
+    .friend-site {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 28px;
+      margin-top: 28px;
+      padding: 24px 28px;
+      border: 1px solid #bfdbfe;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #eff6ff 0%, #ffffff 100%);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .friend-site-label {
+      display: block;
+      margin-bottom: 5px;
+      color: var(--primary-color);
+      font-size: 0.78rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .friend-site h3 {
+      margin-bottom: 5px;
+      color: var(--text-main);
+      font-size: 1.2rem;
+    }
+
+    .friend-site p {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.92rem;
+    }
+
+    .friend-site-link {
+      flex: 0 0 auto;
+      padding: 11px 18px;
+      border-radius: 999px;
+      color: #ffffff;
+      background: var(--primary-color);
+      font-size: 0.88rem;
+      font-weight: 800;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .friend-site-link:hover,
+    .friend-site-link:focus-visible {
+      color: #ffffff;
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
     /* ----------------------------------
        3. BODY - SECTION 1 (特徴)
     ---------------------------------- */
@@ -1969,6 +2022,17 @@
         margin-top: 4px;
       }
 
+      .friend-site {
+        align-items: flex-start;
+        flex-direction: column;
+        padding: 22px;
+      }
+
+      .friend-site-link {
+        width: 100%;
+        text-align: center;
+      }
+
       .access-info th {
         width: 4.5em;
         white-space: nowrap;
@@ -2340,6 +2404,14 @@
           </p>
         </div>
       </div>
+      <aside class="friend-site" aria-labelledby="friend-site-title">
+        <div>
+          <span class="friend-site-label">とても尊敬するお友達</span>
+          <h3 id="friend-site-title">トランペット奏者 アンドレ・アンリ</h3>
+          <p>演奏と教育の両面で国際的に活躍する、親しい音楽仲間の公式サイトです。</p>
+        </div>
+        <a class="friend-site-link" href="https://andre-henry.com/" target="_blank" rel="noopener noreferrer">公式サイトを見る ↗</a>
+      </aside>
     </div>
   </section>
 

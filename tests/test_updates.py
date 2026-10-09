@@ -3360,6 +3360,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn(".footer-address span:last-child", page)
         self.assertIn("font-size: 0.84rem", page)
         self.assertIn('.footer-links a[href="lesson/"]', page)
+        self.assertIn('href="https://andre-henry.com/"', page)
+        self.assertIn('target="_blank" rel="noopener noreferrer"', page)
+        self.assertIn("とても尊敬するお友達", page)
         self.assertNotIn('id="reservation-form"', page)
         self.assertNotIn('<iframe class="app-frame"', page)
 
