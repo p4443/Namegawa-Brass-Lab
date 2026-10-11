@@ -976,7 +976,7 @@
         <strong>内部採算管理（契約書面には非表示）</strong>
         <span>予定粗利益：${formatEstimateYen(Math.max(grossProfit, 0))}円 ／ 実質利益率：${grossMargin.toFixed(1)}%</span>
         <ul>
-          <li>目標利益率：${escapeHtml(values.target_margin_percent)}%（市場調査上の管理マージン10～15%を参考）</li>
+          <li>目標利益率：${escapeHtml(values.target_margin_percent)}%（案件条件に応じて変更・再確認してください）</li>
           <li>目標を確保できる委託料上限：${formatEstimateYen(maximumFee)}円</li>
           <li>通過実費：${formatEstimateYen(estimateNumber(values.pass_through_expenses))}円（高速・有料道路・駐車。顧客請求額と委託先精算額を同額とし、利益計算から除外）</li>
           <li>燃料、車両、保険等の事業運営費は委託先負担で、委託料に含みます。</li>
@@ -1678,7 +1678,7 @@
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else if (type === 'typeBOutsource') {
         dynamicFields.innerHTML = `<div class="estimate-edit-guide"><strong>協力事業者へのB委託契約書</strong>なめがわブラス・ラボが甲（委託者）、個人事業主または会社が乙（受託者）となる様式です。許認可、保険、運行条件および支払期日を締結前に確認してください。</div>`
-          + `<div class="estimate-edit-guide"><strong>市場調査の目安</strong>軽貨物の管理・仲介マージンは売上の10～15%程度が一般的で、高速・有料道路料金は通常別途実費です。案件の難易度、事故対応、顧客管理、対象物価額に応じて採算を確認してください。<br><a href="https://hound-japan.com/column/article312/" target="_blank" rel="noopener noreferrer">軽貨物配送の手数料調査</a> ／ <a href="https://pickgo.town/blog/charter-structure" target="_blank" rel="noopener noreferrer">チャーター便料金の仕組み</a></div>`
+          + `<div class="estimate-edit-guide"><strong>採算確認の目安</strong>初期値の利益率15%は内部検討用の参考値です。案件の難易度、事故対応、顧客管理、対象物価額および最新の市場状況を案件ごとに確認し、適切な目標利益率へ変更してください。高速・有料道路料金は委託料に含めず、証憑に基づく別途実費として扱います。</div>`
           + numericField('顧客との契約金額（税込・通過実費を除く）', 'customer_revenue', values.customer_revenue)
           + numericField('委託先へ支払う委託料（税込）', 'contractor_fee', values.contractor_fee)
           + numericField('高速・有料道路・駐車の通過実費', 'pass_through_expenses', values.pass_through_expenses)
