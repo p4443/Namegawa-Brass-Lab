@@ -1219,6 +1219,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("data-add-estimate-row", page)
         self.assertIn("data-remove-estimate-row", page)
         self.assertIn('value="typeB"', page)
+        self.assertIn('value="typeBOutsource"', page)
+        self.assertIn("個別契約書 B（協力事業者への運送委託）", page)
+        self.assertIn("function outsourcePartyHtml()", page)
+        self.assertIn("委託先名（乙）", page)
         self.assertIn('value="estimateB"', page)
         self.assertIn("B契約前 次世代型御見積書", page)
         self.assertIn('value="estimateC"', page)
@@ -1434,7 +1438,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertGreaterEqual(page.count('class="estimate-grand-total"'), 3)
         self.assertIn(".individual-contract-page { height: var(--paper-height); overflow: hidden;", page)
         self.assertIn(".contract-page.individual-contract-page {", page)
-        self.assertEqual(page.count('class="contract-page individual-contract-page'), 3)
+        self.assertEqual(page.count('class="contract-page individual-contract-page'), 4)
         self.assertIn('id="printLayoutDensity"', page)
         self.assertIn("function fitIndividualContractLayout()", page)
         self.assertIn("page.scrollHeight <= page.clientHeight + 1", page)
@@ -2179,7 +2183,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("'\"checkout_available\":true'", healthcheck)
         self.assertNotIn("Trumpet Transpose Lab is not in unpublished mode", healthcheck)
 
-    def test_contract_api_saves_individual_contracts_a_and_c(self):
+    def test_contract_api_saves_individual_contracts(self):
         cases = [
             (
                 "typeA",
@@ -2191,6 +2195,22 @@ class UpdatesTest(unittest.TestCase):
                     "special_terms": "安全管理体制を事前に確認する。",
                 },
                 "work",
+            ),
+            (
+                "typeBOutsource",
+                "楽器輸送・外部委託",
+                {
+                    "transport_name": "演奏会用楽器輸送",
+                    "order_reference": "発注書 B-2026-001",
+                    "cargo": "管楽器および打楽器一式",
+                    "route": "滑川町から演奏会場まで",
+                    "service_period": "2026年9月10日",
+                    "amount": "税込55,000円",
+                    "payment_terms": "業務完了月の翌月末払い",
+                    "permit_insurance": "事業用車両および貨物保険を確認する。",
+                    "special_terms": "無断再委託を禁止する。",
+                },
+                "transport_name",
             ),
             (
                 "typeC",
@@ -2232,6 +2252,23 @@ class UpdatesTest(unittest.TestCase):
                 self.assertEqual(
                     response.json["values"][preserved_key], values[preserved_key]
                 )
+                if doc_type == "typeBOutsource":
+                    contract_id = response.json["contract_id"]
+                    loaded = client.get(
+                        f"/api/contracts/{contract_id}",
+                        headers={"X-Editor-Password": "editor-secret"},
+                    )
+                    self.assertEqual(loaded.status_code, 200)
+                    self.assertEqual(
+                        loaded.json["contract"]["values"]["transport_name"],
+                        values["transport_name"],
+                    )
+                    deleted = client.delete(
+                        f"/api/contracts/{contract_id}",
+                        json={"confirmation_id": contract_id},
+                        headers={"X-Editor-Password": "editor-secret"},
+                    )
+                    self.assertEqual(deleted.status_code, 200)
 
     def test_contract_api_saves_and_lists_by_department(self):
         with tempfile.TemporaryDirectory() as temporary_directory, tempfile.TemporaryDirectory() as server_directory, patch.dict(

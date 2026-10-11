@@ -645,6 +645,7 @@
             <option value="typeA">個別契約書 A（音楽指導・支援）</option>
             <option value="estimateB">B契約前 次世代型御見積書（楽器輸送）</option>
             <option value="typeB">個別契約書 B（楽器輸送）</option>
+            <option value="typeBOutsource">個別契約書 B（協力事業者への運送委託）</option>
             <option value="estimateC">C契約前 御見積書（選択・任意入力対応）</option>
             <option value="typeC">個別契約書 C（WEB・アプリ）</option>
           </optgroup>
@@ -652,12 +653,12 @@
       </div>
 
       <div class="field">
-        <label for="clientName">取引先名（甲）</label>
+        <label for="clientName" id="clientNameLabel">取引先名（甲）</label>
         <input type="text" id="clientName" maxlength="120" placeholder="例：〇〇高等学校吹奏楽部">
       </div>
 
       <div class="field">
-        <label for="clientRepresentative">代表者名</label>
+        <label for="clientRepresentative" id="clientRepresentativeLabel">代表者名</label>
         <input type="text" id="clientRepresentative" maxlength="80" placeholder="例：代表 山田 太郎">
       </div>
 
@@ -819,7 +820,9 @@
     const logoutButton = document.getElementById('contractLogout');
     const docType = document.getElementById('docType');
     const clientName = document.getElementById('clientName');
+    const clientNameLabel = document.getElementById('clientNameLabel');
     const clientRepresentative = document.getElementById('clientRepresentative');
+    const clientRepresentativeLabel = document.getElementById('clientRepresentativeLabel');
     const contractDate = document.getElementById('contractDate');
     const documentDateLabel = document.getElementById('documentDateLabel');
     const dynamicFields = document.getElementById('dynamicFields');
@@ -871,6 +874,17 @@
         cargo: '管楽器一式、打楽器、機材', value: '金 3,000万円', route: '別紙運行計画または双方合意の経路', amount: '別途B見積書のとおり',
         cargo_document_url: '', route_document_url: '', fee_document_url: '',
         special_terms: '1. （事前申告と梱包）甲は、輸送対象物の品名、数量、状態、総評価額、取扱上の注意、付属品および高価品・危険物等の該当性を事前に正確に申告し、運送に適した梱包を行う。申告のない物品または通常確認できない性質・瑕疵に起因する損害は、乙の責めに帰すべき場合を除き甲の負担とする。\n2. （引渡しおよび受領）引渡しおよび受領時に、甲乙は数量、外観、梱包状態および時刻を確認し、必要に応じて写真等の記録を残す。甲は事故、滅失、毀損または遅延を知った後、合理的な期間内に乙へ通知し、調査および保険手続に協力する。\n3. （保険と免責）補償の対象、免責、限度額および手続は適用される保険契約および個別合意による。逸失利益、演奏機会の喪失その他の間接損害は、乙の故意または重過失がある場合を除き補償対象外とする。\n4. （不可抗力と追加費用）天候、災害、道路事情、行政上の要請等により安全・適法な運行が困難な場合、乙は経路変更または運送中止を判断できる。事前の運行計画から迂回または日程変更を余儀なくされたことによる追加費用（有料道路料金の増額、車両留置料、宿泊費等）は、乙の責めに帰すべき場合を除き原則として甲の負担とし、甲乙協議の上で精算する。\n5. （待機・追加作業）基本運送料に含む作業範囲と、待機、階段搬入、梱包補助、助手追加その他の追加作業費を見積書に明示する。予定外の作業が必要になった場合、乙は内容と金額を甲へ説明し、記録可能な方法で合意した上で請求する。\n6. （料金の見直し）契約締結後、燃油価格、道路料金、法令その他の算定条件が著しく変動した場合、乙は軽貨物料金の算定根拠を提示し、変更内容を甲乙協議の上で決定する。'
+      },
+      typeBOutsource: {
+        transport_name: '楽器輸送業務一式',
+        order_reference: '甲が別途指定する案件番号・発注書・運行指示書',
+        cargo: '管楽器、打楽器および関連機材（明細は別紙のとおり）',
+        route: '集荷場所、納品場所、日時および取扱条件は別紙運行指示書のとおり',
+        service_period: '個別の発注書または運行指示書に定める期間',
+        amount: '個別の発注書または乙の見積書に定める金額（税込）',
+        payment_terms: '業務完了および請求書受領後、個別合意した支払期日までに乙指定口座へ振込む。振込手数料は甲の負担とする。',
+        permit_insurance: '乙は業務に必要な事業許可・届出、車両、運転資格および貨物・自動車保険を有効に維持し、甲の求めに応じて確認資料を提示する。',
+        special_terms: '1. （業務遂行）乙は独立した事業者として、自らの裁量と責任で法令、安全基準および別紙の運行条件を守って本業務を行う。甲乙間に雇用、労働者派遣、代理または共同事業の関係は生じない。\n2. （許認可等）乙は、貨物自動車運送事業法、道路交通法その他適用法令に従い、必要な許可・届出、事業用車両、運転資格、点検整備および運行管理体制を維持する。必要な要件を欠く場合、乙は直ちに甲へ通知し、運行を開始または継続してはならない。\n3. （引渡し・安全管理）乙は集荷時に品名、数量、外観、梱包状態および取扱上の注意を確認し、固定、養生、温湿度その他対象物に応じた合理的な安全措置を講じる。契約条件と現物が異なる場合または安全な運送が困難な場合は、作業を中止して甲の指示を求める。\n4. （再委託）乙は、甲の事前の書面または電磁的方法による承諾なく、本業務の全部または重要な一部を第三者へ再委託してはならない。承諾を得た場合も、乙は再委託先へ本契約と同等の義務を課し、その履行について責任を負う。\n5. （事故・遅延等）事故、滅失、毀損、誤配、盗難、遅延、法令違反またはそのおそれが生じた場合、乙は人命と安全を優先し、直ちに甲および必要な関係機関へ連絡し、被害拡大防止、証拠保全、原因調査および保険手続に協力する。\n6. （秘密保持・顧客対応）乙は、甲または顧客の非公開情報、個人情報、連絡先、運行情報および施設情報を本業務以外に利用せず、契約終了後も適切に管理する。顧客との契約変更、追加料金の合意または甲を代理する表示を行う場合は、事前に甲の承諾を得る。\n7. （報告・検収）乙は業務完了後、受領確認、運行記録、事故・異常の有無および甲が合理的に求める資料を提出する。甲は提出内容を確認し、不備がある場合は合理的な期間内に是正を求めることができる。\n8. （損害・保険）乙の責めに帰すべき事由により甲、顧客または第三者に損害が生じた場合、乙は法令および個別合意に従って対応し、加入保険を適切に利用する。補償範囲、免責および限度額は、対象物の申告価額と保険条件を運行前に確認して定める。\n9. （解除）重大な法令違反、必要資格等の喪失、無断再委託、安全上の重大な懸念、信用不安または契約違反があり、是正が困難な場合、甲は発注の取消し、本業務の停止または本契約の解除ができる。\n10. （協議・管轄）本契約に定めのない事項または疑義は甲乙誠実に協議する。本契約は日本法に準拠し、協議で解決しない場合は、法令上認められる範囲で甲の主たる事業所所在地を管轄する裁判所を第一審の合意管轄裁判所とする。'
       },
       estimateB: {
         transport_name: '楽器輸送業務一式', validity: '発行日より30日間',
@@ -1601,6 +1615,9 @@
 
     function renderDynamicFields() {
       const type = docType.value;
+      const isOutsourceContract = type === 'typeBOutsource';
+      clientNameLabel.textContent = isOutsourceContract ? '委託先名（乙）' : '取引先名（甲）';
+      clientRepresentativeLabel.textContent = isOutsourceContract ? '委託先の代表者名' : '代表者名';
       documentDateLabel.textContent = ['estimateA', 'estimateB', 'estimateC'].includes(type) ? '見積発行日' : '契約締結日';
       if (type === 'master') {
         dynamicFields.replaceChildren();
@@ -1630,6 +1647,17 @@
           + field('輸送対象物明細・評価額証明 URL', 'cargo_document_url', values.cargo_document_url)
           + field('運行計画書・積卸し経路図 URL', 'route_document_url', values.route_document_url)
           + field('追加料金規定表 URL', 'fee_document_url', values.fee_document_url)
+          + field('特記事項', 'special_terms', values.special_terms, true, 3000);
+      } else if (type === 'typeBOutsource') {
+        dynamicFields.innerHTML = `<div class="estimate-edit-guide"><strong>協力事業者へのB委託契約書</strong>なめがわブラス・ラボが甲（委託者）、個人事業主または会社が乙（受託者）となる様式です。許認可、保険、運行条件および支払期日を締結前に確認してください。</div>`
+          + field('輸送案件名', 'transport_name', values.transport_name)
+          + field('案件番号・発注書等', 'order_reference', values.order_reference)
+          + field('輸送対象物', 'cargo', values.cargo, true)
+          + field('運行経路・実施条件', 'route', values.route, true)
+          + field('契約期間・実施日', 'service_period', values.service_period)
+          + field('委託料（税込）', 'amount', values.amount)
+          + field('支払条件', 'payment_terms', values.payment_terms, true)
+          + field('許認可・保険条件', 'permit_insurance', values.permit_insurance, true)
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else {
         dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
@@ -1717,6 +1745,17 @@
           <div class="party-box"><p><strong>甲（発注者）</strong></p><p>${safeClient}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
           <div class="party-divider" aria-hidden="true"></div>
           <div class="party-box"><p><strong>乙（受託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><p>適格請求書発行事業者登録番号：${invoiceRegistrationNumber}</p><div class="sign-area">印</div></div>
+        </div>`;
+    }
+
+    function outsourcePartyHtml() {
+      const safeContractor = escapeHtml(clientName.value || '＿＿＿＿＿＿＿＿＿＿');
+      const safeRepresentative = escapeHtml(clientRepresentative.value || '代表者 ＿＿＿＿＿＿＿＿');
+      return `
+        <div class="doc-parties with-divider">
+          <div class="party-box"><p><strong>甲（委託者）</strong></p><p>住所：埼玉県比企郡滑川町月の輪5丁目1-3</p><p class="party-trade-name">屋号：なめがわブラス・ラボ</p><p>代表：佐々木 久和</p><p>適格請求書発行事業者登録番号：${invoiceRegistrationNumber}</p><div class="sign-area">印</div></div>
+          <div class="party-divider" aria-hidden="true"></div>
+          <div class="party-box"><p><strong>乙（受託者）</strong></p><p>${safeContractor}</p><p>${safeRepresentative}</p><div class="sign-area">印</div></div>
         </div>`;
     }
 
@@ -2346,6 +2385,13 @@
           ['輸送案件名', values.transport_name], ['参照するB見積書', estimateReference], ['輸送対象物', values.cargo],
           ['総評価額（事前申告）', values.value], ['運行経路・実施条件', values.route], ['契約金額（税込）', values.amount]
         ])}<h2>添付書類</h2><ul class="estimate-conditions document-links">${transportDocumentLink('輸送対象物明細・評価額証明', values.cargo_document_url)}${transportDocumentLink('運行計画書および積卸し経路図', values.route_document_url)}${transportDocumentLink('追加料金規定表', values.fee_document_url)}</ul><h2>特記事項</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>${parties}</section>`;
+      } else if (type === 'typeBOutsource') {
+        preview.innerHTML = `<section class="contract-page individual-contract-page type-b-contract-page" data-page-number="1"><h1>個別契約書 B（協力事業者への運送委託）</h1><p class="doc-date">${date}</p><p>なめがわブラス・ラボ（以下「甲」という）と受託者（以下「乙」という）は、甲が受注または管理する楽器等の輸送業務について、次のとおり個別業務委託契約を締結する。</p>${contractTable([
+          ['輸送案件名', values.transport_name], ['案件番号・発注書等', values.order_reference],
+          ['輸送対象物', values.cargo], ['運行経路・実施条件', values.route],
+          ['契約期間・実施日', values.service_period], ['委託料（税込）', values.amount],
+          ['支払条件', values.payment_terms], ['許認可・保険条件', values.permit_insurance]
+        ])}<h2>特記事項</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>${outsourcePartyHtml()}</section>`;
       } else {
         preview.innerHTML = `<section class="contract-page individual-contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
           ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],

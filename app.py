@@ -232,6 +232,21 @@ CONTRACT_TYPES = {
         "directory": "transport",
         "keys": {"transport_name", "estimate_reference_id", "estimate_date", "cargo", "value", "route", "amount", "cargo_document_url", "route_document_url", "fee_document_url", "special_terms"},
     },
+    "typeBOutsource": {
+        "department": "楽器輸送・外部委託",
+        "directory": "transport-outsourcing",
+        "keys": {
+            "transport_name",
+            "order_reference",
+            "cargo",
+            "route",
+            "service_period",
+            "amount",
+            "payment_terms",
+            "permit_insurance",
+            "special_terms",
+        },
+    },
     "estimateB": {
         "department": "楽器輸送",
         "directory": "transport",
@@ -2189,7 +2204,7 @@ def list_contracts(contracts_dir=CONTRACTS_DIR):
 def load_contract(contract_id, contracts_dir=CONTRACTS_DIR):
     contract_id = str(contract_id).strip()
     match = re.fullmatch(
-        r"(master|estimateA|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+        r"(master|estimateA|typeA|typeB|typeBOutsource|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
     )
     if not match:
         return None
@@ -2213,7 +2228,7 @@ def delete_contract(
     if not hmac.compare_digest(contract_id, confirmation_id):
         raise ValueError("確認用の契約書IDが一致しません。")
     match = re.fullmatch(
-        r"(master|estimateA|typeA|typeB|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
+        r"(master|estimateA|typeA|typeB|typeBOutsource|estimateB|estimateC|typeC)-\d{8}-[a-f0-9]{8}", contract_id
     )
     if not match:
         return 0
