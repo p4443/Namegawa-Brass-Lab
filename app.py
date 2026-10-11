@@ -241,7 +241,10 @@ CONTRACT_TYPES = {
             "cargo",
             "route",
             "service_period",
-            "amount",
+            "customer_revenue",
+            "contractor_fee",
+            "pass_through_expenses",
+            "target_margin_percent",
             "payment_terms",
             "permit_insurance",
             "special_terms",
@@ -2127,6 +2130,17 @@ def validate_contract(payload):
             re.fullmatch(r"\d{1,3}", value) is None or not 1 <= int(value) <= 365
         ):
             raise ValueError("見積有効期限は1日以上365日以内で入力してください。")
+        if doc_type == "typeBOutsource" and key in {
+            "customer_revenue",
+            "contractor_fee",
+            "pass_through_expenses",
+        } and re.fullmatch(r"\d{1,9}", value) is None:
+            raise ValueError("顧客契約金額と委託料は0以上の整数で入力してください。")
+        if doc_type == "typeBOutsource" and key == "target_margin_percent" and (
+            re.fullmatch(r"\d{1,3}(?:\.\d)?", value) is None
+            or not 0 <= float(value) <= 100
+        ):
+            raise ValueError("目標利益率は0%以上100%以下で入力してください。")
         if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
             raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
         if key == "carrier_quote_date":

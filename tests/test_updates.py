@@ -1223,6 +1223,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("個別契約書 B（協力事業者への運送委託）", page)
         self.assertIn("function outsourcePartyHtml()", page)
         self.assertIn("委託先名（乙）", page)
+        self.assertIn("内部採算管理（契約書面には非表示）", page)
+        self.assertIn("目標を確保できる委託料上限", page)
+        self.assertIn("高速・有料道路料金は通常別途実費", page)
+        self.assertIn("顧客から受領する同額を乙へ精算", page)
+        self.assertIn("利益計算から除外", page)
         self.assertIn('value="estimateB"', page)
         self.assertIn("B契約前 次世代型御見積書", page)
         self.assertIn('value="estimateC"', page)
@@ -2205,7 +2210,10 @@ class UpdatesTest(unittest.TestCase):
                     "cargo": "管楽器および打楽器一式",
                     "route": "滑川町から演奏会場まで",
                     "service_period": "2026年9月10日",
-                    "amount": "税込55,000円",
+                    "customer_revenue": "70000",
+                    "contractor_fee": "55000",
+                    "pass_through_expenses": "3200",
+                    "target_margin_percent": "15",
                     "payment_terms": "業務完了月の翌月末払い",
                     "permit_insurance": "事業用車両および貨物保険を確認する。",
                     "special_terms": "無断再委託を禁止する。",
