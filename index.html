@@ -2636,6 +2636,9 @@
               <input type="checkbox" id="consultationTermsAgree" name="terms_agree" required>
               <span><a href="legal/privacy-policy.html" target="_blank" rel="noopener">プライバシーポリシー</a>に同意します。<span class="consultation-required">*</span></span>
             </label>
+            {% if turnstile_site_key %}
+            <div id="consultationTurnstile" class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-action="consultation"></div>
+            {% endif %}
             <button type="submit" class="consultation-submit" id="consultationSubmit">相談・お見積り依頼を送信</button>
             <p class="consultation-status" id="consultationStatus" role="status" aria-live="polite"></p>
           </div>
@@ -2719,6 +2722,9 @@
   <script src="back-navigation.js"></script>
   <script src="media-playback-guard.js"></script>
   <!-- JavaScript for Hamburger Menu -->
+  {% if turnstile_site_key %}
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {% endif %}
   <script nonce="{{ csp_nonce }}">
     const hamburgerBtn = document.getElementById('hamburgerBtn');
     const navMenu = document.getElementById('navMenu');
@@ -3281,6 +3287,7 @@
         consultationStatus.textContent = error.message || '通信できませんでした。時間をおいて再度お試しください。';
         consultationStatus.dataset.state = 'error';
       } finally {
+        window.turnstile?.reset('#consultationTurnstile');
         consultationSubmit.disabled = false;
         consultationSubmit.textContent = '相談・お見積り依頼を送信';
       }

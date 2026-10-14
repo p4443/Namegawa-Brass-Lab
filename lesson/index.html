@@ -1560,6 +1560,9 @@
           <input id="reservation-privacy-agreed" name="privacy_agreed" type="checkbox" value="同意する" required>
           <span><a href="../legal/privacy-policy.html" target="_blank" rel="noopener">トランペット教室プライバシーポリシー</a>を確認し、個人情報の取り扱いに同意します。<span class="required">必須</span></span>
         </label>
+        {% if turnstile_site_key %}
+        <div id="reservationTurnstile" class="cf-turnstile form-field-wide" data-sitekey="{{ turnstile_site_key }}" data-action="lesson_reservation"></div>
+        {% endif %}
         <div class="form-actions">
           <button class="reservation-submit" type="submit">予約希望を送信する</button>
           <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
@@ -1577,6 +1580,9 @@
             <label for="cancel-reservation-email">予約時のメールアドレス<span class="required">必須</span></label>
             <input id="cancel-reservation-email" name="email" type="email" autocomplete="email" required>
           </div>
+          {% if turnstile_site_key %}
+          <div id="reservationCancelTurnstile" class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-action="reservation_cancel"></div>
+          {% endif %}
           <button class="reservation-submit" type="submit">予約をキャンセル</button>
           <p class="form-status" id="reservation-cancel-status" role="status" aria-live="polite"></p>
         </form>
@@ -1592,6 +1598,9 @@
     </div>
   </footer>
   <script src="../back-navigation.js"></script>
+  {% if turnstile_site_key %}
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {% endif %}
   <script nonce="{{ csp_nonce }}">
     document.querySelectorAll(".lesson-detail-toggle").forEach((toggle) => {
       const detail = document.getElementById(toggle.getAttribute("aria-controls"));
@@ -1966,6 +1975,7 @@
         reservationStatus.dataset.state = "error";
         reservationStatus.textContent = error.message;
       } finally {
+        window.turnstile?.reset("#reservationTurnstile");
         reservationSubmit.disabled = false;
       }
     });
@@ -1997,6 +2007,7 @@
         reservationCancelStatus.dataset.state = "error";
         reservationCancelStatus.textContent = error.message;
       } finally {
+        window.turnstile?.reset("#reservationCancelTurnstile");
         reservationCancelSubmit.disabled = false;
       }
     });

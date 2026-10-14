@@ -18,6 +18,17 @@ Gunicornは要求行・ヘッダー数・ヘッダーサイズに上限を設け
 
 異常時はRenderのアクセスログで429、400、404、5xxの増加を確認し、秘密値の漏えいが疑われる場合は`EDITOR_PASSWORD`、`EDITOR_TOKEN_SECRET`、Webhook secret、Stripe secretを影響範囲に応じてローテーションします。正常性は`/health`と`healthcheck-prod.sh`で非破壊確認します。
 
+### 公開フォームのスパム対策（Cloudflare Turnstile）
+
+イベント相談、レッスン予約、予約キャンセルでは、既存のハニーポットとIPレート制限に加えてCloudflare Turnstileを利用できます。Cloudflare DashboardでTurnstileサイトを作成し、許可ホスト名に本番ドメインを登録してから、RenderのEnvironmentへ次の2項目を設定してください。
+
+```text
+TURNSTILE_SITE_KEY=公開用サイトキー
+TURNSTILE_SECRET_KEY=秘密キー
+```
+
+両方が未設定のローカル環境ではTurnstileを表示しません。片方だけが設定された環境では設定不備として公開フォームをHTTP 503で停止します。秘密キーはHTMLやリポジトリへ保存しないでください。サーバー側ではCloudflareの検証結果に加えてフォーム別の`action`と送信先`hostname`を照合するため、ウィジェット表示だけを迂回した送信も拒否します。設定後は各フォームの送信が成功すること、Turnstile未完了時にHTTP 400となることを確認してください。
+
 ## 起動
 
 編集用パスワードを設定して起動します。パスワードはHTMLやリポジトリには保存されません。

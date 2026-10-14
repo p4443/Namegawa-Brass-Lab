@@ -1063,6 +1063,135 @@ class UpdatesTest(unittest.TestCase):
             "イベント企画・プロデュースのみ",
         )
 
+    def test_consultation_requires_turnstile_token_when_configured(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+        }
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "TURNSTILE_SITE_KEY": "site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+                "PUBLIC_SITE_URL": "",
+            },
+        ), patch("app.send_lesson_reservation") as send_request:
+            response = create_app(database_url="").test_client().post(
+                "/api/consultation", json=payload
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("スパム対策", response.json["error"])
+        send_request.assert_not_called()
+
+    def test_consultation_verifies_turnstile_action_and_hostname(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+            "cf-turnstile-response": "verified-token",
+        }
+        verification_response = MagicMock()
+        verification_response.__enter__.return_value.read.return_value = json.dumps(
+            {
+                "success": True,
+                "action": "consultation",
+                "hostname": "localhost",
+            }
+        ).encode("utf-8")
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "TURNSTILE_SITE_KEY": "site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+                "PUBLIC_SITE_URL": "",
+            },
+        ), patch(
+            "app.urllib_request.urlopen", return_value=verification_response
+        ) as urlopen, patch(
+            "app.send_lesson_reservation",
+            return_value={"ok": True, "consultationId": "C-001"},
+        ) as send_request:
+            response = create_app(database_url="").test_client().post(
+                "/api/consultation", json=payload
+            )
+
+        self.assertEqual(response.status_code, 201)
+        verification_request = urlopen.call_args.args[0]
+        verification_payload = parse_qs(
+            verification_request.data.decode("utf-8")
+        )
+        self.assertEqual(verification_payload["secret"], ["secret-key"])
+        self.assertEqual(verification_payload["response"], ["verified-token"])
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 8)
+        send_request.assert_called_once()
+
+    def test_consultation_rejects_turnstile_action_mismatch(self):
+        payload = {
+            "service_mode": "planning",
+            "org_name": "地域音楽会実行委員会",
+            "email": "event@example.com",
+            "planning_type": "ワークショップ・講習会の企画",
+            "message": "子ども向け企画を相談したいです。",
+            "terms_agree": True,
+            "cf-turnstile-response": "wrong-action-token",
+        }
+        verification_response = MagicMock()
+        verification_response.__enter__.return_value.read.return_value = json.dumps(
+            {
+                "success": True,
+                "action": "lesson_reservation",
+                "hostname": "localhost",
+            }
+        ).encode("utf-8")
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "TURNSTILE_SITE_KEY": "site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+                "PUBLIC_SITE_URL": "",
+            },
+        ), patch(
+            "app.urllib_request.urlopen", return_value=verification_response
+        ), patch("app.send_lesson_reservation") as send_request:
+            response = create_app(database_url="").test_client().post(
+                "/api/consultation", json=payload
+            )
+
+        self.assertEqual(response.status_code, 400)
+        send_request.assert_not_called()
+
+    def test_public_forms_render_turnstile_widgets_when_configured(self):
+        with patch.dict(
+            os.environ,
+            {
+                "TURNSTILE_SITE_KEY": "public-site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+            },
+        ):
+            client = create_app(database_url="").test_client()
+            index_page = client.get("/").get_data(as_text=True)
+            lesson_page = client.get("/lesson/").get_data(as_text=True)
+
+        self.assertIn('data-sitekey="public-site-key"', index_page)
+        self.assertIn('data-action="consultation"', index_page)
+        self.assertIn("challenges.cloudflare.com/turnstile/v0/api.js", index_page)
+        self.assertIn('data-action="lesson_reservation"', lesson_page)
+        self.assertIn('data-action="reservation_cancel"', lesson_page)
+
     def test_consultation_rate_limit_prevents_excessive_apps_script_calls(self):
         payload = {
             "service_mode": "planning",
@@ -3926,6 +4055,28 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(send_reservation.call_args.args[2]["email"], "user@example.com")
         notify_portal.assert_called_once_with("R-20260820-001", "キャンセル")
 
+    def test_user_cancellation_requires_turnstile_token_when_configured(self):
+        with patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "TURNSTILE_SITE_KEY": "site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            response = create_app(database_url="").test_client().post(
+                "/api/lesson-reservations/cancel",
+                json={
+                    "reservation_id": "R-20260820-001",
+                    "email": "user@example.com",
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("スパム対策", response.json["error"])
+        send_reservation.assert_not_called()
+
     def test_user_cancellation_rejects_mismatched_email(self):
         client = create_app().test_client()
 
@@ -4431,6 +4582,33 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(all(response.status_code == 201 for response in responses[:20]))
         self.assertEqual(responses[20].status_code, 429)
         self.assertEqual(send_reservation.call_count, 20)
+
+    def test_lesson_reservation_requires_turnstile_token_when_configured(self):
+        payload = {
+            "name": "予約 太郎",
+            "email": "taro@example.com",
+            "phone": "090-1234-5678",
+            "lesson_type": "体験レッスン",
+            "preferred_date": "2026-08-20",
+            "preferred_time": "09:00",
+            "message": "初心者です。",
+        }
+        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
+            os.environ,
+            {
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+                "TURNSTILE_SITE_KEY": "site-key",
+                "TURNSTILE_SECRET_KEY": "secret-key",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            response = create_app(database_url="").test_client().post(
+                "/api/lesson-reservations", json=payload
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("スパム対策", response.json["error"])
+        send_reservation.assert_not_called()
 
     def test_lesson_reservation_conflict_is_reported(self):
         client = create_app().test_client()

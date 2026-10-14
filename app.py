@@ -76,8 +76,11 @@ PUBLIC_ACTION_LIMITS = {
     "checkout": (10, 100, 10 * 60),
     "consultation": (3, 50, 15 * 60),
     "reservation": (20, 100, 15 * 60),
+    "reservation_cancel": (10, 100, 15 * 60),
 }
 MAX_REQUEST_BYTES = 25 * 1024 * 1024
+TURNSTILE_VERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+TURNSTILE_TIMEOUT_SECONDS = 8
 CHECKOUT_SESSION_PATTERN = re.compile(r"^cs_[A-Za-z0-9_]{1,255}$")
 INVOICE_REGISTRATION_NUMBER_PATTERN = re.compile(r"^T\d{13}$")
 DEFAULT_INVOICE_REGISTRATION_NUMBER = "T2810320517878"
@@ -2830,7 +2833,7 @@ def create_app(
             "object-src 'none'; "
             "frame-ancestors 'self'; "
             "form-action 'self'; "
-            f"script-src 'self' 'nonce-{g.csp_nonce}'; "
+            f"script-src 'self' 'nonce-{g.csp_nonce}' https://challenges.cloudflare.com; "
             f"style-src 'self' 'nonce-{g.csp_nonce}'; "
             "style-src-attr 'none'; "
             "img-src 'self' data: https:; "
@@ -2838,9 +2841,11 @@ def create_app(
             f"media-src 'self' blob: data: {video_cdn_origin}; "
             "worker-src 'self' blob:; "
             "connect-src 'self' https://namegawa-brass-lab.com "
-            "https://*.onrender.com https://*.vercel.app; "
+            "https://*.onrender.com https://*.vercel.app "
+            "https://challenges.cloudflare.com; "
             "frame-src 'self' https://www.google.com https://www.youtube.com "
-            "https://docs.google.com https://*.onrender.com https://*.vercel.app",
+            "https://docs.google.com https://*.onrender.com https://*.vercel.app "
+            "https://challenges.cloudflare.com",
         )
         response.headers.setdefault("Cross-Origin-Opener-Policy", "same-origin")
         response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
@@ -2858,6 +2863,7 @@ def create_app(
     def inject_csp_nonce():
         return {
             "csp_nonce": g.csp_nonce,
+            "turnstile_site_key": os.environ.get("TURNSTILE_SITE_KEY", "").strip(),
             "video_asset_url": lambda filename, version="", local_prefix="": (
                 video_asset_url(
                     video_cdn_base_url, filename, version, local_prefix
@@ -3000,6 +3006,62 @@ def create_app(
 
     def public_base_url():
         return public_site_url() or request.url_root.rstrip("/")
+
+    def verify_turnstile(payload, expected_action):
+        site_key = os.environ.get("TURNSTILE_SITE_KEY", "").strip()
+        secret_key = os.environ.get("TURNSTILE_SECRET_KEY", "").strip()
+        if not site_key and not secret_key:
+            return None
+        if not site_key or not secret_key:
+            app.logger.error("Turnstile configuration is incomplete")
+            return "スパム対策の設定を確認中です。時間をおいて再度お試しください。", 503
+        token = (
+            str((payload or {}).get("cf-turnstile-response", "")).strip()
+            if isinstance(payload, dict)
+            else ""
+        )
+        if not token or len(token) > 2048:
+            return "スパム対策の確認を完了してください。", 400
+        verification_request = urllib_request.Request(
+            TURNSTILE_VERIFY_URL,
+            data=urlencode(
+                {
+                    "secret": secret_key,
+                    "response": token,
+                    "remoteip": request.remote_addr or "",
+                }
+            ).encode("utf-8"),
+            headers={"Content-Type": "application/x-www-form-urlencoded"},
+            method="POST",
+        )
+        try:
+            with urllib_request.urlopen(
+                verification_request, timeout=TURNSTILE_TIMEOUT_SECONDS
+            ) as response:
+                result = json.loads(response.read().decode("utf-8"))
+        except (
+            json.JSONDecodeError,
+            OSError,
+            ValueError,
+            urllib_error.URLError,
+        ):
+            app.logger.exception("Turnstile verification request failed")
+            return "スパム対策の確認に失敗しました。時間をおいて再度お試しください。", 502
+        configured_hostname = urlparse(public_site_url()).hostname
+        expected_hostname = configured_hostname or request.host.split(":", 1)[0]
+        if (
+            result.get("success") is not True
+            or result.get("action") != expected_action
+            or result.get("hostname") != expected_hostname
+        ):
+            app.logger.warning(
+                "Turnstile verification rejected: action=%r hostname=%r errors=%r",
+                result.get("action"),
+                result.get("hostname"),
+                result.get("error-codes"),
+            )
+            return "スパム対策の確認に失敗しました。ページを再読み込みしてお試しください。", 400
+        return None
 
     def invoice_registration_number():
         value = os.environ.get(
@@ -4500,11 +4562,14 @@ def create_app(
                 methods="GET, POST, OPTIONS",
                 headers="Content-Type, X-Editor-Password",
             )
-        if request.get_json(silent=True) and request.get_json(silent=True).get("website"):
-            return lesson_reservation_json({"saved": True}, 201)
         reservation_payload = request.get_json(silent=True)
+        if isinstance(reservation_payload, dict) and reservation_payload.get("website"):
+            return lesson_reservation_json({"saved": True}, 201)
         portal_line_user_id = ""
-        if portal_webhook_secret_is_valid(request.headers.get("X-Portal-Authorization")):
+        portal_request_is_signed = portal_webhook_secret_is_valid(
+            request.headers.get("X-Portal-Authorization")
+        )
+        if portal_request_is_signed:
             portal_line_user_id = str(
                 (reservation_payload or {}).get("portal_line_user_id", "")
             ).strip()
@@ -4535,6 +4600,13 @@ def create_app(
                 {"error": "予約の送信回数が多すぎます。時間をおいて再度お試しください。"},
                 429,
             )
+        if not portal_request_is_signed:
+            turnstile_error = verify_turnstile(
+                reservation_payload, "lesson_reservation"
+            )
+            if turnstile_error:
+                message, status_code = turnstile_error
+                return lesson_reservation_json({"error": message}, status_code)
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
         except LessonReservationDeliveryError as exc:
@@ -4676,6 +4748,10 @@ def create_app(
                 {"error": "送信回数が多すぎます。時間をおいて再度お試しください。"},
                 429,
             )
+        turnstile_error = verify_turnstile(payload, "consultation")
+        if turnstile_error:
+            message, status_code = turnstile_error
+            return lesson_reservation_json({"error": message}, status_code)
         try:
             result = send_lesson_reservation(
                 script_url, script_secret, values, action="consultation"
@@ -4923,9 +4999,20 @@ def create_app(
                 methods="POST, OPTIONS",
             )
         try:
-            values = validate_lesson_reservation_cancellation(request.get_json(silent=True))
+            payload = request.get_json(silent=True)
+            values = validate_lesson_reservation_cancellation(payload)
         except ValueError as exc:
             return lesson_reservation_json({"error": str(exc)}, 400)
+
+        if public_action_is_limited("reservation_cancel"):
+            return lesson_reservation_json(
+                {"error": "キャンセル操作の回数が多すぎます。時間をおいて再度お試しください。"},
+                429,
+            )
+        turnstile_error = verify_turnstile(payload, "reservation_cancel")
+        if turnstile_error:
+            message, status_code = turnstile_error
+            return lesson_reservation_json({"error": message}, status_code)
 
         script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
         script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
