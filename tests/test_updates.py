@@ -1400,7 +1400,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function renderMasterContract(date, safeClient, parties)", page)
         self.assertIn("function renderIndividualContract(type, date, parties)", page)
         self.assertIn("function renderWebAppEstimate(date, safeClient)", page)
-        self.assertEqual(page.count('<section class="contract-page" data-page-number="2">'), 1)
+        self.assertEqual(page.count('<section class="contract-page" data-page-number="2">'), 2)
+        self.assertIn("別紙C-2　ホームページ保守・技術支援業務特約兼重要事項説明書", page)
+        self.assertIn("法令上責任を制限できない場合を除く", page)
+        self.assertIn("事由発生日から6か月以内に請求", page)
         self.assertIn(".contract-page:last-child { break-after: auto; }", page)
         self.assertIn("width: var(--paper-width);", page)
         self.assertIn("height: var(--paper-height);", page)
@@ -2355,9 +2358,26 @@ class UpdatesTest(unittest.TestCase):
                 "typeC",
                 "WEB・アプリ",
                 {
+                    "contract_mode": "development_maintenance",
                     "deliverable": "予約管理Webアプリケーション一式",
                     "amount": "税込220,000円",
                     "deadline": "2026年10月31日",
+                    "site_name": "予約管理サイト",
+                    "site_url": "https://example.com/",
+                    "maintenance_start": "2026年11月1日",
+                    "maintenance_term": "1か月ごとの自動更新",
+                    "monthly_fee": "15000",
+                    "included_requests": "2",
+                    "included_hours": "2",
+                    "overage_hourly_rate": "2500",
+                    "billing_unit_minutes": "30",
+                    "business_hours": "平日10:00〜18:00",
+                    "initial_response": "1〜2営業日以内",
+                    "standard_completion": "着手後3営業日以内を目安",
+                    "monitoring_scope": "公開URLのHTTP応答確認",
+                    "emergency_rate": "別途見積もり",
+                    "termination_notice": "30",
+                    "payment_terms": "翌月末払い",
                     "special_terms": "指定環境で検収を行う。",
                 },
                 "deliverable",

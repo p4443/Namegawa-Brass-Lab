@@ -303,8 +303,50 @@ CONTRACT_TYPES = {
     "typeC": {
         "department": "WEB・アプリ",
         "directory": "web-app",
-        "keys": {"deliverable", "amount", "deadline", "special_terms"},
+        "keys": {
+            "contract_mode",
+            "deliverable",
+            "amount",
+            "deadline",
+            "site_name",
+            "site_url",
+            "maintenance_start",
+            "maintenance_term",
+            "monthly_fee",
+            "included_requests",
+            "included_hours",
+            "overage_hourly_rate",
+            "billing_unit_minutes",
+            "business_hours",
+            "initial_response",
+            "standard_completion",
+            "monitoring_scope",
+            "emergency_rate",
+            "termination_notice",
+            "payment_terms",
+            "special_terms",
+        },
     },
+}
+
+TYPE_C_CONTRACT_DEFAULTS = {
+    "contract_mode": "development",
+    "site_name": "対象Webサイトまたはアプリケーション",
+    "site_url": "https://example.com/",
+    "maintenance_start": "本契約締結日の翌月1日",
+    "maintenance_term": "開始日から1か月間（以後1か月ごとの自動更新）",
+    "monthly_fee": "15000",
+    "included_requests": "2",
+    "included_hours": "2",
+    "overage_hourly_rate": "2500",
+    "billing_unit_minutes": "30",
+    "business_hours": "平日10:00〜18:00（土日祝日・年末年始を除く）",
+    "initial_response": "受領後、原則1〜2営業日以内",
+    "standard_completion": "着手後、原則3営業日以内を目安",
+    "monitoring_scope": "指定した公開URLのHTTP応答確認。24時間有人監視、即時復旧および稼働率は保証しない。",
+    "emergency_rate": "対応可否を都度判断し、着手前に別途見積もる",
+    "termination_notice": "30",
+    "payment_terms": "毎月末日締め、翌月末日までに支払う。振込手数料は甲の負担とする。",
 }
 
 INSTRUMENT_PRICE_SOURCE_DOMAINS = {
@@ -1734,6 +1776,8 @@ def validate_contract(payload):
     raw_values = payload.get("values", {})
     if not isinstance(raw_values, dict):
         raise ValueError("契約条件を確認してください。")
+    if doc_type == "typeC":
+        raw_values = {**TYPE_C_CONTRACT_DEFAULTS, **raw_values}
     transport_workflow_status = str(
         raw_values.get("workflow_status", "quote_pending")
     ).strip()
@@ -2144,6 +2188,21 @@ def validate_contract(payload):
             or not 0 <= float(value) <= 100
         ):
             raise ValueError("目標利益率は0%以上100%以下で入力してください。")
+        if doc_type == "typeC" and key == "contract_mode" and value not in {
+            "development",
+            "maintenance",
+            "development_maintenance",
+        }:
+            raise ValueError("C契約の契約区分を選択してください。")
+        if doc_type == "typeC" and key in {
+            "monthly_fee",
+            "included_requests",
+            "included_hours",
+            "overage_hourly_rate",
+            "billing_unit_minutes",
+            "termination_notice",
+        } and re.fullmatch(r"\d{1,9}", value) is None:
+            raise ValueError("C契約の料金・回数・時間は0以上の整数で入力してください。")
         if key.endswith("_url") and re.fullmatch(r"https?://[^\s]+", value) is None:
             raise ValueError("添付書類URLはhttpまたはhttps形式で入力してください。")
         if key == "carrier_quote_date":

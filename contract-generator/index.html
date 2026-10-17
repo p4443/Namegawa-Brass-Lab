@@ -929,8 +929,27 @@
         work_logs: [{ work_date: '', description: '', hours: '', hourly_rate: '', amount: '0' }]
       },
       typeC: {
-        deliverable: 'Webサイトまたはアプリケーション一式', amount: '別途見積書のとおり', deadline: '双方協議のうえ定める日',
-        special_terms: '1. 成果物はプログラム一式をZIPファイル等の電子データで納品し、納品時に合意する指定動作環境での稼働を受入基準とする。甲はデータ受領後14日以内に検収し、期間内に具体的な不適合の通知がない場合は検収完了とみなす。\n2. 検収完了後14日以内に発見された、合意仕様に対するプログラム固有の不具合は乙が無償で修正する。仕様変更、機能追加、指定外環境への対応および第三者サービスの変更対応は無償修正に含まれない。\n3. 本件はプログラムの売り切り（買い切り）契約とし、検収完了後の継続的な運用保守、監視、バックアップ、将来のOS・ブラウザ・API等の更新への追従および機能追加は含まれず、必要な場合は別途有償で合意する。\n4. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。\n5. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とする。甲乙は個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。'
+        contract_mode: 'development_maintenance',
+        deliverable: 'Webサイトまたはアプリケーション一式',
+        amount: '制作費は別途C見積書のとおり',
+        deadline: '双方協議のうえ定める日',
+        site_name: '対象Webサイト',
+        site_url: 'https://example.com/',
+        maintenance_start: '本契約締結日の翌月1日',
+        maintenance_term: '開始日から1か月間（以後1か月ごとの自動更新）',
+        monthly_fee: '15000',
+        included_requests: '2',
+        included_hours: '2',
+        overage_hourly_rate: '2500',
+        billing_unit_minutes: '30',
+        business_hours: '平日10:00〜18:00（土日祝日・年末年始を除く）',
+        initial_response: '受領後、原則1〜2営業日以内',
+        standard_completion: '着手後、原則3営業日以内を目安（調査・複雑な作業を除く）',
+        monitoring_scope: '指定した公開URLのHTTP応答確認。24時間有人監視、即時復旧および稼働率は保証しない。',
+        emergency_rate: '対応可否を都度判断し、着手前に別途見積もる',
+        termination_notice: '30',
+        payment_terms: '毎月末日締め、翌月末日までに支払う。振込手数料は甲の負担とする。',
+        special_terms: '1. 成果物はプログラム一式をZIPファイル等の電子データで納品し、納品時に合意する指定動作環境での稼働を受入基準とする。甲はデータ受領後14日以内に検収し、期間内に具体的な不適合の通知がない場合は検収完了とみなす。\n2. 検収完了後14日以内に発見された、合意仕様に対するプログラム固有の不具合は乙が無償で修正する。仕様変更、機能追加、指定外環境への対応および第三者サービスの変更対応は無償修正に含まれない。\n3. 制作成果物はプログラムの売り切り（買い切り）とし、検収後の継続保守は、月額保守を契約した場合に限り別紙C-2の範囲で提供する。別紙C-2に含まれない監視、バックアップ、将来のOS・ブラウザ・API等への追従および機能追加は、別途有償で合意する。\n4. 仕様、優先順位、納期または業務範囲の変更は変更管理の対象とし、影響する費用、納期および責任分担を記録可能な方法で合意した後に実施する。既存著作物、汎用部品、オープンソースソフトウェアおよび第三者素材の権利は各権利者に留保される。\n5. ドメイン、クラウド、API、決済、生成AIその他第三者サービスの仕様変更、停止、料金改定および規約変更は乙の管理外とする。甲乙は個人情報、認証情報および秘密情報を目的の範囲で取り扱い、合理的な安全管理措置を講じる。脆弱性または情報セキュリティ事故を認識した場合は速やかに通知し、被害拡大防止、調査および復旧に協力する。'
       }
     };
     const initialContractValues = JSON.parse(JSON.stringify(contractValues));
@@ -942,6 +961,12 @@
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
+    }
+
+    function escapeSentence(value) {
+      const normalized = String(value || '').trim();
+      const punctuation = /[。.!！?？]$/.test(normalized) ? '' : '。';
+      return `${escapeHtml(normalized)}${punctuation}`;
     }
 
     function formatJapaneseDate(value) {
@@ -1693,7 +1718,30 @@
           + field('許認可・保険条件', 'permit_insurance', values.permit_insurance, true)
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
       } else {
-        dynamicFields.innerHTML = field('成果物・業務内容', 'deliverable', values.deliverable, true)
+        const maintenanceFields = selectField('契約区分', 'contract_mode', values.contract_mode, [
+          { value: 'development', label: '制作・買い切りのみ' },
+          { value: 'maintenance', label: '月額保守のみ' },
+          { value: 'development_maintenance', label: '制作＋月額保守' }
+        ])
+          + field('対象サイト・システム名', 'site_name', values.site_name)
+          + field('対象URL', 'site_url', values.site_url)
+          + field('保守開始日', 'maintenance_start', values.maintenance_start)
+          + field('保守契約期間', 'maintenance_term', values.maintenance_term)
+          + numericField('基本月額料金（税別・円）', 'monthly_fee', values.monthly_fee)
+          + numericField('月内の基本対応回数', 'included_requests', values.included_requests)
+          + numericField('月内の基本対応時間（時間）', 'included_hours', values.included_hours)
+          + numericField('超過単価（税別・円／時間）', 'overage_hourly_rate', values.overage_hourly_rate)
+          + numericField('超過料金の計算単位（分）', 'billing_unit_minutes', values.billing_unit_minutes, { min: 1, max: 60 })
+          + field('通常対応時間', 'business_hours', values.business_hours)
+          + field('一次受付回答', 'initial_response', values.initial_response)
+          + field('軽微修正の完了目安', 'standard_completion', values.standard_completion)
+          + field('監視範囲・保証対象外', 'monitoring_scope', values.monitoring_scope, true)
+          + field('営業時間外の緊急対応', 'emergency_rate', values.emergency_rate, true)
+          + numericField('解約予告期間（日）', 'termination_notice', values.termination_notice)
+          + field('支払条件', 'payment_terms', values.payment_terms, true);
+        dynamicFields.innerHTML = `<div class="estimate-edit-guide"><strong>C契約書と保守特約</strong>月額保守を含む契約区分では、責任範囲を限定した「別紙C-2 保守・技術支援特約」が自動添付されます。全面免責ではなく、法令上制限できない責任を除外した事業者間契約用の案です。</div>`
+          + maintenanceFields
+          + field('成果物・業務内容', 'deliverable', values.deliverable, true)
           + field('委託料', 'amount', values.amount)
           + field('納期', 'deadline', values.deadline)
           + field('特記事項', 'special_terms', values.special_terms, true, 3000);
@@ -2427,11 +2475,77 @@
           ['支払条件', values.payment_terms], ['許認可・保険条件', values.permit_insurance]
         ])}<h2>特記事項</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>${outsourcePartyHtml()}</section>`;
       } else {
-        preview.innerHTML = `<section class="contract-page individual-contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、基本契約に基づき、次のとおり個別契約を締結する。</p>${contractTable([
-          ['成果物・業務内容', values.deliverable], ['委託料', values.amount], ['納期', values.deadline],
-          ['特記事項', values.special_terms]
-        ])}${parties}</section>`;
+        const includesDevelopment = values.contract_mode !== 'maintenance';
+        const includesMaintenance = values.contract_mode !== 'development';
+        const modeLabel = {
+          development: '制作・買い切り',
+          maintenance: '月額保守',
+          development_maintenance: '制作＋月額保守'
+        }[values.contract_mode] || '制作＋月額保守';
+        const summaryRows = [
+          ['契約区分', modeLabel],
+          ['対象サイト・システム', `${values.site_name}（${values.site_url}）`],
+          ['成果物・業務内容', values.deliverable],
+          ['委託料', values.amount],
+          ['納期', values.deadline]
+        ];
+        if (includesMaintenance) {
+          summaryRows.push(
+            ['月額保守料金', `${formatEstimateYen(estimateNumber(values.monthly_fee))}円（税別）`],
+            ['保守開始日・期間', `${values.maintenance_start}／${values.maintenance_term}`]
+          );
+        }
+        const developmentTerms = includesDevelopment
+          ? `<h2>制作・納品条件</h2><p>${escapeHtml(values.special_terms).replace(/\n/g, '<br>')}</p>`
+          : '';
+        const maintenancePages = includesMaintenance ? renderMaintenanceSpecialTerms(values, parties) : parties;
+        preview.innerHTML = `<section class="contract-page individual-contract-page" data-page-number="1"><h1>個別契約書 C（WEB・アプリ）</h1><p class="doc-date">${date}</p><p>甲と乙は、業務委託基本契約書に基づき、次のとおり個別契約を締結する。本書に添付される別紙C-2は本個別契約の一部を構成し、抵触する範囲では本個別契約、別紙C-2、C見積書、業務委託基本契約書の順に優先する。</p>${contractTable(summaryRows)}${developmentTerms}${includesMaintenance ? '<p><strong>添付：</strong>別紙C-2 ホームページ保守・技術支援業務特約兼重要事項説明書</p>' : parties}</section>${maintenancePages}`;
       }
+    }
+
+    function renderMaintenanceSpecialTerms(values, parties) {
+      const monthlyFee = formatEstimateYen(estimateNumber(values.monthly_fee));
+      const overageRate = formatEstimateYen(estimateNumber(values.overage_hourly_rate));
+      return `
+        <section class="contract-page" data-page-number="2">
+          <h1>別紙C-2　ホームページ保守・技術支援業務特約兼重要事項説明書</h1>
+          <p>本特約は個別契約書Cの一部を構成し、甲乙間のホームページ保守・技術支援業務に適用する。</p>
+          <h2>第1条（対象および業務の性質）</h2>
+          <p>対象は「${escapeHtml(values.site_name)}」（${escapeHtml(values.site_url)}）とする。本業務は、乙が合理的な注意をもって技術支援を行う準委任業務であり、請負、常駐管理、24時間365日の有人監視、障害の即時復旧、完全な安全性、無停止稼働、特定の売上・集客・検索順位その他の成果を保証するものではない。</p>
+          <h2>第2条（管理体制および復元）</h2>
+          <p>乙は、乙が管理するソースコードをGitその他のバージョン管理システムにより管理する。乙の変更作業に直接起因する不具合について、乙は技術的に可能な範囲でソースコードを作業前の管理状態へ復元する。復元は応急措置であり、原因調査、恒久修正、データ復旧または第三者サービスの復旧を含まない。</p>
+          <p>Gitリポジトリはソースコードの履歴であり、データベース、投稿データ、アップロードファイル、認証情報、ログおよび外部サービス上のデータのバックアップではない。これらの保存・復元は、個別に書面で合意しない限り甲または当該サービス提供者の責任とする。</p>
+          <h2>第3条（生成AIおよび第三者ソフトウェア）</h2>
+          <p>乙は開発支援のため生成AIその他の支援ツールを利用できる。乙は合理的な範囲で成果物を確認するが、AI、オープンソースソフトウェア、ライブラリその他第三者製品について、完全性、無謬性、将来の互換性、権利非侵害または未知の脆弱性が存在しないことを保証しない。甲の秘密情報、個人情報または認証情報は、甲の承諾なく外部生成AIへ入力しない。</p>
+          <h2>第4条（基本料金および作業枠）</h2>
+          <p>基本月額料金は${monthlyFee}円（税別）とし、システム基盤の維持管理、Gitリポジトリ管理、${escapeHtml(values.monitoring_scope)}、ならびに月${escapeHtml(values.included_requests)}回・合計${escapeHtml(values.included_hours)}時間以内の軽微修正を含む。未利用の回数および時間は翌月へ繰り越さず、返金または減額しない。</p>
+          <p>調査、連絡、バックアップ、修正、試験および反映に要した時間を作業時間に含む。基本枠を超える作業は1時間${overageRate}円（税別）とし、${escapeHtml(values.billing_unit_minutes)}分単位で端数を切り上げる。乙は可能な限り事前に見込みを通知し、甲の承認後に着手する。</p>
+        </section>
+        <section class="contract-page" data-page-number="3">
+          <h2>第5条（対象外業務）</h2>
+          <p>新規ページ・機能、全面的なデザイン変更、仕様変更、大規模なデータ移行、法令・規約対応、SEO・売上等の改善、第三者API・決済・SNS等の変更対応、サイバー攻撃・マルウェア・情報漏えいの調査、フォレンジック、大規模復旧および他事業者への移管は基本料金に含まず、乙が対応を承諾した場合に限り別途見積もる。</p>
+          <h2>第6条（受付、完了目安および緊急対応）</h2>
+          <p>通常対応時間は${escapeHtml(values.business_hours)}とする。一次受付回答は${escapeHtml(values.initial_response)}、軽微修正の完了は${escapeHtml(values.standard_completion)}とする。これらは目安であり、履行期限またはサービスレベル保証ではない。営業時間外の緊急対応は「${escapeHtml(values.emergency_rate)}」ものとし、乙は対応義務を負わない。</p>
+          <h2>第7条（甲の責任および協力義務）</h2>
+          <p>甲は、コンテンツの適法性、正確性、権利処理、個人情報の取得、利用規約・プライバシーポリシー、管理者アカウント、認証情報、ドメインおよび甲名義の第三者契約を管理する。甲による資料・承認・権限提供の遅延、誤操作、第三者による変更または甲の指示に起因する結果について乙は責任を負わない。甲は重要データを自己の責任で事前に複製し、異常を認識したときは直ちに乙へ通知する。</p>
+          <h2>第8条（第三者サービスおよび不可抗力）</h2>
+          <p>ホスティング、ドメイン、通信回線、OS、ブラウザ、クラウド、API、決済、SNS、検索エンジンその他第三者サービスの停止、障害、遅延、仕様・料金・規約変更、終了、アカウント停止またはデータ消失について、乙は自己の責めに帰すべき事由がある場合を除き責任を負わない。天災、感染症、停電、通信障害、行政措置、サイバー攻撃、未知の脆弱性その他合理的な支配を超える事由についても同様とする。</p>
+          <h2>第9条（セキュリティおよびデータ）</h2>
+          <p>乙は合理的な安全管理措置を講じるが、不正アクセス、攻撃、マルウェア、情報漏えいまたはデータ消失を完全に防止する義務を負わない。事故対応は被害拡大防止のための合理的な初動協力に限り、調査、報告、復旧、再構築および第三者対応は別途有償とする。</p>
+          <h2>第10条（保証の限定）</h2>
+          <p>乙が明示的に保証する事項は本契約に記載した範囲に限る。法令上許される最大限の範囲で、商品性、特定目的適合性、継続性、正確性、完全性、第三者権利非侵害その他明示または黙示の保証を行わない。甲の指定外環境、契約締結後の環境変更、第三者または甲による改変、保守対象外のコードおよび甲が必要な更新を承認しないことに起因する不具合は保証対象外とする。</p>
+        </section>
+        <section class="contract-page" data-page-number="4">
+          <h2>第11条（責任制限）</h2>
+          <p>乙が責任を負う場合であっても、その範囲は乙の責めに帰すべき事由により甲に直接かつ現実に発生した通常損害に限る。乙は、予見可能性の有無を問わず、逸失利益、売上・信用・機会の喪失、事業中断、間接損害、特別損害、結果損害、データ消失または第三者からの請求について責任を負わない。</p>
+          <p>乙の損害賠償責任の累計総額は、請求原因を問わず、当該損害の原因となった事由の発生直前1か月間に甲が乙へ現実に支払った本保守料金の総額を上限とする。ただし、乙の故意または重過失、生命・身体への損害その他法令上責任を制限できない場合を除く。甲は損害および原因を知った日から30日以内に具体的内容を書面で通知し、事由発生日から6か月以内に請求しなければならない。ただし法令上これより短縮できない場合を除く。</p>
+          <h2>第12条（契約期間、停止および終了）</h2>
+          <p>保守期間は${escapeHtml(values.maintenance_start)}から${escapeHtml(values.maintenance_term)}とする。甲または乙は、終了希望日の${escapeHtml(values.termination_notice)}日前までに通知して更新を終了できる。月途中の終了による日割り、返金または未利用枠の精算は行わない。料金は${escapeSentence(values.payment_terms)}甲が支払を遅滞し、催告後も是正しない場合、乙は保守を停止できる。</p>
+          <p>契約終了時、乙は甲に帰属するデータおよび合理的に引渡し可能な管理情報を現状有姿で提供する。移行、再構築、説明、データ変換および他事業者への支援は別途有償とする。乙は法令または紛争対応上保存が必要なものを除き、終了後90日経過後に保有データを削除できる。</p>
+          <h2>第13条（変更および協議）</h2>
+          <p>契約条件の変更は、変更対象、費用および適用日を明示し、甲乙が書面または保存可能な電磁的方法で承認した場合に限り効力を有する。本特約に定めのない事項は業務委託基本契約書による。</p>
+          ${parties}
+        </section>`;
     }
 
     function fitIndividualContractLayout() {
