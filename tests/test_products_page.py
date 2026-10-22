@@ -17,7 +17,9 @@ class ProductsPageTests(unittest.TestCase):
 
         self.assertLess(music_end, transport_start)
         self.assertNotIn('id="tennko-kakuninnbo"', self.html[music_start:music_end])
+        self.assertNotIn('id="project-shift-calendar"', self.html[music_start:music_end])
         self.assertIn('id="tennko-kakuninnbo"', self.html[transport_start:])
+        self.assertIn('id="project-shift-calendar"', self.html[transport_start:])
         self.assertNotIn('class="product-track"', self.html)
 
     def test_transport_product_explains_features_and_license(self):
@@ -58,6 +60,8 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn('id="project-shift-sales-form"', card)
         self.assertIn('id="project-shift-sales-enabled"', card)
         self.assertIn('class="service-purchase project-shift-purchase-link"', card)
+        self.assertIn('class="transport-app-preview project-shift-preview"', card)
+        self.assertNotIn("<iframe", card)
         self.assertIn(
             'fetch("../api/store/project-shift-calendar/product"', self.html
         )

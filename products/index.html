@@ -119,6 +119,17 @@
       pointer-events: none;
     }
     .transport-app-preview img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .project-shift-preview {
+      display: grid;
+      place-content: center;
+      gap: 10px;
+      padding: 32px;
+      color: #ffffff;
+      background: linear-gradient(135deg, #1e3a8a, #2563eb);
+      text-align: center;
+    }
+    .project-shift-preview strong { font-size: clamp(1.6rem, 4vw, 2.6rem); }
+    .project-shift-preview span { font-size: 1rem; font-weight: 700; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -320,57 +331,6 @@
           </div>
           </article>
 
-          <article class="product-feature" id="project-shift-calendar">
-          <header class="product-heading">
-            <div>
-              <span class="product-label">軽貨物事業者向けWebアプリ</span>
-              <h2>案件別シフト表</h2>
-              <p>案件ごとに車両と日別シフトを整理し、月間予定の確認・印刷・バックアップまで一つの画面で行えます。</p>
-            </div>
-            <a class="launch-link" href="https://project-shift-calendar.vercel.app/" target="_blank" rel="noopener">ログイン画面を開く</a>
-          </header>
-
-          <iframe class="app-window tenko-window" src="https://project-shift-calendar.vercel.app/" title="案件別シフト表 ログイン画面" loading="lazy"></iframe>
-
-          <div class="store-panel">
-            <div class="store-copy">
-              <h3>買い切りWebアプリ利用ライセンス</h3>
-              <p>メールアドレスでログインし、ブラウザー版とダウンロード版を利用できます。月額の自動課金はありません。</p>
-              <ul class="store-benefits">
-                <li>案件ごとに複数車両のシフトを日別管理</li>
-                <li>月間カレンダーの確認と印刷に対応</li>
-                <li>案件数・車両数にアプリ上の固定上限なし</li>
-                <li>ダウンロード版は3端末までライセンス認証</li>
-                <li>シフトデータのバックアップ・復元に対応</li>
-              </ul>
-              <nav class="store-legal" aria-label="案件別シフト表の購入に関する情報">
-                <a href="https://project-shift-calendar.vercel.app/manual.html" target="_blank" rel="noopener">ユーザーマニュアル</a>
-                <a href="https://project-shift-calendar.vercel.app/commerce.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
-                <a href="https://project-shift-calendar.vercel.app/terms.html" target="_blank" rel="noopener">利用規約</a>
-                <a href="https://project-shift-calendar.vercel.app/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
-              </nav>
-            </div>
-            <div class="store-actions">
-              <div class="service-plans" aria-label="案件別シフト表の料金">
-                <section class="service-plan">
-                  <h3>買い切り版</h3>
-                  <p>購入者本人のアカウントでブラウザー版とダウンロード版を利用</p>
-                  <div class="service-price">12,800円 <small>税込・買い切り</small></div>
-                  <a class="service-purchase project-shift-purchase-link" href="https://project-shift-calendar.vercel.app/">購入・ログインへ</a>
-                </section>
-              </div>
-              <p class="store-status" id="project-shift-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
-              <details class="sales-admin">
-                <summary>管理者用：販売設定</summary>
-                <form class="sales-controls" id="project-shift-sales-form" novalidate>
-                  <input id="project-shift-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
-                  <label class="sales-toggle"><input id="project-shift-sales-enabled" type="checkbox">販売ON</label>
-                  <button class="sales-save" id="project-shift-sales-save" type="submit">設定を保存</button>
-                </form>
-              </details>
-            </div>
-          </div>
-          </article>
         </div>
       </div>
     </section>
@@ -496,6 +456,61 @@
                   <input id="beisia-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
                   <label class="sales-toggle"><input id="beisia-sales-enabled" type="checkbox">販売ON</label>
                   <button class="sales-save" id="beisia-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
+            </div>
+          </div>
+          </article>
+
+          <article class="product-feature" id="project-shift-calendar">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">軽貨物事業者向けWebアプリ</span>
+              <h2>案件別シフト表</h2>
+              <p>案件ごとに車両と日別シフトを整理し、月間予定の確認・印刷・バックアップまで一つの画面で行えます。</p>
+            </div>
+            <a class="launch-link" href="https://project-shift-calendar.vercel.app/" target="_blank" rel="noopener">ログイン画面を開く</a>
+          </header>
+
+          <a class="transport-app-preview project-shift-preview" href="https://project-shift-calendar.vercel.app/" target="_blank" rel="noopener" aria-label="案件別シフト表を開く">
+            <strong>案件別シフト表</strong>
+            <span>案件・車両ごとの月間シフトをまとめて管理</span>
+          </a>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>買い切りWebアプリ利用ライセンス</h3>
+              <p>メールアドレスでログインし、ブラウザー版とダウンロード版を利用できます。月額の自動課金はありません。</p>
+              <ul class="store-benefits">
+                <li>案件ごとに複数車両のシフトを日別管理</li>
+                <li>月間カレンダーの確認と印刷に対応</li>
+                <li>案件数・車両数にアプリ上の固定上限なし</li>
+                <li>ダウンロード版は3端末までライセンス認証</li>
+                <li>シフトデータのバックアップ・復元に対応</li>
+              </ul>
+              <nav class="store-legal" aria-label="案件別シフト表の購入に関する情報">
+                <a href="https://project-shift-calendar.vercel.app/manual.html" target="_blank" rel="noopener">ユーザーマニュアル</a>
+                <a href="https://project-shift-calendar.vercel.app/commerce.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                <a href="https://project-shift-calendar.vercel.app/terms.html" target="_blank" rel="noopener">利用規約</a>
+                <a href="https://project-shift-calendar.vercel.app/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+              </nav>
+            </div>
+            <div class="store-actions">
+              <div class="service-plans" aria-label="案件別シフト表の料金">
+                <section class="service-plan">
+                  <h3>買い切り版</h3>
+                  <p>購入者本人のアカウントでブラウザー版とダウンロード版を利用</p>
+                  <div class="service-price">12,800円 <small>税込・買い切り</small></div>
+                  <a class="service-purchase project-shift-purchase-link" href="https://project-shift-calendar.vercel.app/">購入・ログインへ</a>
+                </section>
+              </div>
+              <p class="store-status" id="project-shift-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="project-shift-sales-form" novalidate>
+                  <input id="project-shift-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="project-shift-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="project-shift-sales-save" type="submit">設定を保存</button>
                 </form>
               </details>
             </div>
