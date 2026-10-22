@@ -319,6 +319,58 @@
             </div>
           </div>
           </article>
+
+          <article class="product-feature" id="project-shift-calendar">
+          <header class="product-heading">
+            <div>
+              <span class="product-label">軽貨物事業者向けWebアプリ</span>
+              <h2>案件別シフト表</h2>
+              <p>案件ごとに車両と日別シフトを整理し、月間予定の確認・印刷・バックアップまで一つの画面で行えます。</p>
+            </div>
+            <a class="launch-link" href="https://project-shift-calendar.vercel.app/" target="_blank" rel="noopener">ログイン画面を開く</a>
+          </header>
+
+          <iframe class="app-window tenko-window" src="https://project-shift-calendar.vercel.app/" title="案件別シフト表 ログイン画面" loading="lazy"></iframe>
+
+          <div class="store-panel">
+            <div class="store-copy">
+              <h3>買い切りWebアプリ利用ライセンス</h3>
+              <p>メールアドレスでログインし、ブラウザー版とダウンロード版を利用できます。月額の自動課金はありません。</p>
+              <ul class="store-benefits">
+                <li>案件ごとに複数車両のシフトを日別管理</li>
+                <li>月間カレンダーの確認と印刷に対応</li>
+                <li>案件数・車両数にアプリ上の固定上限なし</li>
+                <li>ダウンロード版は3端末までライセンス認証</li>
+                <li>シフトデータのバックアップ・復元に対応</li>
+              </ul>
+              <nav class="store-legal" aria-label="案件別シフト表の購入に関する情報">
+                <a href="https://project-shift-calendar.vercel.app/manual.html" target="_blank" rel="noopener">ユーザーマニュアル</a>
+                <a href="https://project-shift-calendar.vercel.app/commerce.html" target="_blank" rel="noopener">特定商取引法に基づく表記</a>
+                <a href="https://project-shift-calendar.vercel.app/terms.html" target="_blank" rel="noopener">利用規約</a>
+                <a href="https://project-shift-calendar.vercel.app/privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
+              </nav>
+            </div>
+            <div class="store-actions">
+              <div class="service-plans" aria-label="案件別シフト表の料金">
+                <section class="service-plan">
+                  <h3>買い切り版</h3>
+                  <p>購入者本人のアカウントでブラウザー版とダウンロード版を利用</p>
+                  <div class="service-price">12,800円 <small>税込・買い切り</small></div>
+                  <a class="service-purchase project-shift-purchase-link" href="https://project-shift-calendar.vercel.app/">購入・ログインへ</a>
+                </section>
+              </div>
+              <p class="store-status" id="project-shift-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
+              <details class="sales-admin">
+                <summary>管理者用：販売設定</summary>
+                <form class="sales-controls" id="project-shift-sales-form" novalidate>
+                  <input id="project-shift-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                  <label class="sales-toggle"><input id="project-shift-sales-enabled" type="checkbox">販売ON</label>
+                  <button class="sales-save" id="project-shift-sales-save" type="submit">設定を保存</button>
+                </form>
+              </details>
+            </div>
+          </div>
+          </article>
         </div>
       </div>
     </section>
@@ -532,6 +584,12 @@
     const beisiaSalesPassword = document.getElementById("beisia-sales-password");
     const beisiaSalesEnabled = document.getElementById("beisia-sales-enabled");
     const beisiaSalesSave = document.getElementById("beisia-sales-save");
+    const projectShiftPurchaseLinks = document.querySelectorAll(".project-shift-purchase-link");
+    const projectShiftStoreStatus = document.getElementById("project-shift-store-status");
+    const projectShiftSalesForm = document.getElementById("project-shift-sales-form");
+    const projectShiftSalesPassword = document.getElementById("project-shift-sales-password");
+    const projectShiftSalesEnabled = document.getElementById("project-shift-sales-enabled");
+    const projectShiftSalesSave = document.getElementById("project-shift-sales-save");
     const purchaseSessionStorageKey = "metronome-purchase-session";
     let downloadInProgress = false;
 
@@ -581,6 +639,19 @@
       return result;
     }
 
+    async function requestProjectShiftSales(options = {}) {
+      const response = await fetch("../api/store/project-shift-calendar/product", options);
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!contentType.includes("application/json")) {
+        throw new Error("案件別シフト表の販売サーバーから正しい応答を取得できませんでした。");
+      }
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || "案件別シフト表の販売設定を確認できませんでした。");
+      }
+      return result;
+    }
+
     function renderTenkoSales(result) {
       const enabled = result.sales_enabled === true;
       tenkoSalesEnabled.checked = enabled;
@@ -626,6 +697,30 @@
           link.tabIndex = -1;
         });
         beisiaStoreStatus.textContent = error.message;
+      }
+    }
+
+    function renderProjectShiftSales(product) {
+      const enabled = product.enabled === true;
+      projectShiftSalesEnabled.checked = enabled;
+      projectShiftPurchaseLinks.forEach((link) => {
+        link.setAttribute("aria-disabled", String(!enabled));
+        link.tabIndex = enabled ? 0 : -1;
+      });
+      projectShiftStoreStatus.textContent = enabled
+        ? "案件別シフト表を販売中です。"
+        : "現在、案件別シフト表の販売を停止しています。";
+    }
+
+    async function loadProjectShiftSales() {
+      try {
+        renderProjectShiftSales(await requestProjectShiftSales());
+      } catch (error) {
+        projectShiftPurchaseLinks.forEach((link) => {
+          link.setAttribute("aria-disabled", "true");
+          link.tabIndex = -1;
+        });
+        projectShiftStoreStatus.textContent = error.message;
       }
     }
 
@@ -917,9 +1012,43 @@
       }
     });
 
+    projectShiftSalesForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = projectShiftSalesPassword.value;
+      if (!password) {
+        projectShiftStoreStatus.textContent = "編集用パスワードを入力してください。";
+        projectShiftSalesPassword.focus();
+        return;
+      }
+      const requestedState = projectShiftSalesEnabled.checked;
+      projectShiftSalesEnabled.disabled = true;
+      projectShiftSalesSave.disabled = true;
+      projectShiftStoreStatus.textContent = "販売設定を更新しています…";
+      try {
+        const product = await requestProjectShiftSales({
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Editor-Password": password,
+          },
+          body: JSON.stringify({ enabled: requestedState }),
+        });
+        renderProjectShiftSales(product);
+        projectShiftSalesPassword.value = "";
+        projectShiftStoreStatus.textContent = requestedState ? "販売を開始しました。" : "販売を停止しました。";
+      } catch (error) {
+        projectShiftSalesEnabled.checked = !requestedState;
+        projectShiftStoreStatus.textContent = error.message;
+      } finally {
+        projectShiftSalesEnabled.disabled = false;
+        projectShiftSalesSave.disabled = false;
+      }
+    });
+
     loadStoreProduct().then(applyPurchaseResult);
     loadTenkoSales();
     loadBeisiaSales();
+    loadProjectShiftSales();
   </script>
 </body>
 </html>

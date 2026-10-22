@@ -58,6 +58,8 @@ FLOW_HARMONY_PRODUCT_PRICE_YEN = 1000
 FLOW_HARMONY_SALES_ENABLED = False
 BEISIA_WORK_RECORDS_PRODUCT_ID = "beisia-work-records"
 BEISIA_WORK_RECORDS_PRODUCT_NAME = "自在稼働記録"
+PROJECT_SHIFT_CALENDAR_PRODUCT_ID = "project-shift-calendar"
+PROJECT_SHIFT_CALENDAR_PRODUCT_NAME = "案件別シフト表"
 FLEX_MEDIA_PRODUCT_ID = "flex-media"
 FLEX_MEDIA_PRODUCT_NAME = "Flex Media"
 FLEX_MEDIA_SALES_ENABLED = False
@@ -1295,6 +1297,14 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                 ON CONFLICT (product_id) DO NOTHING
                 """,
                 (PRODUCT_ID,),
+            )
+            cursor.execute(
+                """
+                INSERT INTO store_settings (product_id, enabled)
+                VALUES (%s, FALSE)
+                ON CONFLICT (product_id) DO NOTHING
+                """,
+                (PROJECT_SHIFT_CALENDAR_PRODUCT_ID,),
             )
             cursor.execute(
                 """
@@ -4248,6 +4258,34 @@ def create_app(
             {
                 "product_id": BEISIA_WORK_RECORDS_PRODUCT_ID,
                 "name": BEISIA_WORK_RECORDS_PRODUCT_NAME,
+                "enabled": settings["enabled"],
+            }
+        )
+
+    @app.route(
+        "/api/store/project-shift-calendar/product", methods=["GET", "PUT", "OPTIONS"]
+    )
+    def project_shift_calendar_store_product():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if request.method == "PUT":
+            error = require_editor()
+            if error:
+                response, status_code = error
+                response.status_code = status_code
+                return with_store_cors(response)
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("enabled"), bool
+            ):
+                return store_json({"error": "販売状態を指定してください。"}, 400)
+            set_store_enabled(payload["enabled"], PROJECT_SHIFT_CALENDAR_PRODUCT_ID)
+
+        settings = get_store_settings(PROJECT_SHIFT_CALENDAR_PRODUCT_ID)
+        return store_json(
+            {
+                "product_id": PROJECT_SHIFT_CALENDAR_PRODUCT_ID,
+                "name": PROJECT_SHIFT_CALENDAR_PRODUCT_NAME,
                 "enabled": settings["enabled"],
             }
         )

@@ -46,6 +46,23 @@ class ProductsPageTests(unittest.TestCase):
         )
         self.assertIn(".transport-catalog .store-actions { order: -1; }", self.html)
 
+    def test_project_shift_calendar_is_listed_with_sales_admin(self):
+        card = self.html.split('id="project-shift-calendar"', 1)[1].split(
+            "</article>", 1
+        )[0]
+
+        self.assertIn("案件別シフト表", card)
+        self.assertIn("https://project-shift-calendar.vercel.app/", card)
+        self.assertIn("12,800円", card)
+        self.assertIn("税込・買い切り", card)
+        self.assertIn('id="project-shift-sales-form"', card)
+        self.assertIn('id="project-shift-sales-enabled"', card)
+        self.assertIn('class="service-purchase project-shift-purchase-link"', card)
+        self.assertIn(
+            'fetch("../api/store/project-shift-calendar/product"', self.html
+        )
+        self.assertIn("loadProjectShiftSales();", self.html)
+
     def test_hero_represents_music_and_one_transport_app(self):
         hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
         hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"

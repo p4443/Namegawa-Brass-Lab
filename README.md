@@ -151,6 +151,8 @@ PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 
 ストアAPIのCORSは`PUBLIC_SITE_URL`のオリジンとAPI自身のオリジンだけを許可します。
 
+案件別シフト表は`/products/`の「管理者用：販売設定」から`EDITOR_PASSWORD`で販売ON/OFFを切り替えます。初期値はOFFです。公開状態は`/api/store/project-shift-calendar/product`から配信され、案件別シフト表のCheckout APIもこの状態を確認するため、商品ページの直リンクから販売停止を迂回できません。
+
 設定ウィザードはWebhookを既定で`https://namegawa-brass-lab.com/api/store/webhook`へ登録します。APIドメインを変更した場合だけ、`STORE_API_URL=https://新しいAPIドメイン ./setup-store-env.sh`のように実行してください。
 
 `DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
