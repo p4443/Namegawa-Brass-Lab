@@ -3217,6 +3217,18 @@ class UpdatesTest(unittest.TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.headers["Location"], embed_url)
 
+    def test_adobe_preview_failure_displays_error_and_allows_retry(self):
+        page = create_app(database_url="").test_client().get("/").get_data(as_text=True)
+
+        self.assertIn("preview.addEventListener('error', () => {", page)
+        self.assertIn("PDFのプレビューを読み込めませんでした。", page)
+        self.assertIn("errorNotice.setAttribute('role', 'status')", page)
+        self.assertIn("プレビューを再読み込み", page)
+        self.assertIn("preview.replaceWith(errorNotice)", page)
+        self.assertIn("errorNotice.replaceWith(preview)", page)
+        self.assertIn("`${previewUrl}?retry=${Date.now()}`", page)
+        self.assertIn("openLink.textContent = 'PDFを開く'", page)
+
     def test_editor_api_requires_password_for_all_changes(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"

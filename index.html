@@ -489,6 +489,23 @@
       overflow-wrap: anywhere;
     }
 
+    .update-preview-error {
+      height: auto;
+      min-height: 140px;
+      padding-bottom: 64px;
+    }
+
+    .update-preview-retry {
+      justify-self: center;
+      padding: 6px 12px;
+      border: 1px solid currentColor;
+      border-radius: 6px;
+      color: #ffffff;
+      background: transparent;
+      font: inherit;
+      cursor: pointer;
+    }
+
     .update-media-logo {
       width: 100%;
       height: 100%;
@@ -2849,7 +2866,25 @@
         preview.alt = `${update.content}の添付画像`;
       } else if (isAdobeDocumentUrl(update.media_url)) {
         preview = document.createElement('img');
-        preview.src = `/api/updates/${encodeURIComponent(update.index)}/media`;
+        const previewUrl = `/api/updates/${encodeURIComponent(update.index)}/media`;
+        preview.addEventListener('error', () => {
+          const errorNotice = externalDocumentPreview(
+            update.media_url, 'PDFのプレビューを読み込めませんでした。'
+          );
+          errorNotice.classList.add('update-preview-error');
+          errorNotice.setAttribute('role', 'status');
+          const retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'update-preview-retry';
+          retry.textContent = 'プレビューを再読み込み';
+          retry.addEventListener('click', () => {
+            errorNotice.replaceWith(preview);
+            preview.src = `${previewUrl}?retry=${Date.now()}`;
+          });
+          errorNotice.appendChild(retry);
+          preview.replaceWith(errorNotice);
+        });
+        preview.src = previewUrl;
         preview.alt = `${update.content}の添付資料1ページ目`;
       } else if (isDirectPdfUrl(update.media_url)) {
         preview = externalDocumentPreview(update.media_url, 'PDF資料');
