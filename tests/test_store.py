@@ -254,6 +254,51 @@ class StoreTest(unittest.TestCase):
             self.client.get("/api/store/beisia-work-records/product").get_json()["enabled"]
         )
 
+    def test_transport_mechanic_sales_defaults_off_and_requires_editor(self):
+        endpoint = "/api/store/transport-mechanic-app/product"
+        product = self.client.get(endpoint)
+        self.assertEqual(product.status_code, 200)
+        self.assertEqual(
+            product.get_json()["product_id"], "transport-mechanic-app"
+        )
+        self.assertFalse(product.get_json()["enabled"])
+
+        unauthorized = self.client.put(
+            endpoint,
+            json={"enabled": True},
+            headers={"X-Editor-Password": "wrong"},
+        )
+        self.assertEqual(unauthorized.status_code, 401)
+
+        invalid = self.client.put(
+            endpoint,
+            json={"enabled": "true"},
+            headers={"X-Editor-Password": "editor-secret"},
+        )
+        self.assertEqual(invalid.status_code, 400)
+
+        enabled = self.client.put(
+            endpoint,
+            json={"enabled": True},
+            headers={"X-Editor-Password": "editor-secret"},
+        )
+        self.assertEqual(enabled.status_code, 200)
+        self.assertTrue(enabled.get_json()["enabled"])
+        self.assertTrue(self.client.get(endpoint).get_json()["enabled"])
+
+        disabled = self.client.put(
+            endpoint,
+            json={"enabled": False},
+            headers={"X-Editor-Password": "editor-secret"},
+        )
+        self.assertEqual(disabled.status_code, 200)
+        self.assertFalse(disabled.get_json()["enabled"])
+        self.assertFalse(self.client.get(endpoint).get_json()["enabled"])
+        self.assertFalse(
+            self.client.get("/api/store/project-shift-calendar/product")
+            .get_json()["enabled"]
+        )
+
     def test_enabled_store_hides_checkout_when_stripe_is_unavailable(self):
         self.enable_store()
         stripe = self.stripe_module()

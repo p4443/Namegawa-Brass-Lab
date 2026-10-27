@@ -67,6 +67,38 @@ class ProductsPageTests(unittest.TestCase):
         )
         self.assertIn("loadProjectShiftSales();", self.html)
 
+    def test_transport_mechanic_is_listed_with_shared_sales_control(self):
+        card = self.html.split('id="transport-mechanic"', 1)[1].split(
+            "</article>", 1
+        )[0]
+        transport_section_start = self.html.index(
+            '<section class="transport-catalog" id="transport-products"'
+        )
+        future_section_start = self.html.index(
+            '<section class="future-products"', transport_section_start
+        )
+
+        self.assertIn("自動車整備点検簿", card)
+        self.assertIn(
+            'id="transport-mechanic"',
+            self.html[transport_section_start:future_section_start],
+        )
+        self.assertIn('class="transport-app-preview project-shift-preview"', card)
+        self.assertIn("2,980円", card)
+        self.assertIn("20台プラン", card)
+        self.assertIn("49,800円", card)
+        self.assertIn("管理者を含め最大20人", card)
+        self.assertIn('id="mechanic-sales-form"', card)
+        self.assertIn('id="mechanic-sales-enabled"', card)
+        self.assertIn('class="service-purchase mechanic-purchase-link"', card)
+        self.assertIn(
+            'fetch("../api/store/transport-mechanic-app/product"', self.html
+        )
+        self.assertIn(
+            "requestMechanicSales().then(data => renderMechanicSales(data.enabled))",
+            self.html,
+        )
+
     def test_hero_represents_music_and_one_transport_app(self):
         hero = self.html.split('<section class="hero">', 1)[1].split("</section>", 1)[0]
         hero_image = Path(__file__).resolve().parents[1] / "data" / "media" / "products-operations-hero.png"

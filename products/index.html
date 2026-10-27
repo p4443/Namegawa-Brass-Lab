@@ -516,6 +516,61 @@
             </div>
           </div>
           </article>
+          <article class="product-feature" id="transport-mechanic">
+            <header class="product-heading">
+              <div>
+                <span class="product-label">車両・点検記録管理Webアプリ</span>
+                <h2>自動車整備点検簿</h2>
+                <p>車両の登録、日常点検・定期点検の入力、写真・記録簿の保存と履歴確認をまとめて管理します。</p>
+              </div>
+              <a class="launch-link" href="https://transport-mechanic-app.onrender.com/static/app.html" target="_blank" rel="noopener">ログイン画面を開く</a>
+            </header>
+
+            <a class="transport-app-preview project-shift-preview" href="https://transport-mechanic-app.onrender.com/static/app.html" target="_blank" rel="noopener" aria-label="自動車整備点検簿を開く">
+              <strong>自動車整備点検簿</strong>
+              <span>車両ごとの日常点検・定期点検と履歴をまとめて管理</span>
+            </a>
+
+            <div class="store-panel">
+              <div class="store-copy">
+                <h3>買い切りWebアプリ利用ライセンス</h3>
+                <p>購入後、ライセンスキーと購入時のメールアドレスで初回登録します。</p>
+                <ul class="store-benefits">
+                  <li>日常点検の入力と点検履歴の確認</li>
+                  <li>不備の写真・定期点検の記録簿を保存</li>
+                  <li>車検・12か月点検の期限を車両ごとに管理</li>
+                  <li>会社20台プランは管理者を含め最大20人で利用。従業員を招待・承認できます</li>
+                  <li>パソコン・スマートフォンのブラウザーから利用可能</li>
+                </ul>
+                <p>販売停止中も、購入済みの方は引き続きログインして利用できます。</p>
+              </div>
+              <div class="store-actions">
+                <div class="service-plans" aria-label="自動車整備点検簿の料金">
+                  <section class="service-plan">
+                    <h3>1台プラン</h3>
+                    <p>車両1台の点検記録を管理</p>
+                    <div class="service-price">2,980円 <small>税込・買い切り</small></div>
+                    <a class="service-purchase mechanic-purchase-link" href="https://transport-mechanic-app.onrender.com/static/pricing.html" aria-disabled="true" tabindex="-1">1台プランの購入へ</a>
+                  </section>
+                  <section class="service-plan">
+                    <h3>20台プラン</h3>
+                    <p>最大20台・管理者を含む20人まで利用可能</p>
+                    <div class="service-price">49,800円 <small>税込・買い切り</small></div>
+                    <a class="service-purchase mechanic-purchase-link" href="https://transport-mechanic-app.onrender.com/static/pricing.html" aria-disabled="true" tabindex="-1">20台プランの購入へ</a>
+                  </section>
+                </div>
+                <p class="store-status" id="mechanic-store-status" role="status" aria-live="polite">販売状況を確認中です。</p>
+                <details class="sales-admin">
+                  <summary>管理者用：販売設定</summary>
+                  <form class="sales-controls" id="mechanic-sales-form" novalidate>
+                    <input id="mechanic-sales-password" type="password" autocomplete="current-password" placeholder="編集用パスワード" aria-label="編集用パスワード" required>
+                    <label class="sales-toggle"><input id="mechanic-sales-enabled" type="checkbox">販売ON</label>
+                    <button class="sales-save" id="mechanic-sales-save" type="submit">設定を保存</button>
+                  </form>
+                </details>
+              </div>
+            </div>
+          </article>
         </div>
       </div>
     </section>
@@ -1058,6 +1113,73 @@
         projectShiftSalesEnabled.disabled = false;
         projectShiftSalesSave.disabled = false;
       }
+    });
+
+    const mechanicStatus = document.getElementById("mechanic-store-status");
+    const mechanicForm = document.getElementById("mechanic-sales-form");
+    const mechanicPassword = document.getElementById("mechanic-sales-password");
+    const mechanicEnabled = document.getElementById("mechanic-sales-enabled");
+    const mechanicSave = document.getElementById("mechanic-sales-save");
+    const mechanicLinks = document.querySelectorAll(".mechanic-purchase-link");
+    let mechanicConfirmedState = false;
+
+    function renderMechanicSales(enabled) {
+      mechanicConfirmedState = enabled;
+      mechanicEnabled.checked = enabled;
+      mechanicLinks.forEach(link => {
+        link.setAttribute("aria-disabled", String(!enabled));
+        link.tabIndex = enabled ? 0 : -1;
+      });
+      mechanicStatus.textContent = enabled ? "自動車整備点検簿を販売中です。" : "現在、自動車整備点検簿の新規購入を停止しています。";
+    }
+
+    async function requestMechanicSales(options = {}) {
+      const response = await fetch("../api/store/transport-mechanic-app/product", { cache: "no-store", ...options });
+      if (!(response.headers.get("content-type") || "").includes("application/json")) {
+        throw new Error("自動車整備点検簿の販売状況を確認できませんでした。");
+      }
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "販売設定を更新できませんでした。");
+      if (data.product_id !== "transport-mechanic-app" || typeof data.enabled !== "boolean") {
+        throw new Error("販売設定の応答が正しくありません。");
+      }
+      return data;
+    }
+
+    mechanicLinks.forEach(link => link.addEventListener("click", event => {
+      if (link.getAttribute("aria-disabled") === "true") event.preventDefault();
+    }));
+    mechanicForm.addEventListener("submit", async event => {
+      event.preventDefault();
+      if (!mechanicPassword.value) {
+        mechanicStatus.textContent = "編集用パスワードを入力してください。";
+        mechanicPassword.focus();
+        return;
+      }
+      const enabled = mechanicEnabled.checked;
+      mechanicEnabled.disabled = true;
+      mechanicSave.disabled = true;
+      mechanicStatus.textContent = "販売設定を更新しています…";
+      try {
+        const data = await requestMechanicSales({
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-Editor-Password": mechanicPassword.value },
+          body: JSON.stringify({ enabled }),
+        });
+        renderMechanicSales(data.enabled);
+        mechanicPassword.value = "";
+      } catch (error) {
+        mechanicEnabled.checked = mechanicConfirmedState;
+        mechanicLinks.forEach(link => { link.setAttribute("aria-disabled", "true"); link.tabIndex = -1; });
+        mechanicStatus.textContent = error.message;
+      } finally {
+        mechanicEnabled.disabled = false;
+        mechanicSave.disabled = false;
+      }
+    });
+    requestMechanicSales().then(data => renderMechanicSales(data.enabled)).catch(error => {
+      renderMechanicSales(false);
+      mechanicStatus.textContent = error.message;
     });
 
     loadStoreProduct().then(applyPurchaseResult);

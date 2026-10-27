@@ -60,6 +60,8 @@ BEISIA_WORK_RECORDS_PRODUCT_ID = "beisia-work-records"
 BEISIA_WORK_RECORDS_PRODUCT_NAME = "自在稼働記録"
 PROJECT_SHIFT_CALENDAR_PRODUCT_ID = "project-shift-calendar"
 PROJECT_SHIFT_CALENDAR_PRODUCT_NAME = "案件別シフト表"
+TRANSPORT_MECHANIC_PRODUCT_ID = "transport-mechanic-app"
+TRANSPORT_MECHANIC_PRODUCT_NAME = "自動車整備点検簿"
 FLEX_MEDIA_PRODUCT_ID = "flex-media"
 FLEX_MEDIA_PRODUCT_NAME = "Flex Media"
 FLEX_MEDIA_SALES_ENABLED = False
@@ -4286,6 +4288,34 @@ def create_app(
             {
                 "product_id": PROJECT_SHIFT_CALENDAR_PRODUCT_ID,
                 "name": PROJECT_SHIFT_CALENDAR_PRODUCT_NAME,
+                "enabled": settings["enabled"],
+            }
+        )
+
+    @app.route(
+        "/api/store/transport-mechanic-app/product", methods=["GET", "PUT", "OPTIONS"]
+    )
+    def transport_mechanic_store_product():
+        if request.method == "OPTIONS":
+            return with_store_cors(app.response_class(status=204))
+        if request.method == "PUT":
+            error = require_editor()
+            if error:
+                response, status_code = error
+                response.status_code = status_code
+                return with_store_cors(response)
+            payload = request.get_json(silent=True)
+            if not isinstance(payload, dict) or not isinstance(
+                payload.get("enabled"), bool
+            ):
+                return store_json({"error": "販売状態を指定してください。"}, 400)
+            set_store_enabled(payload["enabled"], TRANSPORT_MECHANIC_PRODUCT_ID)
+
+        settings = get_store_settings(TRANSPORT_MECHANIC_PRODUCT_ID)
+        return store_json(
+            {
+                "product_id": TRANSPORT_MECHANIC_PRODUCT_ID,
+                "name": TRANSPORT_MECHANIC_PRODUCT_NAME,
                 "enabled": settings["enabled"],
             }
         )
