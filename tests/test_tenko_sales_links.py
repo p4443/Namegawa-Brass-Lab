@@ -9,7 +9,7 @@ class TenkoSalesLinksTest(unittest.TestCase):
             encoding="utf-8"
         )
 
-    def test_tenko_product_card_links_both_purchase_plans(self):
+    def test_tenko_product_card_links_unified_sales_page(self):
         self.assertIn('id="tennko-kakuninnbo"', self.page)
         self.assertIn(
             'class="transport-app-preview" '
@@ -17,13 +17,12 @@ class TenkoSalesLinksTest(unittest.TestCase):
             self.page,
         )
         self.assertIn(
-            'href="https://tennko-kakuninnbo.onrender.com/purchase/personal"',
+            'href="https://tennko-kakuninnbo.onrender.com/purchase" '
+            'target="_blank" rel="noopener"',
             self.page,
         )
-        self.assertIn(
-            'href="https://tennko-kakuninnbo.onrender.com/purchase/company"',
-            self.page,
-        )
+        self.assertNotIn("/purchase/personal", self.page)
+        self.assertNotIn("/purchase/company", self.page)
 
     def test_company_plan_displays_current_user_limit_and_price(self):
         card = self.page.split('id="tennko-kakuninnbo"', 1)[1].split("</article>", 1)[0]
