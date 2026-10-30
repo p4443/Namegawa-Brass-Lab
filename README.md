@@ -698,6 +698,26 @@ HEALTHCHECK_NOTIFY_MENTION='@channel' \
 ./manage-healthcheck-launchd.sh uninstall
 ```
 
+## 個人情報の公開境界を定期点検する
+
+GitHub Actionsの`Scheduled privacy boundary checks`は毎日、日本時間08:17ごろ（UTC 23:17）に`namegawa-brass-lab.com`の固定12経路へ未認証のHTTPS HEADリクエストを送ります。GitHub側の混雑などで遅延・未実行になる場合があります。サイトの既存処理・macOSヘルスチェック・Apps Scriptトリガーは変更しません。
+
+- `/health`の200と`no-store`、管理API5経路の401・`no-store`・`Pragma: no-cache`・`Expires: 0`、既知の非公開ファイル6経路の404を検証します。対象は[privacy_check.py](privacy_check.py)の`PROBES`で固定しています。
+- レスポンス本文・管理者パスワード・Cookieを取得・使用せず、リダイレクトも追跡しません。ログは固定の対象パスと結果コードだけです。外部からのエラー原文・ヘッダー値・個人情報を出力しません。
+- 予期しない応答、キャッシュ禁止の欠落、機微な経路のキャッシュ利用、TLS・通信エラーは検査失敗としてActionsを失敗にします。障害やレート制限も失敗になるため、失敗が即「漏洩発生」を意味するわけではありません。自動停止・自動修正・メール送信・予約変更・データ削除は行いません。
+- 通知先はGitHubのActions通知設定に依存します。管理者は個人設定のNotifications → System → Actionsで通知方法と失敗時の通知を設定し、実行履歴も確認してください。この機能自体が通知メールを送るものではなく、受信・配達は保証しません。
+- Actionsタブで`Scheduled privacy boundary checks` → `Run workflow`から手動実行できます。停止は同ワークフローの`Disable workflow`で行えます。Actions利用制限・利用枠の超過、公開リポジトリの長期無活動による定期実行の無効化にも注意してください。
+- これは既知の公開境界の退行検出です。サイト全体の巡回、認証後のデータ検査、Google共有権限、メール・過去ログ・バックアップ、未知のファイル露出、GETとHEADの挙動差、漏洩の完全検出は対象外です。すべて成功しても「漏洩なし」の証明にはなりません。
+
+標準ライブラリだけで実行でき、アプリの`.env`・DB・外部メールサービスは読み込みません。
+
+```bash
+python3 -m unittest discover -s tests -p test_privacy_check.py -v
+python3 privacy_check.py
+```
+
+検査ロジックのモックテストは各定期・手動実行の前に動かします。コード変更時のCIや外部Webhook通知は追加していません。
+
 ## 停止
 
 ```bash
