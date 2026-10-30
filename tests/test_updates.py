@@ -2938,7 +2938,7 @@ class UpdatesTest(unittest.TestCase):
             "function getSpreadsheet", 1
         )[0]
 
-        self.assertIn('var SCRIPT_VERSION = "2026-09-26-booking-claim-v42";', script)
+        self.assertIn('var SCRIPT_VERSION = "2026-10-30-consultation-reply-v43";', script)
         self.assertIn("routeSheet.getRange(19, 2).setNumberFormat('0.0\"時間\"');", script)
         self.assertIn("routeSheet.getRange(20, 2, 2, 1).setNumberFormat('0\"分\"');", script)
         self.assertNotIn("routeSheet.getRange(19, 2, 2, 1).setNumberFormat('0\"分\"');", script)
@@ -3720,7 +3720,7 @@ class UpdatesTest(unittest.TestCase):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
-        for version in ("2026-09-26-booking-claim-v42",):
+        for version in ("2026-09-26-booking-claim-v42", "2026-10-30-consultation-reply-v43"):
             with self.subTest(version=version), patch.dict(
                 os.environ,
                 {

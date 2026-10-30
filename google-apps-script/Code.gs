@@ -38,7 +38,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-09-26-booking-claim-v42";
+var SCRIPT_VERSION = "2026-10-30-consultation-reply-v43";
 var MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5;
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
@@ -75,19 +75,19 @@ function doPost(event) {
       return jsonResponse({
         ok: true,
         version: SCRIPT_VERSION,
-        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "send_claim_code", "resend_admin_notification", "admin_notification_status", "upsert_slot_status_range"]
+        capabilities: ["consultation", "generate_transport_sheet", "list", "update", "delete", "delete_day", "cancel", "send_claim_code", "send_consultation_reply", "resend_admin_notification", "admin_notification_status", "upsert_slot_status_range"]
       });
     }
 
     var requestId = String(data.request_id || "").trim();
-    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "delete_day" || action === "cancel" || action === "resend_admin_notification") && requestId) {
+    if ((action === "consultation" || action === "generate_transport_sheet" || action === "update" || action === "delete" || action === "delete_day" || action === "cancel" || action === "send_consultation_reply" || action === "resend_admin_notification") && requestId) {
       var cachedResult = CacheService.getScriptCache().get("admin:" + requestId);
       if (cachedResult) {
         return jsonResponse(JSON.parse(cachedResult));
       }
     }
 
-    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "delete_day", "cancel", "resend_admin_notification"];
+    var writeActions = ["create", "consultation", "generate_transport_sheet", "upsert_slot_status_range", "update", "delete", "delete_day", "cancel", "send_consultation_reply", "resend_admin_notification"];
     if (writeActions.indexOf(action) !== -1) {
       lock.waitLock(10000);
       lockAcquired = true;
@@ -102,7 +102,7 @@ function doPost(event) {
       return adminActionResponse(generateTransportWorkbook(data), requestId);
     }
     var spreadsheet = getSpreadsheet();
-    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_day", "cancel", "send_claim_code", "resend_admin_notification"].indexOf(action) !== -1;
+    var needsReservationSheet = ["create", "list", "get_slot_statuses", "update", "delete", "delete_day", "cancel", "send_claim_code", "send_consultation_reply", "resend_admin_notification"].indexOf(action) !== -1;
     var needsSlotSheet = ["create", "get_slot_statuses", "upsert_slot_status_range", "update", "delete", "cancel"].indexOf(action) !== -1;
     var sheet = needsReservationSheet ? getReservationSheet(spreadsheet) : null;
     var slotSheet = needsSlotSheet ? getSlotStatusSheet(spreadsheet) : null;
@@ -267,6 +267,30 @@ function doPost(event) {
 
     if (action === "list") {
       return jsonResponse({ ok: true, reservations: listReservations(sheet) });
+    }
+
+    if (action === "send_consultation_reply") {
+      var replyReservationId = String(data.reservation_id || "").trim();
+      var replyMessage = typeof data.reply_message === "string" ? data.reply_message.trim() : "";
+      if (!replyMessage || Array.from(replyMessage).length > 2000) {
+        return adminActionResponse({ ok: false, error: "INVALID_REPLY" }, requestId);
+      }
+      var replyRow = findReservationRowById(sheet, replyReservationId);
+      if (!replyRow) {
+        return adminActionResponse({ ok: false, error: "NOT_FOUND" }, requestId);
+      }
+      var replyReservation = getReservationAtRow(sheet, replyRow);
+      if (replyReservation.time !== "要相談" || replyReservation.status !== "確認中") {
+        return adminActionResponse({ ok: false, error: "NOT_PENDING_CONSULTATION" }, requestId);
+      }
+      if (!sendReservationConsultationReply(replyReservation, replyReservationId, replyMessage)) {
+        return adminActionResponse({ ok: false, error: "REPLY_EMAIL_FAILED" }, requestId);
+      }
+      return adminActionResponse({
+        ok: true,
+        reservationId: replyReservationId,
+        replyEmailSent: true
+      }, requestId);
     }
 
     if (action === "resend_admin_notification") {
@@ -1489,6 +1513,53 @@ function sendReservationAutoReply(data, reservationId) {
 
   try {
     GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約受付完了", body, {
+      htmlBody: htmlBody,
+      name: "なめがわブラス・ラボ",
+      replyTo: ADMIN_NOTIFICATION_EMAIL
+    });
+    return true;
+  } catch (error) {
+    Logger.log(error);
+    return false;
+  }
+}
+
+function sendReservationConsultationReply(reservation, reservationId, replyMessage) {
+  var email = sanitizeMailHeader(reservation.email).trim();
+  if (!email || email.indexOf("@") <= 0) {
+    Logger.log("Consultation reply recipient is invalid: " + reservationId);
+    return false;
+  }
+  var name = sanitizeMailHeader(reservation.name).trim() || "お客様";
+  var body = [
+    name + " 様",
+    "",
+    "レッスン予約のご相談について、担当よりご連絡いたします。",
+    "",
+    "受付番号: " + reservationId,
+    "レッスン種別: " + reservation.lessonType,
+    "希望日: " + reservation.date,
+    "希望時間: " + reservation.time,
+    "",
+    replyMessage,
+    "",
+    "ご返信はこのメールへお願いいたします。",
+    "なめがわブラス・ラボ"
+  ].join("\n");
+  var htmlBody = [
+    '<!doctype html><html><head><meta charset="UTF-8"></head><body>',
+    "<p>" + escapeHtml(name) + " 様</p>",
+    "<p>レッスン予約のご相談について、担当よりご連絡いたします。</p>",
+    "<p>受付番号: " + escapeHtml(reservationId) + "<br>",
+    "レッスン種別: " + escapeHtml(reservation.lessonType) + "<br>",
+    "希望日: " + escapeHtml(reservation.date) + "<br>",
+    "希望時間: " + escapeHtml(reservation.time) + "</p>",
+    "<p>" + escapeHtml(replyMessage).replace(/\r\n|\r|\n/g, "<br>") + "</p>",
+    "<p>ご返信はこのメールへお願いいたします。<br>なめがわブラス・ラボ</p>",
+    "</body></html>"
+  ].join("");
+  try {
+    GmailApp.sendEmail(email, "【なめがわブラス・ラボ】レッスン予約のご相談への回答", body, {
       htmlBody: htmlBody,
       name: "なめがわブラス・ラボ",
       replyTo: ADMIN_NOTIFICATION_EMAIL

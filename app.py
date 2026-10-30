@@ -910,6 +910,7 @@ def compute_public_route(origin, destination, urlopen=None):
     }
 LESSON_APPS_SCRIPT_VERSIONS = {
     "2026-09-26-booking-claim-v42",
+    "2026-10-30-consultation-reply-v43",
 }
 
 
@@ -2674,7 +2675,7 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
         ensure_ascii=False,
     ).encode("utf-8")
     last_error = None
-    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "resend_admin_notification", "upsert_slot_status_range", "list"} else 1
+    attempts = 2 if action in {"create", "consultation", "generate_transport_sheet", "update", "delete", "delete_day", "cancel", "send_consultation_reply", "resend_admin_notification", "upsert_slot_status_range", "list"} else 1
     for attempt in range(attempts):
         script_request = urllib_request.Request(
             script_url,
@@ -4967,6 +4968,77 @@ def create_app(
                 {"error": "現在、予約一覧を取得できません。"},
                 503,
             )
+
+    @app.route(
+        "/api/lesson-reservations/<reservation_id>/consultation-reply",
+        methods=["POST", "OPTIONS"],
+    )
+    def send_lesson_reservation_consultation_reply(reservation_id):
+        if request.method == "OPTIONS":
+            return with_lesson_reservation_cors(
+                app.response_class(status=204),
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+        error = require_editor()
+        if error:
+            response, status_code = error
+            response.status_code = status_code
+            return with_lesson_reservation_cors(
+                response,
+                methods="POST, OPTIONS",
+                headers="Content-Type, X-Editor-Token",
+            )
+        try:
+            valid_reservation_id = validate_reservation_id(reservation_id)
+            payload = request.get_json(silent=True)
+            message = payload.get("reply_message") if isinstance(payload, dict) else None
+            if not isinstance(message, str) or not message.strip() or len(message.strip()) > 2000:
+                raise ValueError("回答文を1〜2000文字で入力してください。")
+            message = message.strip()
+        except ValueError as exc:
+            return lesson_reservation_json({"error": str(exc)}, 400)
+
+        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
+        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
+        if not script_url or not script_secret:
+            return lesson_reservation_json(
+                {"error": "現在、回答メールを送信できません。"}, 503
+            )
+        try:
+            result = send_lesson_reservation(
+                script_url,
+                script_secret,
+                {"reservation_id": valid_reservation_id, "reply_message": message},
+                action="send_consultation_reply",
+            )
+        except LessonReservationDeliveryError as exc:
+            app.logger.exception("Apps Script rejected consultation reply")
+            errors = {
+                "NOT_FOUND": ("予約が見つかりません。", 404),
+                "NOT_PENDING_CONSULTATION": ("未確定の要相談予約だけに回答できます。予約一覧を更新してください。", 409),
+                "INVALID_REPLY": ("回答文を1〜2000文字で入力してください。", 400),
+                "REPLY_EMAIL_FAILED": ("回答メールを送信できませんでした。登録メールアドレスとGmailの送信状況を確認してください。", 502),
+                "Unsupported action": ("Apps Scriptの公開版が古いため回答できません。新しいバージョンで再デプロイしてください。", 503),
+                "Unauthorized": ("GASとサーバーのAPI_SECRET設定を確認してください。", 503),
+            }
+            message, status_code = errors.get(
+                str(exc), ("回答メールを送信できませんでした。", 502)
+            )
+            return lesson_reservation_json({"error": message}, status_code)
+        except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
+            app.logger.exception("Failed to deliver consultation reply")
+            return lesson_reservation_json(
+                {"error": "送信結果を確認できませんでした。Gmailの送信済みメールを確認してから再送してください。"}, 502
+            )
+        if result.get("replyEmailSent") is not True:
+            app.logger.error("Consultation reply delivery was not confirmed")
+            return lesson_reservation_json(
+                {"error": "回答メールの送信を確認できませんでした。Gmailの送信状況を確認してください。"}, 502
+            )
+        return lesson_reservation_json(
+            {"sent": True, "reservation_id": result.get("reservationId", valid_reservation_id)}, 200
+        )
 
     @app.route(
         "/api/lesson-reservations/<reservation_id>/resend-admin-notification",

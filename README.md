@@ -274,6 +274,26 @@ docker compose up -d --build
 
 予約作成時は開始時刻から必要な全枠が空いている場合だけ受け付け、全枠を`調整中`へ更新します。予約を確定すると全枠が`予約済`になり、キャンセルまたは削除するとその予約が使用していた全枠を解放します。
 
+### 要相談予約への回答メール
+
+スケジュール管理画面へログインすると、希望時間が`要相談`かつ状態が`確認中`の予約に回答欄と「回答メールを送信」ボタンが表示されます。案内文が初期入力されるので、必要に応じて編集し、送信先の確認後に送信してください。回答文は1〜2000文字で、登録済みの予約者メールアドレスへ送られます。返信先は既存の管理者通知先です。
+
+- 回答送信では予約状態・日時・所要時間・予約枠・LINE通知を変更しません。既存の受付・確定・キャンセルメールも従来どおりです。
+- 回答の下書き編集中と送信中は一覧の自動更新を止め、送信に失敗した場合は入力内容を保持します。下書きはブラウザー内の一時保持で、ページ再読み込みやログアウトでは消えます。
+- Flaskの管理者認証付き`POST /api/lesson-reservations/<reservation_id>/consultation-reply`から、Apps Scriptの`send_consultation_reply`を呼び出します。送信時にも対象予約の状態を再確認します。
+- 通信再試行は同じリクエストIDを使い、既存のロックと10分間の結果キャッシュで重複送信を抑止します。手動で再送する操作は別の送信になります。通信失敗で結果が不明な場合は、Gmailの送信済みメールを確認してから再送してください。
+- 公開時はFlask／管理画面に加え、[Code.gs](google-apps-script/Code.gs)を既存のApps Scriptウェブアプリへ新バージョンとして再デプロイしてください。新しい環境変数やシート列の追加は不要です。GAS未更新の場合、回答送信時に再デプロイの案内が表示されます。
+
+関連テスト（Python環境には[requirements.txt](requirements.txt)をインストール）:
+
+```bash
+.venv/bin/python -m unittest discover -s tests -p test_lesson_consultation_reply.py -v
+.venv/bin/python -m unittest discover -s tests -p test_updates.py -k apps_script -k lesson_reservation -k schedule -k lesson_admin
+node --test tests/test_lesson_consultation_reply.mjs
+```
+
+Node.jsのテストは標準のテストランナーとモックを使い、Gmail送信・GAS本番アクセスなしで本文、対象制限、通信再試行時のキャッシュを検証します。
+
 ### 予約の更新・削除（管理API）
 
 予約番号（例: `R-20260810-004`）を指定して、状態更新や削除ができます。
