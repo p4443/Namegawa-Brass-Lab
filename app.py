@@ -911,6 +911,7 @@ def compute_public_route(origin, destination, urlopen=None):
 LESSON_APPS_SCRIPT_VERSIONS = {
     "2026-09-26-booking-claim-v42",
     "2026-10-30-consultation-reply-v43",
+    "2026-10-30-expired-confirmed-cleanup-v44",
 }
 
 

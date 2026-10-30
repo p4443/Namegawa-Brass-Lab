@@ -38,7 +38,7 @@ var SLOT_STATUS_VALUES = ["空き", "調整中", "予約済", "お休み"];
 var DUPLICATE_WINDOW_MINUTES = 10;
 var MAX_ACTIVE_RESERVATIONS_PER_EMAIL = 4;
 var ADMIN_NOTIFICATION_EMAIL = "zuomuj924@gmail.com";
-var SCRIPT_VERSION = "2026-10-30-consultation-reply-v43";
+var SCRIPT_VERSION = "2026-10-30-expired-confirmed-cleanup-v44";
 var MAX_ADMIN_NOTIFICATION_ATTEMPTS = 5;
 var lastAdminNotificationError = "";
 var LESSON_DURATION_MINUTES = {
@@ -942,6 +942,76 @@ function deleteReservationsForDate(sheet, dateText) {
     deletedCount += 1;
   }
   return deletedCount;
+}
+
+function installExpiredConfirmedReservationCleanup() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var handlerName = "deleteExpiredConfirmedReservations";
+    var exists = ScriptApp.getProjectTriggers().some(function (trigger) {
+      return trigger.getHandlerFunction() === handlerName;
+    });
+    if (!exists) {
+      ScriptApp.newTrigger(handlerName).timeBased()
+        .atHour(1).everyDays(1).inTimezone("Asia/Tokyo").create();
+    }
+    Logger.log("Expired confirmed reservation cleanup trigger is installed.");
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteExpiredConfirmedReservations() {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getSpreadsheet().getSheetByName(SHEET_NAME);
+    if (!sheet) {
+      throw new Error("Reservation sheet is missing; cleanup was not performed.");
+    }
+    var headers = sheet.getRange(1, 1, 1, 11).getValues()[0];
+    if (headers.join("|") !== HEADERS.slice(0, 11).join("|")) {
+      throw new Error("Reservation headers do not match; cleanup was not performed.");
+    }
+    var lastRow = sheet.getLastRow();
+    var deletedCount = 0;
+    var invalidDateCount = 0;
+    if (lastRow > 1) {
+      var todayText = Utilities.formatDate(new Date(), "Asia/Tokyo", "yyyy-MM-dd");
+      var statuses = sheet.getRange(2, 3, lastRow - 1, 1).getValues();
+      var dates = sheet.getRange(2, 8, lastRow - 1, 1).getValues();
+      for (var index = statuses.length - 1; index >= 0; index -= 1) {
+        if (String(statuses[index][0] || "").trim() !== "確定") {
+          continue;
+        }
+        var value = dates[index][0];
+        var dateText = value instanceof Date && !isNaN(value.getTime())
+          ? Utilities.formatDate(value, "Asia/Tokyo", "yyyy-MM-dd")
+          : typeof value === "string" ? value.trim() : "";
+        var match = /^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/.exec(dateText);
+        var parsed = match
+          ? new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])))
+          : null;
+        if (!parsed || parsed.getUTCFullYear() !== Number(match[1])
+            || parsed.getUTCMonth() + 1 !== Number(match[2])
+            || parsed.getUTCDate() !== Number(match[3])) {
+          invalidDateCount += 1;
+          continue;
+        }
+        dateText = match[1] + "-" + zeroPad(Number(match[2]), 2) + "-" + zeroPad(Number(match[3]), 2);
+        if (dateText < todayText) {
+          sheet.deleteRow(index + 2);
+          deletedCount += 1;
+        }
+      }
+    }
+    Logger.log("Expired confirmed reservations deleted: " + deletedCount
+      + "; invalid dates retained: " + invalidDateCount);
+    return deletedCount;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function reservationStatusToSlotStatus(status) {
