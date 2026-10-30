@@ -1714,8 +1714,8 @@ function sendReservationAdminNotification(data, reservationId) {
     );
     return true;
   } catch (error) {
-    Logger.log(error);
-    lastAdminNotificationError = String(error && error.message ? error.message : error);
+    lastAdminNotificationError = "ADMIN_NOTIFICATION_SEND_FAILED";
+    Logger.log(lastAdminNotificationError);
     return false;
   }
 }

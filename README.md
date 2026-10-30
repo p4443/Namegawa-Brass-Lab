@@ -294,6 +294,14 @@ node --test tests/test_lesson_consultation_reply.mjs
 
 Node.jsのテストは標準のテストランナーとモックを使い、Gmail送信・GAS本番アクセスなしで本文、対象制限、通信再試行時のキャッシュを検証します。
 
+### 管理者通知メールのエラー記録と個人情報
+
+管理者通知メールの送信失敗時は、外部メールサービスのエラー原文ではなく、固定コード`ADMIN_NOTIFICATION_SEND_FAILED`を実行ログ・予約シートの通知エラー欄・再送APIのエラー詳細へ記録します。原文に連絡先などが含まれる場合の二次的な保存を防ぐ対策です。送信先・メール本文・予約状態・通知状態・再試行回数と間隔は変更しません。
+
+- 固定コードは失敗を示し、成功扱いにはしません。管理画面で通知状態を確認し、必要なら既存の再送操作を行ってください。
+- 適用にはApps Scriptのコード更新と既存ウェブアプリの新バージョンへの再デプロイが必要です。過去に保存されたエラー欄・ログ・履歴は自動消去しません。他のメール処理やエラー経路全体の匿名化を保証するものではありません。
+- モックによる検証: `node --test tests/test_admin_notification_privacy.mjs tests/test_expired_confirmed_cleanup.mjs tests/test_lesson_consultation_reply.mjs`
+
 ### 過去日の確定予約を毎日自動削除する
 
 Apps Scriptの`installExpiredConfirmedReservationCleanup`をスクリプト所有者が一度実行すると、日本時間の毎日1〜2時ごろに`deleteExpiredConfirmedReservations`が実行されます。Googleの時間主導トリガーのため、正確な実行時刻は固定されません。既存の管理者通知再送トリガーには触れず、同じ所有者による設定の再実行でも重複作成しません。
