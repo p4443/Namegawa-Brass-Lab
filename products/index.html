@@ -130,6 +130,8 @@
     }
     .project-shift-preview strong { font-size: clamp(1.6rem, 4vw, 2.6rem); }
     .project-shift-preview span { font-size: 1rem; font-weight: 700; }
+    #project-shift-calendar .project-shift-preview { display: block; aspect-ratio: auto; padding: 0; background: #f1f5f9; }
+    #project-shift-calendar .project-shift-preview img { display: block; height: auto; }
 
     .store-panel { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 0.72fr); gap: 30px; padding: 30px; border-top: 1px solid var(--border-color); background: var(--bg-light); }
     .store-copy h3 { color: var(--primary-color); font-size: 1.2rem; }
@@ -472,8 +474,7 @@
           </header>
 
           <a class="transport-app-preview project-shift-preview" href="https://project-shift-calendar.vercel.app/" target="_blank" rel="noopener" aria-label="案件別シフト表を開く">
-            <strong>案件別シフト表</strong>
-            <span>案件・車両ごとの月間シフトをまとめて管理</span>
+            <img src="../data/media/project-shift-calendar-preview.png" alt="案件別シフト表の月間入力画面。架空の案件・運転者を使った表示例" width="1360" height="1036" loading="lazy">
           </a>
 
           <div class="store-panel">

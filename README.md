@@ -155,6 +155,8 @@ PUBLIC_SITE_URL=https://ホームページの公開ベースURL
 
 案件別シフト表は`/products/`の「管理者用：販売設定」から`EDITOR_PASSWORD`で販売ON/OFFを切り替えます。初期値はOFFです。公開状態は`/api/store/project-shift-calendar/product`から配信され、案件別シフト表のCheckout APIもこの状態を確認するため、商品ページの直リンクから販売停止を迂回できません。
 
+案件別シフト表の商品プレビューは`data/media/project-shift-calendar-preview.png`の実画面スクリーンショットです。架空の案件・運転者・車番を使い、月間表の入力ガイドと稼働表示を紹介します。画像は縦横比を保って表示し、クリック先・購入・販売設定は従来のままです。更新時も実利用者の情報を含めないでください。
+
 設定ウィザードはWebhookを既定で`https://namegawa-brass-lab.com/api/store/webhook`へ登録します。APIドメインを変更した場合だけ、`STORE_API_URL=https://新しいAPIドメイン ./setup-store-env.sh`のように実行してください。
 
 `DOWNLOAD_TOKEN_SECRET`は次のコマンドで生成できます。秘密値はHTMLやリポジトリへ保存しないでください。
