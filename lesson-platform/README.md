@@ -14,15 +14,19 @@
 
 ## ローカル起動
 
-Node.js 20.9以降を用意し、次を実行します。
+Node.js 22.23.4を使用します。`nvm`を利用する場合は、リポジトリに保存した`.nvmrc`から同じバージョンを選択して起動します。
 
 ```bash
+nvm install
+nvm use
 cp .env.example .env.local
-npm install
+npm ci
 npm run dev
 ```
 
 `.env.local`へ秘密値を保存し、Gitには追加しないでください。`PORTAL_SESSION_SECRET`には32バイト以上のランダム値を使います。
+
+Dockerイメージも`Dockerfile`でNode.js 22.23.4へ固定しています。Node.jsのセキュリティ更新時は、`.nvmrc`、`package.json`の`engines.node`、`package-lock.json`のルートパッケージ、および`Dockerfile`の全ステージを同じバージョンへ更新してください。
 
 ## Supabase
 
