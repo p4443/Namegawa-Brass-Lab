@@ -34,40 +34,54 @@ function endTime(startTime: string, durationMinutes: number | null) {
 export function BookingPanel({ isLineAuthenticated = false }: { isLineAuthenticated?: boolean }) {
   const [lessonType, setLessonType] = useState("");
   const [date, setDate] = useState("");
-  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
-  const [durationMinutes, setDurationMinutes] = useState<number | null>(null);
-  const [availabilityMessage, setAvailabilityMessage] = useState("レッスン種別と希望日を選択してください。");
+  const [availability, setAvailability] = useState<{
+    query: string;
+    times: string[];
+    durationMinutes: number | null;
+    message: string;
+  }>({ query: "", times: [], durationMinutes: null, message: "" });
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ state: "success" | "error"; message: string } | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [cancellationResult, setCancellationResult] = useState<{ state: "success" | "error"; message: string } | null>(null);
+  const availabilityQuery = lessonType && date ? new URLSearchParams({ date, lesson_type: lessonType }).toString() : "";
+  const hasCurrentAvailability = availability.query === availabilityQuery;
+  const availableTimes = hasCurrentAvailability ? availability.times : [];
+  const durationMinutes = hasCurrentAvailability ? availability.durationMinutes : null;
+  const availabilityMessage = !availabilityQuery
+    ? "レッスン種別と希望日を選択してください。"
+    : hasCurrentAvailability
+      ? availability.message
+      : "公式予約台帳の空き枠を確認しています…";
 
   useEffect(() => {
-    setAvailableTimes([]);
-    setDurationMinutes(null);
-    if (!lessonType || !date) {
-      setAvailabilityMessage("レッスン種別と希望日を選択してください。");
-      return;
-    }
+    if (!availabilityQuery) return;
 
     const controller = new AbortController();
-    setAvailabilityMessage("公式予約台帳の空き枠を確認しています…");
-    const params = new URLSearchParams({ date, lesson_type: lessonType });
-    fetch(`/api/bookings?${params}`, { signal: controller.signal })
+    fetch(`/api/bookings?${availabilityQuery}`, { signal: controller.signal })
       .then(async (response) => {
         const body = await response.json();
         if (!response.ok) throw new Error(body.error || "空き枠を取得できませんでした。");
-        setAvailableTimes(Array.isArray(body.available_times) ? body.available_times : []);
-        setDurationMinutes(Number(body.duration_minutes) || null);
-        setAvailabilityMessage(body.available_times?.length ? "予約可能な時間を選択してください。" : "この日の予約可能枠はありません。");
+        const times = Array.isArray(body.available_times) ? body.available_times : [];
+        setAvailability({
+          query: availabilityQuery,
+          times,
+          durationMinutes: Number(body.duration_minutes) || null,
+          message: times.length ? "予約可能な時間を選択してください。" : "この日の予約可能枠はありません。",
+        });
       })
       .catch((error: unknown) => {
         if (error instanceof DOMException && error.name === "AbortError") return;
-        setAvailabilityMessage(error instanceof Error ? error.message : "空き枠を取得できませんでした。");
+        setAvailability({
+          query: availabilityQuery,
+          times: [],
+          durationMinutes: null,
+          message: error instanceof Error ? error.message : "空き枠を取得できませんでした。",
+        });
       });
 
     return () => controller.abort();
-  }, [date, lessonType]);
+  }, [availabilityQuery]);
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,9 +107,6 @@ export function BookingPanel({ isLineAuthenticated = false }: { isLineAuthentica
       form.reset();
       setLessonType("");
       setDate("");
-      setAvailableTimes([]);
-      setDurationMinutes(null);
-      setAvailabilityMessage("レッスン種別と希望日を選択してください。");
     } catch (error) {
       setResult({ state: "error", message: error instanceof Error ? error.message : "予約を受け付けられませんでした。" });
     } finally {

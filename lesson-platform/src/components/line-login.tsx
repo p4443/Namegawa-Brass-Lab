@@ -1,6 +1,7 @@
 "use client";
 
 import Script from "next/script";
+import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { LogIn } from "lucide-react";
 
@@ -16,6 +17,7 @@ declare global {
 }
 
 export function LineLogin({ liffId }: { liffId?: string }) {
+  const router = useRouter();
   const [status, setStatus] = useState("");
   const [busy, setBusy] = useState(false);
   const loginStarted = useRef(false);
@@ -43,7 +45,7 @@ export function LineLogin({ liffId }: { liffId?: string }) {
       });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "ログインできませんでした。");
-      window.location.assign("/dashboard");
+      router.push("/dashboard");
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "ログインできませんでした。");
       setBusy(false);

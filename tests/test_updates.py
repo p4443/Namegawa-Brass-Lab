@@ -987,7 +987,8 @@ class UpdatesTest(unittest.TestCase):
             "terms_agree": True,
         }
 
-        values = validate_consultation(valid)
+        with patch("app.current_japan_date", return_value=date(2026, 1, 1)):
+            values = validate_consultation(valid)
 
         self.assertEqual(values["service_mode"], "オールインワン依頼（指導・セッティング・運搬一式）")
         self.assertEqual(values["instrument_value"], "300万円〜1,000万円")
@@ -5729,7 +5730,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotRegex(page, r'<img[^>]+src="data/media/updates/')
         self.assertNotIn('<iframe src="https://www.youtube.com/embed/', page)
         self.assertIn("content.textContent = card.dataset.updateContent", page)
-        self.assertIn("updatesGrid.replaceChildren(...updates.map(createUpdateCard))", page)
+        self.assertIn("updateCards = updates.map(createUpdateCard)", page)
+        self.assertIn("grid.append(...cards)", page)
         self.assertNotIn("↓こちら↓", page)
         self.assertNotIn("↓写真↓", page)
         self.assertIn('id="youtube-channel-title">公式YouTubeチャンネル', page)
