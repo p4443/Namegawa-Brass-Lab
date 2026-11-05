@@ -5828,9 +5828,13 @@ def create_app(
 app = create_app()
 
 
+def environment_flag(name):
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
 if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=int(os.environ.get("PORT", "5000")),
-        debug=bool(os.environ.get("FLASK_DEBUG")),
+        debug=environment_flag("FLASK_DEBUG"),
     )

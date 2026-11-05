@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
@@ -29,10 +29,7 @@ function authorized(request: Request) {
   const expected = process.env.OFFICIAL_BOOKING_WEBHOOK_SECRET;
   const actual = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
   if (!expected || !actual) {
-    console.warn("Official booking reconciliation authorization failed", {
-      expectedLength: expected?.length ?? 0,
-      actualLength: actual?.length ?? 0,
-    });
+    console.warn("Official booking reconciliation authorization failed");
     return false;
   }
 
@@ -40,12 +37,7 @@ function authorized(request: Request) {
   const actualBuffer = Buffer.from(actual);
   const matches = expectedBuffer.length === actualBuffer.length && timingSafeEqual(expectedBuffer, actualBuffer);
   if (!matches) {
-    console.warn("Official booking reconciliation authorization failed", {
-      expectedLength: expected.length,
-      actualLength: actual.length,
-      expectedFingerprint: createHash("sha256").update(expected).digest("hex").slice(0, 12),
-      actualFingerprint: createHash("sha256").update(actual).digest("hex").slice(0, 12),
-    });
+    console.warn("Official booking reconciliation authorization failed");
   }
   return matches;
 }
