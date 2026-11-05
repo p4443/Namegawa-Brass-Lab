@@ -29,6 +29,22 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn("買い切りWebアプリ利用ライセンス", self.html)
         self.assertIn("利用開始ガイド", self.html)
 
+    def test_product_browser_supports_filtering_and_detail_selection(self):
+        browser = self.html.split('<section class="product-browser"', 1)[1].split(
+            '<section class="catalog"', 1
+        )[0]
+
+        self.assertEqual(browser.count('class="product-card"'), 3)
+        self.assertIn('data-product-filter="music"', browser)
+        self.assertIn('data-product-filter="transport"', browser)
+        self.assertIn('data-product-filter="free"', browser)
+        self.assertIn('data-product-filter="business"', browser)
+        self.assertIn('data-product-target="metronome"', browser)
+        self.assertIn('data-product-target="tennko-kakuninnbo"', browser)
+        self.assertIn('data-product-target="beisia-work-records"', browser)
+        self.assertIn("function showProduct(productId", self.html)
+        self.assertIn("function closeProduct()", self.html)
+
     def test_future_products_include_transport_apps(self):
         future_products = self.html.split('<section class="future-products"', 1)[1]
         self.assertIn("運送業務アプリ", future_products)

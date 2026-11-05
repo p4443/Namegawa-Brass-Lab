@@ -7,6 +7,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="description" content="なめがわブラス・ラボが開発する音楽練習・メディア編集・運送業務向けアプリとデジタル商品の紹介・販売ページです。">
   <title>アプリ・商品 | なめがわブラス・ラボ</title>
+  <script nonce="{{ csp_nonce }}">document.documentElement.classList.add("js");</script>
   <style nonce="{{ csp_nonce }}">
     :root {
       --primary-color: #1a56db;
@@ -57,6 +58,65 @@
     .catalog { padding: 80px 0; background: var(--bg-white); }
     .section-title { color: var(--primary-color); font-size: 2rem; text-align: center; }
     .section-desc { margin: 8px 0 40px; color: var(--text-muted); text-align: center; }
+
+    .product-browser { padding: 72px 0 80px; background: var(--bg-white); }
+    .product-browser-heading { max-width: 720px; margin: 0 auto; text-align: center; }
+    .product-filters { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 28px 0 32px; }
+    .filter-button {
+      min-height: 42px;
+      padding: 8px 17px;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      color: var(--text-muted);
+      background: var(--bg-white);
+      font-size: 0.84rem;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .filter-button:hover, .filter-button:focus-visible { border-color: var(--primary-color); color: var(--primary-color); }
+    .filter-button[aria-pressed="true"] { border-color: var(--primary-color); color: #ffffff; background: var(--primary-color); }
+    .product-count { min-height: 1.5em; margin-bottom: 16px; color: var(--text-muted); font-size: 0.82rem; text-align: right; }
+    .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
+    .product-card {
+      display: flex;
+      min-width: 0;
+      overflow: hidden;
+      flex-direction: column;
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      background: var(--bg-white);
+      box-shadow: var(--shadow-sm);
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
+    .product-card:hover { border-color: #bfdbfe; box-shadow: var(--shadow-md); transform: translateY(-3px); }
+    .product-card[hidden] { display: none; }
+    .product-card-visual { position: relative; overflow: hidden; aspect-ratio: 16 / 10; background: #e2e8f0; }
+    .product-card-visual img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: top; transition: transform 220ms ease; }
+    .product-card:hover .product-card-visual img { transform: scale(1.025); }
+    .product-card-visual.metronome img { object-position: left center; }
+    .product-card-badge { position: absolute; top: 14px; left: 14px; padding: 5px 9px; border-radius: 999px; color: #ffffff; background: rgba(15, 23, 42, 0.82); font-size: 0.7rem; font-weight: 800; backdrop-filter: blur(5px); }
+    .product-card-body { display: flex; flex: 1; flex-direction: column; padding: 22px; }
+    .product-card-category { color: var(--accent-hover); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.05em; }
+    .product-card h3 { margin-top: 5px; color: #0f172a; font-size: 1.25rem; line-height: 1.4; }
+    .product-card-copy { margin-top: 9px; color: var(--text-muted); font-size: 0.84rem; line-height: 1.65; }
+    .product-card-features { display: flex; gap: 6px; flex-wrap: wrap; margin: 16px 0 0; padding: 0; list-style: none; }
+    .product-card-features li { padding: 4px 8px; border-radius: 4px; color: var(--primary-hover); background: #eff6ff; font-size: 0.7rem; font-weight: 700; }
+    .product-card-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: auto; padding-top: 20px; }
+    .product-card-price { color: #0f172a; font-size: 1rem; font-weight: 800; }
+    .product-card-price small { display: block; color: var(--text-muted); font-size: 0.65rem; font-weight: 600; }
+    .product-detail-button, .detail-back {
+      border: 0;
+      color: var(--primary-color);
+      background: transparent;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .product-detail-button { flex: 0 0 auto; padding: 9px 14px; border: 1px solid var(--primary-color); border-radius: 999px; font-size: 0.8rem; }
+    .product-detail-button:hover, .product-detail-button:focus-visible { color: #ffffff; background: var(--primary-color); }
+    .detail-back { display: inline-flex; align-items: center; margin-bottom: 20px; padding: 8px 0; font-size: 0.84rem; }
+    .detail-back:hover, .detail-back:focus-visible { color: var(--primary-hover); text-decoration: underline; }
+    .js [data-product-detail-section]:not(.is-active) { display: none; }
+    .js [data-product-detail-section].is-active .product-feature:not(.is-selected) { display: none; }
 
     .catalog-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
     .catalog-heading .section-title, .catalog-heading .section-desc { text-align: left; }
@@ -185,6 +245,7 @@
 
     @media (max-width: 820px) {
       .hero-grid, .store-panel, .future-grid { grid-template-columns: 1fr; }
+      .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
       .service-plans { grid-template-columns: 1fr; }
       .hero-visual { width: min(100%, 620px); }
       .upcoming-app { grid-template-columns: 1fr; }
@@ -204,7 +265,15 @@
       .mobile-title-break { display: block; }
       .hero-copy { margin-top: 14px; font-size: 0.94rem; line-height: 1.75; }
       .hero-visual { aspect-ratio: 16 / 10; }
-      .catalog, .future-products { padding: 60px 0; }
+      .product-browser, .catalog, .future-products { padding: 60px 0; }
+      .product-grid { grid-template-columns: 1fr; gap: 18px; }
+      .product-filters { justify-content: flex-start; margin: 24px 0; }
+      .product-count { text-align: left; }
+      .product-card { display: grid; grid-template-columns: minmax(112px, 0.72fr) minmax(0, 1.28fr); }
+      .product-card-visual { height: 100%; min-height: 220px; aspect-ratio: auto; }
+      .product-card-body { padding: 18px; }
+      .product-card-footer { align-items: flex-start; flex-direction: column; }
+      .product-detail-button { width: 100%; }
       .catalog-heading { align-items: center; }
       .catalog-heading .section-title { font-size: 1.35rem; }
       .catalog-heading .section-desc { margin-top: 4px; font-size: 0.8rem; }
@@ -238,6 +307,11 @@
       .section-desc { margin-bottom: 28px; font-size: 0.9rem; line-height: 1.65; }
       .purchase-recovery h3, .sales-admin summary { font-size: 0.8rem; line-height: 1.5; }
     }
+
+    @media (max-width: 390px) {
+      .product-card { display: flex; }
+      .product-card-visual { min-height: 0; aspect-ratio: 16 / 9; }
+    }
   </style>
 </head>
 <body>
@@ -262,8 +336,77 @@
       </div>
     </section>
 
-    <section class="catalog" id="music-products" aria-labelledby="music-products-title">
+    <section class="product-browser" id="products" aria-labelledby="products-title">
       <div class="container">
+        <div class="product-browser-heading">
+          <p class="eyebrow">APP CATALOG</p>
+          <h2 class="section-title" id="products-title">目的に合うアプリを探す</h2>
+          <p class="section-desc">用途や提供方法で絞り込み、気になる商品の詳しい機能・料金を確認できます</p>
+        </div>
+        <div class="product-filters" aria-label="商品を絞り込む">
+          <button class="filter-button" type="button" data-product-filter="all" aria-pressed="true">すべて</button>
+          <button class="filter-button" type="button" data-product-filter="music" aria-pressed="false">音楽</button>
+          <button class="filter-button" type="button" data-product-filter="transport" aria-pressed="false">運送業務</button>
+          <button class="filter-button" type="button" data-product-filter="free" aria-pressed="false">無料で試せる</button>
+          <button class="filter-button" type="button" data-product-filter="business" aria-pressed="false">業務用</button>
+        </div>
+        <p class="product-count" id="product-count" role="status" aria-live="polite">3件の商品</p>
+        <div class="product-grid">
+          <article class="product-card" data-product-categories="music free">
+            <div class="product-card-visual metronome">
+              <img src="../data/media/products-operations-hero.png" alt="" width="1536" height="1024" loading="lazy">
+              <span class="product-card-badge">無料Web版あり</span>
+            </div>
+            <div class="product-card-body">
+              <p class="product-card-category">音楽・個人練習</p>
+              <h3>トランペット練習メトロノーム</h3>
+              <p class="product-card-copy">呼吸練習から可変テンポ、連符、音色切替までを一つにまとめた練習アプリ。</p>
+              <ul class="product-card-features"><li>ブレス練習</li><li>可変テンポ</li><li>オフライン対応</li></ul>
+              <div class="product-card-footer">
+                <p class="product-card-price">500円<small>買い切り版・税込</small></p>
+                <button class="product-detail-button" type="button" data-product-target="metronome" aria-controls="music-products">詳しく見る</button>
+              </div>
+            </div>
+          </article>
+          <article class="product-card" data-product-categories="transport business">
+            <div class="product-card-visual">
+              <img src="../data/media/tennko-record-entry.png" alt="" width="2480" height="1200" loading="lazy">
+              <span class="product-card-badge">業務用Webアプリ</span>
+            </div>
+            <div class="product-card-body">
+              <p class="product-card-category">運送業務・点呼管理</p>
+              <h3>点呼確認簿</h3>
+              <p class="product-card-copy">乗務前後の点呼、走行距離、確認写真から月次帳票までを一元管理。</p>
+              <ul class="product-card-features"><li>写真保存</li><li>月次帳票</li><li>Excel・CSV</li></ul>
+              <div class="product-card-footer">
+                <p class="product-card-price">500円〜<small>個人版・税込</small></p>
+                <button class="product-detail-button" type="button" data-product-target="tennko-kakuninnbo" aria-controls="transport-products">詳しく見る</button>
+              </div>
+            </div>
+          </article>
+          <article class="product-card" data-product-categories="transport business">
+            <div class="product-card-visual">
+              <img src="../data/media/beisia-work-records-mobile.png" alt="" width="780" height="1688" loading="lazy">
+              <span class="product-card-badge">業務用Webアプリ</span>
+            </div>
+            <div class="product-card-body">
+              <p class="product-card-category">運送業務・稼働管理</p>
+              <h3>自在稼働記録</h3>
+              <p class="product-card-copy">案件別の稼働、配送件数、走行距離を記録し、月次データをまとめて出力。</p>
+              <ul class="product-card-features"><li>案件別管理</li><li>月次帳票</li><li>点呼連携</li></ul>
+              <div class="product-card-footer">
+                <p class="product-card-price">400円〜<small>個人版・税込</small></p>
+                <button class="product-detail-button" type="button" data-product-target="beisia-work-records" aria-controls="transport-products">詳しく見る</button>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="catalog" id="music-products" aria-labelledby="music-products-title" data-product-detail-section>
+      <div class="container">
+        <button class="detail-back" type="button" data-close-product>← 商品一覧へ戻る</button>
         <div class="catalog-heading">
           <div>
             <h2 class="section-title" id="music-products-title">音楽アプリ</h2>
@@ -337,8 +480,9 @@
       </div>
     </section>
 
-    <section class="transport-catalog" id="transport-products" aria-labelledby="transport-products-title">
+    <section class="transport-catalog" id="transport-products" aria-labelledby="transport-products-title" data-product-detail-section>
       <div class="container">
+        <button class="detail-back" type="button" data-close-product>← 商品一覧へ戻る</button>
         <h2 class="section-title" id="transport-products-title">運送業務向けアプリ</h2>
         <p class="section-desc">音楽アプリとは別に、軽貨物・運送現場の日々の記録と管理を支える業務用商品をご案内します</p>
         <div class="transport-track">
@@ -601,6 +745,63 @@
 
   <script src="../back-navigation.js"></script>
   <script nonce="{{ csp_nonce }}">
+    const productBrowser = document.getElementById("products");
+    const productCards = [...document.querySelectorAll(".product-card")];
+    const productFilters = [...document.querySelectorAll("[data-product-filter]")];
+    const productCount = document.getElementById("product-count");
+    const productSections = [...document.querySelectorAll("[data-product-detail-section]")];
+
+    function showProduct(productId, updateUrl = true) {
+      const product = document.getElementById(productId);
+      if (!product || !product.classList.contains("product-feature")) return false;
+      const section = product.closest("[data-product-detail-section]");
+      productSections.forEach((candidate) => candidate.classList.toggle("is-active", candidate === section));
+      document.querySelectorAll(".product-feature").forEach((candidate) => {
+        candidate.classList.toggle("is-selected", candidate === product);
+      });
+      if (updateUrl) {
+        history.replaceState(null, "", `${location.pathname}${location.search}#${productId}`);
+      }
+      section.scrollIntoView({ behavior: "smooth", block: "start" });
+      return true;
+    }
+
+    function closeProduct() {
+      productSections.forEach((section) => section.classList.remove("is-active"));
+      document.querySelectorAll(".product-feature").forEach((product) => product.classList.remove("is-selected"));
+      history.replaceState(null, "", `${location.pathname}${location.search}`);
+      productBrowser.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    document.querySelectorAll("[data-product-target]").forEach((button) => {
+      button.addEventListener("click", () => showProduct(button.dataset.productTarget));
+    });
+    document.querySelectorAll("[data-close-product]").forEach((button) => {
+      button.addEventListener("click", closeProduct);
+    });
+    productFilters.forEach((button) => {
+      button.addEventListener("click", () => {
+        const filter = button.dataset.productFilter;
+        productFilters.forEach((candidate) => {
+          candidate.setAttribute("aria-pressed", String(candidate === button));
+        });
+        let visibleCount = 0;
+        productCards.forEach((card) => {
+          const categories = card.dataset.productCategories.split(" ");
+          const visible = filter === "all" || categories.includes(filter);
+          card.hidden = !visible;
+          if (visible) visibleCount += 1;
+        });
+        productCount.textContent = `${visibleCount}件の商品`;
+      });
+    });
+
+    const initialProductId = decodeURIComponent(location.hash.slice(1));
+    const purchaseResult = new URLSearchParams(location.search).get("purchase");
+    if (!showProduct(initialProductId, false) && ["success", "cancelled"].includes(purchaseResult)) {
+      showProduct("metronome", false);
+    }
+
     document.querySelectorAll(".music-product-track").forEach((track) => {
       const previousButton = document.querySelector(`[data-carousel-prev="${track.id}"]`);
       const nextButton = document.querySelector(`[data-carousel-next="${track.id}"]`);
