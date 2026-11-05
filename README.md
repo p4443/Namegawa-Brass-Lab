@@ -103,7 +103,7 @@ RenderのWeb Serviceは再起動時にコンテナ内のファイルが初期化
 
 トランペット練習メトロノームのWeb版は無料公開し、Stripe決済後にオフライン版ZIPを24時間ダウンロードできます。販売状態は「管理者用：販売設定」から`EDITOR_PASSWORD`を使って切り替えます。未設定時の初期値はOFFです。
 
-Trumpet Transpose LabとFlex Mediaは公開・新規販売を終了しています。Trumpet Transpose Labの既購入者向けダウンロード検証を維持するため、既存環境では次の環境変数名を継続利用します。
+Trumpet Transpose LabとFlex Mediaは公開・新規販売を終了しています。Trumpet Transpose Labの開発ソースは削除済みですが、既購入者向けの配布ZIPとダウンロード検証は維持しています。そのため、既存環境では次の環境変数名を継続利用します。
 
 ```text
 STRIPE_FLOW_HARMONY_PRICE_ID=price_...

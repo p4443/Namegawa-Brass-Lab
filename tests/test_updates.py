@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 from urllib.parse import parse_qs, urljoin, urlparse
+from zipfile import ZipFile
 
 from app import (
     LESSON_RESERVATION_TIMEOUT_SECONDS,
@@ -2284,17 +2285,19 @@ class UpdatesTest(unittest.TestCase):
                 self.assertIn('src="../back-navigation.js"', page)
 
     def test_transpose_score_supports_fit_and_original_views(self):
-        app_directory = (
-            Path(__file__).resolve().parents[1] / "trumpet-transpose-lab"
+        archive_path = (
+            Path(__file__).resolve().parents[1]
+            / "private"
+            / "products"
+            / "trumpet-transpose-lab.zip"
         )
-        page = (app_directory / "index.html").read_text(encoding="utf-8")
-        app_javascript = (app_directory / "app.mjs").read_text(encoding="utf-8")
-        stylesheet = (app_directory / "styles.css").read_text(encoding="utf-8")
+        with ZipFile(archive_path) as archive:
+            page = archive.read("index.html").decode("utf-8")
 
         self.assertIn('id="fitScoreButton"', page)
-        self.assertIn("state.fitScore = !state.fitScore", app_javascript)
-        self.assertIn("classList.toggle('fit', state.fitScore)", app_javascript)
-        self.assertIn(".score-viewport.fit svg", stylesheet)
+        self.assertIn("state.fitScore = !state.fitScore", page)
+        self.assertIn("classList.toggle('fit', state.fitScore)", page)
+        self.assertIn(".score-viewport.fit svg", page)
 
     def test_docker_image_includes_contract_generator(self):
         dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(
@@ -2305,6 +2308,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("COPY healthcheck-prod.sh ./", dockerfile)
         self.assertIn("COPY contract-generator ./contract-generator", dockerfile)
         self.assertIn("COPY app.py index.html back-navigation.js build_product.py ./", dockerfile)
+        self.assertIn(
+            "COPY private/products/trumpet-transpose-lab.zip ./private/products/",
+            dockerfile,
+        )
+        self.assertNotIn("COPY trumpet-transpose-lab ./trumpet-transpose-lab", dockerfile)
 
         compose = (Path(__file__).resolve().parents[1] / "docker-compose.yml").read_text(
             encoding="utf-8"

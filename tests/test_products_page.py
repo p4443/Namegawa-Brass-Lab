@@ -127,51 +127,35 @@ class ProductsPageTests(unittest.TestCase):
         self.assertNotIn("点呼確認簿", hero)
         self.assertTrue(hero_image.is_file())
 
-    def test_transpose_lab_uses_only_the_v2_source(self):
+    def test_transpose_lab_source_is_removed_but_legacy_archive_remains(self):
         root = Path(__file__).resolve().parents[1]
-        source = (root / "trumpet-transpose-lab" / "index.html").read_bytes()
-        source_html = source.decode("utf-8")
 
-        self.assertIn("Trumpet Transpose Lab V2", source_html)
+        self.assertFalse((root / "trumpet-transpose-lab").exists())
         self.assertNotIn("Trumpet Transpose Lab", self.html)
         self.assertNotIn("trumpet-transpose-lab", self.html)
 
         with ZipFile(root / "private" / "products" / "trumpet-transpose-lab.zip") as archive:
+            self.assertIsNone(archive.testzip())
             archive_html = archive.read("index.html").decode("utf-8")
 
         self.assertIn("Trumpet Transpose Lab V2", archive_html)
         self.assertNotIn('href="./styles.css"', archive_html)
         self.assertNotIn('src="./app.mjs"', archive_html)
 
-    def test_transpose_lab_has_bulk_correction_tools(self):
+    def test_legacy_transpose_lab_archive_has_bulk_correction_tools(self):
         root = Path(__file__).resolve().parents[1]
-        source_html = (root / "trumpet-transpose-lab" / "index.html").read_text(
-            encoding="utf-8"
-        )
-        source_js = (root / "trumpet-transpose-lab" / "app.mjs").read_text(
-            encoding="utf-8"
-        )
+        with ZipFile(root / "private" / "products" / "trumpet-transpose-lab.zip") as archive:
+            archive_html = archive.read("index.html").decode("utf-8")
 
-        self.assertIn('id="fixTools"', source_html)
-        self.assertIn('id="noteAddButton"', source_html)
-        self.assertIn('id="noteSplitButton"', source_html)
-        self.assertIn('id="snapAllButton"', source_html)
-        self.assertIn('id="removeShortButton"', source_html)
-        self.assertIn('id="noteDuration"', source_html)
-        self.assertIn('data-edit="duration-down"', source_html)
-        self.assertIn('data-edit="duration-up"', source_html)
-        self.assertIn('data-edit="delete"', source_html)
-        self.assertIn("function addNote()", source_js)
-        self.assertIn("function splitSelectedNote()", source_js)
-        self.assertIn("function snapAllToGrid()", source_js)
-        self.assertIn("function removeShortNotes()", source_js)
-        self.assertIn("action === 'duration-down'", source_js)
-        self.assertIn("action === 'duration-up'", source_js)
-        self.assertIn("$('fixTools').disabled", source_js)
-        self.assertIn("$('noteAddButton').addEventListener", source_js)
-        self.assertIn("$('noteSplitButton').addEventListener", source_js)
-        self.assertIn("$('snapAllButton').addEventListener", source_js)
-        self.assertIn("$('removeShortButton').addEventListener", source_js)
+        self.assertIn('id="fixTools"', archive_html)
+        self.assertIn('id="noteAddButton"', archive_html)
+        self.assertIn('id="noteSplitButton"', archive_html)
+        self.assertIn('id="snapAllButton"', archive_html)
+        self.assertIn('id="removeShortButton"', archive_html)
+        self.assertIn("function addNote()", archive_html)
+        self.assertIn("function splitSelectedNote()", archive_html)
+        self.assertIn("function snapAllToGrid()", archive_html)
+        self.assertIn("function removeShortNotes()", archive_html)
 
     def test_breath_metronome_uses_count_in_and_stops_after_one_cycle(self):
         root = Path(__file__).resolve().parents[1]

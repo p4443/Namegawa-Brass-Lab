@@ -22,7 +22,7 @@ COPY schedule ./schedule
 COPY pdf ./pdf
 COPY video ./video
 COPY ["music App", "./music App"]
-COPY trumpet-transpose-lab ./trumpet-transpose-lab
+COPY private/products/trumpet-transpose-lab.zip ./private/products/
 COPY contract-generator ./contract-generator
 
 RUN python build_product.py
