@@ -5,13 +5,26 @@ const requiredServerVariables = [
   "OFFICIAL_BOOKING_WEBHOOK_SECRET",
 ] as const;
 
+const minimumSessionSecretBytes = 32;
+
+function validServerVariable(name: (typeof requiredServerVariables)[number]) {
+  const value = process.env[name];
+  if (!value) return false;
+  return name !== "PORTAL_SESSION_SECRET"
+    || new TextEncoder().encode(value).byteLength >= minimumSessionSecretBytes;
+}
+
 export function serverConfigReady() {
-  return requiredServerVariables.every((name) => Boolean(process.env[name]));
+  return requiredServerVariables.every(validServerVariable);
 }
 
 export function getServerEnv(name: (typeof requiredServerVariables)[number]) {
   const value = process.env[name];
   if (!value) throw new Error(`${name} is not configured`);
+  if (name === "PORTAL_SESSION_SECRET"
+    && new TextEncoder().encode(value).byteLength < minimumSessionSecretBytes) {
+    throw new Error(`${name} must contain at least ${minimumSessionSecretBytes} bytes`);
+  }
   return value;
 }
 

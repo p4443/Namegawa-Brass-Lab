@@ -32,6 +32,13 @@ class SecurityHardeningTests(unittest.TestCase):
         self.assertIn('"X-Frame-Options", value: "DENY"', config)
         self.assertIn('"Strict-Transport-Security"', config)
 
+    def test_portal_session_secret_has_minimum_strength(self):
+        env_source = (
+            ROOT_DIR / "lesson-platform" / "src" / "lib" / "env.ts"
+        ).read_text(encoding="utf-8")
+        self.assertIn("minimumSessionSecretBytes = 32", env_source)
+        self.assertIn("byteLength < minimumSessionSecretBytes", env_source)
+
     def test_webhook_auth_logs_no_secret_derived_metadata(self):
         route = (
             ROOT_DIR
