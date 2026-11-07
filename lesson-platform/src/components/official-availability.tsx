@@ -22,16 +22,31 @@ function availabilityLabel(count: number) {
   return "予約可";
 }
 
+function AvailabilityHeading() {
+  return (
+    <div className="availability-heading">
+      <p className="kicker"><CalendarSync aria-hidden="true" size={16} /> 公式予約情報と同期</p>
+      <h2 id="availability-title">1か月先までの予約状況</h2>
+      <p>公式ホームページの予約件数と空き枠を自動反映しています。予約者の個人情報は表示しません。</p>
+    </div>
+  );
+}
+
+export function OfficialAvailabilityFallback() {
+  return (
+    <section className="availability-section" aria-labelledby="availability-title">
+      <AvailabilityHeading />
+      <p className="availability-unavailable" role="status">公式予約情報を読み込んでいます…</p>
+    </section>
+  );
+}
+
 export async function OfficialAvailability() {
   const days = await getOfficialLessonAvailability();
 
   return (
     <section className="availability-section" aria-labelledby="availability-title">
-      <div className="availability-heading">
-        <p className="kicker"><CalendarSync aria-hidden="true" size={16} /> 公式予約情報と同期</p>
-        <h2 id="availability-title">1か月先までの予約状況</h2>
-        <p>公式ホームページの予約件数と空き枠を自動反映しています。予約者の個人情報は表示しません。</p>
-      </div>
+      <AvailabilityHeading />
       {days ? (
         <div className="availability-grid">
           {days.map((day) => (

@@ -1,10 +1,11 @@
 import { ArrowRight, CalendarCheck, MapPin, MessageCircle, ShieldCheck, Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import Image from "next/image";
+import { Suspense } from "react";
 
 import { BookingPanel } from "@/components/booking-panel";
 import { LineLogin } from "@/components/line-login";
-import { OfficialAvailability } from "@/components/official-availability";
+import { OfficialAvailability, OfficialAvailabilityFallback } from "@/components/official-availability";
 import { legacyLessonUrl, serverConfigReady } from "@/lib/env";
 import { sessionCookieName, verifyPortalSession } from "@/lib/session";
 
@@ -77,7 +78,9 @@ export default async function Home() {
         </div>
       </section>
 
-      <OfficialAvailability />
+      <Suspense fallback={<OfficialAvailabilityFallback />}>
+        <OfficialAvailability />
+      </Suspense>
 
       <BookingPanel isLineAuthenticated={Boolean(session)} />
 

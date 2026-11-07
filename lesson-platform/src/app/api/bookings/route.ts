@@ -64,7 +64,8 @@ function isBookableDate(value: string) {
 async function fetchOfficialAvailability(url: URL) {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(10000) });
+      // 30秒: 公式サイト(Render)のコールドスタート中でも再試行内で応答を受け取れるようにする
+      const response = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(30000) });
       if (response.ok) return response;
     } catch {
       if (attempt === 2) return null;
