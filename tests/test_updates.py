@@ -23,8 +23,6 @@ from app import (
     fetch_instrument_price_candidates,
     load_updates,
     lesson_calendar_days,
-    notify_portal_booking_status,
-    reconcile_portal_bookings,
     normalize_media_url,
     normalize_route_query,
     normalize_slot_statuses,
@@ -2631,132 +2629,6 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 40)
 
-    def test_portal_booking_status_notification_is_signed(self):
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = b'{"ok": true}'
-
-        with patch.dict(
-            os.environ,
-            {
-                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
-                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
-            },
-        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
-            sent = notify_portal_booking_status("R-20260930-001", "確定")
-
-        self.assertTrue(sent)
-        webhook_request = urlopen.call_args.args[0]
-        self.assertEqual(
-            webhook_request.full_url,
-            "https://portal.example/api/webhooks/official-booking",
-        )
-        self.assertEqual(webhook_request.get_header("Authorization"), "Bearer webhook-secret")
-        self.assertEqual(
-            json.loads(webhook_request.data.decode("utf-8")),
-            {"reservation_id": "R-20260930-001", "status": "確定"},
-        )
-
-    def test_portal_booking_creation_notification_includes_booking_details(self):
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = b'{"ok": true}'
-        booking = {
-            "guardian_line_user_id": "",
-            "duplicate": False,
-            "lesson_type": "体験レッスン",
-            "preferred_date": "2026-09-30",
-            "preferred_time": "09:00",
-            "duration_minutes": 30,
-        }
-
-        with patch.dict(
-            os.environ,
-            {
-                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
-                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
-            },
-        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
-            sent = notify_portal_booking_status("R-20260930-001", "確認中", booking)
-
-        self.assertTrue(sent)
-        self.assertEqual(
-            json.loads(urlopen.call_args.args[0].data.decode("utf-8")),
-            {"reservation_id": "R-20260930-001", "status": "確認中", "booking": booking},
-        )
-
-    def test_portal_booking_reconciliation_sends_only_required_fields(self):
-        response = MagicMock()
-        response.__enter__.return_value.read.return_value = b'{"ok": true}'
-        reservation = {
-            "reservation_id": "R-20260930-001",
-            "status": "確定",
-            "name": "送信しない名前",
-            "email": "private@example.com",
-            "phone": "09000000000",
-            "lesson_type": "体験レッスン",
-            "preferred_date": "2026-09-30",
-            "preferred_time": "09:00",
-            "duration_minutes": 30,
-        }
-
-        with patch.dict(
-            os.environ,
-            {
-                "PORTAL_BOOKING_WEBHOOK_URL": "https://portal.example/api/webhooks/official-booking",
-                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
-            },
-        ), patch("app.urllib_request.urlopen", return_value=response) as urlopen:
-            reconciled = reconcile_portal_bookings([reservation])
-
-        self.assertTrue(reconciled)
-        webhook_request = urlopen.call_args.args[0]
-        self.assertEqual(
-            webhook_request.full_url,
-            "https://portal.example/api/webhooks/official-booking/reconcile",
-        )
-        payload = json.loads(webhook_request.data.decode("utf-8"))
-        self.assertEqual(payload["bookings"][0]["reservation_id"], "R-20260930-001")
-        self.assertNotIn("name", payload["bookings"][0])
-        self.assertNotIn("email", payload["bookings"][0])
-        self.assertNotIn("phone", payload["bookings"][0])
-
-    def test_portal_webhook_sends_cancelled_line_notification(self):
-        source = (
-            Path(__file__).parents[1]
-            / "lesson-platform"
-            / "src"
-            / "app"
-            / "api"
-            / "webhooks"
-            / "official-booking"
-            / "route.ts"
-        ).read_text(encoding="utf-8")
-
-        self.assertIn(
-            '(status !== "確定" && status !== "キャンセル")',
-            source,
-        )
-        self.assertIn("レッスン予約がキャンセルされました。", source)
-        self.assertIn("line_notified_status: status", source)
-
-    def test_portal_reconciliation_recovers_missed_cancellation_and_line_notification(self):
-        source = (
-            Path(__file__).parents[1]
-            / "lesson-platform"
-            / "src"
-            / "app"
-            / "api"
-            / "webhooks"
-            / "official-booking"
-            / "reconcile"
-            / "route.ts"
-        ).read_text(encoding="utf-8")
-
-        self.assertIn("officialBookings.has(reservationId)", source)
-        self.assertIn("if (active && !official) continue", source)
-        self.assertIn('status: "キャンセル"', source)
-        self.assertIn("レッスン予約がキャンセルされました。", source)
-        self.assertIn('line_notified_status: "キャンセル"', source)
-
     def test_apps_script_request_retries_temporary_html_response(self):
         html_response = MagicMock()
         html_response.__enter__.return_value.read.return_value = b"<html>Error</html>"
@@ -3844,9 +3716,7 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation, patch(
-            "app.reconcile_portal_bookings", return_value=True
-        ) as reconcile:
+        ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
                 "reservations": [
@@ -3869,9 +3739,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Cache-Control"], "no-store")
         self.assertEqual(len(response.json["reservations"]), 1)
         self.assertEqual(response.json["reservations"][0]["name"], "予約 太郎")
-        self.assertTrue(response.json["portal_reconciled"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "list")
-        reconcile.assert_called_once_with(send_reservation.return_value["reservations"])
 
     def test_lesson_reservation_list_retries_empty_apps_script_response(self):
         response = MagicMock()
@@ -4073,9 +3941,7 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation, patch(
-            "app.notify_portal_booking_status", return_value=True
-        ) as notify_portal:
+        ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260820-001",
@@ -4091,10 +3957,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.json["released_count"], 4)
         self.assertFalse(response.json["already_cancelled"])
         self.assertTrue(response.json["cancellation_email_sent"])
-        self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "cancel")
         self.assertEqual(send_reservation.call_args.args[2]["email"], "user@example.com")
-        notify_portal.assert_called_once_with("R-20260820-001", "キャンセル")
 
     def test_user_cancellation_requires_turnstile_token_when_configured(self):
         with patch.dict(
@@ -4508,92 +4372,6 @@ class UpdatesTest(unittest.TestCase):
         self.assertTrue(response.json["duplicate"])
         self.assertFalse(response.json["auto_reply_sent"])
 
-    def test_lesson_reservation_only_accepts_signed_portal_line_id(self):
-        client = create_app().test_client()
-        payload = {
-            "name": "予約 太郎",
-            "email": "taro@example.com",
-            "phone": "090-1234-5678",
-            "lesson_type": "体験レッスン",
-            "preferred_date": "2026-08-20",
-            "preferred_time": "09:00",
-            "message": "",
-            "portal_line_user_id": "line-user-1",
-        }
-        reservation_result = {
-            "ok": True,
-            "reservationId": "R-20260820-001",
-            "status": "確認中",
-        }
-
-        with patch("app.current_japan_date", return_value=date(2026, 8, 9)), patch.dict(
-            os.environ,
-            {
-                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
-                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
-                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
-            },
-        ), patch("app.send_lesson_reservation", return_value=reservation_result), patch(
-            "app.notify_portal_booking_status", return_value=True
-        ) as notify_portal:
-            client.post("/api/lesson-reservations", json=payload)
-            unsigned_booking = notify_portal.call_args.args[2]
-            client.post(
-                "/api/lesson-reservations",
-                json=payload,
-                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
-            )
-            signed_booking = notify_portal.call_args.args[2]
-            reservation_result["duplicate"] = True
-            client.post(
-                "/api/lesson-reservations",
-                json=payload,
-                headers={"X-Portal-Authorization": "Bearer webhook-secret"},
-            )
-            duplicate_booking = notify_portal.call_args.args[2]
-
-        self.assertEqual(unsigned_booking["guardian_line_user_id"], "")
-        self.assertEqual(signed_booking["guardian_line_user_id"], "line-user-1")
-        self.assertEqual(duplicate_booking["guardian_line_user_id"], "")
-
-    def test_lesson_reservation_claim_code_requires_portal_secret(self):
-        client = create_app().test_client()
-        payload = {
-            "reservation_id": "R-20260820-001",
-            "email": "taro@example.com",
-            "code": "123456",
-        }
-        with patch.dict(
-            os.environ,
-            {
-                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
-                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
-                "PORTAL_BOOKING_WEBHOOK_SECRET": "webhook-secret",
-            },
-        ), patch("app.send_lesson_reservation", return_value={
-            "ok": True,
-            "sent": True,
-            "booking": {
-                "lesson_type": "体験レッスン",
-                "preferred_date": "2026-08-20",
-                "preferred_time": "09:00",
-                "duration_minutes": 30,
-                "status": "予約済み",
-            },
-        }) as send_reservation:
-            unauthorized = client.post("/api/lesson-reservations/claim-code", json=payload)
-            authorized = client.post(
-                "/api/lesson-reservations/claim-code",
-                json=payload,
-                headers={"Authorization": "Bearer webhook-secret"},
-            )
-
-        self.assertEqual(unauthorized.status_code, 401)
-        self.assertEqual(authorized.status_code, 200)
-        self.assertTrue(authorized.json["sent"])
-        self.assertEqual(authorized.json["booking"]["lesson_type"], "体験レッスン")
-        self.assertEqual(send_reservation.call_args.kwargs["action"], "send_claim_code")
-
     def test_lesson_reservation_rate_limit_prevents_excessive_apps_script_calls(self):
         payload = {
             "name": "予約 太郎",
@@ -5003,9 +4781,7 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation, patch(
-            "app.notify_portal_booking_status"
-        ) as notify_portal:
+        ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260810-001",
@@ -5013,7 +4789,6 @@ class UpdatesTest(unittest.TestCase):
                 "updatedFields": ["status"],
                 "confirmationEmailSent": True,
             }
-            notify_portal.return_value = True
             response = client.put(
                 "/api/lesson-reservations/R-20260810-001",
                 json={"status": "確定"},
@@ -5022,11 +4797,9 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["confirmation_email_sent"])
-        self.assertTrue(response.json["portal_notification_sent"])
         self.assertEqual(send_reservation.call_args.kwargs["action"], "update")
-        notify_portal.assert_called_once_with("R-20260810-001", "確定", None)
 
-    def test_lesson_reservation_admin_cancel_notifies_portal(self):
+    def test_lesson_reservation_admin_cancel_reports_cancellation_email(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
@@ -5037,9 +4810,7 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation, patch(
-            "app.notify_portal_booking_status", return_value=True
-        ) as notify_portal:
+        ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.return_value = {
                 "ok": True,
                 "reservationId": "R-20260810-001",
@@ -5055,10 +4826,8 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["cancellation_email_sent"])
-        self.assertTrue(response.json["portal_notification_sent"])
-        notify_portal.assert_called_once_with("R-20260810-001", "キャンセル", None)
 
-    def test_lesson_reservation_admin_delete_notifies_portal(self):
+    def test_lesson_reservation_admin_delete_succeeds(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
 
@@ -5072,9 +4841,7 @@ class UpdatesTest(unittest.TestCase):
         ), patch(
             "app.send_lesson_reservation",
             return_value={"ok": True, "reservationId": "R-20260810-001"},
-        ), patch(
-            "app.notify_portal_booking_status", return_value=True
-        ) as notify_portal:
+        ):
             response = client.delete(
                 "/api/lesson-reservations/R-20260810-001",
                 headers=headers,
@@ -5082,10 +4849,8 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.json["deleted"])
-        self.assertTrue(response.json["portal_notification_sent"])
-        notify_portal.assert_called_once_with("R-20260810-001", "削除")
 
-    def test_lesson_reservation_detail_update_notifies_portal_with_merged_booking(self):
+    def test_lesson_reservation_detail_update_merges_current_booking(self):
         client = create_app().test_client()
         headers = {"X-Editor-Password": "correct-password"}
         current = {
@@ -5104,9 +4869,7 @@ class UpdatesTest(unittest.TestCase):
                 "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
                 "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
             },
-        ), patch("app.send_lesson_reservation") as send_reservation, patch(
-            "app.notify_portal_booking_status", return_value=True
-        ) as notify_portal:
+        ), patch("app.send_lesson_reservation") as send_reservation:
             send_reservation.side_effect = [
                 {"ok": True, "reservations": [current]},
                 {
@@ -5123,17 +4886,8 @@ class UpdatesTest(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(response.json["portal_notification_sent"])
-        notify_portal.assert_called_once_with(
-            "R-20260810-001",
-            "確定",
-            {
-                "lesson_type": "体験レッスン",
-                "preferred_date": "2026-10-08",
-                "preferred_time": "09:00",
-                "duration_minutes": 30,
-            },
-        )
+        self.assertTrue(response.json["saved"])
+        self.assertEqual(response.json["updated_fields"], ["preferred_date"])
 
     def test_lesson_reservation_manage_reports_slot_conflict(self):
         client = create_app().test_client()

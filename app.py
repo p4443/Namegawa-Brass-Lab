@@ -2702,89 +2702,6 @@ def send_lesson_reservation(script_url, secret, values, action="create"):
     return result
 
 
-def portal_webhook_secret_is_valid(value):
-    expected = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
-    actual = str(value or "").removeprefix("Bearer ").strip()
-    return bool(expected and actual) and hmac.compare_digest(expected, actual)
-
-
-def notify_portal_booking_status(reservation_id, status, booking=None):
-    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
-    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
-    if not webhook_url or not webhook_secret:
-        return False
-
-    payload_values = {"reservation_id": reservation_id, "status": status}
-    if booking:
-        payload_values["booking"] = booking
-    payload = json.dumps(payload_values, ensure_ascii=False).encode("utf-8")
-    webhook_request = urllib_request.Request(
-        webhook_url,
-        data=payload,
-        headers={
-            "Authorization": f"Bearer {webhook_secret}",
-            "Content-Type": "application/json; charset=utf-8",
-        },
-        method="POST",
-    )
-    try:
-        with urllib_request.urlopen(webhook_request, timeout=15) as response:
-            result = json.loads(response.read().decode("utf-8"))
-        return result.get("ok") is True
-    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
-        return False
-
-
-def reconcile_portal_bookings(reservations):
-    webhook_url = os.environ.get("PORTAL_BOOKING_WEBHOOK_URL", "").strip()
-    webhook_secret = os.environ.get("PORTAL_BOOKING_WEBHOOK_SECRET", "").strip()
-    if not webhook_url or not webhook_secret:
-        return False
-
-    bookings = [
-        {
-            "reservation_id": reservation.get("reservation_id"),
-            "status": reservation.get("status"),
-            "lesson_type": reservation.get("lesson_type"),
-            "preferred_date": reservation.get("preferred_date"),
-            "preferred_time": reservation.get("preferred_time"),
-            "duration_minutes": reservation.get("duration_minutes"),
-        }
-        for reservation in reservations
-        if isinstance(reservation, dict)
-    ]
-    webhook_request = urllib_request.Request(
-        f"{webhook_url.rstrip('/')}/reconcile",
-        data=json.dumps({"bookings": bookings}, ensure_ascii=False).encode("utf-8"),
-        headers={
-            "Authorization": f"Bearer {webhook_secret}",
-            "Content-Type": "application/json; charset=utf-8",
-        },
-        method="POST",
-    )
-    try:
-        with urllib_request.urlopen(webhook_request, timeout=15) as response:
-            result = json.loads(response.read().decode("utf-8"))
-            response_status = response.status
-        print(
-            "Portal booking reconciliation: "
-            f"status={response_status} ok={result.get('ok')} "
-            f"updated={result.get('updated')} cancelled={result.get('cancelled')} "
-            f"notified={result.get('notified')}",
-            flush=True,
-        )
-        return result.get("ok") is True
-    except urllib_error.HTTPError as exc:
-        response_body = exc.read().decode("utf-8", errors="replace")[:500]
-        print(
-            f"Portal booking reconciliation failed: status={exc.code} body={response_body}",
-            flush=True,
-        )
-        return False
-    except (json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
-        return False
-
-
 def format_update(values):
     content = values["content"]
     if values["media_type"]:
@@ -4694,16 +4611,6 @@ def create_app(
         reservation_payload = request.get_json(silent=True)
         if isinstance(reservation_payload, dict) and reservation_payload.get("website"):
             return lesson_reservation_json({"saved": True}, 201)
-        portal_line_user_id = ""
-        portal_request_is_signed = portal_webhook_secret_is_valid(
-            request.headers.get("X-Portal-Authorization")
-        )
-        if portal_request_is_signed:
-            portal_line_user_id = str(
-                (reservation_payload or {}).get("portal_line_user_id", "")
-            ).strip()
-            if len(portal_line_user_id) > 255:
-                portal_line_user_id = ""
         try:
             values = validate_lesson_reservation(reservation_payload)
         except ValueError as exc:
@@ -4729,13 +4636,12 @@ def create_app(
                 {"error": "予約の送信回数が多すぎます。時間をおいて再度お試しください。"},
                 429,
             )
-        if not portal_request_is_signed:
-            turnstile_error = verify_turnstile(
-                reservation_payload, "lesson_reservation"
-            )
-            if turnstile_error:
-                message, status_code = turnstile_error
-                return lesson_reservation_json({"error": message}, status_code)
+        turnstile_error = verify_turnstile(
+            reservation_payload, "lesson_reservation"
+        )
+        if turnstile_error:
+            message, status_code = turnstile_error
+            return lesson_reservation_json({"error": message}, status_code)
         try:
             result = send_lesson_reservation(script_url, script_secret, values)
         except LessonReservationDeliveryError as exc:
@@ -4789,20 +4695,6 @@ def create_app(
                 409,
             )
         reservation_id = result.get("reservationId", "")
-        portal_notification_sent = False
-        if reservation_id:
-            portal_notification_sent = notify_portal_booking_status(
-                reservation_id,
-                result.get("status", "確認中"),
-                {
-                    "guardian_line_user_id": "" if result.get("duplicate") else portal_line_user_id,
-                    "duplicate": bool(result.get("duplicate", False)),
-                    "lesson_type": values["lesson_type"],
-                    "preferred_date": values["preferred_date"],
-                    "preferred_time": values["preferred_time"],
-                    "duration_minutes": values["duration_minutes"],
-                },
-            )
 
         return lesson_reservation_json(
             {
@@ -4813,43 +4705,9 @@ def create_app(
                 "admin_notification_sent": bool(result.get("adminNotificationSent", False)),
                 "duplicate": bool(result.get("duplicate", False)),
                 "duration_minutes": values["duration_minutes"],
-                "portal_notification_sent": portal_notification_sent,
             },
             201,
         )
-
-    @app.post("/api/lesson-reservations/claim-code")
-    def send_lesson_reservation_claim_code():
-        if not portal_webhook_secret_is_valid(request.headers.get("Authorization")):
-            return jsonify({"error": "Unauthorized"}), 401
-        payload = request.get_json(silent=True) or {}
-        try:
-            reservation_id = validate_reservation_id(payload.get("reservation_id", ""))
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-        email = str(payload.get("email", "")).strip().lower()
-        code = str(payload.get("code", "")).strip()
-        if not re.fullmatch(r"[^\s@]+@[^\s@]+\.[^\s@]+", email) or not re.fullmatch(r"\d{6}", code):
-            return jsonify({"error": "入力内容を確認してください。"}), 400
-
-        script_url = os.environ.get("GOOGLE_APPS_SCRIPT_URL", "").strip()
-        script_secret = os.environ.get("GOOGLE_APPS_SCRIPT_SECRET", "").strip()
-        if not script_url or not script_secret:
-            return jsonify({"error": "Claim delivery unavailable"}), 503
-        try:
-            result = send_lesson_reservation(
-                script_url,
-                script_secret,
-                {"reservation_id": reservation_id, "email": email, "code": code},
-                action="send_claim_code",
-            )
-        except (LessonReservationDeliveryError, json.JSONDecodeError, OSError, ValueError, urllib_error.URLError):
-            app.logger.exception("Failed to send lesson reservation claim code")
-            return jsonify({"error": "Claim delivery failed"}), 502
-        response_values = {"sent": result.get("sent") is True}
-        if response_values["sent"] and isinstance(result.get("booking"), dict):
-            response_values["booking"] = result["booking"]
-        return jsonify(response_values)
 
     @app.route("/api/consultation", methods=["POST", "OPTIONS"])
     def create_consultation():
@@ -4935,12 +4793,7 @@ def create_app(
                 action="list",
             )
             reservations = result.get("reservations", [])
-            response = jsonify(
-                {
-                    "reservations": reservations,
-                    "portal_reconciled": reconcile_portal_bookings(reservations),
-                }
-            )
+            response = jsonify({"reservations": reservations})
             return with_lesson_reservation_cors(
                 response,
                 methods="GET, OPTIONS",
@@ -5229,10 +5082,6 @@ def create_app(
                 action="cancel",
             )
             reservation_id = result.get("reservationId", values["reservation_id"])
-            portal_notification_sent = notify_portal_booking_status(
-                reservation_id,
-                "キャンセル",
-            )
             return lesson_reservation_json(
                 {
                     "cancelled": True,
@@ -5240,7 +5089,6 @@ def create_app(
                     "released_count": parse_updated_count(result),
                     "already_cancelled": bool(result.get("alreadyCancelled", False)),
                     "cancellation_email_sent": result.get("cancellationEmailSent"),
-                    "portal_notification_sent": portal_notification_sent,
                 },
                 200,
             )
@@ -5282,7 +5130,7 @@ def create_app(
                 503,
             )
 
-        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "send_claim_code", "resend_admin_notification", "upsert_slot_status_range"}
+        required_capabilities = {"generate_transport_sheet", "list", "update", "delete", "cancel", "resend_admin_notification", "upsert_slot_status_range"}
         try:
             result = send_lesson_reservation(
                 script_url,
@@ -5516,15 +5364,10 @@ def create_app(
                     {"reservation_id": valid_reservation_id},
                     action="delete",
                 )
-                portal_notification_sent = notify_portal_booking_status(
-                    valid_reservation_id,
-                    "削除",
-                )
                 response = jsonify(
                     {
                         "deleted": True,
                         "reservation_id": result.get("reservationId", ""),
-                        "portal_notification_sent": portal_notification_sent,
                     }
                 )
                 return with_lesson_reservation_cors(
@@ -5601,22 +5444,6 @@ def create_app(
                     methods="PUT, DELETE, OPTIONS",
                     headers="Content-Type, X-Editor-Password",
                 )
-            portal_notification_sent = None
-            requested_status = values.get("status")
-            portal_booking = None
-            if current_reservation is not None and booking_detail_fields & values.keys():
-                updated_reservation = {**current_reservation, **values}
-                portal_booking = {
-                    field: updated_reservation[field]
-                    for field in booking_detail_fields
-                }
-            portal_status = result.get("status") or requested_status
-            if portal_status and (requested_status is not None or portal_booking is not None):
-                portal_notification_sent = notify_portal_booking_status(
-                    valid_reservation_id,
-                    portal_status,
-                    portal_booking,
-                )
             response = jsonify(
                 {
                     "saved": True,
@@ -5625,7 +5452,6 @@ def create_app(
                     "updated_fields": result.get("updatedFields", []),
                     "confirmation_email_sent": result.get("confirmationEmailSent"),
                     "cancellation_email_sent": result.get("cancellationEmailSent"),
-                    "portal_notification_sent": portal_notification_sent,
                 }
             )
             return with_lesson_reservation_cors(

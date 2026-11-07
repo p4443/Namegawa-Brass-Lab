@@ -48,7 +48,7 @@ class LessonConsultationReplyTest(unittest.TestCase):
         token_headers = {"X-Editor-Token": login.json["editor_token"]}
         with patch("app.send_lesson_reservation", return_value={
             "ok": True, "reservationId": "R-20261031-001", "replyEmailSent": True,
-        }) as send, patch("app.notify_portal_booking_status") as notify:
+        }) as send:
             response = self.client.post(self.url, headers=token_headers, json={
                 "reply_message": "  10時はいかがでしょうか。\nご返信ください。  ",
                 "email": "other@example.com",
@@ -62,7 +62,6 @@ class LessonConsultationReplyTest(unittest.TestCase):
              "reply_message": "10時はいかがでしょうか。\nご返信ください。"},
             action="send_consultation_reply",
         )
-        notify.assert_not_called()
 
     def test_rejects_invalid_reply_payloads(self):
         for payload in (None, [], "text", {}, {"reply_message": None},
