@@ -42,12 +42,19 @@ export function LineLogin({ liffId }: { liffId?: string }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ idToken }),
+        // 応答が滞ってもボタンが「確認中...」のまま固まらないようにする
+        signal: AbortSignal.timeout(20000),
       });
       const result = (await response.json()) as { error?: string };
       if (!response.ok) throw new Error(result.error || "ログインできませんでした。");
+      sessionStorage.removeItem("nbl_auto_login_attempts");
       router.push("/dashboard");
     } catch (error) {
-      setStatus(error instanceof Error ? error.message : "ログインできませんでした。");
+      setStatus(
+        error instanceof DOMException && error.name === "TimeoutError"
+          ? "応答がありません。通信環境を確認して、もう一度お試しください。"
+          : error instanceof Error ? error.message : "ログインできませんでした。",
+      );
       setBusy(false);
       loginStarted.current = false;
     }
@@ -55,7 +62,24 @@ export function LineLogin({ liffId }: { liffId?: string }) {
 
   function continueLoginIfNeeded() {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("login") === "required" || params.has("liff.state")) void login();
+    // LINE認証からの戻り(code/state/liffClientId)やLIFF起動時も自動でログインを続行する
+    const returningFromLineAuth =
+      params.has("liff.state")
+      || params.has("liffClientId")
+      || (params.has("code") && params.has("state"));
+    if (returningFromLineAuth) {
+      void login();
+      return;
+    }
+    if (params.get("login") !== "required") return;
+    // マイページから差し戻され続ける場合は自動再試行を打ち切り、案内を表示する
+    const attempts = Number(sessionStorage.getItem("nbl_auto_login_attempts") || "0");
+    if (attempts >= 2) {
+      setStatus("ログイン状態を保存できませんでした。ブラウザのCookie設定を確認し、もう一度「LINEでログイン」を押してください。");
+      return;
+    }
+    sessionStorage.setItem("nbl_auto_login_attempts", String(attempts + 1));
+    void login();
   }
 
   return (
