@@ -8,6 +8,7 @@ import { LogIn } from "lucide-react";
 interface LiffApi {
   init(config: { liffId: string }): Promise<void>;
   isLoggedIn(): boolean;
+  isInClient(): boolean;
   login(config?: { redirectUri?: string }): void;
   getIDToken(): string | null;
 }
@@ -33,6 +34,12 @@ export function LineLogin({ liffId }: { liffId?: string }) {
     try {
       await window.liff.init({ liffId });
       if (!window.liff.isLoggedIn()) {
+        // LINEアプリ内の通常ブラウザではaccess.line.meの自動ログインが失敗することがあるため、
+        // LIFFブラウザで開き直してリダイレクト無しの自動ログインに切り替える
+        if (/\bLine\//i.test(navigator.userAgent) && !window.liff.isInClient()) {
+          window.location.replace(`https://liff.line.me/${liffId}?login=required`);
+          return;
+        }
         window.liff.login({ redirectUri: window.location.href });
         return;
       }
