@@ -1,4 +1,5 @@
 import unittest
+from html.parser import HTMLParser
 from pathlib import Path
 from zipfile import ZipFile
 
@@ -34,7 +35,8 @@ class ProductsPageTests(unittest.TestCase):
             '<section class="catalog"', 1
         )[0]
 
-        self.assertEqual(browser.count('class="product-card"'), 3)
+        self.assertEqual(browser.count('class="product-card"'), 5)
+        self.assertIn('aria-live="polite">5件の商品</p>', browser)
         self.assertIn('data-product-filter="music"', browser)
         self.assertIn('data-product-filter="transport"', browser)
         self.assertIn('data-product-filter="free"', browser)
@@ -42,8 +44,55 @@ class ProductsPageTests(unittest.TestCase):
         self.assertIn('data-product-target="metronome"', browser)
         self.assertIn('data-product-target="tennko-kakuninnbo"', browser)
         self.assertIn('data-product-target="beisia-work-records"', browser)
+        self.assertIn('data-product-target="project-shift-calendar"', browser)
+        self.assertIn('data-product-target="transport-mechanic"', browser)
         self.assertIn("function showProduct(productId", self.html)
         self.assertIn("function closeProduct()", self.html)
+
+    def test_every_product_detail_is_reachable_from_a_matching_catalog_card(self):
+        elements = []
+
+        class ElementParser(HTMLParser):
+            def handle_starttag(self, tag, attrs):
+                elements.append(dict(attrs))
+
+        ElementParser().feed(self.html)
+        details = {
+            element["id"]
+            for element in elements
+            if "product-feature" in element.get("class", "").split()
+        }
+        buttons = [element for element in elements if "data-product-target" in element]
+        self.assertCountEqual(
+            [button["data-product-target"] for button in buttons], details
+        )
+        for button in buttons:
+            with self.subTest(product=button["data-product-target"]):
+                self.assertEqual(
+                    button["aria-controls"],
+                    "music-products"
+                    if button["data-product-target"] == "metronome"
+                    else "transport-products",
+                )
+
+    def test_new_catalog_cards_use_existing_categories_and_product_information(self):
+        browser = self.html.split('<section class="product-browser"', 1)[1].split(
+            '<section class="catalog"', 1
+        )[0]
+        for product_id, name, price in (
+            ("project-shift-calendar", "案件別シフト表", "12,800円"),
+            ("transport-mechanic", "自動車整備点検簿", "2,980円"),
+        ):
+            card = next(
+                card
+                for card in browser.split('<article class="product-card"')[1:]
+                if f'data-product-target="{product_id}"' in card
+            ).split("</article>", 1)[0]
+            with self.subTest(product=product_id):
+                self.assertIn('data-product-categories="transport business"', card)
+                self.assertIn(name, card)
+                self.assertIn(price, card)
+                self.assertNotIn("service-purchase", card)
 
     def test_future_products_include_transport_apps(self):
         future_products = self.html.split('<section class="future-products"', 1)[1]
