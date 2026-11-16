@@ -118,24 +118,18 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("flex-media", products_html)
         self.assertNotIn("kiru-media-editor.onrender.com", products_html)
 
-    def test_flex_media_sales_cannot_be_reenabled(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-            os.environ, {"EDITOR_PASSWORD": "test-password"}
-        ):
+    def test_flex_media_store_api_is_removed(self):
+        with tempfile.TemporaryDirectory() as directory:
             store_file = Path(directory) / "store.json"
             client = create_app(store_file=store_file).test_client()
 
-            initial_response = client.get("/api/store/flex-media/product")
-            self.assertEqual(initial_response.status_code, 200)
-            self.assertFalse(initial_response.get_json()["enabled"])
+            response = client.get("/api/store/flex-media/product")
+            self.assertEqual(response.status_code, 404)
 
             update_response = client.put(
-                "/api/store/flex-media/product",
-                json={"enabled": True},
-                headers={"X-Editor-Password": "test-password"},
+                "/api/store/flex-media/product", json={"enabled": True}
             )
-            self.assertEqual(update_response.status_code, 409)
-            self.assertEqual(update_response.get_json()["error"], "この商品の販売は終了しました。")
+            self.assertEqual(update_response.status_code, 404)
             self.assertFalse(store_file.exists())
 
     def test_render_persists_contracts_on_mounted_disk(self):

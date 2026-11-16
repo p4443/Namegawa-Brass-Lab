@@ -62,9 +62,6 @@ PROJECT_SHIFT_CALENDAR_PRODUCT_ID = "project-shift-calendar"
 PROJECT_SHIFT_CALENDAR_PRODUCT_NAME = "案件別シフト表"
 TRANSPORT_MECHANIC_PRODUCT_ID = "transport-mechanic-app"
 TRANSPORT_MECHANIC_PRODUCT_NAME = "自動車整備点検簿"
-FLEX_MEDIA_PRODUCT_ID = "flex-media"
-FLEX_MEDIA_PRODUCT_NAME = "Flex Media"
-FLEX_MEDIA_SALES_ENABLED = False
 STORE_PAYMENT_CACHE_TTL_SECONDS = 30
 STORE_PAYMENT_CACHE_MAX_ENTRIES = 2048
 STORE_REISSUE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60
@@ -2920,10 +2917,7 @@ def create_app(
 
     def get_store_settings(product_id=PRODUCT_ID):
         default_enabled = (
-            product_id == FLEX_MEDIA_PRODUCT_ID
-            and FLEX_MEDIA_SALES_ENABLED
-            or product_id == FLOW_HARMONY_PRODUCT_ID
-            and FLOW_HARMONY_SALES_ENABLED
+            product_id == FLOW_HARMONY_PRODUCT_ID and FLOW_HARMONY_SALES_ENABLED
         )
         if configured_database_url:
             return load_database_store_settings(
@@ -4236,33 +4230,6 @@ def create_app(
                 "product_id": TRANSPORT_MECHANIC_PRODUCT_ID,
                 "name": TRANSPORT_MECHANIC_PRODUCT_NAME,
                 "enabled": settings["enabled"],
-            }
-        )
-
-    @app.route("/api/store/flex-media/product", methods=["GET", "PUT", "OPTIONS"])
-    def flex_media_store_product():
-        if request.method == "OPTIONS":
-            return with_store_cors(app.response_class(status=204))
-        if request.method == "PUT":
-            error = require_editor()
-            if error:
-                response, status_code = error
-                response.status_code = status_code
-                return with_store_cors(response)
-            payload = request.get_json(silent=True)
-            if not isinstance(payload, dict) or not isinstance(
-                payload.get("enabled"), bool
-            ):
-                return store_json({"error": "販売状態を指定してください。"}, 400)
-            if payload["enabled"]:
-                return store_json({"error": "この商品の販売は終了しました。"}, 409)
-            set_store_enabled(payload["enabled"], FLEX_MEDIA_PRODUCT_ID)
-
-        return store_json(
-            {
-                "product_id": FLEX_MEDIA_PRODUCT_ID,
-                "name": FLEX_MEDIA_PRODUCT_NAME,
-                "enabled": False,
             }
         )
 
