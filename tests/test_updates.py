@@ -3571,6 +3571,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('document.querySelector(".detail-panel").scrollIntoView', page)
         self.assertIn('<option value="空き">予約可</option>', page)
 
+    def test_schedule_admin_holiday_release_matches_slot_status_api(self):
+        client = create_app().test_client()
+
+        response = client.get("/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        # APIの終了時間は「この時刻を含まない」ため、最終枠の15分後を送信する
+        self.assertIn("formatTime(range.start), formatTime(range.end + 15)", page)
+        self.assertNotIn("end_time: formatTime(range.end),", page)
+        # 要相談枠のみお休みの日も解除できる
+        self.assertIn("const hasConsultationHoliday = holidaySlots.some((slot) => slot.time === \"要相談\")", page)
+        self.assertIn("if (!holidayTimes.length && !hasConsultationHoliday) return;", page)
+        self.assertIn('if (hasConsultationHoliday) await releaseRange("要相談", "要相談");', page)
+
     def test_lesson_page_has_public_cancellation_form(self):
         client = create_app().test_client()
 
@@ -3892,6 +3907,66 @@ class UpdatesTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(send_reservation.call_args.args[2]["status"], "空き")
+
+    def test_lesson_slot_admin_can_release_consultation_holiday(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-20",
+            "start_time": "要相談",
+            "end_time": "要相談",
+            "status": "空き",
+            "note": "休み解除",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation", return_value={"ok": True, "updatedCount": 1}) as send_reservation:
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(send_reservation.call_args.args[2]["start_time"], "要相談")
+        self.assertEqual(send_reservation.call_args.args[2]["end_time"], "要相談")
+        self.assertEqual(send_reservation.call_args.args[2]["status"], "空き")
+
+    def test_lesson_slot_admin_rejects_inclusive_single_slot_range(self):
+        client = create_app().test_client()
+        headers = {"X-Editor-Password": "correct-password"}
+        payload = {
+            "start_date": "2026-08-20",
+            "end_date": "2026-08-20",
+            "start_time": "09:00",
+            "end_time": "09:00",
+            "status": "空き",
+            "note": "休み解除",
+        }
+
+        with patch.dict(
+            os.environ,
+            {
+                "EDITOR_PASSWORD": "correct-password",
+                "GOOGLE_APPS_SCRIPT_URL": "https://script.google.com/example",
+                "GOOGLE_APPS_SCRIPT_SECRET": "test-secret",
+            },
+        ), patch("app.send_lesson_reservation") as send_reservation:
+            response = client.post(
+                "/api/lesson-slot-statuses/admin",
+                json=payload,
+                headers=headers,
+            )
+
+        self.assertEqual(response.status_code, 400)
+        send_reservation.assert_not_called()
 
     def test_lesson_slot_admin_accepts_admin_defined_times_outside_weekday_hours(self):
         client = create_app().test_client()
