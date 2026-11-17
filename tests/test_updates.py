@@ -3579,12 +3579,29 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
         # APIの終了時間は「この時刻を含まない」ため、最終枠の15分後を送信する
-        self.assertIn("formatTime(range.start), formatTime(range.end + 15)", page)
+        self.assertIn("start_time: formatTime(range.start)", page)
+        self.assertIn("end_time: formatTime(range.end + 15)", page)
         self.assertNotIn("end_time: formatTime(range.end),", page)
         # 要相談枠のみお休みの日も解除できる
         self.assertIn("const hasConsultationHoliday = holidaySlots.some((slot) => slot.time === \"要相談\")", page)
         self.assertIn("if (!holidayTimes.length && !hasConsultationHoliday) return;", page)
         self.assertIn('if (hasConsultationHoliday) await releaseRange("要相談", "要相談");', page)
+
+    def test_schedule_admin_can_release_reserved_slots_from_any_source(self):
+        client = create_app().test_client()
+
+        response = client.get("/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="admin-release-reserved"', page)
+        self.assertIn('slot.status === "予約済" && /^\\d{2}:\\d{2}$/.test(slot.time)', page)
+        self.assertIn('reservation.status === "キャンセル"', page)
+        self.assertIn('editor.status.value = "キャンセル"', page)
+        self.assertIn("実予約${reservationsToCancel.length}件をキャンセルし、予約者へメール通知します。", page)
+        self.assertIn("updateReservation(\n            editor.reservation,", page)
+        self.assertIn('releaseAdminTimeRanges(targetDate, reservedTimes, "管理者設定の予約済解除")', page)
+        self.assertIn("end_time: formatTime(range.end + 15)", page)
 
     def test_lesson_page_has_public_cancellation_form(self):
         client = create_app().test_client()

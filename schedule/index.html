@@ -227,6 +227,7 @@
                 <h4 id="admin-slot-date">日付を選択してください</h4>
                 <div class="admin-slot-detail-actions">
                   <button class="button secondary" id="admin-release-holiday" type="button" disabled>この日の休みを解除</button>
+                  <button class="button secondary" id="admin-release-reserved" type="button" disabled>管理者設定の「予約済」を予約可に戻す</button>
                 </div>
                 <ul class="admin-slot-list" id="admin-slot-list"></ul>
               </div>
@@ -539,6 +540,7 @@
     const adminSlotDate = document.getElementById("admin-slot-date");
     const adminSlotList = document.getElementById("admin-slot-list");
     const adminReleaseHoliday = document.getElementById("admin-release-holiday");
+    const adminReleaseReserved = document.getElementById("admin-release-reserved");
     const reservationEditors = new Map();
     const changedReservationIds = new Set();
     const consultationReplyDrafts = new Map();
@@ -587,6 +589,8 @@
       adminSlotList.replaceChildren();
       const slots = adminSlotsForDate(value).sort((left, right) => left.time.localeCompare(right.time));
       adminReleaseHoliday.disabled = !slots.some((slot) => slot.status === "お休み");
+      adminReleaseReserved.disabled = !slots.some((slot) =>
+        slot.status === "予約済" && /^\d{2}:\d{2}$/.test(slot.time));
       if (!slots.length) { adminSlotList.textContent = "通常受付枠はありません。"; return; }
       adminStatusRanges(slots).forEach((range) => {
         const item = document.createElement("li"); item.className = "admin-status-range"; item.textContent = range.label; adminSlotList.append(item);
@@ -599,31 +603,53 @@
         item.append(time, status, note); adminSlotList.append(item);
       });
     }
+    function adminTimeRanges(times) {
+      const ranges = [];
+      times.forEach((time) => {
+        const previous = ranges[ranges.length - 1];
+        const minutes = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
+        if (previous && previous.end + 15 === minutes) previous.end = minutes;
+        else ranges.push({ start: minutes, end: minutes });
+      });
+      return ranges;
+    }
+    async function releaseAdminTimeRanges(date, times, note) {
+      const formatTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
+      for (const range of adminTimeRanges(times)) {
+        await requestApi("/api/lesson-slot-statuses/admin", {
+          method: "POST",
+          headers: adminHeaders(),
+          body: JSON.stringify({
+            start_date: date,
+            end_date: date,
+            start_time: formatTime(range.start),
+            end_time: formatTime(range.end + 15),
+            status: "空き",
+            note,
+          }),
+          timeoutMs: 60000,
+        });
+      }
+    }
     adminReleaseHoliday.addEventListener("click", async () => {
       if (!selectedAdminDate) return;
-      const holidaySlots = adminSlotsForDate(selectedAdminDate).filter((slot) => slot.status === "お休み");
+      const targetDate = selectedAdminDate;
+      const holidaySlots = adminSlotsForDate(targetDate).filter((slot) => slot.status === "お休み");
       const holidayTimes = holidaySlots
         .filter((slot) => /^\d{2}:\d{2}$/.test(slot.time))
         .map((slot) => slot.time)
         .sort();
       const hasConsultationHoliday = holidaySlots.some((slot) => slot.time === "要相談");
       if (!holidayTimes.length && !hasConsultationHoliday) return;
-      if (!window.confirm(`${selectedAdminDate} の休み枠を予約可に戻しますか？`)) return;
+      if (!window.confirm(`${targetDate} の休み枠を予約可に戻しますか？`)) return;
       adminReleaseHoliday.disabled = true;
       try {
-        const ranges = [];
-        holidayTimes.forEach((time) => {
-          const previous = ranges[ranges.length - 1];
-          const minutes = Number(time.slice(0, 2)) * 60 + Number(time.slice(3));
-          if (previous && previous.end + 15 === minutes) previous.end = minutes;
-          else ranges.push({ start: minutes, end: minutes });
-        });
         const releaseRange = (startTime, endTime) => requestApi("/api/lesson-slot-statuses/admin", {
           method: "POST",
           headers: adminHeaders(),
           body: JSON.stringify({
-            start_date: selectedAdminDate,
-            end_date: selectedAdminDate,
+            start_date: targetDate,
+            end_date: targetDate,
             start_time: startTime,
             end_time: endTime,
             status: "空き",
@@ -631,19 +657,86 @@
           }),
           timeoutMs: 60000,
         });
-        for (const range of ranges) {
-          const formatTime = (minutes) => `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
-          // APIの終了時間はその時刻を含まないため、最終枠の15分後を送信する
-          await releaseRange(formatTime(range.start), formatTime(range.end + 15));
-        }
+        await releaseAdminTimeRanges(targetDate, holidayTimes, "休み解除");
         if (hasConsultationHoliday) await releaseRange("要相談", "要相談");
         statusMap.clear();
         await loadSchedule();
-        renderAdminSlotDetails(selectedAdminDate);
-        adminStatus.textContent = `${selectedAdminDate} の休み枠を解除しました。`;
+        renderAdminSlotDetails(targetDate);
+        adminStatus.textContent = `${targetDate} の休み枠を解除しました。`;
       } catch (error) {
         adminReleaseHoliday.disabled = false;
         adminStatus.textContent = error.message;
+      }
+    });
+    adminReleaseReserved.addEventListener("click", async () => {
+      if (!selectedAdminDate) return;
+      if (changedReservationIds.size) {
+        adminStatus.textContent = "変更した予約を先に更新してから、予約枠を解除してください。";
+        return;
+      }
+      const targetDate = selectedAdminDate;
+      adminReleaseReserved.disabled = true;
+      let cancelledCount = 0;
+      let cancellationEmailFailureCount = 0;
+      try {
+        await Promise.all([loadReservations(), loadSchedule()]);
+        if (!scheduleReady) throw new Error(scheduleLoadError || "予約枠を再読み込みできませんでした。");
+        renderAdminSlotDetails(targetDate);
+        const reservedTimes = adminSlotsForDate(targetDate)
+          .filter((slot) => slot.status === "予約済" && /^\d{2}:\d{2}$/.test(slot.time))
+          .map((slot) => slot.time)
+          .sort();
+        if (!reservedTimes.length) {
+          adminStatus.textContent = `${targetDate} に予約可へ戻せる予約済枠はありません。`;
+          return;
+        }
+        const reservedTimeSet = new Set(reservedTimes);
+        const reservationsToCancel = [...reservationEditors.values()].filter(({ reservation }) => {
+          if (reservation.preferred_date !== targetDate || reservation.status === "キャンセル") return false;
+          const durationMinutes = reservation.duration_minutes || lessonDurations[reservation.lesson_type];
+          return occupiedTimes(reservation.preferred_time, durationMinutes)
+            .some((time) => reservedTimeSet.has(time));
+        });
+        const cancellationNotice = reservationsToCancel.length
+          ? `実予約${reservationsToCancel.length}件をキャンセルし、予約者へメール通知します。`
+          : "該当する実予約はありません。";
+        if (!window.confirm(`${targetDate} の予約済枠を予約可に戻します。${cancellationNotice} 続行しますか？`)) return;
+        for (const editor of reservationsToCancel) {
+          editor.status.value = "キャンセル";
+          const result = await updateReservation(
+            editor.reservation,
+            editor.status,
+            editor.timeInput,
+            editor.durationInput,
+            false,
+          );
+          if (!result || result.error || result.status !== "キャンセル") {
+            throw new Error(result?.error || `${editor.reservation.reservation_id} をキャンセルできませんでした。`);
+          }
+          cancelledCount += 1;
+          if (result.cancellation_email_sent === false) cancellationEmailFailureCount += 1;
+        }
+        await releaseAdminTimeRanges(targetDate, reservedTimes, "管理者設定の予約済解除");
+        statusMap.clear();
+        await Promise.all([loadReservations(), loadSchedule()]);
+        if (!scheduleReady) throw new Error(scheduleLoadError || "変更後の予約枠を再読み込みできませんでした。");
+        renderAdminSlotDetails(targetDate);
+        adminStatus.textContent = `${targetDate} の予約済枠を予約可に戻しました。実予約を${cancelledCount}件キャンセルしました。${cancellationEmailFailureCount ? `キャンセルメールを送信できなかった予約が${cancellationEmailFailureCount}件あります。` : ""}`;
+      } catch (error) {
+        adminStatus.textContent = `${error.message}${cancelledCount ? ` 実予約${cancelledCount}件はキャンセル済みです。` : ""} 予約者一覧と枠状態を確認してください。`;
+        try {
+          await Promise.all([loadReservations(), loadSchedule()]);
+          if (!scheduleReady) throw new Error(scheduleLoadError || "予約枠を再読み込みできませんでした。");
+          renderAdminSlotDetails(targetDate);
+        } catch (refreshError) {
+          adminStatus.textContent += ` 再読み込みにも失敗しました: ${refreshError.message}`;
+        }
+      } finally {
+        if (selectedAdminDate === targetDate) {
+          const slots = adminSlotsForDate(targetDate);
+          adminReleaseReserved.disabled = !slots.some((slot) =>
+            slot.status === "予約済" && /^\d{2}:\d{2}$/.test(slot.time));
+        }
       }
     });
     function renderAdminSlotCalendar() {
