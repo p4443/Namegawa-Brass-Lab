@@ -822,6 +822,23 @@
       opacity: 0.65;
     }
 
+    .reservation-slot-retry {
+      min-height: 42px;
+      padding: 8px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.65);
+      border-radius: 6px;
+      color: #fff;
+      background: transparent;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .reservation-slot-retry:disabled {
+      cursor: wait;
+      opacity: 0.65;
+    }
+
     .form-status {
       margin: 0;
       color: rgba(255, 255, 255, 0.82);
@@ -1566,6 +1583,7 @@
         <div class="form-actions">
           <button class="reservation-submit" type="submit">予約希望を送信する</button>
           <p class="form-status" id="reservation-status" role="status" aria-live="polite"></p>
+          <button class="reservation-slot-retry" id="reservation-slot-retry" type="button" hidden>空き状況を再取得</button>
         </div>
       </form>
       <details class="reservation-cancel">
@@ -1650,6 +1668,7 @@
     const reservationDate = document.getElementById("reservation-date");
     const reservationTime = document.getElementById("reservation-time");
     const reservationStatus = document.getElementById("reservation-status");
+    const reservationSlotRetry = document.getElementById("reservation-slot-retry");
     const reservationSubmit = reservationForm.querySelector("button[type='submit']");
     const reservationCancelForm = document.getElementById("reservation-cancel-form");
     const reservationCancelStatus = document.getElementById("reservation-cancel-status");
@@ -1806,6 +1825,7 @@
       const durationMinutes = lessonDurations[reservationType.value];
       reservationTime.replaceChildren();
       reservationTime.disabled = true;
+      reservationSlotRetry.hidden = true;
 
       if (!reservationType.value) {
         reservationTime.add(new Option("先にレッスン種別を選択してください", ""));
@@ -1826,7 +1846,8 @@
         }
         reservationTime.replaceChildren(new Option("空き状況を取得できませんでした", ""));
         reservationStatus.dataset.state = "error";
-        reservationStatus.textContent = "空き状況を確認できませんでした。少し待ってから希望日を選び直してください。";
+        reservationStatus.textContent = "空き状況を確認できませんでした。時間をおいて再取得してください。";
+        reservationSlotRetry.hidden = false;
         return;
       }
       if (requestId !== slotRequestId) {
@@ -1853,6 +1874,7 @@
     }
 
     reservationDate.addEventListener("change", updateReservationTimeOptions);
+    reservationSlotRetry.addEventListener("click", updateReservationTimeOptions);
     reservationType.addEventListener("change", () => {
       updateReservationDuration();
       if (reservationDate.value) {

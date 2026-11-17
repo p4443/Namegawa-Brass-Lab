@@ -3463,6 +3463,17 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('name="privacy_agreed"', page)
         self.assertIn('href="../legal/privacy-policy.html"', page)
 
+    def test_lesson_slot_lookup_error_can_be_retried_in_place(self):
+        client = create_app().test_client()
+
+        response = client.get("/lesson/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="reservation-slot-retry"', page)
+        self.assertIn("reservationSlotRetry.hidden = false", page)
+        self.assertIn("reservationSlotRetry.addEventListener(\"click\", updateReservationTimeOptions)", page)
+
     def test_schedule_page_shares_public_calendar_and_admin_panel(self):
         client = create_app().test_client()
 
