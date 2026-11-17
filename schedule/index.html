@@ -102,6 +102,8 @@
     .admin-section h3 { margin: 0 0 12px; color: var(--navy); font-size: .95rem; }
     .admin-calendar-layout { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(240px, .8fr); gap: 16px; align-items: start; }
     .admin-calendar { box-shadow: none; }
+    .admin-calendar-load-controls { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin: 0 0 10px; }
+    .admin-calendar-load-controls p { margin: 0; color: var(--muted); font-size: .76rem; }
     .admin-day { min-height: 82px; aspect-ratio: auto; }
     .admin-day-summary { display: grid; gap: 1px; color: var(--muted); text-align: left; font-size: .66rem; line-height: 1.3; }
     .admin-day-status { color: var(--busy); font-weight: 800; }
@@ -114,6 +116,7 @@
     .admin-slot-row { display: grid; grid-template-columns: 62px 64px minmax(0, 1fr); gap: 7px; align-items: start; padding: 7px 8px; border-left: 3px solid var(--blue); background: #fff; font-size: .75rem; }
     .admin-slot-row strong { color: var(--navy); }
     .admin-slot-note { color: var(--muted); overflow-wrap: anywhere; }
+    .admin-date-reservations-heading { margin-top: 20px !important; padding-top: 16px; border-top: 1px solid var(--line); }
     .admin-status-ranges { display: grid; gap: 6px; margin: 0 0 10px; padding: 0; list-style: none; }
     .admin-status-range { padding: 7px 8px; border-left: 3px solid var(--busy); background: #fff4f2; color: var(--navy); font-size: .75rem; font-weight: 800; }
     .reservation-list { display: grid; gap: 10px; }
@@ -221,6 +224,10 @@
                   <button class="icon-button" id="admin-next-month" type="button" aria-label="管理カレンダーの次の月">›</button>
                 </div>
                 <div class="weekdays" aria-hidden="true"><span>日</span><span>月</span><span>火</span><span>水</span><span>木</span><span>金</span><span>土</span></div>
+                <div class="admin-calendar-load-controls">
+                  <button class="retry-button" id="admin-calendar-retry" type="button">予約枠状況を再読み込み</button>
+                  <p id="admin-calendar-status" role="status">管理者ログイン後に予約枠を読み込みます。</p>
+                </div>
                 <div class="calendar-grid" id="admin-slot-calendar"></div>
               </div>
               <div class="admin-slot-detail">
@@ -230,6 +237,8 @@
                   <button class="button secondary" id="admin-release-reserved" type="button" disabled>管理者設定の「予約済」を予約可に戻す</button>
                 </div>
                 <ul class="admin-slot-list" id="admin-slot-list"></ul>
+                <h4 class="admin-date-reservations-heading">この日の利用者予約</h4>
+                <ul class="admin-slot-list" id="admin-date-reservations"></ul>
               </div>
             </div>
           </section>
@@ -537,8 +546,11 @@
     const adminLogout = document.getElementById("admin-logout");
     const adminSlotCalendar = document.getElementById("admin-slot-calendar");
     const adminCalendarMonth = document.getElementById("admin-calendar-month");
+    const adminCalendarRetry = document.getElementById("admin-calendar-retry");
+    const adminCalendarStatus = document.getElementById("admin-calendar-status");
     const adminSlotDate = document.getElementById("admin-slot-date");
     const adminSlotList = document.getElementById("admin-slot-list");
+    const adminDateReservations = document.getElementById("admin-date-reservations");
     const adminReleaseHoliday = document.getElementById("admin-release-holiday");
     const adminReleaseReserved = document.getElementById("admin-release-reserved");
     const reservationEditors = new Map();
@@ -549,6 +561,7 @@
     let adminToken = "";
     let adminVisibleMonth = new Date(firstDate.getFullYear(), firstDate.getMonth(), 1);
     let selectedAdminDate = "";
+    let reservationsLoaded = false;
     reservationDeleteDate.value = dateText(today);
     const adminHeaders = () => ({ "Content-Type": "application/json", "X-Editor-Token": adminToken });
     function adminSlotsForDate(value) {
@@ -591,17 +604,40 @@
       adminReleaseHoliday.disabled = !slots.some((slot) => slot.status === "お休み");
       adminReleaseReserved.disabled = !slots.some((slot) =>
         slot.status === "予約済" && /^\d{2}:\d{2}$/.test(slot.time));
-      if (!slots.length) { adminSlotList.textContent = "通常受付枠はありません。"; return; }
-      adminStatusRanges(slots).forEach((range) => {
-        const item = document.createElement("li"); item.className = "admin-status-range"; item.textContent = range.label; adminSlotList.append(item);
-      });
-      slots.forEach((slot) => {
-        const item = document.createElement("li"); item.className = "admin-slot-row";
-        const time = document.createElement("strong"); time.textContent = slot.time;
-        const status = document.createElement("span"); status.textContent = slot.status || "空き";
-        const note = document.createElement("span"); note.className = "admin-slot-note"; note.textContent = slot.note || "";
-        item.append(time, status, note); adminSlotList.append(item);
-      });
+      if (!slots.length) {
+        adminSlotList.textContent = "通常受付枠はありません。";
+      } else {
+        adminStatusRanges(slots).forEach((range) => {
+          const item = document.createElement("li"); item.className = "admin-status-range"; item.textContent = range.label; adminSlotList.append(item);
+        });
+        slots.forEach((slot) => {
+          const item = document.createElement("li"); item.className = "admin-slot-row";
+          const time = document.createElement("strong"); time.textContent = slot.time;
+          const status = document.createElement("span"); status.textContent = slot.status || "空き";
+          const note = document.createElement("span"); note.className = "admin-slot-note"; note.textContent = slot.note || "";
+          item.append(time, status, note); adminSlotList.append(item);
+        });
+      }
+      adminDateReservations.replaceChildren();
+      const reservations = [...reservationEditors.values()]
+        .map(({ reservation }) => reservation)
+        .filter((reservation) => reservation.preferred_date === value && reservation.status !== "キャンセル")
+        .sort((left, right) => left.preferred_time.localeCompare(right.preferred_time));
+      if (!reservationsLoaded) {
+        adminDateReservations.textContent = "予約者一覧を読み込み中です。";
+      } else if (!reservations.length) {
+        adminDateReservations.textContent = "この日の利用者予約はありません。";
+      } else {
+        reservations.forEach((reservation) => {
+          const item = document.createElement("li"); item.className = "admin-slot-row";
+          const time = document.createElement("strong"); time.textContent = reservation.preferred_time;
+          const status = document.createElement("span"); status.textContent = reservation.status;
+          const duration = reservation.duration_minutes ? `（${reservation.duration_minutes}分）` : "";
+          const detail = document.createElement("span"); detail.className = "admin-slot-note";
+          detail.textContent = `${reservation.reservation_id} / ${reservation.lesson_type}${duration} / ${reservation.name}`;
+          item.append(time, status, detail); adminDateReservations.append(item);
+        });
+      }
     }
     function adminTimeRanges(times) {
       const ranges = [];
@@ -771,15 +807,36 @@
       document.getElementById("admin-previous-month").disabled = adminVisibleMonth <= minimumMonth;
       document.getElementById("admin-next-month").disabled = adminVisibleMonth >= maximumMonth;
     }
+    async function reloadAdminCalendar() {
+      adminCalendarRetry.disabled = true;
+      adminCalendarStatus.textContent = "予約枠状況を読み込んでいます…";
+      try {
+        await loadSchedule();
+        if (!scheduleReady) throw new Error(scheduleLoadError || "予約枠状況を取得できませんでした。");
+        adminCalendarStatus.textContent = "予約枠状況を更新しました。";
+        renderAdminSlotCalendar();
+        if (selectedAdminDate) renderAdminSlotDetails(selectedAdminDate);
+        return true;
+      } catch (error) {
+        adminCalendarStatus.textContent = `予約枠状況を読み込めませんでした: ${error.message}`;
+        return false;
+      } finally {
+        adminCalendarRetry.disabled = false;
+      }
+    }
+    adminCalendarRetry.addEventListener("click", reloadAdminCalendar);
     document.getElementById("admin-previous-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() - 1); renderAdminSlotCalendar(); });
     document.getElementById("admin-next-month").addEventListener("click", () => { adminVisibleMonth.setMonth(adminVisibleMonth.getMonth() + 1); renderAdminSlotCalendar(); });
     function endAdminSession(message) {
       adminToken = "";
       changedReservationIds.clear();
       reservationEditors.clear();
+      reservationsLoaded = false;
       consultationReplyDrafts.clear();
       reservationList.replaceChildren();
       confirmedReservationList.replaceChildren();
+      adminDateReservations.replaceChildren();
+      adminCalendarStatus.textContent = "管理者ログイン後に予約枠を読み込みます。";
       reservationSaveAll.disabled = true;
       reservationSaveAll.textContent = "変更した予約をまとめて更新";
       dashboard.hidden = true;
@@ -870,6 +927,8 @@
     async function loadReservations() {
       const result = await requestApi("/api/lesson-reservations", { headers: adminHeaders(), timeoutMs: 30000 });
       renderReservations(result.reservations || []);
+      reservationsLoaded = true;
+      if (selectedAdminDate) renderAdminSlotDetails(selectedAdminDate);
     }
     setInterval(() => {
       if (adminToken && !dashboard.hidden && !document.hidden && changedReservationIds.size === 0 && consultationReplyDrafts.size === 0 && consultationRepliesSending.size === 0) {
@@ -1058,10 +1117,9 @@
       }
       catch (error) { adminToken = ""; adminStatus.textContent = error.message; return; }
       passwordInput.value = ""; dashboard.hidden = false; loginForm.hidden = true; renderAdminSlotCalendar(); adminStatus.textContent = "ログインしました。予約一覧を読み込んでいます…";
-      try { await loadReservations(); adminStatus.textContent = "ログインしました。"; }
-      catch (error) {
-        if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${error.message}`;
-      }
+      const results = await Promise.allSettled([loadReservations(), reloadAdminCalendar()]);
+      if (results[0].status === "fulfilled") adminStatus.textContent = "ログインしました。";
+      else if (adminToken) adminStatus.textContent = `予約一覧の通信に失敗しました: ${results[0].reason.message}`;
     });
     document.getElementById("slot-admin-form").addEventListener("submit", async (event) => {
       event.preventDefault(); adminStatus.textContent = "スケジュールへ反映しています…";

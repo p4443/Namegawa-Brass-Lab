@@ -3603,6 +3603,21 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('releaseAdminTimeRanges(targetDate, reservedTimes, "管理者設定の予約済解除")', page)
         self.assertIn("end_time: formatTime(range.end + 15)", page)
 
+    def test_schedule_admin_calendar_reloads_and_shows_day_reservations(self):
+        client = create_app().test_client()
+
+        response = client.get("/schedule/")
+
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn('id="admin-calendar-retry"', page)
+        self.assertIn('id="admin-calendar-status"', page)
+        self.assertIn('id="admin-date-reservations"', page)
+        self.assertIn("async function reloadAdminCalendar()", page)
+        self.assertIn("await Promise.allSettled([loadReservations(), reloadAdminCalendar()])", page)
+        self.assertIn('reservation.preferred_date === value && reservation.status !== "キャンセル"', page)
+        self.assertIn("この日の利用者予約はありません。", page)
+
     def test_lesson_page_has_public_cancellation_form(self):
         client = create_app().test_client()
 
