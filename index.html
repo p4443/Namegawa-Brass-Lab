@@ -633,6 +633,12 @@
       padding: 9px 11px;
     }
 
+    .updates-editor-attachment-note {
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
     .updates-editor textarea {
       min-height: 96px;
       resize: vertical;
@@ -2279,8 +2285,12 @@
               <option value="pdf">PDF</option>
             </select>
           </label>
-          <label class="updates-editor-field">メディアURL
+          <label class="updates-editor-field" id="updates-editor-media-url-field">メディアURL
             <input id="updates-editor-media-url" type="text" inputmode="url">
+          </label>
+          <label class="updates-editor-field" id="updates-editor-pdf-field" hidden>PDFファイル
+            <input id="updates-editor-pdf" type="file" accept="application/pdf,.pdf">
+            <span class="updates-editor-attachment-note" id="updates-editor-pdf-note">15MB以内のPDFを添付してください。変更時にファイルを選ばない場合は現在のPDFを保持します。</span>
           </label>
           <div class="updates-editor-actions">
             <button class="updates-editor-primary" id="updates-editor-save" type="submit">追加する</button>
@@ -2776,6 +2786,9 @@
     const updatesEditorContent = document.getElementById('updates-editor-content');
     const updatesEditorMediaType = document.getElementById('updates-editor-media-type');
     const updatesEditorMediaUrl = document.getElementById('updates-editor-media-url');
+    const updatesEditorMediaUrlField = document.getElementById('updates-editor-media-url-field');
+    const updatesEditorPdfField = document.getElementById('updates-editor-pdf-field');
+    const updatesEditorPdf = document.getElementById('updates-editor-pdf');
     const updatesEditorSave = document.getElementById('updates-editor-save');
     const updatesEditorCancel = document.getElementById('updates-editor-cancel');
     let updatesEditorToken = '';
@@ -2783,6 +2796,23 @@
     const updatesApiCandidates = location.hostname.endsWith('github.io') || location.protocol === 'file:'
       ? [renderUpdatesApi]
       : ['/api/updates', renderUpdatesApi];
+
+    function publicUpdateApiUrl(path) {
+      if (location.hostname.endsWith('github.io') || location.protocol === 'file:') {
+        return new URL(path, renderUpdatesApi).href;
+      }
+      return path;
+    }
+
+    function publicUpdateMediaUrl(mediaUrl) {
+      if (
+        String(mediaUrl).startsWith('/data/update-media/')
+        && (location.hostname.endsWith('github.io') || location.protocol === 'file:')
+      ) {
+        return publicUpdateApiUrl(mediaUrl);
+      }
+      return mediaUrl;
+    }
 
     function isDirectPdfUrl(mediaUrl) {
       try {
@@ -2804,7 +2834,7 @@
       try {
         const hostname = new URL(update.media_url, location.href).hostname;
         if (['forms.gle', 'docs.google.com'].includes(hostname)) {
-          return `/api/updates/${encodeURIComponent(update.index)}/media`;
+          return publicUpdateApiUrl(`/api/updates/${encodeURIComponent(update.index)}/media`);
         }
       } catch {
         return '';
@@ -2852,24 +2882,27 @@
       }
 
       let preview;
+      const mediaUrl = publicUpdateMediaUrl(update.media_url);
       const documentUrl = update.media_type === 'pdf' ? embeddedDocumentUrl(update) : '';
       const hasPdfLink = update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url);
       if (update.media_type === 'video') {
         preview = document.createElement('iframe');
-        preview.src = update.youtube_embed_url || update.media_url;
+        preview.src = update.youtube_embed_url || mediaUrl;
         preview.title = `${update.content}の動画`;
         preview.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
         preview.allowFullscreen = true;
       } else if (update.media_type === 'image') {
         preview = document.createElement('img');
-        preview.src = update.media_url;
+        preview.src = mediaUrl;
         preview.alt = `${update.content}の添付画像`;
-      } else if (isAdobeDocumentUrl(update.media_url)) {
+      } else if (isAdobeDocumentUrl(mediaUrl)) {
         preview = document.createElement('img');
-        const previewUrl = `/api/updates/${encodeURIComponent(update.index)}/media`;
+        const previewUrl = publicUpdateApiUrl(
+          `/api/updates/${encodeURIComponent(update.index)}/media`
+        );
         preview.addEventListener('error', () => {
           const errorNotice = externalDocumentPreview(
-            update.media_url, 'PDFのプレビューを読み込めませんでした。'
+            mediaUrl, 'PDFのプレビューを読み込めませんでした。'
           );
           errorNotice.classList.add('update-preview-error');
           errorNotice.setAttribute('role', 'status');
@@ -2886,14 +2919,14 @@
         });
         preview.src = previewUrl;
         preview.alt = `${update.content}の添付資料1ページ目`;
-      } else if (isDirectPdfUrl(update.media_url)) {
-        preview = externalDocumentPreview(update.media_url, 'PDF資料');
+      } else if (isDirectPdfUrl(mediaUrl)) {
+        preview = externalDocumentPreview(mediaUrl, 'PDF資料');
       } else if (documentUrl) {
         preview = document.createElement('iframe');
         preview.src = documentUrl;
         preview.title = `${update.content}の添付資料`;
       } else {
-        preview = externalDocumentPreview(update.media_url);
+        preview = externalDocumentPreview(mediaUrl);
       }
       if (!preview.classList.contains('update-document-preview')) {
         preview.className = 'update-media-preview';
@@ -2909,7 +2942,7 @@
       if (hasPdfLink) {
         const openLink = document.createElement('a');
         openLink.className = 'update-media-open';
-        openLink.href = update.media_url;
+        openLink.href = mediaUrl;
         openLink.target = '_blank';
         openLink.rel = 'noopener noreferrer';
         openLink.textContent = 'PDFを開く';
@@ -3050,11 +3083,10 @@
       }
     }
 
-    function editorHeaders() {
-      return {
-        'Content-Type': 'application/json',
-        'X-Editor-Token': updatesEditorToken
-      };
+    function editorHeaders(json = true) {
+      const headers = { 'X-Editor-Token': updatesEditorToken };
+      if (json) headers['Content-Type'] = 'application/json';
+      return headers;
     }
 
     function endUpdatesEditorSession(message = '') {
@@ -3098,7 +3130,15 @@
       updatesEditorDate.value = todayInJapan();
       updatesEditorSave.textContent = '追加する';
       updatesEditorCancel.hidden = true;
-      updatesEditorMediaUrl.required = false;
+      syncUpdatesEditorMediaFields();
+    }
+
+    function syncUpdatesEditorMediaFields() {
+      const isPdf = updatesEditorMediaType.value === 'pdf';
+      updatesEditorMediaUrlField.hidden = isPdf;
+      updatesEditorPdfField.hidden = !isPdf;
+      updatesEditorMediaUrl.required = Boolean(updatesEditorMediaType.value) && !isPdf;
+      updatesEditorPdf.required = isPdf && !updatesEditorMediaUrl.value;
     }
 
     function beginUpdateEdit(card) {
@@ -3108,7 +3148,8 @@
       updatesEditorContent.value = card.dataset.updateContent;
       updatesEditorMediaType.value = card.dataset.updateMediaType;
       updatesEditorMediaUrl.value = card.dataset.updateMediaUrl;
-      updatesEditorMediaUrl.required = Boolean(card.dataset.updateMediaType);
+      updatesEditorPdf.value = '';
+      syncUpdatesEditorMediaFields();
       updatesEditorSave.textContent = '変更を保存';
       updatesEditorCancel.hidden = false;
       updatesEditor.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -3184,10 +3225,19 @@
         media_url: updatesEditorMediaUrl.value
       };
       try {
+        let requestBody = JSON.stringify(payload);
+        let requestHeaders = editorHeaders();
+        if (payload.media_type === 'pdf') {
+          const formData = new FormData();
+          Object.entries(payload).forEach(([key, value]) => formData.append(key, value));
+          if (updatesEditorPdf.files[0]) formData.append('pdf', updatesEditorPdf.files[0]);
+          requestBody = formData;
+          requestHeaders = editorHeaders(false);
+        }
         const response = await fetch(updateIndex ? `/api/updates/${updateIndex}` : '/api/updates', {
           method: updateIndex ? 'PUT' : 'POST',
-          headers: editorHeaders(),
-          body: JSON.stringify(payload)
+          headers: requestHeaders,
+          body: requestBody
         });
         if (!response.ok) {
           setUpdatesEditorStatus(await readUpdatesError(response, '保存できませんでした。'), 'error');
@@ -3203,8 +3253,9 @@
     });
 
     updatesEditorMediaType?.addEventListener('change', () => {
-      updatesEditorMediaUrl.required = Boolean(updatesEditorMediaType.value);
-      if (!updatesEditorMediaType.value) updatesEditorMediaUrl.value = '';
+      updatesEditorMediaUrl.value = '';
+      updatesEditorPdf.value = '';
+      syncUpdatesEditorMediaFields();
     });
 
     updatesEditorCancel?.addEventListener('click', resetUpdatesEditorForm);

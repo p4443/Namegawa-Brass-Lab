@@ -3153,6 +3153,77 @@ class UpdatesTest(unittest.TestCase):
 
             self.assertEqual(path.read_text(encoding="utf-8"), "2026-08-09 | お役立ち | 変更後の本文\n")
 
+    def test_editor_can_attach_serve_and_delete_update_pdf(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base_path = Path(directory)
+            path = base_path / "updates.txt"
+            media_dir = base_path / "update-media"
+            client = create_app(
+                updates_file=path,
+                update_media_dir=media_dir,
+                database_url="",
+            ).test_client()
+            headers = {"X-Editor-Password": "correct-password"}
+            pdf_data = b"%PDF-1.4\n%%EOF"
+
+            with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+                created = client.post(
+                    "/api/updates",
+                    data={
+                        "date": "2026-11-20",
+                        "category": "お役立ち",
+                        "content": "添付資料",
+                        "media_type": "pdf",
+                        "media_url": "",
+                        "pdf": (BytesIO(pdf_data), "guide.pdf"),
+                    },
+                    headers=headers,
+                )
+                update = client.get("/api/updates").json[0]
+                served = client.get(update["media_url"])
+                served_data = served.data
+                served.close()
+                deleted = client.delete(
+                    f"/api/updates/{update['index']}", headers=headers
+                )
+
+            self.assertEqual(created.status_code, 201)
+            self.assertRegex(
+                update["media_url"],
+                r"^/data/update-media/update-[0-9a-f]{32}\.pdf$",
+            )
+            self.assertEqual(served.status_code, 200)
+            self.assertEqual(served.mimetype, "application/pdf")
+            self.assertEqual(served_data, pdf_data)
+            self.assertEqual(deleted.status_code, 200)
+            self.assertFalse(list(media_dir.glob("*.pdf")))
+
+    def test_editor_rejects_non_pdf_update_attachment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base_path = Path(directory)
+            client = create_app(
+                updates_file=base_path / "updates.txt",
+                update_media_dir=base_path / "update-media",
+                database_url="",
+            ).test_client()
+
+            with patch.dict(os.environ, {"EDITOR_PASSWORD": "correct-password"}):
+                response = client.post(
+                    "/api/updates",
+                    data={
+                        "date": "2026-11-20",
+                        "category": "お役立ち",
+                        "content": "添付資料",
+                        "media_type": "pdf",
+                        "media_url": "",
+                        "pdf": (BytesIO(b"not a pdf"), "guide.txt"),
+                    },
+                    headers={"X-Editor-Password": "correct-password"},
+                )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("PDFファイル", response.json["error"])
+
     def test_editor_password_accepts_non_ascii_characters(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
@@ -5576,6 +5647,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("document.createElement('img')", page)
         self.assertIn("document.createElement('iframe')", page)
         self.assertIn("function embeddedDocumentUrl(update)", page)
+        self.assertIn("function publicUpdateApiUrl(path)", page)
+        self.assertIn("function publicUpdateMediaUrl(mediaUrl)", page)
         self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
         self.assertIn("function isAdobeDocumentUrl(mediaUrl)", page)
         self.assertIn("の添付資料1ページ目", page)
@@ -5585,6 +5658,11 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("update-google-form-preview", page)
         self.assertRegex(page, r"@media \(max-width: 600px\)[\s\S]*?iframe\.update-google-form-preview\s*\{[^}]*height: 320px;")
         self.assertIn("function externalDocumentPreview(mediaUrl, label = '外部資料')", page)
+        self.assertIn('id="updates-editor-pdf"', page)
+        self.assertIn('id="updates-editor-pdf-field" hidden', page)
+        self.assertIn("const formData = new FormData()", page)
+        self.assertIn("requestHeaders = editorHeaders(false)", page)
+        self.assertIn("syncUpdatesEditorMediaFields()", page)
         self.assertIn("update-document-preview", page)
         self.assertIn("type.textContent = label", page)
         self.assertIn("update-media-preview", page)
@@ -5593,7 +5671,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("openLink.textContent = 'PDFを開く'", page)
         self.assertIn("openLink.target = '_blank'", page)
         self.assertIn("update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url)", page)
-        self.assertIn("externalDocumentPreview(update.media_url, 'PDF資料')", page)
+        self.assertIn("externalDocumentPreview(mediaUrl, 'PDF資料')", page)
         self.assertIn("update.youtube_embed_url", page)
         self.assertIn("/assets/branding/site-logo.png", page)
         self.assertIn("update-media-logo", page)

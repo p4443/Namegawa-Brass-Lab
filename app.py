@@ -33,6 +33,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
 UPDATES_FILE = BASE_DIR / "data" / "updates.txt"
+UPDATE_MEDIA_DIR = Path(
+    os.environ.get("UPDATE_MEDIA_DIR", BASE_DIR / "data" / "update-media")
+).expanduser()
 STORE_FILE = BASE_DIR / "data" / "store.json"
 SERVER_CONTRACTS_DIR = BASE_DIR / "data" / "contracts"
 SERVER_PDF_DIR = BASE_DIR / "pdf"
@@ -203,6 +206,7 @@ CONSULTATION_ATTACHMENT_MIME_TYPES = {
 }
 CONSULTATION_ATTACHMENT_MAX_BYTES = 5 * 1024 * 1024
 EVENT_PDF_MAX_BYTES = 15 * 1024 * 1024
+UPDATE_PDF_MAX_BYTES = 15 * 1024 * 1024
 EVENT_PDF_MANIFEST = "documents.json"
 EVENT_PDF_TITLES = {
     "dayservice.pdf": "音でつながる！懐かしのメロディと呼吸のストレッチ",
@@ -2706,6 +2710,40 @@ def format_update(values):
     return f'{values["date"]} | {values["category"]} | {content}'
 
 
+def save_update_pdf(upload, upload_dir=UPDATE_MEDIA_DIR):
+    original_name = str(getattr(upload, "filename", "") or "").strip()
+    if Path(original_name).suffix.lower() != ".pdf":
+        raise ValueError("PDFファイルを選択してください。")
+    content = upload.stream.read(UPDATE_PDF_MAX_BYTES + 1)
+    if len(content) > UPDATE_PDF_MAX_BYTES:
+        raise ValueError("PDFファイルは15MB以内にしてください。")
+    if not content.startswith(b"%PDF-"):
+        raise ValueError("正しいPDFファイルを選択してください。")
+    storage_dir = Path(upload_dir)
+    storage_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+    filename = f"update-{uuid.uuid4().hex}.pdf"
+    target_path = storage_dir / filename
+    with tempfile.NamedTemporaryFile("wb", dir=storage_dir, delete=False) as temporary_file:
+        temporary_file.write(content)
+        temporary_path = Path(temporary_file.name)
+    os.replace(temporary_path, target_path)
+    return f"/data/update-media/{filename}"
+
+
+def delete_update_pdf(media_url, upload_dir=UPDATE_MEDIA_DIR):
+    match = re.fullmatch(
+        r"/data/update-media/(update-[0-9a-f]{32}\.pdf)",
+        str(media_url or "").strip(),
+    )
+    if not match:
+        return False
+    try:
+        (Path(upload_dir) / match.group(1)).unlink()
+    except FileNotFoundError:
+        return False
+    return True
+
+
 def update_file(mutator, path=UPDATES_FILE):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -2730,6 +2768,7 @@ def update_file(mutator, path=UPDATES_FILE):
 
 def create_app(
     updates_file=UPDATES_FILE,
+    update_media_dir=UPDATE_MEDIA_DIR,
     database_url=None,
     store_file=STORE_FILE,
     product_file=PRODUCT_FILE,
@@ -2914,6 +2953,34 @@ def create_app(
         if configured_database_url:
             return load_database_updates(configured_database_url)
         return load_updates(updates_file)
+
+    def prepare_update_values():
+        if request.mimetype == "application/json":
+            payload = request.get_json(silent=True)
+            upload = None
+        else:
+            payload = dict(request.form)
+            upload = request.files.get("pdf")
+
+        attachment_url = ""
+        try:
+            if not isinstance(payload, dict):
+                raise ValueError("入力内容を確認してください。")
+            if upload is not None and str(upload.filename or "").strip():
+                if str(payload.get("media_type", "")).strip().lower() != "pdf":
+                    raise ValueError("PDF添付はメディア種別「PDF」で登録してください。")
+                attachment_url = save_update_pdf(upload, update_media_dir)
+                payload["media_url"] = attachment_url
+            if (
+                str(payload.get("media_type", "")).strip().lower() == "pdf"
+                and not str(payload.get("media_url", "")).strip()
+            ):
+                raise ValueError("PDFファイルを選択してください。")
+            return validate_update(payload), attachment_url
+        except ValueError:
+            if attachment_url:
+                delete_update_pdf(attachment_url, update_media_dir)
+            raise
 
     def get_store_settings(product_id=PRODUCT_ID):
         default_enabled = (
@@ -5516,14 +5583,20 @@ def create_app(
         if error:
             return error
         try:
-            values = validate_update(request.get_json(silent=True))
+            values, attachment_url = prepare_update_values()
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
 
-        if configured_database_url:
-            create_database_update(configured_database_url, values)
-        else:
-            update_file(lambda lines: lines.append(format_update(values)), updates_file)
+        persisted = False
+        try:
+            if configured_database_url:
+                create_database_update(configured_database_url, values)
+            else:
+                update_file(lambda lines: lines.append(format_update(values)), updates_file)
+            persisted = True
+        finally:
+            if attachment_url and not persisted:
+                delete_update_pdf(attachment_url, update_media_dir)
         return jsonify({"saved": True}), 201
 
     @app.put("/api/updates/<int:update_index>")
@@ -5532,23 +5605,41 @@ def create_app(
         if error:
             return error
         try:
-            values = validate_update(request.get_json(silent=True))
+            values, attachment_url = prepare_update_values()
         except ValueError as exc:
             return jsonify({"error": str(exc)}), 400
+        previous_update = next(
+            (item for item in get_updates() if item.get("index") == update_index),
+            None,
+        )
 
         def replace_line(lines):
             if update_index >= len(lines) or not lines[update_index].strip().startswith(tuple("0123456789")):
                 raise IndexError
             lines[update_index] = format_update(values)
 
-        if configured_database_url:
-            if not edit_database_update(configured_database_url, update_index, values):
-                return jsonify({"error": "対象の情報が見つかりません。"}), 404
-        else:
-            try:
-                update_file(replace_line, updates_file)
-            except IndexError:
-                return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        persisted = False
+        try:
+            if configured_database_url:
+                updated = edit_database_update(
+                    configured_database_url, update_index, values
+                )
+                if not updated:
+                    return jsonify({"error": "対象の情報が見つかりません。"}), 404
+            else:
+                try:
+                    update_file(replace_line, updates_file)
+                except IndexError:
+                    return jsonify({"error": "対象の情報が見つかりません。"}), 404
+            persisted = True
+        finally:
+            if attachment_url and not persisted:
+                delete_update_pdf(attachment_url, update_media_dir)
+        if (
+            previous_update
+            and previous_update.get("media_url") != values["media_url"]
+        ):
+            delete_update_pdf(previous_update.get("media_url"), update_media_dir)
         return jsonify({"saved": True})
 
     @app.delete("/api/updates/<int:update_index>")
@@ -5556,6 +5647,10 @@ def create_app(
         error = require_editor()
         if error:
             return error
+        update = next(
+            (item for item in get_updates() if item.get("index") == update_index),
+            None,
+        )
 
         def remove_line(lines):
             if update_index >= len(lines) or not lines[update_index].strip().startswith(tuple("0123456789")):
@@ -5570,6 +5665,8 @@ def create_app(
                 update_file(remove_line, updates_file)
             except IndexError:
                 return jsonify({"error": "対象の情報が見つかりません。"}), 404
+        if update:
+            delete_update_pdf(update.get("media_url"), update_media_dir)
         return jsonify({"deleted": True})
 
     @app.get("/video/index.html")
@@ -5579,6 +5676,10 @@ def create_app(
     @app.get("/data/media/<path:filename>")
     def public_media_file(filename):
         return send_from_directory(BASE_DIR / "data" / "media", filename)
+
+    @app.get("/data/update-media/<path:filename>")
+    def public_update_media_file(filename):
+        return send_from_directory(update_media_dir, filename)
 
     @app.get("/<any(pdf,video):directory>/<path:filename>")
     def public_file(directory, filename):
