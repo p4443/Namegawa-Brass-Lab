@@ -5679,6 +5679,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn('src="media-playback-guard.js"', page)
         self.assertIn('src="data/media/profile-photo.jpg"', page)
         self.assertIn('alt="トランペットを持つ佐々木久和"', page)
+        self.assertNotIn("無料体験・ご相談はこちら", page)
+        self.assertNotIn("hero-contact-button", page)
         hero_label_css = page.split(".hero-visual-label {", 1)[1].split("}", 1)[0]
         self.assertIn("border-top: 4px solid var(--accent-color)", hero_label_css)
         self.assertNotIn("border-left:", hero_label_css)
@@ -5739,6 +5741,9 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("document.createElement('canvas')", page)
         self.assertIn("renderPdfPreview(preview, mediaUrl, fallback)", page)
         self.assertIn("update.youtube_embed_url", page)
+        self.assertIn("className = 'update-video-preview'", page)
+        self.assertIn("i.ytimg.com/vi/", page)
+        self.assertIn("player.src = `${update.youtube_embed_url}&autoplay=1`", page)
         self.assertIn("/assets/branding/site-logo.png", page)
         self.assertIn("update-media-logo", page)
         self.assertNotIn("placeholder.textContent = 'NAMEGAWA BRASS LAB'", page)
