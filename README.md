@@ -22,6 +22,12 @@ Gunicornは要求行・ヘッダー数・ヘッダーサイズに上限を設け
 
 異常時はRenderのアクセスログで429、400、404、5xxの増加を確認し、秘密値の漏えいが疑われる場合は`EDITOR_PASSWORD`、`EDITOR_TOKEN_SECRET`、Webhook secret、Stripe secretを影響範囲に応じてローテーションします。正常性は`/health`と`healthcheck-prod.sh`で非破壊確認します。
 
+### Renderデプロイ反映の確認
+
+`main`へのpush後はRenderの`autoDeployTrigger: commit`による自動デプロイを待ちます。反映確認は`/health`だけでなく、今回変更したHTML・API・レスポンスヘッダーなどの実体を独自ドメインで照合してください。`namegawa-brass-lab.onrender.com`から`namegawa-brass-lab.com`へ転送されることは正常で、サービス不在を意味しません。
+
+push直後に実体が旧版でも、空コミットで再トリガーせず、少なくともRenderの通常デプロイ時間を待ちます。Renderダッシュボードから失敗または停止が確認できるまで、再デプロイ依頼やUI代行へ進みません。サービスがダッシュボードに見えない場合は、DNS・`onrender.com`のリダイレクト・`/health`が正常かを先に確認し、アカウント/Workspace表示の問題として扱います。
+
 ### 公開フォームのスパム対策（Cloudflare Turnstile）
 
 イベント相談、レッスン予約、予約キャンセルでは、既存のハニーポットとIPレート制限に加えてCloudflare Turnstileを利用できます。Cloudflare DashboardでTurnstileサイトを作成し、許可ホスト名に本番ドメインを登録してから、RenderのEnvironmentへ次の2項目を設定してください。
