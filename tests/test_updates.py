@@ -151,6 +151,7 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.headers["Referrer-Policy"], "strict-origin-when-cross-origin")
         self.assertIn("microphone=(self)", response.headers["Permissions-Policy"])
         content_security_policy = response.headers["Content-Security-Policy"]
+        self.assertIn("frame-src 'self' https:", content_security_policy)
         self.assertIn("object-src 'none'", content_security_policy)
         self.assertIn("base-uri 'self'", content_security_policy)
         self.assertIn("frame-ancestors 'self'", content_security_policy)
@@ -5671,7 +5672,8 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("openLink.textContent = 'PDFを開く'", page)
         self.assertIn("openLink.target = '_blank'", page)
         self.assertIn("update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url)", page)
-        self.assertIn("externalDocumentPreview(mediaUrl, 'PDF資料')", page)
+        self.assertIn("preview.src = mediaUrl", page)
+        self.assertIn("preview.title = `${update.content}の添付PDF`", page)
         self.assertIn("update.youtube_embed_url", page)
         self.assertIn("/assets/branding/site-logo.png", page)
         self.assertIn("update-media-logo", page)

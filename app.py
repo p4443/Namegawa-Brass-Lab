@@ -2869,7 +2869,7 @@ def create_app(
             "connect-src 'self' https://namegawa-brass-lab.com "
             "https://*.onrender.com https://*.vercel.app "
             "https://challenges.cloudflare.com; "
-            "frame-src 'self' https://www.google.com https://www.youtube.com "
+            "frame-src 'self' https: https://www.google.com https://www.youtube.com "
             "https://docs.google.com https://*.onrender.com https://*.vercel.app "
             "https://challenges.cloudflare.com",
         )
