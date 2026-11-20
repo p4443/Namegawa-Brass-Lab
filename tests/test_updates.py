@@ -3225,6 +3225,44 @@ class UpdatesTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("PDFファイル", response.json["error"])
 
+    def test_database_update_pdf_is_stored_and_served_from_database(self):
+        with patch("app.initialize_database"), patch(
+            "app.save_database_update_pdf"
+        ) as save_pdf, patch(
+            "app.create_database_update"
+        ), patch(
+            "app.load_database_update_pdf",
+            return_value=b"%PDF-1.4\n%%EOF",
+        ), patch(
+            "app.clear_database_editor_auth_failures"
+        ):
+            client = create_app(
+                database_url="postgresql://example/database"
+            ).test_client()
+            with patch.dict(
+                os.environ, {"EDITOR_PASSWORD": "correct-password"}
+            ):
+                created = client.post(
+                    "/api/updates",
+                    data={
+                        "date": "2026-11-20",
+                        "category": "お役立ち",
+                        "content": "DB添付資料",
+                        "media_type": "pdf",
+                        "media_url": "",
+                        "pdf": (BytesIO(b"%PDF-1.4\n%%EOF"), "guide.pdf"),
+                    },
+                    headers={"X-Editor-Password": "correct-password"},
+                )
+            self.assertEqual(created.status_code, 201, created.get_data(as_text=True))
+            stored_url = save_pdf.call_args.args[1]
+            served = client.get(f"/data/update-media/{stored_url}")
+
+        self.assertRegex(stored_url, r"^update-[0-9a-f]{32}\.pdf$")
+        self.assertEqual(served.status_code, 200)
+        self.assertEqual(served.mimetype, "application/pdf")
+        self.assertEqual(served.data, b"%PDF-1.4\n%%EOF")
+
     def test_editor_password_accepts_non_ascii_characters(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"

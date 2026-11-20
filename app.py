@@ -1267,6 +1267,15 @@ def initialize_database(database_url, seed_path=UPDATES_FILE):
                 )
                 """
             )
+            cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS update_media (
+                    filename TEXT PRIMARY KEY,
+                    content BYTEA NOT NULL,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
             cursor.execute("SELECT COUNT(*) FROM updates")
             if cursor.fetchone()[0] == 0:
                 cursor.executemany(
@@ -2710,7 +2719,43 @@ def format_update(values):
     return f'{values["date"]} | {values["category"]} | {content}'
 
 
-def save_update_pdf(upload, upload_dir=UPDATE_MEDIA_DIR):
+def save_database_update_pdf(database_url, filename, content):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                """
+                INSERT INTO update_media (filename, content)
+                VALUES (%s, %s)
+                ON CONFLICT (filename) DO UPDATE SET content = EXCLUDED.content
+                """,
+                (filename, content),
+            )
+
+
+def load_database_update_pdf(database_url, filename):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "SELECT content FROM update_media WHERE filename = %s",
+                (filename,),
+            )
+            row = cursor.fetchone()
+    return bytes(row[0]) if row else None
+
+
+def delete_database_update_pdf(database_url, filename):
+    with database_connection(database_url) as connection:
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "DELETE FROM update_media WHERE filename = %s",
+                (filename,),
+            )
+            return cursor.rowcount > 0
+
+
+def save_update_pdf(
+    upload, upload_dir=UPDATE_MEDIA_DIR, database_url=""
+):
     original_name = str(getattr(upload, "filename", "") or "").strip()
     if Path(original_name).suffix.lower() != ".pdf":
         raise ValueError("PDFファイルを選択してください。")
@@ -2720,25 +2765,33 @@ def save_update_pdf(upload, upload_dir=UPDATE_MEDIA_DIR):
     if not content.startswith(b"%PDF-"):
         raise ValueError("正しいPDFファイルを選択してください。")
     storage_dir = Path(upload_dir)
-    storage_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     filename = f"update-{uuid.uuid4().hex}.pdf"
-    target_path = storage_dir / filename
-    with tempfile.NamedTemporaryFile("wb", dir=storage_dir, delete=False) as temporary_file:
-        temporary_file.write(content)
-        temporary_path = Path(temporary_file.name)
-    os.replace(temporary_path, target_path)
+    if database_url:
+        save_database_update_pdf(database_url, filename, content)
+    else:
+        storage_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        target_path = storage_dir / filename
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=storage_dir, delete=False
+        ) as temporary_file:
+            temporary_file.write(content)
+            temporary_path = Path(temporary_file.name)
+        os.replace(temporary_path, target_path)
     return f"/data/update-media/{filename}"
 
 
-def delete_update_pdf(media_url, upload_dir=UPDATE_MEDIA_DIR):
+def delete_update_pdf(media_url, upload_dir=UPDATE_MEDIA_DIR, database_url=""):
     match = re.fullmatch(
         r"/data/update-media/(update-[0-9a-f]{32}\.pdf)",
         str(media_url or "").strip(),
     )
     if not match:
         return False
+    filename = match.group(1)
+    if database_url:
+        return delete_database_update_pdf(database_url, filename)
     try:
-        (Path(upload_dir) / match.group(1)).unlink()
+        (Path(upload_dir) / filename).unlink()
     except FileNotFoundError:
         return False
     return True
@@ -2969,7 +3022,9 @@ def create_app(
             if upload is not None and str(upload.filename or "").strip():
                 if str(payload.get("media_type", "")).strip().lower() != "pdf":
                     raise ValueError("PDF添付はメディア種別「PDF」で登録してください。")
-                attachment_url = save_update_pdf(upload, update_media_dir)
+                attachment_url = save_update_pdf(
+                    upload, update_media_dir, configured_database_url
+                )
                 payload["media_url"] = attachment_url
             if (
                 str(payload.get("media_type", "")).strip().lower() == "pdf"
@@ -2979,7 +3034,9 @@ def create_app(
             return validate_update(payload), attachment_url
         except ValueError:
             if attachment_url:
-                delete_update_pdf(attachment_url, update_media_dir)
+                delete_update_pdf(
+                    attachment_url, update_media_dir, configured_database_url
+                )
             raise
 
     def get_store_settings(product_id=PRODUCT_ID):
@@ -5596,7 +5653,9 @@ def create_app(
             persisted = True
         finally:
             if attachment_url and not persisted:
-                delete_update_pdf(attachment_url, update_media_dir)
+                delete_update_pdf(
+                    attachment_url, update_media_dir, configured_database_url
+                )
         return jsonify({"saved": True}), 201
 
     @app.put("/api/updates/<int:update_index>")
@@ -5639,7 +5698,11 @@ def create_app(
             previous_update
             and previous_update.get("media_url") != values["media_url"]
         ):
-            delete_update_pdf(previous_update.get("media_url"), update_media_dir)
+            delete_update_pdf(
+                previous_update.get("media_url"),
+                update_media_dir,
+                configured_database_url,
+            )
         return jsonify({"saved": True})
 
     @app.delete("/api/updates/<int:update_index>")
@@ -5666,7 +5729,11 @@ def create_app(
             except IndexError:
                 return jsonify({"error": "対象の情報が見つかりません。"}), 404
         if update:
-            delete_update_pdf(update.get("media_url"), update_media_dir)
+            delete_update_pdf(
+                update.get("media_url"),
+                update_media_dir,
+                configured_database_url,
+            )
         return jsonify({"deleted": True})
 
     @app.get("/video/index.html")
@@ -5679,6 +5746,19 @@ def create_app(
 
     @app.get("/data/update-media/<path:filename>")
     def public_update_media_file(filename):
+        if configured_database_url and re.fullmatch(
+            r"update-[0-9a-f]{32}\.pdf", filename
+        ):
+            content = load_database_update_pdf(configured_database_url, filename)
+            if content is not None:
+                return send_file(
+                    io.BytesIO(content),
+                    mimetype="application/pdf",
+                    download_name=filename,
+                    as_attachment=False,
+                    max_age=0,
+                )
+            return app.response_class(status=404)
         return send_from_directory(update_media_dir, filename)
 
     @app.get("/<any(pdf,video):directory>/<path:filename>")
