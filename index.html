@@ -2822,6 +2822,12 @@
       }
     }
 
+    function pdfPreviewUrl(mediaUrl) {
+      if (!/Android/i.test(navigator.userAgent)) return mediaUrl;
+      const absolutePdfUrl = new URL(mediaUrl, location.href).href;
+      return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(absolutePdfUrl)}`;
+    }
+
     function isAdobeDocumentUrl(mediaUrl) {
       try {
         return new URL(mediaUrl, location.href).hostname === 'acrobat.adobe.com';
@@ -2921,7 +2927,7 @@
         preview.alt = `${update.content}の添付資料1ページ目`;
       } else if (isDirectPdfUrl(mediaUrl)) {
         preview = document.createElement('iframe');
-        preview.src = mediaUrl;
+        preview.src = pdfPreviewUrl(mediaUrl);
         preview.title = `${update.content}の添付PDF`;
       } else if (documentUrl) {
         preview = document.createElement('iframe');
