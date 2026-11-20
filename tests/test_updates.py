@@ -5664,6 +5664,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function externalDocumentPreview(mediaUrl, label = '外部資料')", page)
         self.assertIn('id="updates-editor-pdf"', page)
         self.assertIn('id="updates-editor-pdf-field" hidden', page)
+        self.assertRegex(
+            page,
+            r"\.updates-editor-field\[hidden\]\s*\{[^}]*display: none;",
+        )
         self.assertIn("const formData = new FormData()", page)
         self.assertIn("requestHeaders = editorHeaders(false)", page)
         self.assertIn("syncUpdatesEditorMediaFields()", page)
