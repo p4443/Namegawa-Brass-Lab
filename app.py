@@ -3713,6 +3713,15 @@ def create_app(
             return app.response_class(status=404)
         return send_from_directory(BASE_DIR / "assets" / "branding", asset)
 
+    @app.get("/assets/vendor/pdfjs/<filename>")
+    def pdfjs_asset(filename):
+        if filename not in {"pdf.min.mjs", "pdf.worker.min.mjs"}:
+            return app.response_class(status=404)
+        return send_file(
+            BASE_DIR / "assets" / "vendor" / "pdfjs" / filename,
+            mimetype="application/javascript",
+        )
+
     @app.get("/back-navigation.js")
     def back_navigation_script():
         return send_file(BASE_DIR / "back-navigation.js", mimetype="application/javascript")

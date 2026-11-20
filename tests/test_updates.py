@@ -3060,6 +3060,18 @@ class UpdatesTest(unittest.TestCase):
         self.assertNotIn("sort_date", response.json[0])
         self.assertIn("index", response.json[0])
 
+    def test_pdfjs_assets_are_served_as_javascript(self):
+        client = create_app(database_url="").test_client()
+
+        for filename in ("pdf.min.mjs", "pdf.worker.min.mjs"):
+            with self.subTest(filename=filename):
+                response = client.get(f"/assets/vendor/pdfjs/{filename}")
+
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.mimetype, "application/javascript")
+                self.assertGreater(len(response.data), 1000)
+                response.close()
+
     def test_update_media_preview_serves_adobe_first_page_image(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "updates.txt"
@@ -5689,9 +5701,10 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("function publicUpdateApiUrl(path)", page)
         self.assertIn("function publicUpdateMediaUrl(mediaUrl)", page)
         self.assertIn("function isDirectPdfUrl(mediaUrl)", page)
-        self.assertIn("function pdfPreviewUrl(mediaUrl)", page)
-        self.assertIn("if (!/Android/i.test(navigator.userAgent)) return mediaUrl", page)
-        self.assertIn("https://docs.google.com/gview?embedded=1&url=", page)
+        self.assertIn("async function renderPdfPreview(canvas, mediaUrl, fallback)", page)
+        self.assertIn("import('/assets/vendor/pdfjs/pdf.min.mjs')", page)
+        self.assertIn("pdf.worker.min.mjs", page)
+        self.assertNotIn("https://docs.google.com/gview", page)
         self.assertIn("function isAdobeDocumentUrl(mediaUrl)", page)
         self.assertIn("の添付資料1ページ目", page)
         self.assertNotIn("preview.loading = 'lazy'", page)
@@ -5713,12 +5726,18 @@ class UpdatesTest(unittest.TestCase):
         self.assertIn("type.textContent = label", page)
         self.assertIn("update-media-preview", page)
         self.assertIn("update-pdf-preview", page)
+        self.assertIn("update-direct-pdf-preview", page)
+        self.assertIn("update-pdf-canvas", page)
+        self.assertRegex(
+            page,
+            r"@media \(max-width: 600px\)[\s\S]*?\.update-direct-pdf-preview\s*\{[^}]*height: 320px;",
+        )
         self.assertIn("update-media-open", page)
         self.assertIn("openLink.textContent = 'PDFを開く'", page)
         self.assertIn("openLink.target = '_blank'", page)
         self.assertIn("update.media_type === 'pdf' && !isGoogleFormUrl(update.media_url)", page)
-        self.assertIn("preview.src = pdfPreviewUrl(mediaUrl)", page)
-        self.assertIn("preview.title = `${update.content}の添付PDF`", page)
+        self.assertIn("document.createElement('canvas')", page)
+        self.assertIn("renderPdfPreview(preview, mediaUrl, fallback)", page)
         self.assertIn("update.youtube_embed_url", page)
         self.assertIn("/assets/branding/site-logo.png", page)
         self.assertIn("update-media-logo", page)

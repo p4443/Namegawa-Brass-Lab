@@ -437,6 +437,19 @@
       background: #ffffff;
     }
 
+    .update-direct-pdf-preview {
+      height: 240px;
+      min-height: 240px;
+    }
+
+    .update-pdf-canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #ffffff;
+    }
+
     .update-media-open {
       position: absolute;
       right: 12px;
@@ -2114,6 +2127,11 @@
         min-height: 160px;
       }
 
+      .update-direct-pdf-preview {
+        height: 320px;
+        min-height: 320px;
+      }
+
       .update-document-preview {
         height: 140px;
       }
@@ -2826,10 +2844,22 @@
       }
     }
 
-    function pdfPreviewUrl(mediaUrl) {
-      if (!/Android/i.test(navigator.userAgent)) return mediaUrl;
-      const absolutePdfUrl = new URL(mediaUrl, location.href).href;
-      return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(absolutePdfUrl)}`;
+    async function renderPdfPreview(canvas, mediaUrl, fallback) {
+      try {
+        const pdfjs = await import('/assets/vendor/pdfjs/pdf.min.mjs');
+        pdfjs.GlobalWorkerOptions.workerSrc = '/assets/vendor/pdfjs/pdf.worker.min.mjs';
+        const document = await pdfjs.getDocument({ url: mediaUrl }).promise;
+        const page = await document.getPage(1);
+        const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+        const viewport = page.getViewport({ scale: pixelRatio });
+        canvas.width = Math.ceil(viewport.width);
+        canvas.height = Math.ceil(viewport.height);
+        canvas.setAttribute('aria-label', 'PDFの1ページ目');
+        await page.render({ canvas, viewport }).promise;
+      } catch (error) {
+        console.error('PDF preview failed', error);
+        canvas.replaceWith(fallback);
+      }
     }
 
     function isAdobeDocumentUrl(mediaUrl) {
@@ -2930,9 +2960,13 @@
         preview.src = previewUrl;
         preview.alt = `${update.content}の添付資料1ページ目`;
       } else if (isDirectPdfUrl(mediaUrl)) {
-        preview = document.createElement('iframe');
-        preview.src = pdfPreviewUrl(mediaUrl);
-        preview.title = `${update.content}の添付PDF`;
+        preview = document.createElement('canvas');
+        preview.className = 'update-pdf-canvas';
+        preview.setAttribute('role', 'img');
+        const fallback = externalDocumentPreview(
+          mediaUrl, 'PDFのプレビューを読み込めませんでした。'
+        );
+        renderPdfPreview(preview, mediaUrl, fallback);
       } else if (documentUrl) {
         preview = document.createElement('iframe');
         preview.src = documentUrl;
@@ -2944,6 +2978,12 @@
         preview.className = 'update-media-preview';
         if (hasPdfLink) {
           preview.classList.add('update-pdf-preview');
+        }
+        if (update.media_type === 'pdf' && isDirectPdfUrl(mediaUrl)) {
+          preview.classList.add('update-direct-pdf-preview');
+          if (preview.tagName === 'CANVAS') {
+            preview.classList.add('update-pdf-canvas');
+          }
         }
         if (isGoogleFormUrl(update.media_url)) {
           preview.classList.add('update-google-form-preview');
